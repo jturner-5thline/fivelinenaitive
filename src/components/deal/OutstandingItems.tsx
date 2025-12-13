@@ -290,7 +290,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   };
 
   const getDisplayText = (selected: string[]) => {
-    if (selected.length === 0) return 'Select...';
+    if (selected.length === 0) return 'Select requester *';
     if (selected.length === 1) return selected[0];
     return `${selected.length} selected`;
   };
@@ -598,7 +598,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                     variant="outline"
                     className={cn(
                       'w-48 justify-between gap-2 font-normal',
-                      newRequestedBy.length > 0 && 'border-primary/50 bg-primary/5'
+                      newRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 text-muted-foreground'
                     )}
                   >
                     <span className="truncate">{getDisplayText(newRequestedBy)}</span>
