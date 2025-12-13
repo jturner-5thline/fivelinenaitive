@@ -5,6 +5,7 @@ import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG }
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,15 +21,9 @@ interface DealCardProps {
 }
 
 export function DealCard({ deal, onStatusChange }: DealCardProps) {
+  const { formatCurrencyValue } = usePreferences();
   const statusConfig = STATUS_CONFIG[deal.status];
   const stageConfig = STAGE_CONFIG[deal.stage];
-
-  const formatValue = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    return `$${(value / 1000).toFixed(0)}K`;
-  };
 
   const getTimeAgoData = (dateString: string) => {
     const date = new Date(dateString);
@@ -71,7 +66,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
         <div className="flex flex-row items-center justify-between">
           <h3 className="text-xl font-semibold text-purple-600 leading-tight">{deal.company}</h3>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xl font-semibold text-purple-600">{formatValue(deal.value)}</span>
+            <span className="text-xl font-semibold text-purple-600">{formatCurrencyValue(deal.value)}</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
