@@ -35,7 +35,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background">
         <DashboardHeader />
 
-        <main className="container mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+        <main className="container mx-auto max-w-7xl px-4 pt-4 pb-3 sm:px-6 lg:px-8">
           <div className="space-y-6">
             {/* Page Header & Widgets */}
             <div className="space-y-3">
