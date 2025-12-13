@@ -448,26 +448,28 @@ export default function DealDetail() {
                 </Select>
               </div>
               
-              <div className="w-fit border-t border-border mt-4 pt-4">
-                <InlineEditField
-                  value={deal.notes || ''}
-                  onSave={(value) => {
-                    if (deal.notes && deal.notes.trim()) {
-                      setStatusHistory(prev => [...prev, { note: deal.notes!, timestamp: new Date() }]);
-                    }
-                    updateDeal('notes', value);
-                  }}
-                  type="textarea"
-                  placeholder="Click to add status notes..."
-                  displayClassName="text-lg text-foreground/70"
-                />
+              <div className="flex items-start justify-between gap-4 border-t border-border mt-4 pt-4">
+                <div className="flex-1">
+                  <InlineEditField
+                    value={deal.notes || ''}
+                    onSave={(value) => {
+                      if (deal.notes && deal.notes.trim()) {
+                        setStatusHistory(prev => [...prev, { note: deal.notes!, timestamp: new Date() }]);
+                      }
+                      updateDeal('notes', value);
+                    }}
+                    type="textarea"
+                    placeholder="Click to add status notes..."
+                    displayClassName="text-lg text-foreground/70"
+                  />
+                </div>
+                <div className={`flex items-center gap-2 text-sm text-muted-foreground shrink-0 ${timeAgoData.highlightClass}`}>
+                  <Clock className="h-4 w-4" />
+                  <span>{timeAgoData.text}</span>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className={`flex items-center gap-2 text-sm text-muted-foreground mb-2 ${timeAgoData.highlightClass}`}>
-                <Clock className="h-4 w-4" />
-                <span>{timeAgoData.text}</span>
-              </div>
               {/* Milestones */}
               <DealMilestones
                 milestones={deal.milestones || []}
