@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Palette, Bell, Globe } from 'lucide-react';
+import { ArrowLeft, Palette, Bell, Globe, DollarSign } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { usePreferences } from '@/contexts/PreferencesContext';
+import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/contexts/PreferencesContext';
 
 export default function Preferences() {
   const { theme, setTheme } = useTheme();
@@ -110,6 +110,48 @@ export default function Preferences() {
                     checked={preferences.dealStatusAlerts}
                     onCheckedChange={(checked) => updatePreference('dealStatusAlerts', checked)}
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Currency Formatting
+                </CardTitle>
+                <CardDescription>Choose how currency values are displayed</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Number Format</Label>
+                    <p className="text-sm text-muted-foreground">How large numbers are abbreviated</p>
+                  </div>
+                  <Select
+                    value={preferences.currencyFormat}
+                    onValueChange={(value: CurrencyFormat) => updatePreference('currencyFormat', value)}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCY_FORMAT_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <span className="flex items-center gap-2">
+                            <span>{option.label}</span>
+                            <span className="text-muted-foreground text-xs">({option.example})</span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">Preview with $15,000,000:</p>
+                  <p className="text-lg font-semibold">
+                    {CURRENCY_FORMAT_OPTIONS.find(o => o.value === preferences.currencyFormat)?.example}
+                  </p>
                 </div>
               </CardContent>
             </Card>
