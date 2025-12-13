@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { mockDeals } from '@/data/mockDeals';
-import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, DealLender, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderTrackingStatus, DealLender, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import {
@@ -112,6 +112,7 @@ export default function DealDetail() {
       name: lenderName.trim(),
       status: 'in-review',
       stage: 'reviewing-drl',
+      trackingStatus: 'active',
     };
     const updatedLenders = [...(deal.lenders || []), newLender];
     setDeal(prev => {
@@ -407,10 +408,29 @@ export default function DealDetail() {
               {/* Lenders Card */}
               <Card>
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Lenders
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Building2 className="h-5 w-5" />
+                      Lenders
+                    </CardTitle>
+                    {deal.lenders && deal.lenders.length > 0 && (
+                      <div className="flex items-center gap-4">
+                        {(['active', 'on-hold', 'on-deck', 'passed'] as LenderTrackingStatus[])
+                          .map(trackingStatus => {
+                            const count = deal.lenders?.filter(l => l.trackingStatus === trackingStatus).length || 0;
+                            if (count === 0) return null;
+                            const config = LENDER_TRACKING_STATUS_CONFIG[trackingStatus];
+                            return (
+                              <div key={trackingStatus} className="flex items-center gap-1.5 text-xs">
+                                <span className={`h-2 w-2 rounded-full ${config.color}`} />
+                                <span className="text-muted-foreground">{config.label}</span>
+                                <span className="font-medium">{count}</span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">

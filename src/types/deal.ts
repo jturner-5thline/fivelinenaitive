@@ -8,11 +8,14 @@ export type LenderStatus = 'in-review' | 'terms-issued' | 'in-diligence' | 'clos
 
 export type LenderStage = 'reviewing-drl' | 'management-call-set' | 'management-call-completed' | 'draft-terms' | 'term-sheets';
 
+export type LenderTrackingStatus = 'active' | 'on-hold' | 'on-deck' | 'passed';
+
 export interface DealLender {
   id: string;
   name: string;
   status: LenderStatus;
   stage: LenderStage;
+  trackingStatus: LenderTrackingStatus;
 }
 
 export interface Deal {
@@ -46,6 +49,13 @@ export const LENDER_STAGE_CONFIG: Record<LenderStage, { label: string }> = {
   'management-call-completed': { label: 'Management Call Completed' },
   'draft-terms': { label: 'Draft Terms' },
   'term-sheets': { label: 'Term Sheets' },
+};
+
+export const LENDER_TRACKING_STATUS_CONFIG: Record<LenderTrackingStatus, { label: string; color: string }> = {
+  'active': { label: 'Active', color: 'bg-green-500' },
+  'on-hold': { label: 'On Hold', color: 'bg-yellow-500' },
+  'on-deck': { label: 'On Deck', color: 'bg-blue-500' },
+  'passed': { label: 'Passed', color: 'bg-muted' },
 };
 
 export const STAGE_CONFIG: Record<DealStage, { label: string; color: string }> = {
