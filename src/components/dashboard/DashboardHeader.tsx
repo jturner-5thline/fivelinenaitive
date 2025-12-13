@@ -1,6 +1,7 @@
 import { BarChart3, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { Logo } from '@/components/Logo';
 
 export function DashboardHeader() {
   return (
@@ -11,7 +12,7 @@ export function DashboardHeader() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <BarChart3 className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-semibold text-foreground">nAItive</span>
+            <Logo />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             <Button variant="ghost" size="sm" className="text-foreground">
