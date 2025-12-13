@@ -108,30 +108,29 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
         {!isExpanded && milestones.length > 0 && (
-          <div className="flex items-start py-2">
-            {milestones.map((milestone, index) => (
-              <div key={milestone.id} className="flex flex-col items-center">
-                <div className="flex items-center">
-                  {/* Connecting line before (except first) */}
-                  {index > 0 && (
-                    <div
-                      className={cn(
-                        "h-0.5 w-6 sm:w-8",
-                        milestones[index - 1].completed && milestone.completed
-                          ? "bg-primary"
-                          : milestones[index - 1].completed
-                          ? "bg-gradient-to-r from-primary to-muted-foreground/30"
-                          : "bg-muted-foreground/30"
-                      )}
-                    />
-                  )}
-                  
+          <div className="relative py-2">
+            {/* Connecting line that spans the full width */}
+            <div className="absolute top-[18px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
+            
+            {/* Progress line overlay */}
+            {completedCount > 0 && (
+              <div
+                className="absolute top-[18px] left-0 h-0.5 bg-primary transition-all"
+                style={{
+                  width: `${((completedCount - 0.5) / (totalCount - 1)) * 100}%`,
+                }}
+              />
+            )}
+            
+            <div className="relative flex justify-between">
+              {milestones.map((milestone) => (
+                <div key={milestone.id} className="flex flex-col items-center">
                   {/* Diamond Icon */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
                         className={cn(
-                          "rotate-45 transition-colors cursor-pointer",
+                          "rotate-45 transition-colors cursor-pointer bg-background p-0.5",
                           milestone.completed
                             ? "text-primary"
                             : "text-muted-foreground/40"
@@ -156,21 +155,21 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                       </p>
                     </TooltipContent>
                   </Tooltip>
+                  
+                  {/* Label below diamond */}
+                  <span
+                    className={cn(
+                      "text-[10px] mt-2 text-center max-w-20 leading-tight",
+                      milestone.completed
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {milestone.title}
+                  </span>
                 </div>
-                
-                {/* Label below diamond */}
-                <span
-                  className={cn(
-                    "text-[10px] mt-2 text-center max-w-16 leading-tight",
-                    milestone.completed
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {milestone.title}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
