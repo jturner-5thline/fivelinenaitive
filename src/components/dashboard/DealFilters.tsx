@@ -82,12 +82,12 @@ export function DealFilters({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         {/* Search */}
-        <div className="relative w-full max-w-sm">
+        <div className="relative w-full max-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search deals, companies, contacts..."
+            placeholder="Search..."
             value={filters.search}
             onChange={(e) => onFilterChange({ search: e.target.value })}
             className="pl-9"
