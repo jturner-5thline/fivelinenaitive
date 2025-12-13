@@ -774,7 +774,6 @@ export default function DealDetail() {
               {/* Actions */}
               <div className="flex gap-3">
                 <Button variant="outline">Export Details</Button>
-                <Button variant="destructive">Delete Deal</Button>
               </div>
             </div>
 
