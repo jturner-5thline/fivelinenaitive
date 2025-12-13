@@ -3,10 +3,11 @@ import { Helmet } from 'react-helmet-async';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DealFilters } from '@/components/dashboard/DealFilters';
 import { DealsList } from '@/components/dashboard/DealsList';
-import { StatsCards } from '@/components/dashboard/StatsCards';
+import { WidgetsSection } from '@/components/dashboard/WidgetsSection';
 import { useDeals } from '@/hooks/useDeals';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { mockDeals } from '@/data/mockDeals';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
@@ -16,7 +17,6 @@ export default function Dashboard() {
     filters,
     sortField,
     sortDirection,
-    stats,
     updateDealStatus,
     updateFilters,
     toggleSort,
@@ -45,8 +45,8 @@ export default function Dashboard() {
               </p>
             </div>
 
-            {/* Stats */}
-            <StatsCards stats={stats} />
+            {/* Widgets */}
+            <WidgetsSection deals={mockDeals} />
 
             {/* Filters */}
             <DealFilters
