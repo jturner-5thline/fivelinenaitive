@@ -1,4 +1,4 @@
-import { BarChart3, Plus, Settings, User, Building2, CreditCard } from 'lucide-react';
+import { BarChart3, Plus, Settings, User, Building2, CreditCard, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
@@ -48,9 +48,11 @@ export function DashboardHeader() {
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Settings</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
-                <User className="h-4 w-4" />
-                Profile
+              <DropdownMenuItem asChild>
+                <Link to="/preferences" className="flex items-center gap-2 cursor-pointer">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Preferences
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
