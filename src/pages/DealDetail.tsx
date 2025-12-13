@@ -403,12 +403,16 @@ export default function DealDetail() {
                     displayClassName="text-3xl font-semibold text-purple-600"
                   />
                 </div>
-                <div className="flex items-center justify-center self-stretch">
+                <div className="flex flex-col items-end">
                   <InlineEditField
                     value={formatValue(deal.value)}
                     onSave={(value) => updateDeal('value', parseValue(value))}
                     displayClassName="text-5xl font-semibold text-purple-600"
                   />
+                  <div className={`flex items-center gap-1.5 text-xs text-muted-foreground mt-1 ${timeAgoData.highlightClass}`}>
+                    <Clock className="h-3 w-3" />
+                    <span>{timeAgoData.text}</span>
+                  </div>
                 </div>
               </div>
               
@@ -463,14 +467,7 @@ export default function DealDetail() {
                 />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-end pt-2 border-t border-border">
-                <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
-                  <Clock className="h-3 w-3" />
-                  <span>{timeAgoData.text}</span>
-                </div>
-              </div>
-
+            <CardContent className="pt-0">
               {/* Milestones */}
               <DealMilestones
                 milestones={deal.milestones || []}
