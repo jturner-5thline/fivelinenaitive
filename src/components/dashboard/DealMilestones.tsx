@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Check, X, Flag, ChevronDown, ChevronRight, Diamond } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isPast, isToday } from 'date-fns';
 import { DealMilestone } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,6 +73,19 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
   const totalCount = milestones.length;
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
+  const isOverdue = (milestone: DealMilestone) => {
+    if (milestone.completed) return false;
+    if (!milestone.dueDate) return false;
+    const dueDate = new Date(milestone.dueDate);
+    return isPast(dueDate) && !isToday(dueDate);
+  };
+
+  const getMilestoneColor = (milestone: DealMilestone) => {
+    if (milestone.completed) return 'text-purple-600';
+    if (isOverdue(milestone)) return 'text-red-500';
+    return 'text-purple-600/30';
+  };
+
   return (
     <div className="pt-4 border-t border-border">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
@@ -131,12 +144,17 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                       <div
                         className={cn(
                           "transition-colors cursor-pointer bg-background p-0.5",
-                          milestone.completed
-                            ? "text-purple-600"
-                            : "text-purple-600/30"
+                          getMilestoneColor(milestone)
                         )}
                       >
                         {milestone.completed ? (
+                          <svg 
+                            className="h-6 w-6 fill-current" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                          </svg>
+                        ) : isOverdue(milestone) ? (
                           <svg 
                             className="h-6 w-6 fill-current" 
                             viewBox="0 0 24 24"
@@ -159,12 +177,15 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                     <TooltipContent side="bottom" className="text-xs">
                       <p className="font-medium">{milestone.title}</p>
                       {milestone.dueDate && (
-                        <p className="text-muted-foreground">
+                        <p className={isOverdue(milestone) ? "text-red-500" : "text-muted-foreground"}>
                           {format(new Date(milestone.dueDate), 'MMM d, yyyy')}
+                          {isOverdue(milestone) && " (Overdue)"}
                         </p>
                       )}
-                      <p className={milestone.completed ? "text-success" : "text-muted-foreground"}>
-                        {milestone.completed ? "Completed" : "Pending"}
+                      <p className={cn(
+                        milestone.completed ? "text-success" : isOverdue(milestone) ? "text-red-500" : "text-muted-foreground"
+                      )}>
+                        {milestone.completed ? "Completed" : isOverdue(milestone) ? "Overdue" : "Pending"}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -175,6 +196,8 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                       "text-[9px] mt-1 text-center max-w-16 leading-tight",
                       milestone.completed
                         ? "text-foreground"
+                        : isOverdue(milestone)
+                        ? "text-red-500"
                         : "text-muted-foreground"
                     )}
                   >
@@ -201,7 +224,10 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
             {milestones.map((milestone) => (
               <div
                 key={milestone.id}
-                className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 group"
+                className={cn(
+                  "flex items-center gap-2 p-2 rounded-lg group",
+                  isOverdue(milestone) ? "bg-red-500/10" : "bg-muted/50"
+                )}
               >
                 {editingId === milestone.id ? (
                   <>
@@ -255,14 +281,19 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                     <span
                       className={cn(
                         "flex-1 text-sm",
-                        milestone.completed && "line-through text-muted-foreground"
+                        milestone.completed && "line-through text-muted-foreground",
+                        isOverdue(milestone) && "text-red-500 font-medium"
                       )}
                     >
                       {milestone.title}
                     </span>
                     {milestone.dueDate && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className={cn(
+                        "text-xs",
+                        isOverdue(milestone) ? "text-red-500 font-medium" : "text-muted-foreground"
+                      )}>
                         {format(new Date(milestone.dueDate), 'MMM d')}
+                        {isOverdue(milestone) && " (Overdue)"}
                       </span>
                     )}
                     <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
