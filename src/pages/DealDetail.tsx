@@ -240,7 +240,7 @@ export default function DealDetail() {
                 <InlineEditField
                   value={formatValue(deal.value)}
                   onSave={(value) => updateDeal('value', parseValue(value) * 1000000)}
-                  displayClassName="text-xl font-semibold text-purple-600"
+                  displayClassName="text-5xl font-semibold text-purple-600"
                 />
               </div>
               
