@@ -323,7 +323,7 @@ export default function DealDetail() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Notes
+                    Status
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
