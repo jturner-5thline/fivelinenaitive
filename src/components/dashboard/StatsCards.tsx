@@ -5,8 +5,8 @@ interface StatsCardsProps {
   stats: {
     totalValue: number;
     activeDeals: number;
-    wonDeals: number;
-    winRate: number;
+    completedDeals: number;
+    completionRate: number;
     totalDeals: number;
   };
 }
@@ -35,15 +35,15 @@ export function StatsCards({ stats }: StatsCardsProps) {
       bgColor: 'bg-accent/10',
     },
     {
-      label: 'Deals Won',
-      value: stats.wonDeals.toString(),
+      label: 'Completed Deals',
+      value: stats.completedDeals.toString(),
       icon: CheckCircle,
       color: 'text-success',
       bgColor: 'bg-success/10',
     },
     {
-      label: 'Win Rate',
-      value: `${stats.winRate.toFixed(0)}%`,
+      label: 'Completion Rate',
+      value: `${stats.completionRate.toFixed(0)}%`,
       icon: Target,
       color: 'text-warning',
       bgColor: 'bg-warning/10',

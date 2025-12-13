@@ -1,37 +1,62 @@
-export type DealStatus = 'sourcing' | 'screening' | 'due-diligence' | 'negotiation' | 'closed-won' | 'closed-lost';
+export type DealStage = 'prospecting' | 'initial-review' | 'due-diligence' | 'term-sheet' | 'closing' | 'closed';
 
-export type DealSize = 'small' | 'medium' | 'large' | 'enterprise';
+export type DealStatus = 'active' | 'on-hold' | 'pending' | 'completed' | 'cancelled';
+
+export type EngagementType = 'direct' | 'syndicated' | 'club-deal' | 'sole-lender';
 
 export interface Deal {
   id: string;
   name: string;
   company: string;
+  stage: DealStage;
   status: DealStatus;
+  engagementType: EngagementType;
+  manager: string;
+  lender: string;
   value: number;
-  industry: string;
   contact: string;
   createdAt: string;
   updatedAt: string;
-  priority: 'low' | 'medium' | 'high';
   notes?: string;
 }
 
-export const STATUS_CONFIG: Record<DealStatus, { label: string; color: string }> = {
-  'sourcing': { label: 'Sourcing', color: 'bg-slate-500' },
-  'screening': { label: 'Screening', color: 'bg-blue-500' },
+export const STAGE_CONFIG: Record<DealStage, { label: string; color: string }> = {
+  'prospecting': { label: 'Prospecting', color: 'bg-slate-500' },
+  'initial-review': { label: 'Initial Review', color: 'bg-blue-500' },
   'due-diligence': { label: 'Due Diligence', color: 'bg-amber-500' },
-  'negotiation': { label: 'Negotiation', color: 'bg-purple-500' },
-  'closed-won': { label: 'Closed Won', color: 'bg-success' },
-  'closed-lost': { label: 'Closed Lost', color: 'bg-destructive' },
+  'term-sheet': { label: 'Term Sheet', color: 'bg-purple-500' },
+  'closing': { label: 'Closing', color: 'bg-cyan-500' },
+  'closed': { label: 'Closed', color: 'bg-success' },
 };
 
-export const INDUSTRIES = [
-  'Technology',
-  'Healthcare',
-  'Financial Services',
-  'Manufacturing',
-  'Consumer Goods',
-  'Energy',
-  'Real Estate',
-  'Professional Services',
+export const STATUS_CONFIG: Record<DealStatus, { label: string; color: string }> = {
+  'active': { label: 'Active', color: 'bg-success' },
+  'on-hold': { label: 'On Hold', color: 'bg-amber-500' },
+  'pending': { label: 'Pending', color: 'bg-blue-500' },
+  'completed': { label: 'Completed', color: 'bg-slate-500' },
+  'cancelled': { label: 'Cancelled', color: 'bg-destructive' },
+};
+
+export const ENGAGEMENT_TYPE_CONFIG: Record<EngagementType, { label: string }> = {
+  'direct': { label: 'Direct' },
+  'syndicated': { label: 'Syndicated' },
+  'club-deal': { label: 'Club Deal' },
+  'sole-lender': { label: 'Sole Lender' },
+};
+
+export const MANAGERS = [
+  'Sarah Chen',
+  'Michael Roberts',
+  'Jennifer Walsh',
+  'David Park',
+  'Emma Thompson',
+];
+
+export const LENDERS = [
+  'First National Bank',
+  'Capital One',
+  'JPMorgan Chase',
+  'Wells Fargo',
+  'Bank of America',
+  'Goldman Sachs',
 ];
