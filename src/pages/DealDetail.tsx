@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { mockDeals } from '@/data/mockDeals';
 import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderTrackingStatus, DealLender, DealMilestone, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
@@ -228,7 +229,7 @@ export default function DealDetail() {
       completed: false,
       received: false,
       approved: false,
-      deliveredToLenders: false,
+      deliveredToLenders: [],
       createdAt: new Date().toISOString(),
       requestedBy,
     };
@@ -672,10 +673,10 @@ export default function DealDetail() {
                                   key={item.id} 
                                   className="flex items-center gap-2 text-xs text-muted-foreground pl-2 border-l-2 border-muted"
                                 >
-                                  <span className={item.deliveredToLenders ? "line-through" : ""}>
+                                  <span className={item.deliveredToLenders.includes(lender.name) ? "line-through" : ""}>
                                     {item.text}
                                   </span>
-                                  {item.deliveredToLenders ? (
+                                  {item.deliveredToLenders.includes(lender.name) ? (
                                     <span className="text-emerald-600 text-[10px] font-medium">Delivered</span>
                                   ) : item.approved ? (
                                     <span className="text-emerald-600 text-[10px] font-medium">Approved</span>
@@ -859,7 +860,7 @@ export default function DealDetail() {
           {selectedLenderName && (() => {
             const lenderDetails = getLenderDetails(selectedLenderName);
             const lenderOutstandingItems = outstandingItems.filter(
-              item => !item.deliveredToLenders && (Array.isArray(item.requestedBy) 
+              item => !item.deliveredToLenders.includes(selectedLenderName) && (Array.isArray(item.requestedBy) 
                 ? item.requestedBy.includes(selectedLenderName)
                 : item.requestedBy === selectedLenderName)
             );
@@ -883,14 +884,20 @@ export default function DealDetail() {
                         {lenderOutstandingItems.map((item) => (
                           <div 
                             key={item.id} 
-                            className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm"
+                            className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg text-sm"
                           >
-                            <span className={item.deliveredToLenders ? "line-through text-muted-foreground" : ""}>
-                              {item.text}
-                            </span>
-                            {item.deliveredToLenders ? (
-                              <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">Delivered</Badge>
-                            ) : item.approved ? (
+                            <Checkbox
+                              checked={false}
+                              onCheckedChange={(checked) => {
+                                if (checked && selectedLenderName) {
+                                  updateOutstandingItem(item.id, {
+                                    deliveredToLenders: [...item.deliveredToLenders, selectedLenderName]
+                                  });
+                                }
+                              }}
+                            />
+                            <span className="flex-1">{item.text}</span>
+                            {item.approved ? (
                               <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">Approved</Badge>
                             ) : item.received ? (
                               <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Received</Badge>

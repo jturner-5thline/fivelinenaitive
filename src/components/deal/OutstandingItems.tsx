@@ -30,10 +30,16 @@ export interface OutstandingItem {
   completed: boolean;
   received: boolean;
   approved: boolean;
-  deliveredToLenders: boolean;
+  deliveredToLenders: string[]; // Array of lender names who received this item
   createdAt: string;
   requestedBy: string[];
 }
+
+// Helper to check if item is delivered to all requesters
+export const isFullyDelivered = (item: OutstandingItem): boolean => {
+  const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
+  return requesters.every(requester => item.deliveredToLenders.includes(requester));
+};
 
 type KanbanStage = 'requested' | 'received' | 'approved' | 'deliveredToLenders';
 
@@ -53,22 +59,23 @@ interface OutstandingItemsProps {
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
-  if (item.deliveredToLenders) return 'deliveredToLenders';
+  if (isFullyDelivered(item)) return 'deliveredToLenders';
   if (item.approved) return 'approved';
   if (item.received) return 'received';
   return 'requested';
 };
 
-const moveToStage = (stage: KanbanStage): Partial<OutstandingItem> => {
+const moveToStage = (stage: KanbanStage, item: OutstandingItem): Partial<OutstandingItem> => {
+  const allRequesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
   switch (stage) {
     case 'requested':
-      return { received: false, approved: false, deliveredToLenders: false };
+      return { received: false, approved: false, deliveredToLenders: [] };
     case 'received':
-      return { received: true, approved: false, deliveredToLenders: false };
+      return { received: true, approved: false, deliveredToLenders: [] };
     case 'approved':
-      return { received: true, approved: true, deliveredToLenders: false };
+      return { received: true, approved: true, deliveredToLenders: [] };
     case 'deliveredToLenders':
-      return { received: true, approved: true, deliveredToLenders: true };
+      return { received: true, approved: true, deliveredToLenders: allRequesters };
     default:
       return {};
   }
@@ -187,8 +194,9 @@ function KanbanBoard({
 
     if (over && active.id !== over.id) {
       const targetStage = over.id as KanbanStage;
-      if (KANBAN_STAGES.some(s => s.key === targetStage)) {
-        onUpdate(active.id as string, moveToStage(targetStage));
+      const item = items.find(i => i.id === active.id);
+      if (item && KANBAN_STAGES.some(s => s.key === targetStage)) {
+        onUpdate(active.id as string, moveToStage(targetStage, item));
       }
     }
   };
@@ -309,7 +317,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   };
 
   const approvedCount = items.filter(i => i.approved).length;
-  const deliveredCount = items.filter(i => i.deliveredToLenders).length;
+  const deliveredCount = items.filter(i => isFullyDelivered(i)).length;
 
   const getItemsByStage = (stage: KanbanStage) => {
     return items.filter(item => getItemStage(item) === stage);
@@ -420,7 +428,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               key={item.id}
               className={cn(
                 "flex items-center gap-3 p-3 rounded-lg border border-border bg-card",
-                item.deliveredToLenders && "opacity-60"
+                isFullyDelivered(item) && "opacity-60"
               )}
             >
               {editingId === item.id ? (
@@ -487,7 +495,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                     <span
                       className={cn(
                         "text-sm block",
-                        item.deliveredToLenders && "line-through text-muted-foreground"
+                        isFullyDelivered(item) && "line-through text-muted-foreground"
                       )}
                     >
                       {item.text}
