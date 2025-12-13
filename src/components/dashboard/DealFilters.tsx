@@ -152,6 +152,7 @@ export function DealFilters({
               <SelectItem value="value-desc">Highest Value</SelectItem>
               <SelectItem value="value-asc">Lowest Value</SelectItem>
               <SelectItem value="name-asc">Name A-Z</SelectItem>
+              <SelectItem value="status-asc">By Status</SelectItem>
             </SelectContent>
           </Select>
 
