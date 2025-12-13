@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Check, X, Flag } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, X, Flag, ChevronDown, ChevronRight, Diamond } from 'lucide-react';
 import { format } from 'date-fns';
 import { DealMilestone } from '@/types/deal';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface DealMilestonesProps {
@@ -23,6 +29,7 @@ interface DealMilestonesProps {
 
 export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMilestonesProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState<Date | undefined>();
@@ -68,65 +75,200 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
 
   return (
     <div className="pt-4 border-t border-border">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Flag className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium">Milestones</h3>
-          {milestones.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              ({completedCount}/{totalCount} completed)
-            </span>
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <div className="flex items-center justify-between mb-3">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="h-auto p-0 hover:bg-transparent gap-2">
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+              <Flag className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium">Milestones</h3>
+              {milestones.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  ({completedCount}/{totalCount})
+                </span>
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          {isExpanded && !isAdding && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={() => setIsAdding(true)}
+            >
+              <Plus className="h-3 w-3" />
+              Add
+            </Button>
           )}
         </div>
-        {!isAdding && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1"
-            onClick={() => setIsAdding(true)}
-          >
-            <Plus className="h-3 w-3" />
-            Add
-          </Button>
-        )}
-      </div>
 
-      {milestones.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs text-muted-foreground">Progress</span>
-            <span className="text-xs font-medium">{progressPercentage}%</span>
+        {/* Collapsed View - Diamond Icons */}
+        {!isExpanded && milestones.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap py-2">
+            {milestones.map((milestone) => (
+              <Tooltip key={milestone.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      "rotate-45 transition-colors cursor-pointer",
+                      milestone.completed
+                        ? "text-primary"
+                        : "text-muted-foreground/40"
+                    )}
+                  >
+                    {milestone.completed ? (
+                      <Diamond className="h-4 w-4 fill-current" />
+                    ) : (
+                      <Diamond className="h-4 w-4" strokeWidth={1.5} />
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <p className="font-medium">{milestone.title}</p>
+                  {milestone.dueDate && (
+                    <p className="text-muted-foreground">
+                      {format(new Date(milestone.dueDate), 'MMM d, yyyy')}
+                    </p>
+                  )}
+                  <p className={milestone.completed ? "text-success" : "text-muted-foreground"}>
+                    {milestone.completed ? "Completed" : "Pending"}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
           </div>
-          <Progress value={progressPercentage} className="h-2" />
-        </div>
-      )}
+        )}
 
-      <div className="space-y-2">
-        {milestones.map((milestone) => (
-          <div
-            key={milestone.id}
-            className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 group"
-          >
-            {editingId === milestone.id ? (
-              <>
+        <CollapsibleContent>
+          {milestones.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-muted-foreground">Progress</span>
+                <span className="text-xs font-medium">{progressPercentage}%</span>
+              </div>
+              <Progress value={progressPercentage} className="h-2" />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {milestones.map((milestone) => (
+              <div
+                key={milestone.id}
+                className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 group"
+              >
+                {editingId === milestone.id ? (
+                  <>
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="h-7 text-sm flex-1"
+                      placeholder="Milestone title"
+                      autoFocus
+                    />
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                          {editDate ? format(editDate, 'MMM d') : 'Date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          mode="single"
+                          selected={editDate}
+                          onSelect={setEditDate}
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => handleSaveEdit(milestone.id)}
+                    >
+                      <Check className="h-3.5 w-3.5 text-success" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Checkbox
+                      checked={milestone.completed}
+                      onCheckedChange={(checked) =>
+                        onUpdate(milestone.id, { completed: checked === true })
+                      }
+                    />
+                    <span
+                      className={cn(
+                        "flex-1 text-sm",
+                        milestone.completed && "line-through text-muted-foreground"
+                      )}
+                    >
+                      {milestone.title}
+                    </span>
+                    {milestone.dueDate && (
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(milestone.dueDate), 'MMM d')}
+                      </span>
+                    )}
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleStartEdit(milestone)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => onDelete(milestone.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+
+            {isAdding && (
+              <div className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-border">
                 <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
                   className="h-7 text-sm flex-1"
-                  placeholder="Milestone title"
+                  placeholder="New milestone..."
                   autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAdd();
+                    if (e.key === 'Escape') setIsAdding(false);
+                  }}
                 />
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="h-7 text-xs">
-                      {editDate ? format(editDate, 'MMM d') : 'Date'}
+                      {newDate ? format(newDate, 'MMM d') : 'Date'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="end">
                     <Calendar
                       mode="single"
-                      selected={editDate}
-                      onSelect={setEditDate}
+                      selected={newDate}
+                      onSelect={setNewDate}
                       className={cn("p-3 pointer-events-auto")}
                     />
                   </PopoverContent>
@@ -135,7 +277,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => handleSaveEdit(milestone.id)}
+                  onClick={handleAdd}
                 >
                   <Check className="h-3.5 w-3.5 text-success" />
                 </Button>
@@ -143,112 +285,25 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={handleCancelEdit}
+                  onClick={() => {
+                    setIsAdding(false);
+                    setNewTitle('');
+                    setNewDate(undefined);
+                  }}
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
-              </>
-            ) : (
-              <>
-                <Checkbox
-                  checked={milestone.completed}
-                  onCheckedChange={(checked) =>
-                    onUpdate(milestone.id, { completed: checked === true })
-                  }
-                />
-                <span
-                  className={cn(
-                    "flex-1 text-sm",
-                    milestone.completed && "line-through text-muted-foreground"
-                  )}
-                >
-                  {milestone.title}
-                </span>
-                {milestone.dueDate && (
-                  <span className="text-xs text-muted-foreground">
-                    {format(new Date(milestone.dueDate), 'MMM d')}
-                  </span>
-                )}
-                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => handleStartEdit(milestone)}
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                    onClick={() => onDelete(milestone.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </>
+              </div>
+            )}
+
+            {milestones.length === 0 && !isAdding && (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                No milestones yet
+              </p>
             )}
           </div>
-        ))}
-
-        {isAdding && (
-          <div className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-border">
-            <Input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="h-7 text-sm flex-1"
-              placeholder="New milestone..."
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAdd();
-                if (e.key === 'Escape') setIsAdding(false);
-              }}
-            />
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-xs">
-                  {newDate ? format(newDate, 'MMM d') : 'Date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={newDate}
-                  onSelect={setNewDate}
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleAdd}
-            >
-              <Check className="h-3.5 w-3.5 text-success" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => {
-                setIsAdding(false);
-                setNewTitle('');
-                setNewDate(undefined);
-              }}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        )}
-
-        {milestones.length === 0 && !isAdding && (
-          <p className="text-xs text-muted-foreground text-center py-2">
-            No milestones yet
-          </p>
-        )}
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
