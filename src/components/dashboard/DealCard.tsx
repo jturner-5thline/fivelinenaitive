@@ -132,7 +132,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-border">
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs rounded-lg">
             {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
           </Badge>
           <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
