@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Pencil, Trash2, X, Building2 } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Building2, SlidersHorizontal, ChevronRight } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -220,6 +220,30 @@ export default function Settings() {
                     </p>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <SlidersHorizontal className="h-5 w-5" />
+                  Preferences
+                </CardTitle>
+                <CardDescription>Customize your personal preferences</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  to="/preferences"
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <div>
+                    <p className="font-medium">User Preferences</p>
+                    <p className="text-sm text-muted-foreground">
+                      Theme, notifications, and regional settings
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </Link>
               </CardContent>
             </Card>
           </div>
