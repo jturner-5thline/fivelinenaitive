@@ -108,16 +108,16 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
         {!isExpanded && milestones.length > 0 && (
-          <div className="relative py-2">
+          <div className="relative py-4">
             {/* Connecting line that spans the full width */}
-            <div className="absolute top-[18px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
+            <div className="absolute top-[30px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
             
             {/* Progress line overlay */}
             {completedCount > 0 && (
               <div
-                className="absolute top-[18px] left-0 h-0.5 bg-primary transition-all"
+                className="absolute top-[30px] left-0 h-0.5 bg-purple-600 transition-all"
                 style={{
-                  width: `${((completedCount - 0.5) / (totalCount - 1)) * 100}%`,
+                  width: totalCount > 1 ? `${((completedCount - 0.5) / (totalCount - 1)) * 100}%` : '100%',
                 }}
               />
             )}
@@ -130,16 +130,29 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                     <TooltipTrigger asChild>
                       <div
                         className={cn(
-                          "rotate-45 transition-colors cursor-pointer bg-background p-0.5",
+                          "transition-colors cursor-pointer bg-background p-1",
                           milestone.completed
-                            ? "text-primary"
-                            : "text-muted-foreground/40"
+                            ? "text-purple-600"
+                            : "text-purple-600/30"
                         )}
                       >
                         {milestone.completed ? (
-                          <Diamond className="h-4 w-4 fill-current" />
+                          <svg 
+                            className="h-8 w-8 fill-current" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                          </svg>
                         ) : (
-                          <Diamond className="h-4 w-4" strokeWidth={1.5} />
+                          <svg 
+                            className="h-8 w-8" 
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                          </svg>
                         )}
                       </div>
                     </TooltipTrigger>
