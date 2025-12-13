@@ -402,21 +402,6 @@ export default function DealDetail() {
                     onSave={(value) => updateDeal('company', value)}
                     displayClassName="text-3xl font-semibold text-purple-600"
                   />
-                  <Select
-                    value={deal.engagementType}
-                    onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
-                  >
-                    <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 bg-secondary border-0 mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                          {config.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="flex items-center justify-center self-stretch">
                   <InlineEditField
@@ -826,7 +811,21 @@ export default function DealDetail() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Engagement Type</span>
-                    <span className="font-medium">{ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}</span>
+                    <Select
+                      value={deal.engagementType}
+                      onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
+                    >
+                      <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total Fee</span>
