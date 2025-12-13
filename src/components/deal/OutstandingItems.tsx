@@ -327,8 +327,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                 ) : (
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
-                <Check className="h-5 w-5" />
-                <CardTitle className="text-lg">Outstanding Items</CardTitle>
+                <CardTitle className="text-lg text-purple-600">Outstanding Items</CardTitle>
                 {items.length > 0 && (
                   <span className="text-sm font-normal text-muted-foreground">
                     ({deliveredCount}/{items.length} delivered)
