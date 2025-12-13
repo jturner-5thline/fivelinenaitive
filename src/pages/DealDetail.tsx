@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -42,6 +42,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
 
 
@@ -121,6 +122,7 @@ export default function DealDetail() {
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
+  const [isLendersExpanded, setIsLendersExpanded] = useState(true);
   const baseActivities = getMockActivities(id || '');
 
   // Combine base activities with lender removal activities
@@ -537,32 +539,48 @@ export default function DealDetail() {
               />
 
               {/* Lenders Card */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg text-purple-600">
-                      Lenders
-                    </CardTitle>
-                    {deal.lenders && deal.lenders.length > 0 && (
-                      <div className="flex items-center gap-4">
-                        {(['active', 'on-hold', 'on-deck', 'passed'] as LenderTrackingStatus[])
-                          .map(trackingStatus => {
-                            const count = deal.lenders?.filter(l => l.trackingStatus === trackingStatus).length || 0;
-                            if (count === 0) return null;
-                            const config = LENDER_TRACKING_STATUS_CONFIG[trackingStatus];
-                            return (
-                              <div key={trackingStatus} className="flex items-center gap-1.5 text-xs">
-                                <span className={`h-2 w-2 rounded-full ${config.color}`} />
-                                <span className="text-muted-foreground">{config.label}</span>
-                                <span className="font-medium">{count}</span>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
+              <Collapsible open={isLendersExpanded} onOpenChange={setIsLendersExpanded}>
+                <Card>
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CollapsibleTrigger asChild>
+                        <button className="flex items-center gap-2 hover:text-primary transition-colors">
+                          {isLendersExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <CardTitle className="text-lg text-purple-600">
+                            Lenders
+                          </CardTitle>
+                          {deal.lenders && deal.lenders.length > 0 && (
+                            <span className="text-sm font-normal text-muted-foreground">
+                              ({deal.lenders.length})
+                            </span>
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      {deal.lenders && deal.lenders.length > 0 && (
+                        <div className="flex items-center gap-4">
+                          {(['active', 'on-hold', 'on-deck', 'passed'] as LenderTrackingStatus[])
+                            .map(trackingStatus => {
+                              const count = deal.lenders?.filter(l => l.trackingStatus === trackingStatus).length || 0;
+                              if (count === 0) return null;
+                              const config = LENDER_TRACKING_STATUS_CONFIG[trackingStatus];
+                              return (
+                                <div key={trackingStatus} className="flex items-center gap-1.5 text-xs">
+                                  <span className={`h-2 w-2 rounded-full ${config.color}`} />
+                                  <span className="text-muted-foreground">{config.label}</span>
+                                  <span className="font-medium">{count}</span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent>
                   <div className="space-y-4">
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
@@ -771,8 +789,10 @@ export default function DealDetail() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
             </div>
 
             {/* Right Column - Deal Info & Activity */}
