@@ -1,5 +1,12 @@
 import { Deal } from '@/types/deal';
 
+// Helper to generate recent dates for demo purposes
+const getRecentDate = (minutesAgo: number) => {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() - minutesAgo);
+  return date.toISOString();
+};
+
 export const mockDeals: Deal[] = [
   {
     id: '1',
@@ -13,7 +20,7 @@ export const mockDeals: Deal[] = [
     value: 15000000,
     contact: 'John Smith',
     createdAt: '2024-01-15',
-    updatedAt: '2024-01-20',
+    updatedAt: getRecentDate(15), // 15 minutes ago
     notes: 'Strong revenue growth, expanding to APAC market',
   },
   {
@@ -28,7 +35,7 @@ export const mockDeals: Deal[] = [
     value: 8500000,
     contact: 'Jane Doe',
     createdAt: '2024-01-18',
-    updatedAt: '2024-01-22',
+    updatedAt: getRecentDate(180), // 3 hours ago
   },
   {
     id: '3',
@@ -42,7 +49,7 @@ export const mockDeals: Deal[] = [
     value: 45000000,
     contact: 'Robert Johnson',
     createdAt: '2024-01-10',
-    updatedAt: '2024-01-25',
+    updatedAt: getRecentDate(60 * 20), // 20 hours ago
     notes: 'Final terms under review',
   },
   {
@@ -57,7 +64,7 @@ export const mockDeals: Deal[] = [
     value: 2500000,
     contact: 'Emily Davis',
     createdAt: '2024-01-20',
-    updatedAt: '2024-01-20',
+    updatedAt: getRecentDate(60 * 24 * 3), // 3 days ago
   },
   {
     id: '5',
@@ -71,7 +78,7 @@ export const mockDeals: Deal[] = [
     value: 12000000,
     contact: 'Chris Wilson',
     createdAt: '2024-01-05',
-    updatedAt: '2024-01-28',
+    updatedAt: getRecentDate(60 * 24 * 14), // 2 weeks ago
     notes: 'Successfully closed Q1 2024',
   },
   {
@@ -86,7 +93,7 @@ export const mockDeals: Deal[] = [
     value: 6000000,
     contact: 'Amanda Brown',
     createdAt: '2024-01-08',
-    updatedAt: '2024-01-26',
+    updatedAt: getRecentDate(60 * 24 * 45), // over 30 days
     notes: 'Awaiting regulatory approval',
   },
   {
@@ -101,7 +108,7 @@ export const mockDeals: Deal[] = [
     value: 4000000,
     contact: 'Lisa Wong',
     createdAt: '2024-01-12',
-    updatedAt: '2024-01-23',
+    updatedAt: getRecentDate(60 * 5), // 5 hours ago
   },
   {
     id: '8',
@@ -115,6 +122,6 @@ export const mockDeals: Deal[] = [
     value: 18000000,
     contact: 'James Miller',
     createdAt: '2024-01-19',
-    updatedAt: '2024-01-24',
+    updatedAt: getRecentDate(60 * 24 * 5), // 5 days ago
   },
 ];
