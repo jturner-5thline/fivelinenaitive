@@ -402,6 +402,21 @@ export default function DealDetail() {
                     onSave={(value) => updateDeal('company', value)}
                     displayClassName="text-3xl font-semibold text-purple-600"
                   />
+                  <Select
+                    value={deal.engagementType}
+                    onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
+                  >
+                    <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 bg-secondary border-0 mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          {config.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex items-center justify-center self-stretch">
                   <InlineEditField
@@ -449,22 +464,7 @@ export default function DealDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between pt-2 border-t border-border">
-                <Select
-                  value={deal.engagementType}
-                  onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
-                >
-                  <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 bg-secondary border-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>
-                        {config.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center justify-end pt-2 border-t border-border">
                 <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
                   <Clock className="h-3 w-3" />
                   <span>{timeAgoData.text}</span>
