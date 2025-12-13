@@ -1,4 +1,4 @@
-import { Search, Filter, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select';
 import { DealFilters as FilterType, SortField, SortDirection } from '@/hooks/useDeals';
 import { DealStatus, STATUS_CONFIG, INDUSTRIES } from '@/types/deal';
-import { Badge } from '@/components/ui/badge';
+import { MultiSelectFilter } from './MultiSelectFilter';
 
 interface DealFiltersProps {
   filters: FilterType;
@@ -28,19 +28,35 @@ export function DealFilters({
   onSortChange,
 }: DealFiltersProps) {
   const activeFiltersCount = [
-    filters.status !== 'all',
-    filters.industry !== 'all',
-    filters.priority !== 'all',
+    filters.status.length > 0,
+    filters.industry.length > 0,
+    filters.priority.length > 0,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
     onFilterChange({
       search: '',
-      status: 'all',
-      industry: 'all',
-      priority: 'all',
+      status: [],
+      industry: [],
+      priority: [],
     });
   };
+
+  const statusOptions = Object.entries(STATUS_CONFIG).map(([key, { label }]) => ({
+    value: key,
+    label,
+  }));
+
+  const industryOptions = INDUSTRIES.map((industry) => ({
+    value: industry,
+    label: industry,
+  }));
+
+  const priorityOptions = [
+    { value: 'high', label: 'High' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'low', label: 'Low' },
+  ];
 
   return (
     <div className="space-y-4">
@@ -58,56 +74,29 @@ export function DealFilters({
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value={filters.status}
-            onValueChange={(value) => onFilterChange({ status: value as DealStatus | 'all' })}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiSelectFilter
+            label="Statuses"
+            options={statusOptions}
+            selected={filters.status}
+            onChange={(status) => onFilterChange({ status: status as DealStatus[] })}
+            className="w-[160px]"
+          />
 
-          <Select
-            value={filters.industry}
-            onValueChange={(value) => onFilterChange({ industry: value })}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Industry" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Industries</SelectItem>
-              {INDUSTRIES.map((industry) => (
-                <SelectItem key={industry} value={industry}>
-                  {industry}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiSelectFilter
+            label="Industries"
+            options={industryOptions}
+            selected={filters.industry}
+            onChange={(industry) => onFilterChange({ industry })}
+            className="w-[160px]"
+          />
 
-          <Select
-            value={filters.priority}
-            onValueChange={(value) =>
-              onFilterChange({ priority: value as 'low' | 'medium' | 'high' | 'all' })
-            }
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
+          <MultiSelectFilter
+            label="Priorities"
+            options={priorityOptions}
+            selected={filters.priority}
+            onChange={(priority) => onFilterChange({ priority: priority as ('low' | 'medium' | 'high')[] })}
+            className="w-[140px]"
+          />
 
           <Select
             value={`${sortField}-${sortDirection}`}
