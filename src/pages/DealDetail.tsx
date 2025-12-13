@@ -568,8 +568,8 @@ export default function DealDetail() {
                               if (count === 0) return null;
                               const config = LENDER_TRACKING_STATUS_CONFIG[trackingStatus];
                               return (
-                                <div key={trackingStatus} className="flex items-center gap-1.5 text-xs">
-                                  <span className={`h-2 w-2 rounded-full ${config.color}`} />
+                                <div key={trackingStatus} className="flex items-center gap-1.5 text-sm">
+                                  <span className={`h-2.5 w-2.5 rounded-full ${config.color}`} />
                                   <span className="text-muted-foreground">{config.label}</span>
                                   <span className="font-medium">{count}</span>
                                 </div>
