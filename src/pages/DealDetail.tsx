@@ -586,8 +586,15 @@ export default function DealDetail() {
                   <div className="space-y-4">
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
-                        {deal.lenders.map((lender, index) => (
-                          <div key={lender.id} className={`grid grid-cols-[140px_120px_180px_1fr] items-center gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
+                        {deal.lenders.map((lender, index) => {
+                          const lenderOutstandingItems = outstandingItems.filter(
+                            item => Array.isArray(item.requestedBy) 
+                              ? item.requestedBy.includes(lender.name)
+                              : item.requestedBy === lender.name
+                          );
+                          return (
+                          <div key={lender.id} className={`${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
+                            <div className="grid grid-cols-[140px_120px_180px_1fr] items-center gap-4">
                             <button 
                               className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                               onClick={() => setSelectedLenderName(lender.name)}
@@ -682,7 +689,32 @@ export default function DealDetail() {
                               </AlertDialog>
                             </div>
                           </div>
-                        ))}
+                          {lenderOutstandingItems.length > 0 && (
+                            <div className="ml-2 mt-2 space-y-1">
+                              {lenderOutstandingItems.map((item) => (
+                                <div 
+                                  key={item.id} 
+                                  className="flex items-center gap-2 text-xs text-muted-foreground pl-2 border-l-2 border-muted"
+                                >
+                                  <span className={item.deliveredToLenders ? "line-through" : ""}>
+                                    {item.text}
+                                  </span>
+                                  {item.deliveredToLenders ? (
+                                    <span className="text-emerald-600 text-[10px] font-medium">Delivered</span>
+                                  ) : item.approved ? (
+                                    <span className="text-emerald-600 text-[10px] font-medium">Approved</span>
+                                  ) : item.received ? (
+                                    <span className="text-blue-600 text-[10px] font-medium">Received</span>
+                                  ) : (
+                                    <span className="text-amber-600 text-[10px] font-medium">Pending</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          </div>
+                          );
+                        })}
                       </>
                     )}
                     <div className={`${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
