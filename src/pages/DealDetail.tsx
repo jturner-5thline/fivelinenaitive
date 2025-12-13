@@ -220,7 +220,7 @@ export default function DealDetail() {
     });
   }, []);
 
-  const addOutstandingItem = useCallback((text: string, requestedBy: string) => {
+  const addOutstandingItem = useCallback((text: string, requestedBy: string[]) => {
     const newItem: OutstandingItem = {
       id: `oi${Date.now()}`,
       text,
