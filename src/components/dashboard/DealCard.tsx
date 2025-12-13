@@ -106,7 +106,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             </DropdownMenu>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-4">
           <Badge
             variant="outline"
             className={`${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg`}
@@ -120,7 +120,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             {stageConfig.label}
           </Badge>
         </div>
-        <p className={`text-sm line-clamp-2 mt-3 min-h-[2.5rem] ${deal.notes ? 'text-muted-foreground' : 'text-muted-foreground/50 italic'}`}>
+        <p className={`text-sm line-clamp-2 mt-4 min-h-[2.5rem] ${deal.notes ? 'text-muted-foreground' : 'text-muted-foreground/50 italic'}`}>
           {deal.notes || 'No Status'}
         </p>
       </CardHeader>
