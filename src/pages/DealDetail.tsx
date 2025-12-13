@@ -534,8 +534,7 @@ export default function DealDetail() {
               <Card>
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Building2 className="h-5 w-5" />
+                    <CardTitle className="text-lg text-purple-600">
                       Lenders
                     </CardTitle>
                     {deal.lenders && deal.lenders.length > 0 && (
