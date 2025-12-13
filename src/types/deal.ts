@@ -88,10 +88,17 @@ export const MANAGERS = [
 ];
 
 export const LENDERS = [
-  'First National Bank',
-  'Capital One',
-  'JPMorgan Chase',
-  'Wells Fargo',
-  'Bank of America',
-  'Goldman Sachs',
+  'Decathlon',
+  'Eastward',
+  'TIMIA',
+  'SaaS Capital',
+  'Trinity',
+  'LAGO',
+  'Republic Business Credit',
+  'SLR',
+  'Matterhorn',
+  'Five Crowns',
+  'nFusion',
+  'Advantage',
+  'SG',
 ];

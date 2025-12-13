@@ -40,29 +40,57 @@ import { toast } from '@/hooks/use-toast';
 
 // Mock lender contact and preference data
 const LENDER_DETAILS: Record<string, { contact: { name: string; email: string; phone: string }; preferences: string[] }> = {
-  'JPMorgan Chase': {
-    contact: { name: 'Michael Thompson', email: 'mthompson@jpmorgan.com', phone: '(212) 555-0101' },
-    preferences: ['$10M+ deals', 'Technology & Healthcare', 'Series B and later'],
+  'Decathlon': {
+    contact: { name: 'Michael Thompson', email: 'mthompson@decathlon.com', phone: '(212) 555-0101' },
+    preferences: ['$5M-$25M deals', 'SaaS & Technology', 'Revenue-based financing'],
   },
-  'Goldman Sachs': {
-    contact: { name: 'Sarah Mitchell', email: 'smitchell@gs.com', phone: '(212) 555-0102' },
-    preferences: ['$25M+ deals', 'Financial Services', 'Growth Equity'],
+  'Eastward': {
+    contact: { name: 'Sarah Mitchell', email: 'smitchell@eastward.com', phone: '(617) 555-0102' },
+    preferences: ['$3M-$15M deals', 'Technology', 'Venture debt'],
   },
-  'Wells Fargo': {
-    contact: { name: 'David Chen', email: 'dchen@wellsfargo.com', phone: '(415) 555-0103' },
-    preferences: ['$5M-$50M deals', 'Diversified Industries', 'Asset-based lending'],
+  'TIMIA': {
+    contact: { name: 'David Chen', email: 'dchen@timia.com', phone: '(604) 555-0103' },
+    preferences: ['$1M-$10M deals', 'B2B SaaS', 'Revenue-based financing'],
   },
-  'Bank of America': {
-    contact: { name: 'Jennifer Lee', email: 'jlee@bofa.com', phone: '(704) 555-0104' },
-    preferences: ['$10M+ deals', 'Consumer & Retail', 'Working capital'],
+  'SaaS Capital': {
+    contact: { name: 'Jennifer Lee', email: 'jlee@saascapital.com', phone: '(206) 555-0104' },
+    preferences: ['$2M-$20M deals', 'B2B SaaS', 'MRR-based lending'],
   },
-  'Capital One': {
-    contact: { name: 'Robert Garcia', email: 'rgarcia@capitalone.com', phone: '(703) 555-0105' },
+  'Trinity': {
+    contact: { name: 'Robert Garcia', email: 'rgarcia@trinity.com', phone: '(650) 555-0105' },
+    preferences: ['$10M+ deals', 'Technology & Life Sciences', 'Growth capital'],
+  },
+  'LAGO': {
+    contact: { name: 'Amanda Wilson', email: 'awilson@lago.com', phone: '(415) 555-0106' },
+    preferences: ['$5M-$30M deals', 'Technology', 'Asset-based lending'],
+  },
+  'Republic Business Credit': {
+    contact: { name: 'James Miller', email: 'jmiller@republic.com', phone: '(504) 555-0107' },
+    preferences: ['$1M-$15M deals', 'Diversified Industries', 'Factoring & ABL'],
+  },
+  'SLR': {
+    contact: { name: 'Lisa Wong', email: 'lwong@slr.com', phone: '(212) 555-0108' },
+    preferences: ['$10M-$50M deals', 'Healthcare & Technology', 'Senior debt'],
+  },
+  'Matterhorn': {
+    contact: { name: 'Chris Johnson', email: 'cjohnson@matterhorn.com', phone: '(303) 555-0109' },
     preferences: ['$5M-$25M deals', 'Technology', 'Venture debt'],
   },
-  'First National Bank': {
-    contact: { name: 'Amanda Wilson', email: 'awilson@fnb.com', phone: '(412) 555-0106' },
-    preferences: ['$2M-$15M deals', 'Manufacturing & Services', 'Traditional lending'],
+  'Five Crowns': {
+    contact: { name: 'Emily Davis', email: 'edavis@fivecrowns.com', phone: '(312) 555-0110' },
+    preferences: ['$3M-$20M deals', 'SaaS', 'Growth financing'],
+  },
+  'nFusion': {
+    contact: { name: 'Mark Taylor', email: 'mtaylor@nfusion.com', phone: '(512) 555-0111' },
+    preferences: ['$2M-$15M deals', 'Technology', 'Revenue-based financing'],
+  },
+  'Advantage': {
+    contact: { name: 'Rachel Brown', email: 'rbrown@advantage.com', phone: '(404) 555-0112' },
+    preferences: ['$5M-$30M deals', 'Diversified', 'Asset-based lending'],
+  },
+  'SG': {
+    contact: { name: 'Kevin Park', email: 'kpark@sg.com', phone: '(213) 555-0113' },
+    preferences: ['$10M+ deals', 'Technology & Media', 'Senior secured debt'],
   },
 };
 
