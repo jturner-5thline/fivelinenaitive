@@ -80,7 +80,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
           </Badge>
           <Badge
             variant="outline"
-            className={`${stageConfig.color} text-white border-0 text-xs rounded-lg`}
+            className="text-xs rounded-lg"
           >
             {stageConfig.label}
           </Badge>
