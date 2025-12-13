@@ -275,8 +275,24 @@ export default function DealDetail() {
   };
 
   const parseValue = (valueStr: string): number => {
+    const upperStr = valueStr.toUpperCase();
     const cleaned = valueStr.replace(/[^0-9.]/g, '');
-    return parseFloat(cleaned) || 0;
+    const numValue = parseFloat(cleaned) || 0;
+    
+    // If the string contains MM, it's already in millions
+    if (upperStr.includes('MM') || upperStr.includes('M')) {
+      return numValue * 1000000;
+    }
+    // If the string contains K, it's in thousands
+    if (upperStr.includes('K')) {
+      return numValue * 1000;
+    }
+    // If the number is >= 1000, assume it's the actual value (e.g., 15000000)
+    if (numValue >= 1000) {
+      return numValue;
+    }
+    // Otherwise assume it's in millions (e.g., typing "15" means $15M)
+    return numValue * 1000000;
   };
 
   const getTimeAgoData = (dateString: string) => {
@@ -391,7 +407,7 @@ export default function DealDetail() {
                 <div className="flex items-center justify-center self-stretch">
                   <InlineEditField
                     value={formatValue(deal.value)}
-                    onSave={(value) => updateDeal('value', parseValue(value) * 1000000)}
+                    onSave={(value) => updateDeal('value', parseValue(value))}
                     displayClassName="text-5xl font-semibold text-purple-600"
                   />
                 </div>
