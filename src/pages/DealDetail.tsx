@@ -452,7 +452,7 @@ export default function DealDetail() {
                 </Select>
               </div>
               
-              <div className="mt-4">
+              <div className="w-fit border-t border-border mt-4 pt-4">
                 <InlineEditField
                   value={deal.notes || ''}
                   onSave={(value) => {
