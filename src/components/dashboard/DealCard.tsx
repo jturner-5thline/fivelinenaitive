@@ -1,5 +1,6 @@
-import { MoreHorizontal, User, Calendar } from 'lucide-react';
+import { MoreHorizontal, User, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,28 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
       return `$${(value / 1000000).toFixed(1)}M`;
     }
     return `$${(value / 1000).toFixed(0)}K`;
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    const minutes = differenceInMinutes(now, date);
+    const hours = differenceInHours(now, date);
+    const days = differenceInDays(now, date);
+    const weeks = differenceInWeeks(now, date);
+    
+    if (minutes < 60) {
+      return `${minutes} Min. Ago`;
+    } else if (hours < 24) {
+      return `${hours} Hours Ago`;
+    } else if (days < 7) {
+      return `${days} Days Ago`;
+    } else if (days <= 30) {
+      return `${weeks} Weeks Ago`;
+    } else {
+      return 'Over 30 Days';
+    }
   };
 
   return (
@@ -101,8 +124,8 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
           </Badge>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            <span>{deal.updatedAt}</span>
+            <Clock className="h-3 w-3" />
+            <span>{formatTimeAgo(deal.updatedAt)}</span>
           </div>
         </div>
       </CardContent>
