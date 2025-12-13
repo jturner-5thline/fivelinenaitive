@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
@@ -100,6 +100,8 @@ export default function DealDetail() {
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   const [lenderSearchQuery, setLenderSearchQuery] = useState('');
   const [isLenderDropdownOpen, setIsLenderDropdownOpen] = useState(false);
+  const [statusHistory, setStatusHistory] = useState<{ note: string; timestamp: Date }[]>([]);
+  const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
   const activities = getMockActivities(id || '');
 
   const addLender = useCallback((lenderName: string) => {
@@ -347,20 +349,58 @@ export default function DealDetail() {
             {/* Left Column - Notes & Actions */}
             <div className="lg:col-span-2 space-y-6">
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     Status
                   </CardTitle>
+                  {statusHistory.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs gap-1"
+                      onClick={() => setIsStatusHistoryExpanded(!isStatusHistoryExpanded)}
+                    >
+                      {isStatusHistoryExpanded ? (
+                        <>
+                          <ChevronUp className="h-4 w-4" />
+                          Hide History
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-4 w-4" />
+                          Show History ({statusHistory.length})
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <InlineEditField
                     value={deal.notes || ''}
-                    onSave={(value) => updateDeal('notes', value)}
+                    onSave={(value) => {
+                      if (deal.notes && deal.notes.trim()) {
+                        setStatusHistory(prev => [...prev, { note: deal.notes!, timestamp: new Date() }]);
+                      }
+                      updateDeal('notes', value);
+                    }}
                     type="textarea"
                     placeholder="Click to add notes..."
                     displayClassName="text-muted-foreground"
                   />
+                  {isStatusHistoryExpanded && statusHistory.length > 0 && (
+                    <div className="pt-4 border-t border-border space-y-3">
+                      <p className="text-xs font-medium text-muted-foreground">Previous Statuses</p>
+                      {[...statusHistory].reverse().map((item, index) => (
+                        <div key={index} className="text-sm p-3 bg-muted/50 rounded-lg">
+                          <p className="text-muted-foreground">{item.note}</p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">
+                            {item.timestamp.toLocaleDateString()} at {item.timestamp.toLocaleTimeString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
