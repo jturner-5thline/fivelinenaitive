@@ -39,7 +39,7 @@ export default function Dashboard() {
           <div className="space-y-6">
             {/* Page Header & Widgets */}
             <div className="space-y-3">
-              <h1 className="text-3xl font-semibold text-foreground">Deal Pipeline</h1>
+              <h1 className="text-3xl font-semibold text-foreground">5th Line</h1>
               <WidgetsSection deals={mockDeals} />
             </div>
 
