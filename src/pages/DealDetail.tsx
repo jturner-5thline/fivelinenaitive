@@ -7,6 +7,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { mockDeals } from '@/data/mockDeals';
 import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, DealLender, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
@@ -18,6 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 
 // Mock activity data - in a real app this would come from the database
@@ -86,7 +96,30 @@ export default function DealDetail() {
   const initialDeal = mockDeals.find((d) => d.id === id);
   const [deal, setDeal] = useState<Deal | undefined>(initialDeal);
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
+  const [customLenderName, setCustomLenderName] = useState('');
+  const [isAddLenderDialogOpen, setIsAddLenderDialogOpen] = useState(false);
   const activities = getMockActivities(id || '');
+
+  const addLender = useCallback((lenderName: string) => {
+    if (!deal || !lenderName.trim()) return;
+    
+    const newLender: DealLender = {
+      id: `l${Date.now()}`,
+      name: lenderName.trim(),
+      status: 'in-review',
+      stage: 'reviewing-drl',
+    };
+    const updatedLenders = [...(deal.lenders || []), newLender];
+    setDeal(prev => {
+      if (!prev) return prev;
+      setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    });
+    toast({
+      title: "Lender added",
+      description: `${lenderName} has been added to the deal.`,
+    });
+  }, [deal]);
 
   if (!deal) {
     return (
@@ -336,32 +369,78 @@ export default function DealDetail() {
                     <Building2 className="h-5 w-5" />
                     Lenders
                   </CardTitle>
-                  <Select
-                    onValueChange={(lenderName: string) => {
-                      const newLender: DealLender = {
-                        id: `l${Date.now()}`,
-                        name: lenderName,
-                        status: 'in-review',
-                        stage: 'reviewing-drl',
-                      };
-                      const updatedLenders = [...(deal.lenders || []), newLender];
-                      updateDeal('lenders', updatedLenders as any);
-                    }}
-                  >
-                    <SelectTrigger className="w-auto h-8 text-xs gap-1 px-2">
-                      <Plus className="h-3 w-3" />
-                      <span>Add Lender</span>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LENDERS.filter(
-                        lenderName => !deal.lenders?.some(l => l.name === lenderName)
-                      ).map((lenderName) => (
-                        <SelectItem key={lenderName} value={lenderName}>
-                          {lenderName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      onValueChange={(lenderName: string) => {
+                        addLender(lenderName);
+                      }}
+                    >
+                      <SelectTrigger className="w-auto h-8 text-xs gap-1 px-2">
+                        <Plus className="h-3 w-3" />
+                        <span>Add Lender</span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LENDERS.filter(
+                          lenderName => !deal.lenders?.some(l => l.name === lenderName)
+                        ).map((lenderName) => (
+                          <SelectItem key={lenderName} value={lenderName}>
+                            {lenderName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Dialog open={isAddLenderDialogOpen} onOpenChange={setIsAddLenderDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 text-xs gap-1 px-2">
+                          <Plus className="h-3 w-3" />
+                          Custom
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Custom Lender</DialogTitle>
+                          <DialogDescription>
+                            Enter the name of a lender not in the predefined list.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Input
+                          placeholder="Enter lender name..."
+                          value={customLenderName}
+                          onChange={(e) => setCustomLenderName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && customLenderName.trim()) {
+                              addLender(customLenderName);
+                              setCustomLenderName('');
+                              setIsAddLenderDialogOpen(false);
+                            }
+                          }}
+                        />
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setCustomLenderName('');
+                              setIsAddLenderDialogOpen(false);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (customLenderName.trim()) {
+                                addLender(customLenderName);
+                                setCustomLenderName('');
+                                setIsAddLenderDialogOpen(false);
+                              }
+                            }}
+                            disabled={!customLenderName.trim()}
+                          >
+                            Add Lender
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {deal.lenders && deal.lenders.length > 0 ? (
