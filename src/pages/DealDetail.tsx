@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X } from 'lucide-react';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
@@ -488,6 +488,25 @@ export default function DealDetail() {
                               ))}
                             </SelectContent>
                           </Select>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                              const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
+                              setDeal(prev => {
+                                if (!prev) return prev;
+                                setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+                                return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+                              });
+                              toast({
+                                title: "Lender removed",
+                                description: `${lender.name} has been removed from the deal.`,
+                              });
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
                       ))}
                     </div>
