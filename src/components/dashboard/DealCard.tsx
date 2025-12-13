@@ -35,10 +35,9 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="space-y-1">
           <h3 className="font-semibold text-foreground leading-tight">{deal.company}</h3>
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Building2 className="h-3.5 w-3.5" />
-            {deal.name}
-          </div>
+          {deal.notes && (
+            <p className="text-sm text-muted-foreground line-clamp-2">{deal.notes}</p>
+          )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
