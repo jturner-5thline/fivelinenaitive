@@ -9,7 +9,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DealFilters as FilterType, SortField, SortDirection } from '@/hooks/useDeals';
-import { DealStatus, STATUS_CONFIG, INDUSTRIES } from '@/types/deal';
+import { 
+  DealStage, 
+  DealStatus, 
+  EngagementType,
+  STAGE_CONFIG, 
+  STATUS_CONFIG, 
+  ENGAGEMENT_TYPE_CONFIG,
+  MANAGERS,
+  LENDERS,
+} from '@/types/deal';
 import { MultiSelectFilter } from './MultiSelectFilter';
 
 interface DealFiltersProps {
@@ -28,35 +37,48 @@ export function DealFilters({
   onSortChange,
 }: DealFiltersProps) {
   const activeFiltersCount = [
+    filters.stage.length > 0,
     filters.status.length > 0,
-    filters.industry.length > 0,
-    filters.priority.length > 0,
+    filters.engagementType.length > 0,
+    filters.manager.length > 0,
+    filters.lender.length > 0,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
     onFilterChange({
       search: '',
+      stage: [],
       status: [],
-      industry: [],
-      priority: [],
+      engagementType: [],
+      manager: [],
+      lender: [],
     });
   };
+
+  const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
+    value: key,
+    label,
+  }));
 
   const statusOptions = Object.entries(STATUS_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
   }));
 
-  const industryOptions = INDUSTRIES.map((industry) => ({
-    value: industry,
-    label: industry,
+  const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
+    value: key,
+    label,
   }));
 
-  const priorityOptions = [
-    { value: 'high', label: 'High' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'low', label: 'Low' },
-  ];
+  const managerOptions = MANAGERS.map((manager) => ({
+    value: manager,
+    label: manager,
+  }));
+
+  const lenderOptions = LENDERS.map((lender) => ({
+    value: lender,
+    label: lender,
+  }));
 
   return (
     <div className="space-y-4">
@@ -75,27 +97,43 @@ export function DealFilters({
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <MultiSelectFilter
+            label="Stages"
+            options={stageOptions}
+            selected={filters.stage}
+            onChange={(stage) => onFilterChange({ stage: stage as DealStage[] })}
+            className="w-[150px]"
+          />
+
+          <MultiSelectFilter
             label="Statuses"
             options={statusOptions}
             selected={filters.status}
             onChange={(status) => onFilterChange({ status: status as DealStatus[] })}
-            className="w-[160px]"
-          />
-
-          <MultiSelectFilter
-            label="Industries"
-            options={industryOptions}
-            selected={filters.industry}
-            onChange={(industry) => onFilterChange({ industry })}
-            className="w-[160px]"
-          />
-
-          <MultiSelectFilter
-            label="Priorities"
-            options={priorityOptions}
-            selected={filters.priority}
-            onChange={(priority) => onFilterChange({ priority: priority as ('low' | 'medium' | 'high')[] })}
             className="w-[140px]"
+          />
+
+          <MultiSelectFilter
+            label="Engagement Types"
+            options={engagementTypeOptions}
+            selected={filters.engagementType}
+            onChange={(engagementType) => onFilterChange({ engagementType: engagementType as EngagementType[] })}
+            className="w-[170px]"
+          />
+
+          <MultiSelectFilter
+            label="Managers"
+            options={managerOptions}
+            selected={filters.manager}
+            onChange={(manager) => onFilterChange({ manager })}
+            className="w-[150px]"
+          />
+
+          <MultiSelectFilter
+            label="Lenders"
+            options={lenderOptions}
+            selected={filters.lender}
+            onChange={(lender) => onFilterChange({ lender })}
+            className="w-[160px]"
           />
 
           <Select
@@ -113,7 +151,6 @@ export function DealFilters({
               <SelectItem value="createdAt-desc">Newest First</SelectItem>
               <SelectItem value="value-desc">Highest Value</SelectItem>
               <SelectItem value="value-asc">Lowest Value</SelectItem>
-              <SelectItem value="priority-desc">Highest Priority</SelectItem>
               <SelectItem value="name-asc">Name A-Z</SelectItem>
             </SelectContent>
           </Select>

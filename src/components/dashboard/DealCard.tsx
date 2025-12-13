@@ -1,5 +1,5 @@
-import { MoreHorizontal, Building2, User, Calendar, TrendingUp } from 'lucide-react';
-import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
+import { MoreHorizontal, Building2, User, Calendar, TrendingUp, Landmark } from 'lucide-react';
+import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,23 +19,13 @@ interface DealCardProps {
 
 export function DealCard({ deal, onStatusChange }: DealCardProps) {
   const statusConfig = STATUS_CONFIG[deal.status];
+  const stageConfig = STAGE_CONFIG[deal.stage];
 
   const formatValue = (value: number) => {
     if (value >= 1000000) {
       return `$${(value / 1000000).toFixed(1)}M`;
     }
     return `$${(value / 1000).toFixed(0)}K`;
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-destructive/10 text-destructive border-destructive/20';
-      case 'medium':
-        return 'bg-warning/10 text-warning border-warning/20';
-      default:
-        return 'bg-muted text-muted-foreground border-border';
-    }
   };
 
   return (
@@ -82,12 +72,15 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
+              className={`${stageConfig.color} text-white border-0 text-xs`}
+            >
+              {stageConfig.label}
+            </Badge>
+            <Badge
+              variant="outline"
               className={`${statusConfig.color} text-white border-0 text-xs`}
             >
               {statusConfig.label}
-            </Badge>
-            <Badge variant="outline" className={`text-xs ${getPriorityColor(deal.priority)}`}>
-              {deal.priority.charAt(0).toUpperCase() + deal.priority.slice(1)}
             </Badge>
           </div>
           <div className="flex items-center gap-1 text-lg font-semibold text-foreground">
@@ -99,23 +92,22 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <User className="h-3.5 w-3.5" />
-            <span className="truncate">{deal.contact}</span>
+            <span className="truncate">{deal.manager}</span>
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>{deal.updatedAt}</span>
+            <Landmark className="h-3.5 w-3.5" />
+            <span className="truncate">{deal.lender}</span>
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <Badge variant="secondary" className="text-xs">
-            {deal.industry}
+            {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
           </Badge>
-          {deal.notes && (
-            <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-              {deal.notes}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            <span>{deal.updatedAt}</span>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -1,24 +1,28 @@
 import { useState, useMemo } from 'react';
-import { Deal, DealStatus } from '@/types/deal';
+import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { mockDeals } from '@/data/mockDeals';
 
-export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'priority';
+export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt';
 export type SortDirection = 'asc' | 'desc';
 
 export interface DealFilters {
   search: string;
+  stage: DealStage[];
   status: DealStatus[];
-  industry: string[];
-  priority: ('low' | 'medium' | 'high')[];
+  engagementType: EngagementType[];
+  manager: string[];
+  lender: string[];
 }
 
 export function useDeals() {
   const [deals, setDeals] = useState<Deal[]>(mockDeals);
   const [filters, setFilters] = useState<DealFilters>({
     search: '',
+    stage: [],
     status: [],
-    industry: [],
-    priority: [],
+    engagementType: [],
+    manager: [],
+    lender: [],
   });
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -37,16 +41,24 @@ export function useDeals() {
       );
     }
 
+    if (filters.stage.length > 0) {
+      result = result.filter((deal) => filters.stage.includes(deal.stage));
+    }
+
     if (filters.status.length > 0) {
       result = result.filter((deal) => filters.status.includes(deal.status));
     }
 
-    if (filters.industry.length > 0) {
-      result = result.filter((deal) => filters.industry.includes(deal.industry));
+    if (filters.engagementType.length > 0) {
+      result = result.filter((deal) => filters.engagementType.includes(deal.engagementType));
     }
 
-    if (filters.priority.length > 0) {
-      result = result.filter((deal) => filters.priority.includes(deal.priority));
+    if (filters.manager.length > 0) {
+      result = result.filter((deal) => filters.manager.includes(deal.manager));
+    }
+
+    if (filters.lender.length > 0) {
+      result = result.filter((deal) => filters.lender.includes(deal.lender));
     }
 
     // Apply sorting
@@ -66,11 +78,6 @@ export function useDeals() {
         case 'updatedAt':
           comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
           break;
-        case 'priority': {
-          const priorityOrder = { high: 3, medium: 2, low: 1 };
-          comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
-          break;
-        }
       }
 
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -104,13 +111,11 @@ export function useDeals() {
 
   const stats = useMemo(() => {
     const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
-    const activeDeals = deals.filter(
-      (d) => !['closed-won', 'closed-lost'].includes(d.status)
-    ).length;
-    const wonDeals = deals.filter((d) => d.status === 'closed-won').length;
-    const winRate = deals.length > 0 ? (wonDeals / deals.length) * 100 : 0;
+    const activeDeals = deals.filter((d) => d.status === 'active').length;
+    const completedDeals = deals.filter((d) => d.status === 'completed').length;
+    const completionRate = deals.length > 0 ? (completedDeals / deals.length) * 100 : 0;
 
-    return { totalValue, activeDeals, wonDeals, winRate, totalDeals: deals.length };
+    return { totalValue, activeDeals, completedDeals, completionRate, totalDeals: deals.length };
   }, [deals]);
 
   return {
