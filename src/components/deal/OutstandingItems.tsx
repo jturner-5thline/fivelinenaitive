@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, X, Check, Pencil } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -150,14 +151,20 @@ export function OutstandingItems({ items, onAdd, onUpdate, onDelete }: Outstandi
               </div>
             ) : (
               <>
-                <span
-                  className={cn(
-                    "flex-1 text-sm",
-                    item.completed && "line-through text-muted-foreground"
-                  )}
-                >
-                  {item.text}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <span
+                    className={cn(
+                      "text-sm block",
+                      item.completed && "line-through text-muted-foreground"
+                    )}
+                  >
+                    {item.text}
+                  </span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                    <Calendar className="h-3 w-3" />
+                    Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
+                  </span>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
