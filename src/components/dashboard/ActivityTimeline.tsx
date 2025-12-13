@@ -44,14 +44,14 @@ const activityIcons: Record<ActivityItem['type'], typeof Clock> = {
 };
 
 const activityColors: Record<ActivityItem['type'], string> = {
-  status_change: 'bg-blue-500',
-  stage_change: 'bg-purple-500',
-  note_added: 'bg-amber-500',
-  contact_added: 'bg-cyan-500',
-  value_updated: 'bg-success',
-  comment: 'bg-slate-500',
-  created: 'bg-primary',
-  lender_removed: 'bg-destructive',
+  status_change: 'bg-muted-foreground/20',
+  stage_change: 'bg-muted-foreground/20',
+  note_added: 'bg-muted-foreground/20',
+  contact_added: 'bg-muted-foreground/20',
+  value_updated: 'bg-muted-foreground/20',
+  comment: 'bg-muted-foreground/20',
+  created: 'bg-muted-foreground/20',
+  lender_removed: 'bg-muted-foreground/20',
 };
 
 export function ActivityTimeline({ activities }: ActivityTimelineProps) {
@@ -83,8 +83,8 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
                   />
                 )}
                 <div className="relative flex items-start space-x-3">
-                  <div className={`relative flex h-8 w-8 items-center justify-center rounded-full ${activityColors[activity.type]}`}>
-                    <Icon className="h-4 w-4 text-white" aria-hidden="true" />
+                  <div className={`relative flex h-6 w-6 items-center justify-center rounded-full ${activityColors[activity.type]}`}>
+                    <Icon className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
