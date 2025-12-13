@@ -1,14 +1,14 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, Calendar, Landmark, FileText, Clock, Undo2 } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2 } from 'lucide-react';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { mockDeals } from '@/data/mockDeals';
-import { Deal, DealStatus, DealStage, EngagementType, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDERS } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, DealLender, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import {
@@ -326,6 +326,69 @@ export default function DealDetail() {
                     placeholder="Click to add notes..."
                     displayClassName="text-muted-foreground"
                   />
+                </CardContent>
+              </Card>
+
+              {/* Lenders Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Lenders
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {deal.lenders && deal.lenders.length > 0 ? (
+                    <div className="space-y-4">
+                      {deal.lenders.map((lender, index) => (
+                        <div key={lender.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
+                          <span className="font-medium min-w-[140px]">{lender.name}</span>
+                          <Select
+                            value={lender.status}
+                            onValueChange={(value: LenderStatus) => {
+                              const updatedLenders = deal.lenders?.map(l => 
+                                l.id === lender.id ? { ...l, status: value } : l
+                              );
+                              updateDeal('lenders', updatedLenders as any);
+                            }}
+                          >
+                            <SelectTrigger className="w-auto h-7 text-xs rounded-lg px-2">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(LENDER_STATUS_CONFIG).map(([key, config]) => (
+                                <SelectItem key={key} value={key}>
+                                  {config.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={lender.stage}
+                            onValueChange={(value: LenderStage) => {
+                              const updatedLenders = deal.lenders?.map(l => 
+                                l.id === lender.id ? { ...l, stage: value } : l
+                              );
+                              updateDeal('lenders', updatedLenders as any);
+                            }}
+                          >
+                            <SelectTrigger className="w-auto h-7 text-xs rounded-lg px-2 bg-secondary border-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(LENDER_STAGE_CONFIG).map(([key, config]) => (
+                                <SelectItem key={key} value={key}>
+                                  {config.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground/50 italic">No lenders added</p>
+                  )}
                 </CardContent>
               </Card>
 

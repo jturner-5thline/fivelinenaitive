@@ -21,8 +21,13 @@ export const mockDeals: Deal[] = [
     totalFee: 375000,
     contact: 'John Smith',
     createdAt: '2024-01-15',
-    updatedAt: getRecentDate(15), // 15 minutes ago
+    updatedAt: getRecentDate(15),
     notes: 'Strong revenue growth, expanding to APAC market',
+    lenders: [
+      { id: 'l1', name: 'JPMorgan Chase', status: 'in-diligence', stage: 'management-call-completed' },
+      { id: 'l2', name: 'Goldman Sachs', status: 'terms-issued', stage: 'draft-terms' },
+      { id: 'l3', name: 'Wells Fargo', status: 'in-review', stage: 'reviewing-drl' },
+    ],
   },
   {
     id: '2',
@@ -37,7 +42,11 @@ export const mockDeals: Deal[] = [
     totalFee: 212500,
     contact: 'Jane Doe',
     createdAt: '2024-01-18',
-    updatedAt: getRecentDate(180), // 3 hours ago
+    updatedAt: getRecentDate(180),
+    lenders: [
+      { id: 'l1', name: 'Wells Fargo', status: 'in-review', stage: 'management-call-set' },
+      { id: 'l2', name: 'Bank of America', status: 'in-review', stage: 'reviewing-drl' },
+    ],
   },
   {
     id: '3',
@@ -52,8 +61,13 @@ export const mockDeals: Deal[] = [
     totalFee: 650000,
     contact: 'Robert Johnson',
     createdAt: '2024-01-10',
-    updatedAt: getRecentDate(60 * 20), // 20 hours ago
+    updatedAt: getRecentDate(60 * 20),
     notes: 'Final terms under review',
+    lenders: [
+      { id: 'l1', name: 'Goldman Sachs', status: 'terms-issued', stage: 'term-sheets' },
+      { id: 'l2', name: 'JPMorgan Chase', status: 'terms-issued', stage: 'draft-terms' },
+      { id: 'l3', name: 'Capital One', status: 'in-diligence', stage: 'management-call-completed' },
+    ],
   },
   {
     id: '4',
@@ -68,7 +82,10 @@ export const mockDeals: Deal[] = [
     totalFee: 75000,
     contact: 'Emily Davis',
     createdAt: '2024-01-20',
-    updatedAt: getRecentDate(60 * 24 * 3), // 3 days ago
+    updatedAt: getRecentDate(60 * 24 * 3),
+    lenders: [
+      { id: 'l1', name: 'First National Bank', status: 'in-review', stage: 'reviewing-drl' },
+    ],
   },
   {
     id: '5',
@@ -83,8 +100,12 @@ export const mockDeals: Deal[] = [
     totalFee: 300000,
     contact: 'Chris Wilson',
     createdAt: '2024-01-05',
-    updatedAt: getRecentDate(60 * 24 * 14), // 2 weeks ago
+    updatedAt: getRecentDate(60 * 24 * 14),
     notes: 'Successfully closed Q1 2024',
+    lenders: [
+      { id: 'l1', name: 'Capital One', status: 'closed-funded', stage: 'term-sheets' },
+      { id: 'l2', name: 'Wells Fargo', status: 'closed-funded', stage: 'term-sheets' },
+    ],
   },
   {
     id: '6',
@@ -99,8 +120,12 @@ export const mockDeals: Deal[] = [
     totalFee: 150000,
     contact: 'Amanda Brown',
     createdAt: '2024-01-08',
-    updatedAt: getRecentDate(60 * 24 * 45), // over 30 days
+    updatedAt: getRecentDate(60 * 24 * 45),
     notes: 'Awaiting regulatory approval',
+    lenders: [
+      { id: 'l1', name: 'Bank of America', status: 'in-diligence', stage: 'management-call-completed' },
+      { id: 'l2', name: 'Goldman Sachs', status: 'terms-issued', stage: 'draft-terms' },
+    ],
   },
   {
     id: '7',
@@ -115,7 +140,11 @@ export const mockDeals: Deal[] = [
     totalFee: 100000,
     contact: 'Lisa Wong',
     createdAt: '2024-01-12',
-    updatedAt: getRecentDate(60 * 5), // 5 hours ago
+    updatedAt: getRecentDate(60 * 5),
+    lenders: [
+      { id: 'l1', name: 'JPMorgan Chase', status: 'in-diligence', stage: 'management-call-set' },
+      { id: 'l2', name: 'First National Bank', status: 'in-review', stage: 'reviewing-drl' },
+    ],
   },
   {
     id: '8',
@@ -130,6 +159,11 @@ export const mockDeals: Deal[] = [
     totalFee: 450000,
     contact: 'James Miller',
     createdAt: '2024-01-19',
-    updatedAt: getRecentDate(60 * 24 * 5), // 5 days ago
+    updatedAt: getRecentDate(60 * 24 * 5),
+    lenders: [
+      { id: 'l1', name: 'Wells Fargo', status: 'in-review', stage: 'management-call-set' },
+      { id: 'l2', name: 'Capital One', status: 'in-review', stage: 'reviewing-drl' },
+      { id: 'l3', name: 'Bank of America', status: 'in-review', stage: 'reviewing-drl' },
+    ],
   },
 ];
