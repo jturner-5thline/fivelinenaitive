@@ -37,16 +37,11 @@ export default function Dashboard() {
 
         <main className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="space-y-6">
-            {/* Page Header */}
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">Deal Pipeline</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Track and manage your active investment opportunities.
-              </p>
-            </div>
-
             {/* Widgets */}
             <WidgetsSection deals={mockDeals} />
+
+            {/* Page Header */}
+            <h1 className="text-2xl font-semibold text-foreground">Deal Pipeline</h1>
 
             {/* Filters */}
             <DealFilters
