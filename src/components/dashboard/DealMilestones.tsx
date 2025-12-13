@@ -106,39 +106,56 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
           )}
         </div>
 
-        {/* Collapsed View - Diamond Icons */}
+        {/* Collapsed View - Diamond Icons with Connecting Lines */}
         {!isExpanded && milestones.length > 0 && (
-          <div className="flex items-center gap-1 flex-wrap py-2">
-            {milestones.map((milestone) => (
-              <Tooltip key={milestone.id}>
-                <TooltipTrigger asChild>
+          <div className="flex items-center py-2">
+            {milestones.map((milestone, index) => (
+              <div key={milestone.id} className="flex items-center">
+                {/* Connecting line before (except first) */}
+                {index > 0 && (
                   <div
                     className={cn(
-                      "rotate-45 transition-colors cursor-pointer",
-                      milestone.completed
-                        ? "text-primary"
-                        : "text-muted-foreground/40"
+                      "h-0.5 w-4",
+                      milestones[index - 1].completed && milestone.completed
+                        ? "bg-primary"
+                        : milestones[index - 1].completed
+                        ? "bg-gradient-to-r from-primary to-muted-foreground/30"
+                        : "bg-muted-foreground/30"
                     )}
-                  >
-                    {milestone.completed ? (
-                      <Diamond className="h-4 w-4 fill-current" />
-                    ) : (
-                      <Diamond className="h-4 w-4" strokeWidth={1.5} />
+                  />
+                )}
+                
+                {/* Diamond Icon */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={cn(
+                        "rotate-45 transition-colors cursor-pointer",
+                        milestone.completed
+                          ? "text-primary"
+                          : "text-muted-foreground/40"
+                      )}
+                    >
+                      {milestone.completed ? (
+                        <Diamond className="h-4 w-4 fill-current" />
+                      ) : (
+                        <Diamond className="h-4 w-4" strokeWidth={1.5} />
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <p className="font-medium">{milestone.title}</p>
+                    {milestone.dueDate && (
+                      <p className="text-muted-foreground">
+                        {format(new Date(milestone.dueDate), 'MMM d, yyyy')}
+                      </p>
                     )}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  <p className="font-medium">{milestone.title}</p>
-                  {milestone.dueDate && (
-                    <p className="text-muted-foreground">
-                      {format(new Date(milestone.dueDate), 'MMM d, yyyy')}
+                    <p className={milestone.completed ? "text-success" : "text-muted-foreground"}>
+                      {milestone.completed ? "Completed" : "Pending"}
                     </p>
-                  )}
-                  <p className={milestone.completed ? "text-success" : "text-muted-foreground"}>
-                    {milestone.completed ? "Completed" : "Pending"}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             ))}
           </div>
         )}
