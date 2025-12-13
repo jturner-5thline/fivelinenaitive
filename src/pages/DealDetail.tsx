@@ -400,7 +400,7 @@ export default function DealDetail() {
                   <InlineEditField
                     value={deal.company}
                     onSave={(value) => updateDeal('company', value)}
-                    displayClassName="text-xl font-semibold text-purple-600"
+                    displayClassName="text-3xl font-semibold text-purple-600"
                   />
                 </div>
                 <div className="flex items-center justify-center self-stretch">
