@@ -558,12 +558,14 @@ export default function DealDetail() {
                           value={lenderSearchQuery}
                           onChange={(e) => {
                             setLenderSearchQuery(e.target.value);
-                            setIsLenderDropdownOpen(e.target.value.length > 0);
+                            setIsLenderDropdownOpen(true);
                           }}
                           onFocus={() => {
-                            if (lenderSearchQuery.length > 0) {
-                              setIsLenderDropdownOpen(true);
-                            }
+                            setIsLenderDropdownOpen(true);
+                          }}
+                          onBlur={(e) => {
+                            // Delay closing to allow click on dropdown items
+                            setTimeout(() => setIsLenderDropdownOpen(false), 150);
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && lenderSearchQuery.trim()) {
