@@ -220,12 +220,13 @@ export default function DealDetail() {
     });
   }, []);
 
-  const addOutstandingItem = useCallback((text: string) => {
+  const addOutstandingItem = useCallback((text: string, requestedBy: string) => {
     const newItem: OutstandingItem = {
       id: `oi${Date.now()}`,
       text,
       completed: false,
       createdAt: new Date().toISOString(),
+      requestedBy,
     };
     setOutstandingItems(prev => [...prev, newItem]);
     toast({
@@ -545,6 +546,7 @@ export default function DealDetail() {
               {/* Outstanding Items */}
               <OutstandingItems
                 items={outstandingItems}
+                lenderNames={deal.lenders?.map(l => l.name) || []}
                 onAdd={addOutstandingItem}
                 onUpdate={updateOutstandingItem}
                 onDelete={deleteOutstandingItem}
