@@ -44,11 +44,9 @@ export const ENGAGEMENT_TYPE_CONFIG: Record<EngagementType, { label: string }> =
 };
 
 export const MANAGERS = [
-  'Sarah Chen',
-  'Michael Roberts',
-  'Jennifer Walsh',
-  'David Park',
-  'Emma Thompson',
+  'Paz',
+  'James',
+  'Niki',
 ];
 
 export const LENDERS = [
