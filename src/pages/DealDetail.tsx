@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Building2, User, Calendar, Landmark, TrendingUp, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, Building2, User, Calendar, Landmark, FileText, Clock } from 'lucide-react';
+import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,6 +96,40 @@ export default function DealDetail() {
     return `$${(value / 1000).toFixed(0)}K`;
   };
 
+  const getTimeAgoData = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    const minutes = differenceInMinutes(now, date);
+    const hours = differenceInHours(now, date);
+    const days = differenceInDays(now, date);
+    const weeks = differenceInWeeks(now, date);
+    
+    let text: string;
+    let highlightClass = '';
+    
+    if (minutes < 60) {
+      text = `${minutes} Min. Ago`;
+    } else if (hours < 24) {
+      text = `${hours} Hours Ago`;
+    } else if (days < 7) {
+      text = `${days} Days Ago`;
+      if (days > 3) {
+        highlightClass = 'bg-warning/20 px-1.5 py-0.5 rounded';
+      }
+    } else if (days <= 30) {
+      text = `${weeks} Weeks Ago`;
+      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
+    } else {
+      text = 'Over 30 Days';
+      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
+    }
+    
+    return { text, highlightClass };
+  };
+
+  const timeAgoData = getTimeAgoData(deal.updatedAt);
+
   return (
     <>
       <Helmet>
@@ -105,7 +140,7 @@ export default function DealDetail() {
       <div className="min-h-screen bg-background">
         <DashboardHeader />
 
-        <main className="container mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           {/* Back button */}
           <Button variant="ghost" size="sm" className="mb-6 gap-2" asChild>
             <Link to="/dashboard">
@@ -114,37 +149,48 @@ export default function DealDetail() {
             </Link>
           </Button>
 
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h1 className="text-3xl font-semibold text-foreground mb-2">{deal.name}</h1>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Building2 className="h-4 w-4" />
-                  <span className="text-lg">{deal.company}</span>
+          {/* Header Card */}
+          <Card className="mb-6">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h1 className="text-xl font-semibold text-purple-600">{deal.company}</h1>
+                  <p className="text-muted-foreground mt-1">{deal.name}</p>
                 </div>
+                <span className="text-xl font-semibold text-purple-600">{formatValue(deal.value)}</span>
               </div>
-              <div className="text-right">
-                <div className="flex items-center gap-2 text-3xl font-bold text-foreground">
-                  <TrendingUp className="h-6 w-6 text-success" />
-                  {formatValue(deal.value)}
-                </div>
-                <span className="text-sm text-muted-foreground">Deal Value</span>
+              
+              <div className="flex items-center gap-2 mt-4">
+                <Badge
+                  variant="outline"
+                  className={`${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg`}
+                >
+                  {statusConfig.label}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="text-xs rounded-lg"
+                >
+                  {stageConfig.label}
+                </Badge>
               </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <Badge className={`${stageConfig.color} text-white border-0`}>
-                {stageConfig.label}
-              </Badge>
-              <Badge className={`${statusConfig.badgeColor} text-white border-0`}>
-                {statusConfig.label}
-              </Badge>
-              <Badge variant="secondary">
-                {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-              </Badge>
-            </div>
-          </div>
+              <p className={`text-sm line-clamp-2 mt-4 ${deal.notes ? 'text-muted-foreground' : 'text-muted-foreground/50 italic'}`}>
+                {deal.notes || 'No Status'}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <Badge variant="secondary" className="text-xs rounded-lg">
+                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+                </Badge>
+                <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
+                  <Clock className="h-3 w-3" />
+                  <span>{timeAgoData.text}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Main Content Grid */}
           <div className="grid gap-6 lg:grid-cols-3">
@@ -195,9 +241,9 @@ export default function DealDetail() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Last Updated</span>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{deal.updatedAt}</span>
+                      <div className={`flex items-center gap-2 ${timeAgoData.highlightClass}`}>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{timeAgoData.text}</span>
                       </div>
                     </div>
                   </CardContent>
