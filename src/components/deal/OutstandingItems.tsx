@@ -237,7 +237,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   const [editingText, setEditingText] = useState('');
   const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(items.length > 0);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
 
   const requestedByOptions = ['5th Line', ...lenderNames];
@@ -328,9 +328,13 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
                 <CardTitle className="text-lg text-purple-600">Outstanding Items</CardTitle>
-                {items.length > 0 && (
+                {items.length > 0 ? (
                   <span className="text-sm font-normal text-muted-foreground">
                     ({deliveredCount}/{items.length} delivered)
+                  </span>
+                ) : (
+                  <span className="text-sm font-normal text-muted-foreground italic">
+                    No Outstanding Items
                   </span>
                 )}
               </button>
