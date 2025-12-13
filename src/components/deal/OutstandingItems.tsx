@@ -238,8 +238,24 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
+  const [filterByLender, setFilterByLender] = useState<string[]>([]);
 
   const requestedByOptions = ['5th Line', ...lenderNames];
+
+  const toggleFilterLender = (option: string) => {
+    setFilterByLender(prev => 
+      prev.includes(option) 
+        ? prev.filter(o => o !== option)
+        : [...prev, option]
+    );
+  };
+
+  const filteredItems = filterByLender.length === 0 
+    ? items 
+    : items.filter(item => {
+        const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
+        return filterByLender.some(lender => requesters.includes(lender));
+      });
 
   const handleAdd = () => {
     if (newItemText.trim() && newRequestedBy.length > 0) {
@@ -320,25 +336,84 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                 )}
               </button>
             </CollapsibleTrigger>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="gap-1.5"
-              onClick={() => setIsKanbanOpen(true)}
-            >
-              <LayoutGrid className="h-4 w-4" />
-              View Board
-            </Button>
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'gap-1.5 text-xs',
+                      filterByLender.length > 0 && 'border-primary bg-primary/5'
+                    )}
+                  >
+                    <User className="h-3 w-3" />
+                    {filterByLender.length === 0 
+                      ? 'All Requesters' 
+                      : filterByLender.length === 1 
+                        ? filterByLender[0] 
+                        : `${filterByLender.length} selected`}
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="start">
+                  <div className="max-h-[300px] overflow-auto p-1">
+                    {requestedByOptions.map((option) => {
+                      const isSelected = filterByLender.includes(option);
+                      return (
+                        <div
+                          key={option}
+                          className={cn(
+                            'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                            isSelected && 'bg-accent/50'
+                          )}
+                          onClick={() => toggleFilterLender(option)}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleFilterLender(option)}
+                            className="pointer-events-none"
+                          />
+                          <span className="flex-1">{option}</span>
+                          {isSelected && <Check className="h-4 w-4 text-primary" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {filterByLender.length > 0 && (
+                    <div className="border-t border-border p-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-center text-xs"
+                        onClick={() => setFilterByLender([])}
+                      >
+                        Clear filter
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-1.5"
+                onClick={() => setIsKanbanOpen(true)}
+              >
+                <LayoutGrid className="h-4 w-4" />
+                View Board
+              </Button>
+            </div>
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="space-y-3">
-              {items.length === 0 && (
+              {filteredItems.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No outstanding items
+                  {filterByLender.length > 0 ? 'No items match the filter' : 'No outstanding items'}
                 </p>
               )}
 
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <div
               key={item.id}
               className={cn(
