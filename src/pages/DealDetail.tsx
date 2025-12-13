@@ -395,21 +395,17 @@ export default function DealDetail() {
           {/* Header Card */}
           <Card className="mb-6">
             <CardHeader className="pb-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <InlineEditField
-                    value={deal.company}
-                    onSave={(value) => updateDeal('company', value)}
-                    displayClassName="text-5xl font-semibold text-purple-600"
-                  />
-                </div>
-                <div className="flex flex-col items-end">
-                  <InlineEditField
-                    value={formatValue(deal.value)}
-                    onSave={(value) => updateDeal('value', parseValue(value))}
-                    displayClassName="text-5xl font-semibold text-purple-600"
-                  />
-                </div>
+              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
+                <InlineEditField
+                  value={deal.company}
+                  onSave={(value) => updateDeal('company', value)}
+                  displayClassName="text-5xl font-semibold text-purple-600"
+                />
+                <InlineEditField
+                  value={formatValue(deal.value)}
+                  onSave={(value) => updateDeal('value', parseValue(value))}
+                  displayClassName="text-5xl font-semibold text-purple-600"
+                />
               </div>
               
               <div className="flex items-center gap-2 mt-4">
