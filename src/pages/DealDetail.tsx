@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2 } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus } from 'lucide-react';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
@@ -331,11 +331,37 @@ export default function DealDetail() {
 
               {/* Lenders Card */}
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Building2 className="h-5 w-5" />
                     Lenders
                   </CardTitle>
+                  <Select
+                    onValueChange={(lenderName: string) => {
+                      const newLender: DealLender = {
+                        id: `l${Date.now()}`,
+                        name: lenderName,
+                        status: 'in-review',
+                        stage: 'reviewing-drl',
+                      };
+                      const updatedLenders = [...(deal.lenders || []), newLender];
+                      updateDeal('lenders', updatedLenders as any);
+                    }}
+                  >
+                    <SelectTrigger className="w-auto h-8 text-xs gap-1 px-2">
+                      <Plus className="h-3 w-3" />
+                      <span>Add Lender</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LENDERS.filter(
+                        lenderName => !deal.lenders?.some(l => l.name === lenderName)
+                      ).map((lenderName) => (
+                        <SelectItem key={lenderName} value={lenderName}>
+                          {lenderName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </CardHeader>
                 <CardContent>
                   {deal.lenders && deal.lenders.length > 0 ? (
