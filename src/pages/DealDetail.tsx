@@ -375,8 +375,8 @@ export default function DealDetail() {
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
                         {deal.lenders.map((lender, index) => (
-                          <div key={lender.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                            <span className="font-medium min-w-[140px]">{lender.name}</span>
+                          <div key={lender.id} className={`grid grid-cols-[140px_120px_180px_28px] items-center gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
+                            <span className="font-medium truncate">{lender.name}</span>
                             <Select
                               value={lender.status}
                               onValueChange={(value: LenderStatus) => {
@@ -386,7 +386,7 @@ export default function DealDetail() {
                                 updateDeal('lenders', updatedLenders as any);
                               }}
                             >
-                              <SelectTrigger className="w-auto h-7 text-xs rounded-lg px-2">
+                              <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -406,7 +406,7 @@ export default function DealDetail() {
                                 updateDeal('lenders', updatedLenders as any);
                               }}
                             >
-                              <SelectTrigger className="w-auto h-7 text-xs rounded-lg px-2 bg-secondary border-0">
+                              <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
