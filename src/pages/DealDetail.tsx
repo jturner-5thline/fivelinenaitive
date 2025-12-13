@@ -463,7 +463,7 @@ export default function DealDetail() {
                   }}
                   type="textarea"
                   placeholder="Click to add status notes..."
-                  displayClassName="text-sm text-muted-foreground"
+                  displayClassName="text-lg text-muted-foreground"
                 />
               </div>
             </CardHeader>
