@@ -230,6 +230,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>(['5th Line']);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
 
   const requestedByOptions = ['5th Line', ...lenderNames];
@@ -250,6 +251,14 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
     );
   };
 
+  const toggleEditingRequestedBy = (option: string) => {
+    setEditingRequestedBy(prev => 
+      prev.includes(option) 
+        ? prev.filter(o => o !== option)
+        : [...prev, option]
+    );
+  };
+
   const getDisplayText = (selected: string[]) => {
     if (selected.length === 0) return 'Select...';
     if (selected.length === 1) return selected[0];
@@ -259,19 +268,22 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   const handleStartEdit = (item: OutstandingItem) => {
     setEditingId(item.id);
     setEditingText(item.text);
+    setEditingRequestedBy(Array.isArray(item.requestedBy) ? [...item.requestedBy] : [item.requestedBy]);
   };
 
   const handleSaveEdit = () => {
-    if (editingId && editingText.trim()) {
-      onUpdate(editingId, { text: editingText.trim() });
+    if (editingId && editingText.trim() && editingRequestedBy.length > 0) {
+      onUpdate(editingId, { text: editingText.trim(), requestedBy: editingRequestedBy });
       setEditingId(null);
       setEditingText('');
+      setEditingRequestedBy([]);
     }
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditingText('');
+    setEditingRequestedBy([]);
   };
 
   const approvedCount = items.filter(i => i.approved).length;
@@ -329,7 +341,46 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                     autoFocus
                     className="flex-1"
                   />
-                  <Button size="sm" onClick={handleSaveEdit}>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-40 justify-between gap-2 font-normal text-xs',
+                          editingRequestedBy.length > 0 && 'border-primary/50 bg-primary/5'
+                        )}
+                      >
+                        <span className="truncate">{getDisplayText(editingRequestedBy)}</span>
+                        <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
+                      <div className="max-h-[300px] overflow-auto p-1">
+                        {requestedByOptions.map((option) => {
+                          const isSelected = editingRequestedBy.includes(option);
+                          return (
+                            <div
+                              key={option}
+                              className={cn(
+                                'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                                isSelected && 'bg-accent/50'
+                              )}
+                              onClick={() => toggleEditingRequestedBy(option)}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleEditingRequestedBy(option)}
+                                className="pointer-events-none"
+                              />
+                              <span className="flex-1">{option}</span>
+                              {isSelected && <Check className="h-4 w-4 text-primary" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Button size="sm" onClick={handleSaveEdit} disabled={editingRequestedBy.length === 0}>
                     Save
                   </Button>
                   <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
