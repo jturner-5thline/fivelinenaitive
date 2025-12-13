@@ -52,12 +52,16 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>Change Status</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
+            {Object.entries(STATUS_CONFIG).map(([key, { label, dotColor }]) => (
               <DropdownMenuItem
                 key={key}
-                onClick={() => onStatusChange(deal.id, key as DealStatus)}
-                className={deal.status === key ? 'bg-muted' : ''}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onStatusChange(deal.id, key as DealStatus);
+                }}
+                className={`flex items-center gap-2 ${deal.status === key ? 'bg-muted' : ''}`}
               >
+                <span className={`h-2 w-2 rounded-full ${dotColor}`} />
                 {label}
               </DropdownMenuItem>
             ))}
@@ -79,7 +83,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             </Badge>
             <Badge
               variant="outline"
-              className={`${statusConfig.color} text-white border-0 text-xs`}
+              className={`${statusConfig.badgeColor} text-white border-0 text-xs`}
             >
               {statusConfig.label}
             </Badge>

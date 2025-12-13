@@ -5,7 +5,7 @@ interface StatsCardsProps {
   stats: {
     totalValue: number;
     activeDeals: number;
-    completedDeals: number;
+    archivedDeals: number;
     completionRate: number;
     totalDeals: number;
   };
@@ -35,8 +35,8 @@ export function StatsCards({ stats }: StatsCardsProps) {
       bgColor: 'bg-accent/10',
     },
     {
-      label: 'Completed Deals',
-      value: stats.completedDeals.toString(),
+      label: 'Archived Deals',
+      value: stats.archivedDeals.toString(),
       icon: CheckCircle,
       color: 'text-success',
       bgColor: 'bg-success/10',
