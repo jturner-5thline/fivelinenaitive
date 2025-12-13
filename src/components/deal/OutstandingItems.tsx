@@ -1,11 +1,16 @@
 import { useState } from 'react';
-import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, LayoutGrid, ArrowRight, GripVertical } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Popover,
   PopoverContent,
@@ -232,6 +237,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   const [editingText, setEditingText] = useState('');
   const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const requestedByOptions = ['5th Line', ...lenderNames];
 
@@ -295,31 +301,42 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
 
   return (
     <>
-      <Card 
-        className="cursor-pointer hover:border-primary/50 transition-colors"
-        onClick={() => setIsKanbanOpen(true)}
-      >
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Check className="h-5 w-5" />
-            Outstanding Items
-            {items.length > 0 && (
-              <span className="text-sm font-normal text-muted-foreground">
-                ({deliveredCount}/{items.length} delivered)
-              </span>
-            )}
-          </CardTitle>
-          <Button variant="ghost" size="sm" className="gap-1.5">
-            <LayoutGrid className="h-4 w-4" />
-            View Board
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3" onClick={(e) => e.stopPropagation()}>
-          {items.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No outstanding items
-            </p>
-          )}
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 hover:text-primary transition-colors">
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+                <Check className="h-5 w-5" />
+                <CardTitle className="text-lg">Outstanding Items</CardTitle>
+                {items.length > 0 && (
+                  <span className="text-sm font-normal text-muted-foreground">
+                    ({deliveredCount}/{items.length} delivered)
+                  </span>
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-1.5"
+              onClick={() => setIsKanbanOpen(true)}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              View Board
+            </Button>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-3">
+              {items.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No outstanding items
+                </p>
+              )}
 
           {items.map((item) => (
             <div
@@ -526,8 +543,10 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               </Popover>
             </div>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Kanban Board Dialog */}
       <Dialog open={isKanbanOpen} onOpenChange={setIsKanbanOpen}>
