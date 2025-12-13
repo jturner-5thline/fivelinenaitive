@@ -120,8 +120,8 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             {stageConfig.label}
           </Badge>
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-2 mt-3 min-h-[2.5rem]">
-          {deal.notes || '\u00A0'}
+        <p className={`text-sm line-clamp-2 mt-3 min-h-[2.5rem] ${deal.notes ? 'text-muted-foreground' : 'text-muted-foreground/50 italic'}`}>
+          {deal.notes || 'No Status'}
         </p>
       </CardHeader>
       <CardContent className="space-y-4 mt-auto">
