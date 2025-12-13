@@ -1,12 +1,12 @@
-import { TrendingUp, Briefcase, CheckCircle, Target } from 'lucide-react';
+import { TrendingUp, Briefcase, FileSearch, DollarSign } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface StatsCardsProps {
   stats: {
-    totalValue: number;
     activeDeals: number;
-    archivedDeals: number;
-    completionRate: number;
+    activeDealValue: number;
+    dealsInDiligence: number;
+    dollarsInDiligence: number;
     totalDeals: number;
   };
 }
@@ -21,30 +21,30 @@ export function StatsCards({ stats }: StatsCardsProps) {
 
   const statItems = [
     {
-      label: 'Total Pipeline Value',
-      value: formatValue(stats.totalValue),
-      icon: TrendingUp,
+      label: 'Active Deals',
+      value: stats.activeDeals.toString(),
+      icon: Briefcase,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
-      label: 'Active Deals',
-      value: stats.activeDeals.toString(),
-      icon: Briefcase,
+      label: 'Active Deal Volume',
+      value: formatValue(stats.activeDealValue),
+      icon: TrendingUp,
       color: 'text-accent',
       bgColor: 'bg-accent/10',
     },
     {
-      label: 'Archived Deals',
-      value: stats.archivedDeals.toString(),
-      icon: CheckCircle,
+      label: 'Deals in Diligence',
+      value: stats.dealsInDiligence.toString(),
+      icon: FileSearch,
       color: 'text-success',
       bgColor: 'bg-success/10',
     },
     {
-      label: 'Completion Rate',
-      value: `${stats.completionRate.toFixed(0)}%`,
-      icon: Target,
+      label: 'Dollars in Diligence',
+      value: formatValue(stats.dollarsInDiligence),
+      icon: DollarSign,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
     },
