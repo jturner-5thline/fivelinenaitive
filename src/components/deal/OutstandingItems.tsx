@@ -347,7 +347,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                 )}
               </button>
             </CollapsibleTrigger>
-            <div className="flex items-center gap-2">
+            {isExpanded && <div className="flex items-center gap-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -413,7 +413,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
-            </div>
+            </div>}
           </CardHeader>
           <CollapsibleContent>
             <CardContent className="space-y-3">
