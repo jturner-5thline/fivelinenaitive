@@ -139,6 +139,32 @@ const Auth = () => {
               >
                 {loading ? "Please wait..." : isLogin ? "Login" : "Sign Up"}
               </Button>
+              
+              {isLogin && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      const { error } = await supabase.auth.signInWithPassword({
+                        email: "demo@example.com",
+                        password: "demo123456",
+                      });
+                      if (error) throw error;
+                      toast.success("Welcome to the demo!");
+                    } catch (error: any) {
+                      toast.error("Demo account not available. Please sign up first.");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="w-full text-white/60 hover:text-white hover:bg-white/5 py-6 font-light tracking-wide"
+                >
+                  Continue as Demo User
+                </Button>
+              )}
             </form>
             
             <p className="text-center text-white/50 mt-6 font-light">
