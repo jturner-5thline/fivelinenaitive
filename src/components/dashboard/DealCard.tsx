@@ -33,12 +33,14 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
     <Link to={`/deal/${deal.id}`} className="block">
       <Card className="group transition-all hover:shadow-md hover:border-primary/20 cursor-pointer">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
-        <div className="space-y-1">
+        <div className="space-y-1 flex-1 pr-4">
           <h3 className="font-semibold text-foreground leading-tight">{deal.company}</h3>
           {deal.notes && (
             <p className="text-sm text-muted-foreground line-clamp-2">{deal.notes}</p>
           )}
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-semibold text-purple-600">{formatValue(deal.value)}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -71,26 +73,22 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className={`${stageConfig.color} text-white border-0 text-xs`}
-            >
-              {stageConfig.label}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={`${statusConfig.badgeColor} text-white border-0 text-xs`}
-            >
-              {statusConfig.label}
-            </Badge>
-          </div>
-          <div className="text-lg font-semibold text-foreground">
-            {formatValue(deal.value)}
-          </div>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className={`${stageConfig.color} text-white border-0 text-xs`}
+          >
+            {stageConfig.label}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`${statusConfig.badgeColor} text-white border-0 text-xs`}
+          >
+            {statusConfig.label}
+          </Badge>
         </div>
 
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
