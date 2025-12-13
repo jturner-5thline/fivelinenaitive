@@ -1,4 +1,4 @@
-import { Deal, DealStatus } from '@/types/deal';
+import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { FileX } from 'lucide-react';
 
@@ -6,6 +6,8 @@ interface DealsListProps {
   deals: Deal[];
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
 }
+
+const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
 export function DealsList({ deals, onStatusChange }: DealsListProps) {
   if (deals.length === 0) {
@@ -22,10 +24,32 @@ export function DealsList({ deals, onStatusChange }: DealsListProps) {
     );
   }
 
+  // Group deals by status
+  const groupedDeals = STATUS_ORDER.reduce((acc, status) => {
+    const dealsForStatus = deals.filter((deal) => deal.status === status);
+    if (dealsForStatus.length > 0) {
+      acc.push({ status, deals: dealsForStatus });
+    }
+    return acc;
+  }, [] as { status: DealStatus; deals: Deal[] }[]);
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {deals.map((deal) => (
-        <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
+    <div className="space-y-8">
+      {groupedDeals.map(({ status, deals: statusDeals }) => (
+        <div key={status}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className={`h-2.5 w-2.5 rounded-full ${STATUS_CONFIG[status].dotColor}`} />
+            <h2 className="text-lg font-semibold text-foreground">
+              {STATUS_CONFIG[status].label}
+            </h2>
+            <span className="text-sm text-muted-foreground">({statusDeals.length})</span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {statusDeals.map((deal) => (
+              <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
