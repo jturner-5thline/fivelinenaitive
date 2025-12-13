@@ -74,15 +74,15 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
         <div className="flex items-center gap-2 mt-2">
           <Badge
             variant="outline"
-            className={`${stageConfig.color} text-white border-0 text-xs rounded-lg`}
-          >
-            {stageConfig.label}
-          </Badge>
-          <Badge
-            variant="outline"
             className={`${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg`}
           >
             {statusConfig.label}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`${stageConfig.color} text-white border-0 text-xs rounded-lg`}
+          >
+            {stageConfig.label}
           </Badge>
         </div>
         {deal.notes && (
