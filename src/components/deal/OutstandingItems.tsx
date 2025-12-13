@@ -150,23 +150,41 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5">
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                    item.received && "bg-emerald-500/10"
+                  )}>
                     <Checkbox
                       checked={item.received}
                       onCheckedChange={(checked) =>
                         onUpdate(item.id, { received: checked === true })
                       }
+                      className={cn(
+                        item.received && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                      )}
                     />
-                    <span className="text-xs text-muted-foreground">Received</span>
+                    <span className={cn(
+                      "text-xs",
+                      item.received ? "text-emerald-600 font-medium" : "text-muted-foreground"
+                    )}>Received</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                    item.approved && "bg-emerald-500/10"
+                  )}>
                     <Checkbox
                       checked={item.approved}
                       onCheckedChange={(checked) =>
                         onUpdate(item.id, { approved: checked === true })
                       }
+                      className={cn(
+                        item.approved && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                      )}
                     />
-                    <span className="text-xs text-muted-foreground">Approved</span>
+                    <span className={cn(
+                      "text-xs",
+                      item.approved ? "text-emerald-600 font-medium" : "text-muted-foreground"
+                    )}>Approved</span>
                   </div>
                 </div>
                 <Button
