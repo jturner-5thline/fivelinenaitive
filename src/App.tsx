@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { ThemeProvider } from "next-themes";
 import { LendersProvider } from "@/contexts/LendersContext";
 import { WidgetsProvider } from "@/contexts/WidgetsContext";
 import Index from "./pages/Index";
@@ -18,25 +19,27 @@ const queryClient = new QueryClient();
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
-      <LendersProvider>
-        <WidgetsProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/deal/:id" element={<DealDetail />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/preferences" element={<Preferences />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </WidgetsProvider>
-      </LendersProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <LendersProvider>
+          <WidgetsProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/deal/:id" element={<DealDetail />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/preferences" element={<Preferences />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </WidgetsProvider>
+        </LendersProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </HelmetProvider>
 );
