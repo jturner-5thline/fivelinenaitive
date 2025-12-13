@@ -1,96 +1,146 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* DealFlow Pro - Professional Fintech Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core backgrounds */
+    --background: 210 20% 99%;
+    --foreground: 215 28% 17%;
 
+    /* Cards & surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 28% 17%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 28% 17%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Deep teal/slate - trust & stability */
+    --primary: 190 64% 17%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary: Light slate */
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 215 28% 17%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted elements */
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent: Bright teal/cyan - action & progress */
+    --accent: 183 56% 44%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Success: Emerald green */
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Warning: Amber */
+    --warning: 38 92% 50%;
+    --warning-foreground: 215 28% 17%;
+
+    /* Destructive: Deep red */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & inputs */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 183 56% 44%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Sidebar */
+    --sidebar-background: 190 64% 17%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 183 56% 44%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 190 50% 25%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 190 50% 25%;
+    --sidebar-ring: 183 56% 44%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Chart colors */
+    --chart-1: 183 56% 44%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 190 64% 17%;
+    --chart-5: 215 16% 47%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Shadows */
+    --shadow-2xs: 0 1px 2px 0 hsl(215 28% 17% / 0.03);
+    --shadow-xs: 0 1px 3px 0 hsl(215 28% 17% / 0.05);
+    --shadow-sm: 0 1px 3px 0 hsl(215 28% 17% / 0.08), 0 1px 2px -1px hsl(215 28% 17% / 0.05);
+    --shadow: 0 4px 6px -1px hsl(215 28% 17% / 0.08), 0 2px 4px -2px hsl(215 28% 17% / 0.05);
+    --shadow-md: 0 6px 12px -2px hsl(215 28% 17% / 0.1), 0 3px 6px -3px hsl(215 28% 17% / 0.08);
+    --shadow-lg: 0 10px 20px -3px hsl(215 28% 17% / 0.12), 0 4px 8px -4px hsl(215 28% 17% / 0.08);
+    --shadow-xl: 0 20px 40px -4px hsl(215 28% 17% / 0.15), 0 8px 16px -8px hsl(215 28% 17% / 0.1);
+    --shadow-2xl: 0 25px 50px -12px hsl(215 28% 17% / 0.25);
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(190 64% 17%), hsl(190 50% 25%));
+    --gradient-accent: linear-gradient(135deg, hsl(183 56% 44%), hsl(183 56% 50%));
+    --gradient-hero: linear-gradient(180deg, hsl(210 20% 99%) 0%, hsl(210 30% 96%) 100%);
 
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --spacing: 0.25rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 215 28% 10%;
+    --foreground: 210 20% 96%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 215 28% 14%;
+    --card-foreground: 210 20% 96%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 215 28% 14%;
+    --popover-foreground: 210 20% 96%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 183 56% 50%;
+    --primary-foreground: 215 28% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 215 28% 20%;
+    --secondary-foreground: 210 20% 96%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 215 28% 20%;
+    --muted-foreground: 215 16% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 183 56% 50%;
+    --accent-foreground: 215 28% 10%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 160 84% 45%;
+    --success-foreground: 215 28% 10%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 215 28% 10%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 20% 96%;
+
+    --border: 215 28% 22%;
+    --input: 215 28% 22%;
+    --ring: 183 56% 50%;
+
+    --sidebar-background: 215 28% 10%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 183 56% 50%;
+    --sidebar-primary-foreground: 215 28% 10%;
+    --sidebar-accent: 215 28% 18%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 215 28% 22%;
+    --sidebar-ring: 183 56% 50%;
+
+    --chart-1: 183 56% 50%;
+    --chart-2: 160 84% 45%;
+    --chart-3: 38 92% 55%;
+    --chart-4: 190 64% 40%;
+    --chart-5: 215 16% 60%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(183 56% 50%), hsl(183 56% 40%));
+    --gradient-accent: linear-gradient(135deg, hsl(183 56% 55%), hsl(183 56% 45%));
+    --gradient-hero: linear-gradient(180deg, hsl(215 28% 10%) 0%, hsl(215 28% 8%) 100%);
   }
 }
 
