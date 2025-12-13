@@ -14,32 +14,37 @@ const Index = () => {
         />
       </Helmet>
       
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a1a] via-[#1a1a3a] to-[#2a1a4a] relative overflow-hidden">
+      <div className="min-h-screen bg-[#010114] relative overflow-hidden">
         {/* Spinning Globe Background */}
         <SpinningGlobe />
         
-        {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-black/50" />
+        {/* Subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         {/* Content */}
-        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center">
-          <h1 className="text-6xl md:text-8xl font-bold text-white mb-12 tracking-tight">
+        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
+          <h1 className="text-6xl md:text-8xl lg:text-9xl font-bold text-white mb-4 tracking-tight">
             nAItive
           </h1>
+          
+          <p className="text-white/60 text-lg md:text-xl font-light mb-12 tracking-wide">
+            AI-Powered Deal Intelligence
+          </p>
           
           <div className="flex gap-4">
             <Button 
               variant="outline" 
               size="lg"
-              className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white px-8"
+              className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white px-8 py-6 text-base font-light tracking-wide"
               asChild
             >
               <Link to="/login">Login</Link>
             </Button>
             
             <Button 
+              variant="outline"
               size="lg"
-              className="bg-white text-[#2d2d7a] hover:bg-white/90 px-8"
+              className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white px-8 py-6 text-base font-light tracking-wide"
               asChild
             >
               <Link to="/dashboard">Deal Portal</Link>
