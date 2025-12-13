@@ -1,10 +1,17 @@
 import { useState } from 'react';
-import { Plus, X, Check, Pencil, Calendar } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 export interface OutstandingItem {
@@ -12,24 +19,30 @@ export interface OutstandingItem {
   text: string;
   completed: boolean;
   createdAt: string;
+  requestedBy: string;
 }
 
 interface OutstandingItemsProps {
   items: OutstandingItem[];
-  onAdd: (text: string) => void;
+  lenderNames: string[];
+  onAdd: (text: string, requestedBy: string) => void;
   onUpdate: (id: string, updates: Partial<OutstandingItem>) => void;
   onDelete: (id: string) => void;
 }
 
-export function OutstandingItems({ items, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
+export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
   const [newItemText, setNewItemText] = useState('');
+  const [newRequestedBy, setNewRequestedBy] = useState('5th Line');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
 
+  const requestedByOptions = ['5th Line', ...lenderNames];
+
   const handleAdd = () => {
     if (newItemText.trim()) {
-      onAdd(newItemText.trim());
+      onAdd(newItemText.trim(), newRequestedBy);
       setNewItemText('');
+      setNewRequestedBy('5th Line');
     }
   };
 
@@ -117,10 +130,16 @@ export function OutstandingItems({ items, onAdd, onUpdate, onDelete }: Outstandi
                   >
                     {item.text}
                   </span>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <Calendar className="h-3 w-3" />
-                    Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
-                  </span>
+                  <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      by {item.requestedBy}
+                    </span>
+                  </div>
                 </div>
                 <Button
                   variant="ghost"
@@ -145,20 +164,34 @@ export function OutstandingItems({ items, onAdd, onUpdate, onDelete }: Outstandi
 
         {/* Always-visible input for adding new items */}
         <div className={`${items.length > 0 ? 'pt-3 border-t border-border' : ''}`}>
-          <Input
-            placeholder="Type to add an item..."
-            value={newItemText}
-            onChange={(e) => setNewItemText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newItemText.trim()) {
-                handleAdd();
-              }
-              if (e.key === 'Escape') {
-                setNewItemText('');
-              }
-            }}
-            className="w-full"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Type to add an item..."
+              value={newItemText}
+              onChange={(e) => setNewItemText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newItemText.trim()) {
+                  handleAdd();
+                }
+                if (e.key === 'Escape') {
+                  setNewItemText('');
+                }
+              }}
+              className="flex-1"
+            />
+            <Select value={newRequestedBy} onValueChange={setNewRequestedBy}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Requested by..." />
+              </SelectTrigger>
+              <SelectContent>
+                {requestedByOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </CardContent>
     </Card>
