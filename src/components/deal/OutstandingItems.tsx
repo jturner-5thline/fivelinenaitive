@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { Plus, X, Check, Pencil, Calendar, User } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar, User, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 export interface OutstandingItem {
@@ -19,31 +17,45 @@ export interface OutstandingItem {
   text: string;
   completed: boolean;
   createdAt: string;
-  requestedBy: string;
+  requestedBy: string[];
 }
 
 interface OutstandingItemsProps {
   items: OutstandingItem[];
   lenderNames: string[];
-  onAdd: (text: string, requestedBy: string) => void;
+  onAdd: (text: string, requestedBy: string[]) => void;
   onUpdate: (id: string, updates: Partial<OutstandingItem>) => void;
   onDelete: (id: string) => void;
 }
 
 export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
   const [newItemText, setNewItemText] = useState('');
-  const [newRequestedBy, setNewRequestedBy] = useState('5th Line');
+  const [newRequestedBy, setNewRequestedBy] = useState<string[]>(['5th Line']);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
 
   const requestedByOptions = ['5th Line', ...lenderNames];
 
   const handleAdd = () => {
-    if (newItemText.trim()) {
+    if (newItemText.trim() && newRequestedBy.length > 0) {
       onAdd(newItemText.trim(), newRequestedBy);
       setNewItemText('');
-      setNewRequestedBy('5th Line');
+      setNewRequestedBy(['5th Line']);
     }
+  };
+
+  const toggleRequestedBy = (option: string) => {
+    setNewRequestedBy(prev => 
+      prev.includes(option) 
+        ? prev.filter(o => o !== option)
+        : [...prev, option]
+    );
+  };
+
+  const getDisplayText = (selected: string[]) => {
+    if (selected.length === 0) return 'Select...';
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} selected`;
   };
 
   const handleStartEdit = (item: OutstandingItem) => {
@@ -137,7 +149,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                     </span>
                     <span className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      by {item.requestedBy}
+                      by {Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
                     </span>
                   </div>
                 </div>
@@ -179,18 +191,45 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               }}
               className="flex-1"
             />
-            <Select value={newRequestedBy} onValueChange={setNewRequestedBy}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Requested by..." />
-              </SelectTrigger>
-              <SelectContent>
-                {requestedByOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-48 justify-between gap-2 font-normal',
+                    newRequestedBy.length > 0 && 'border-primary/50 bg-primary/5'
+                  )}
+                >
+                  <span className="truncate">{getDisplayText(newRequestedBy)}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
+                <div className="max-h-[300px] overflow-auto p-1">
+                  {requestedByOptions.map((option) => {
+                    const isSelected = newRequestedBy.includes(option);
+                    return (
+                      <div
+                        key={option}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                          isSelected && 'bg-accent/50'
+                        )}
+                        onClick={() => toggleRequestedBy(option)}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleRequestedBy(option)}
+                          className="pointer-events-none"
+                        />
+                        <span className="flex-1">{option}</span>
+                        {isSelected && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </CardContent>
