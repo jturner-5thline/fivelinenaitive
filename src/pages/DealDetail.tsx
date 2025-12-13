@@ -859,9 +859,9 @@ export default function DealDetail() {
           {selectedLenderName && (() => {
             const lenderDetails = getLenderDetails(selectedLenderName);
             const lenderOutstandingItems = outstandingItems.filter(
-              item => Array.isArray(item.requestedBy) 
+              item => !item.deliveredToLenders && (Array.isArray(item.requestedBy) 
                 ? item.requestedBy.includes(selectedLenderName)
-                : item.requestedBy === selectedLenderName
+                : item.requestedBy === selectedLenderName)
             );
             const lenderActivities = activities.filter(
               activity => activity.description?.includes(selectedLenderName) || 
