@@ -308,7 +308,22 @@ export default function DealDetail() {
 
           {/* Main Content Grid */}
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left Column - Deal Info */}
+            {/* Left Column - Activity Timeline */}
+            <div className="lg:col-span-1">
+              <Card className="sticky top-24">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ActivityTimeline activities={activities} />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - Deal Info */}
             <div className="lg:col-span-2 space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
@@ -420,21 +435,6 @@ export default function DealDetail() {
                 <Button variant="outline">Export Details</Button>
                 <Button variant="destructive">Delete Deal</Button>
               </div>
-            </div>
-
-            {/* Right Column - Activity Timeline */}
-            <div className="lg:col-span-1">
-              <Card className="sticky top-24">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ActivityTimeline activities={activities} />
-                </CardContent>
-              </Card>
             </div>
           </div>
         </main>
