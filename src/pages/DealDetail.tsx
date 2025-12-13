@@ -308,23 +308,8 @@ export default function DealDetail() {
 
           {/* Main Content Grid */}
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left Column - Activity Timeline */}
-            <div className="lg:col-span-1">
-              <Card className="sticky top-24">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ActivityTimeline activities={activities} />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Middle Column - Notes */}
-            <div className="lg:col-span-1 space-y-6">
+            {/* Left Column - Notes & Actions */}
+            <div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -350,9 +335,9 @@ export default function DealDetail() {
               </div>
             </div>
 
-            {/* Right Column - Deal Info */}
-            <div className="lg:col-span-1">
-              <Card className="sticky top-24">
+            {/* Right Column - Deal Info & Activity */}
+            <div className="lg:col-span-1 space-y-6">
+              <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Deal Information</CardTitle>
                 </CardHeader>
@@ -425,6 +410,18 @@ export default function DealDetail() {
                       <span className="font-medium">{timeAgoData.text}</span>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ActivityTimeline activities={activities} />
                 </CardContent>
               </Card>
             </div>
