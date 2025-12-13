@@ -5,11 +5,12 @@ import { FileX } from 'lucide-react';
 interface DealsListProps {
   deals: Deal[];
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  groupByStatus?: boolean;
 }
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, groupByStatus = true }: DealsListProps) {
   if (deals.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -20,6 +21,17 @@ export function DealsList({ deals, onStatusChange }: DealsListProps) {
         <p className="mt-1 text-sm text-muted-foreground">
           Try adjusting your filters or create a new deal to get started.
         </p>
+      </div>
+    );
+  }
+
+  // If not grouping, show flat grid
+  if (!groupByStatus) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {deals.map((deal) => (
+          <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
+        ))}
       </div>
     );
   }
