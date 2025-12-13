@@ -108,14 +108,14 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
         {!isExpanded && milestones.length > 0 && (
-          <div className="relative py-4">
+          <div className="relative py-2">
             {/* Connecting line that spans the full width */}
-            <div className="absolute top-[30px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
+            <div className="absolute top-[22px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
             
             {/* Progress line overlay */}
             {completedCount > 0 && (
               <div
-                className="absolute top-[30px] left-0 h-0.5 bg-purple-600 transition-all"
+                className="absolute top-[22px] left-0 h-0.5 bg-purple-600 transition-all"
                 style={{
                   width: totalCount > 1 ? `${((completedCount - 0.5) / (totalCount - 1)) * 100}%` : '100%',
                 }}
@@ -130,7 +130,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                     <TooltipTrigger asChild>
                       <div
                         className={cn(
-                          "transition-colors cursor-pointer bg-background p-1",
+                          "transition-colors cursor-pointer bg-background p-0.5",
                           milestone.completed
                             ? "text-purple-600"
                             : "text-purple-600/30"
@@ -138,14 +138,14 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                       >
                         {milestone.completed ? (
                           <svg 
-                            className="h-8 w-8 fill-current" 
+                            className="h-6 w-6 fill-current" 
                             viewBox="0 0 24 24"
                           >
                             <path d="M12 2L22 12L12 22L2 12L12 2Z" />
                           </svg>
                         ) : (
                           <svg 
-                            className="h-8 w-8" 
+                            className="h-6 w-6" 
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -172,7 +172,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                   {/* Label below diamond */}
                   <span
                     className={cn(
-                      "text-[10px] mt-2 text-center max-w-20 leading-tight",
+                      "text-[9px] mt-1 text-center max-w-16 leading-tight",
                       milestone.completed
                         ? "text-foreground"
                         : "text-muted-foreground"
