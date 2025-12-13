@@ -280,7 +280,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                     />
                     <span
                       className={cn(
-                        "flex-1 text-sm",
+                        "flex-1 text-lg",
                         milestone.completed && "line-through text-muted-foreground",
                         isOverdue(milestone) && "text-red-500 font-medium"
                       )}
