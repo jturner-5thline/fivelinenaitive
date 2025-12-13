@@ -104,30 +104,10 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
           <div
             key={item.id}
             className={cn(
-              "flex items-start gap-3 p-3 rounded-lg border border-border bg-card",
+              "flex items-center gap-3 p-3 rounded-lg border border-border bg-card",
               item.approved && "opacity-60"
             )}
           >
-            <div className="flex flex-col gap-2 pt-0.5">
-              <div className="flex items-center gap-1.5">
-                <Checkbox
-                  checked={item.received}
-                  onCheckedChange={(checked) =>
-                    onUpdate(item.id, { received: checked === true })
-                  }
-                />
-                <span className="text-xs text-muted-foreground">Received</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Checkbox
-                  checked={item.approved}
-                  onCheckedChange={(checked) =>
-                    onUpdate(item.id, { approved: checked === true })
-                  }
-                />
-                <span className="text-xs text-muted-foreground">Approved</span>
-              </div>
-            </div>
             {editingId === item.id ? (
               <div className="flex-1 flex items-center gap-2">
                 <Input
@@ -153,7 +133,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                   <span
                     className={cn(
                       "text-sm block",
-                      item.completed && "line-through text-muted-foreground"
+                      item.approved && "line-through text-muted-foreground"
                     )}
                   >
                     {item.text}
@@ -167,6 +147,26 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                       <User className="h-3 w-3" />
                       by {Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
                     </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      checked={item.received}
+                      onCheckedChange={(checked) =>
+                        onUpdate(item.id, { received: checked === true })
+                      }
+                    />
+                    <span className="text-xs text-muted-foreground">Received</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      checked={item.approved}
+                      onCheckedChange={(checked) =>
+                        onUpdate(item.id, { approved: checked === true })
+                      }
+                    />
+                    <span className="text-xs text-muted-foreground">Approved</span>
                   </div>
                 </div>
                 <Button
