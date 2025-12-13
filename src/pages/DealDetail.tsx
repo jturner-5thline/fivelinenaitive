@@ -225,6 +225,8 @@ export default function DealDetail() {
       id: `oi${Date.now()}`,
       text,
       completed: false,
+      received: false,
+      approved: false,
       createdAt: new Date().toISOString(),
       requestedBy,
     };

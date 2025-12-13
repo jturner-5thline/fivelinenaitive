@@ -16,6 +16,8 @@ export interface OutstandingItem {
   id: string;
   text: string;
   completed: boolean;
+  received: boolean;
+  approved: boolean;
   createdAt: string;
   requestedBy: string[];
 }
@@ -76,7 +78,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
     setEditingText('');
   };
 
-  const completedCount = items.filter(i => i.completed).length;
+  const approvedCount = items.filter(i => i.approved).length;
 
   return (
     <Card>
@@ -86,7 +88,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
           Outstanding Items
           {items.length > 0 && (
             <span className="text-sm font-normal text-muted-foreground">
-              ({completedCount}/{items.length})
+              ({approvedCount}/{items.length} approved)
             </span>
           )}
         </CardTitle>
@@ -102,16 +104,30 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
           <div
             key={item.id}
             className={cn(
-              "flex items-center gap-3 p-3 rounded-lg border border-border bg-card",
-              item.completed && "opacity-60"
+              "flex items-start gap-3 p-3 rounded-lg border border-border bg-card",
+              item.approved && "opacity-60"
             )}
           >
-            <Checkbox
-              checked={item.completed}
-              onCheckedChange={(checked) =>
-                onUpdate(item.id, { completed: checked === true })
-              }
-            />
+            <div className="flex flex-col gap-2 pt-0.5">
+              <div className="flex items-center gap-1.5">
+                <Checkbox
+                  checked={item.received}
+                  onCheckedChange={(checked) =>
+                    onUpdate(item.id, { received: checked === true })
+                  }
+                />
+                <span className="text-xs text-muted-foreground">Received</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Checkbox
+                  checked={item.approved}
+                  onCheckedChange={(checked) =>
+                    onUpdate(item.id, { approved: checked === true })
+                  }
+                />
+                <span className="text-xs text-muted-foreground">Approved</span>
+              </div>
+            </div>
             {editingId === item.id ? (
               <div className="flex-1 flex items-center gap-2">
                 <Input
