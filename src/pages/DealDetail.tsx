@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { mockDeals } from '@/data/mockDeals';
-import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderTrackingStatus, DealLender, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderTrackingStatus, DealLender, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { useLenders } from '@/contexts/LendersContext';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import {
@@ -38,61 +39,6 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 
-// Mock lender contact and preference data
-const LENDER_DETAILS: Record<string, { contact: { name: string; email: string; phone: string }; preferences: string[] }> = {
-  'Decathlon': {
-    contact: { name: 'Michael Thompson', email: 'mthompson@decathlon.com', phone: '(212) 555-0101' },
-    preferences: ['$5M-$25M deals', 'SaaS & Technology', 'Revenue-based financing'],
-  },
-  'Eastward': {
-    contact: { name: 'Sarah Mitchell', email: 'smitchell@eastward.com', phone: '(617) 555-0102' },
-    preferences: ['$3M-$15M deals', 'Technology', 'Venture debt'],
-  },
-  'TIMIA': {
-    contact: { name: 'David Chen', email: 'dchen@timia.com', phone: '(604) 555-0103' },
-    preferences: ['$1M-$10M deals', 'B2B SaaS', 'Revenue-based financing'],
-  },
-  'SaaS Capital': {
-    contact: { name: 'Jennifer Lee', email: 'jlee@saascapital.com', phone: '(206) 555-0104' },
-    preferences: ['$2M-$20M deals', 'B2B SaaS', 'MRR-based lending'],
-  },
-  'Trinity': {
-    contact: { name: 'Robert Garcia', email: 'rgarcia@trinity.com', phone: '(650) 555-0105' },
-    preferences: ['$10M+ deals', 'Technology & Life Sciences', 'Growth capital'],
-  },
-  'LAGO': {
-    contact: { name: 'Amanda Wilson', email: 'awilson@lago.com', phone: '(415) 555-0106' },
-    preferences: ['$5M-$30M deals', 'Technology', 'Asset-based lending'],
-  },
-  'Republic Business Credit': {
-    contact: { name: 'James Miller', email: 'jmiller@republic.com', phone: '(504) 555-0107' },
-    preferences: ['$1M-$15M deals', 'Diversified Industries', 'Factoring & ABL'],
-  },
-  'SLR': {
-    contact: { name: 'Lisa Wong', email: 'lwong@slr.com', phone: '(212) 555-0108' },
-    preferences: ['$10M-$50M deals', 'Healthcare & Technology', 'Senior debt'],
-  },
-  'Matterhorn': {
-    contact: { name: 'Chris Johnson', email: 'cjohnson@matterhorn.com', phone: '(303) 555-0109' },
-    preferences: ['$5M-$25M deals', 'Technology', 'Venture debt'],
-  },
-  'Five Crowns': {
-    contact: { name: 'Emily Davis', email: 'edavis@fivecrowns.com', phone: '(312) 555-0110' },
-    preferences: ['$3M-$20M deals', 'SaaS', 'Growth financing'],
-  },
-  'nFusion': {
-    contact: { name: 'Mark Taylor', email: 'mtaylor@nfusion.com', phone: '(512) 555-0111' },
-    preferences: ['$2M-$15M deals', 'Technology', 'Revenue-based financing'],
-  },
-  'Advantage': {
-    contact: { name: 'Rachel Brown', email: 'rbrown@advantage.com', phone: '(404) 555-0112' },
-    preferences: ['$5M-$30M deals', 'Diversified', 'Asset-based lending'],
-  },
-  'SG': {
-    contact: { name: 'Kevin Park', email: 'kpark@sg.com', phone: '(213) 555-0113' },
-    preferences: ['$10M+ deals', 'Technology & Media', 'Senior secured debt'],
-  },
-};
 
 // Mock activity data - in a real app this would come from the database
 const getMockActivities = (dealId: string): ActivityItem[] => [
@@ -157,6 +103,8 @@ interface EditHistory {
 
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
+  const { getLenderNames, getLenderDetails } = useLenders();
+  const lenderNames = getLenderNames();
   const initialDeal = mockDeals.find((d) => d.id === id);
   const [deal, setDeal] = useState<Deal | undefined>(initialDeal);
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
@@ -619,7 +567,7 @@ export default function DealDetail() {
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && lenderSearchQuery.trim()) {
-                              const availableLenders = LENDERS.filter(
+                              const availableLenders = lenderNames.filter(
                                 name => !deal.lenders?.some(l => l.name === name) &&
                                 name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
                               );
@@ -639,7 +587,7 @@ export default function DealDetail() {
                         />
                         {isLenderDropdownOpen && (
                           <div className="absolute z-50 mt-1 w-full bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-auto">
-                            {LENDERS.filter(
+                            {lenderNames.filter(
                               name => !deal.lenders?.some(l => l.name === name) &&
                               name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
                             ).map((lenderName) => (
@@ -655,7 +603,7 @@ export default function DealDetail() {
                                 {lenderName}
                               </button>
                             ))}
-                            {LENDERS.filter(
+                            {lenderNames.filter(
                               name => !deal.lenders?.some(l => l.name === name) &&
                               name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
                             ).length === 0 && (
@@ -750,16 +698,18 @@ export default function DealDetail() {
           <DialogHeader>
             <DialogTitle>{selectedLenderName}</DialogTitle>
           </DialogHeader>
-          {selectedLenderName && (
+          {selectedLenderName && (() => {
+            const lenderDetails = getLenderDetails(selectedLenderName);
+            return (
             <div className="space-y-6">
               {/* Contact Information */}
               <div>
                 <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
-                {LENDER_DETAILS[selectedLenderName] ? (
+                {lenderDetails?.contact.name ? (
                   <div className="space-y-1 text-sm">
-                    <p><span className="text-muted-foreground">Name:</span> {LENDER_DETAILS[selectedLenderName].contact.name}</p>
-                    <p><span className="text-muted-foreground">Email:</span> {LENDER_DETAILS[selectedLenderName].contact.email}</p>
-                    <p><span className="text-muted-foreground">Phone:</span> {LENDER_DETAILS[selectedLenderName].contact.phone}</p>
+                    <p><span className="text-muted-foreground">Name:</span> {lenderDetails.contact.name}</p>
+                    <p><span className="text-muted-foreground">Email:</span> {lenderDetails.contact.email}</p>
+                    <p><span className="text-muted-foreground">Phone:</span> {lenderDetails.contact.phone}</p>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">No contact information available</p>
@@ -769,9 +719,9 @@ export default function DealDetail() {
               {/* Deal Preferences */}
               <div>
                 <h4 className="text-sm font-semibold mb-2">Deal Preferences</h4>
-                {LENDER_DETAILS[selectedLenderName]?.preferences ? (
+                {lenderDetails?.preferences && lenderDetails.preferences.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {LENDER_DETAILS[selectedLenderName].preferences.map((pref, idx) => (
+                    {lenderDetails.preferences.map((pref, idx) => (
                       <Badge key={idx} variant="secondary" className="text-xs">{pref}</Badge>
                     ))}
                   </div>
@@ -807,7 +757,8 @@ export default function DealDetail() {
                 </div>
               </div>
             </div>
-          )}
+          );
+          })()}
         </DialogContent>
       </Dialog>
     </>
