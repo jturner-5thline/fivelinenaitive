@@ -98,7 +98,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 border border-border rounded-lg p-4">
       <div className="flex items-center justify-end gap-2">
         {isEditMode && (
           <Button variant="outline" size="sm" className="gap-1" onClick={handleAdd}>
