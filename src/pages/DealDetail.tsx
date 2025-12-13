@@ -389,57 +389,6 @@ export default function DealDetail() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Dialog open={isAddLenderDialogOpen} onOpenChange={setIsAddLenderDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 text-xs gap-1 px-2">
-                          <Plus className="h-3 w-3" />
-                          Custom
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Add Custom Lender</DialogTitle>
-                          <DialogDescription>
-                            Enter the name of a lender not in the predefined list.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <Input
-                          placeholder="Enter lender name..."
-                          value={customLenderName}
-                          onChange={(e) => setCustomLenderName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && customLenderName.trim()) {
-                              addLender(customLenderName);
-                              setCustomLenderName('');
-                              setIsAddLenderDialogOpen(false);
-                            }
-                          }}
-                        />
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setCustomLenderName('');
-                              setIsAddLenderDialogOpen(false);
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              if (customLenderName.trim()) {
-                                addLender(customLenderName);
-                                setCustomLenderName('');
-                                setIsAddLenderDialogOpen(false);
-                              }
-                            }}
-                            disabled={!customLenderName.trim()}
-                          >
-                            Add Lender
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
                   </div>
                 </CardHeader>
                 <CardContent>
