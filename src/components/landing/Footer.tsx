@@ -37,7 +37,7 @@ export const Footer = () => {
               <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center">
                 <BarChart3 className="w-5 h-5 text-accent-foreground" />
               </div>
-              <span className="text-xl font-semibold">DealFlow Pro</span>
+              <span className="text-xl font-semibold">nAItive</span>
             </a>
             <p className="text-primary-foreground/60 text-sm leading-relaxed mb-6 max-w-xs">
               The modern deal analysis platform for growth-stage and lower-middle-market investors.
@@ -130,7 +130,7 @@ export const Footer = () => {
         <div className="pt-8 border-t border-primary-foreground/10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-primary-foreground/60">
-              © 2024 DealFlow Pro. All rights reserved.
+              © 2024 nAItive. All rights reserved.
             </p>
             <p className="text-sm text-primary-foreground/60">
               SOC 2 Type II Certified • GDPR Compliant

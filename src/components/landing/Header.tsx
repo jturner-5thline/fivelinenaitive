@@ -21,7 +21,7 @@ export const Header = () => {
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center group-hover:shadow-md transition-shadow">
             <BarChart3 className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-semibold text-foreground">DealFlow Pro</span>
+          <span className="text-xl font-semibold text-foreground">nAItive</span>
         </a>
 
         {/* Desktop Navigation */}

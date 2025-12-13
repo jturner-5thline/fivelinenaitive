@@ -21,7 +21,7 @@ export const CTASection = () => {
               Ready to Transform Your Deal Process?
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-              Join hundreds of investment professionals who trust DealFlow Pro to source, 
+              Join hundreds of investment professionals who trust nAItive to source, 
               analyze, and close better deals.
             </p>
 

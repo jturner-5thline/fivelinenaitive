@@ -2,7 +2,7 @@ import { Star, Quote } from "lucide-react";
 
 const testimonials = [
   {
-    quote: "DealFlow Pro cut our due diligence time in half. The automated financial modeling alone has been a game-changer for our team.",
+    quote: "nAItive cut our due diligence time in half. The automated financial modeling alone has been a game-changer for our team.",
     author: "Sarah Chen",
     role: "Managing Partner",
     company: "Elevate Capital Partners",
@@ -16,7 +16,7 @@ const testimonials = [
     avatar: "MT",
   },
   {
-    quote: "The collaboration features keep our entire team aligned. We've closed 40% more deals since implementing DealFlow Pro.",
+    quote: "The collaboration features keep our entire team aligned. We've closed 40% more deals since implementing nAItive.",
     author: "Jennifer Walsh",
     role: "VP of Investments",
     company: "Summit Point Capital",
@@ -34,7 +34,7 @@ export const TestimonialsSection = () => {
             Trusted by Leading Investors
           </h2>
           <p className="text-primary-foreground/70 text-lg">
-            See why top private equity firms choose DealFlow Pro for their deal analysis.
+            See why top private equity firms choose nAItive for their deal analysis.
           </p>
         </div>
 
