@@ -98,25 +98,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   return (
-    <div className="space-y-4 border border-border rounded-lg p-4">
-      <div className="flex items-center justify-end gap-2">
-        {isEditMode && (
-          <Button variant="outline" size="sm" className="gap-1" onClick={handleAdd}>
-            <Plus className="h-4 w-4" />
-            Add Widget
-          </Button>
-        )}
-        <Button
-          variant={isEditMode ? 'default' : 'outline'}
-          size="sm"
-          className="gap-1"
-          onClick={() => setIsEditMode(!isEditMode)}
-        >
-          <Settings2 className="h-4 w-4" />
-          {isEditMode ? 'Done' : 'Edit Widgets'}
-        </Button>
-      </div>
-
+    <div className="relative border border-border rounded-lg p-4 pb-12">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -136,12 +118,29 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
             ))}
             {widgets.length === 0 && (
               <div className="col-span-full text-center py-8 text-muted-foreground">
-                No widgets configured. Click "Edit Widgets" to add some.
+                No widgets configured. Click the settings icon to add some.
               </div>
             )}
           </div>
         </SortableContext>
       </DndContext>
+
+      <div className="absolute bottom-2 right-2 flex items-center gap-2">
+        {isEditMode && (
+          <Button variant="outline" size="sm" className="gap-1" onClick={handleAdd}>
+            <Plus className="h-4 w-4" />
+            Add Widget
+          </Button>
+        )}
+        <Button
+          variant={isEditMode ? 'default' : 'ghost'}
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setIsEditMode(!isEditMode)}
+        >
+          <Settings2 className="h-4 w-4" />
+        </Button>
+      </div>
 
       <WidgetEditor
         widget={editingWidget}
