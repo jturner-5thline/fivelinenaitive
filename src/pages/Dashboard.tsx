@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DealFilters } from '@/components/dashboard/DealFilters';
 import { DealsList } from '@/components/dashboard/DealsList';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { useDeals } from '@/hooks/useDeals';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export default function Dashboard() {
+  const [groupByStatus, setGroupByStatus] = useState(true);
+  
   const {
     deals,
     filters,
@@ -52,16 +57,26 @@ export default function Dashboard() {
               onSortChange={toggleSort}
             />
 
-            {/* Results Count */}
+            {/* Results Count & Group Toggle */}
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
                 Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
                 {deals.length === 1 ? 'deal' : 'deals'}
               </p>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="group-by-status"
+                  checked={groupByStatus}
+                  onCheckedChange={setGroupByStatus}
+                />
+                <Label htmlFor="group-by-status" className="text-sm text-muted-foreground cursor-pointer">
+                  Group by Status
+                </Label>
+              </div>
             </div>
 
             {/* Deals Grid */}
-            <DealsList deals={deals} onStatusChange={updateDealStatus} />
+            <DealsList deals={deals} onStatusChange={updateDealStatus} groupByStatus={groupByStatus} />
           </div>
         </main>
       </div>
