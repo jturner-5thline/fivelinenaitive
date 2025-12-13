@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { mockDeals } from '@/data/mockDeals';
-import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderTrackingStatus, DealLender, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderTrackingStatus, DealLender, DealMilestone, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
@@ -177,6 +178,45 @@ export default function DealDetail() {
       description: `${lenderName} has been added to the deal.`,
     });
   }, [deal]);
+
+  const addMilestone = useCallback((milestone: Omit<DealMilestone, 'id'>) => {
+    if (!deal) return;
+    const newMilestone: DealMilestone = {
+      ...milestone,
+      id: `m${Date.now()}`,
+    };
+    setDeal(prev => {
+      if (!prev) return prev;
+      setEditHistory(history => [...history, { deal: prev, field: 'milestones', timestamp: new Date() }]);
+      return { ...prev, milestones: [...(prev.milestones || []), newMilestone], updatedAt: new Date().toISOString() };
+    });
+    toast({
+      title: "Milestone added",
+      description: `"${milestone.title}" has been added.`,
+    });
+  }, [deal]);
+
+  const updateMilestone = useCallback((id: string, updates: Partial<DealMilestone>) => {
+    setDeal(prev => {
+      if (!prev) return prev;
+      setEditHistory(history => [...history, { deal: prev, field: 'milestones', timestamp: new Date() }]);
+      const updatedMilestones = (prev.milestones || []).map(m =>
+        m.id === id ? { ...m, ...updates } : m
+      );
+      return { ...prev, milestones: updatedMilestones, updatedAt: new Date().toISOString() };
+    });
+  }, []);
+
+  const deleteMilestone = useCallback((id: string) => {
+    setDeal(prev => {
+      if (!prev) return prev;
+      setEditHistory(history => [...history, { deal: prev, field: 'milestones', timestamp: new Date() }]);
+      return { ...prev, milestones: (prev.milestones || []).filter(m => m.id !== id), updatedAt: new Date().toISOString() };
+    });
+    toast({
+      title: "Milestone deleted",
+    });
+  }, []);
 
   if (!deal) {
     return (
@@ -387,6 +427,14 @@ export default function DealDetail() {
                   <span>{timeAgoData.text}</span>
                 </div>
               </div>
+
+              {/* Milestones */}
+              <DealMilestones
+                milestones={deal.milestones || []}
+                onAdd={addMilestone}
+                onUpdate={updateMilestone}
+                onDelete={deleteMilestone}
+              />
             </CardContent>
           </Card>
 
