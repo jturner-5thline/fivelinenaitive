@@ -578,11 +578,16 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                 value={newItemText}
                 onChange={(e) => setNewItemText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newItemText.trim()) {
+                  if (e.key === 'Enter' && newItemText.trim() && newRequestedBy.length > 0) {
                     handleAdd();
                   }
                   if (e.key === 'Escape') {
                     setNewItemText('');
+                  }
+                }}
+                onBlur={() => {
+                  if (newItemText.trim() && newRequestedBy.length > 0) {
+                    handleAdd();
                   }
                 }}
                 className="flex-1"
