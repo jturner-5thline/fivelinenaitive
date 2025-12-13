@@ -409,10 +409,6 @@ export default function DealDetail() {
                     onSave={(value) => updateDeal('value', parseValue(value))}
                     displayClassName="text-5xl font-semibold text-purple-600"
                   />
-                  <div className={`flex items-center gap-1.5 text-xs text-muted-foreground mt-1 ${timeAgoData.highlightClass}`}>
-                    <Clock className="h-3 w-3" />
-                    <span>{timeAgoData.text}</span>
-                  </div>
                 </div>
               </div>
               
@@ -468,6 +464,10 @@ export default function DealDetail() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
+              <div className={`flex items-center gap-2 text-sm text-muted-foreground mb-2 ${timeAgoData.highlightClass}`}>
+                <Clock className="h-4 w-4" />
+                <span>{timeAgoData.text}</span>
+              </div>
               {/* Milestones */}
               <DealMilestones
                 milestones={deal.milestones || []}
