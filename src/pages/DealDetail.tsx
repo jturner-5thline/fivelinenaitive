@@ -323,95 +323,8 @@ export default function DealDetail() {
               </Card>
             </div>
 
-            {/* Right Column - Deal Info */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Deal Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Manager</span>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <Select
-                          value={deal.manager}
-                          onValueChange={(value) => updateDeal('manager', value)}
-                        >
-                          <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MANAGERS.map((manager) => (
-                              <SelectItem key={manager} value={manager}>
-                                {manager}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Lender</span>
-                      <div className="flex items-center gap-2">
-                        <Landmark className="h-4 w-4 text-muted-foreground" />
-                        <Select
-                          value={deal.lender}
-                          onValueChange={(value) => updateDeal('lender', value)}
-                        >
-                          <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {LENDERS.map((lender) => (
-                              <SelectItem key={lender} value={lender}>
-                                {lender}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Contact</span>
-                      <InlineEditField
-                        value={deal.contact}
-                        onSave={(value) => updateDeal('contact', value)}
-                        displayClassName="font-medium"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Engagement Type</span>
-                      <span className="font-medium">{ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Timeline</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Created</span>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{deal.createdAt}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Last Updated</span>
-                      <div className={`flex items-center gap-2 ${timeAgoData.highlightClass}`}>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{timeAgoData.text}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Notes Card - Always visible for editing */}
+            {/* Middle Column - Notes */}
+            <div className="lg:col-span-1 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -435,6 +348,85 @@ export default function DealDetail() {
                 <Button variant="outline">Export Details</Button>
                 <Button variant="destructive">Delete Deal</Button>
               </div>
+            </div>
+
+            {/* Right Column - Deal Info */}
+            <div className="lg:col-span-1">
+              <Card className="sticky top-24">
+                <CardHeader>
+                  <CardTitle className="text-lg">Deal Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Manager</span>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <Select
+                        value={deal.manager}
+                        onValueChange={(value) => updateDeal('manager', value)}
+                      >
+                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MANAGERS.map((manager) => (
+                            <SelectItem key={manager} value={manager}>
+                              {manager}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Lender</span>
+                    <div className="flex items-center gap-2">
+                      <Landmark className="h-4 w-4 text-muted-foreground" />
+                      <Select
+                        value={deal.lender}
+                        onValueChange={(value) => updateDeal('lender', value)}
+                      >
+                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LENDERS.map((lender) => (
+                            <SelectItem key={lender} value={lender}>
+                              {lender}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Contact</span>
+                    <InlineEditField
+                      value={deal.contact}
+                      onSave={(value) => updateDeal('contact', value)}
+                      displayClassName="font-medium"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Engagement Type</span>
+                    <span className="font-medium">{ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <span className="text-muted-foreground">Created</span>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{deal.createdAt}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Last Updated</span>
+                    <div className={`flex items-center gap-2 ${timeAgoData.highlightClass}`}>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{timeAgoData.text}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </main>
