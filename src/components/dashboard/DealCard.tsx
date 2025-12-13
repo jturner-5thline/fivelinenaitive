@@ -71,12 +71,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             </DropdownMenu>
           </div>
         </div>
-        {deal.notes && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{deal.notes}</p>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-2">
           <Badge
             variant="outline"
             className={`${stageConfig.color} text-white border-0 text-xs`}
@@ -90,6 +85,11 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             {statusConfig.label}
           </Badge>
         </div>
+        {deal.notes && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-2">{deal.notes}</p>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
 
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <User className="h-3.5 w-3.5" />
