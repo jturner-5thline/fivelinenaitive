@@ -86,7 +86,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
           </Badge>
         </div>
         {deal.notes && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-2">{deal.notes}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-3">{deal.notes}</p>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
