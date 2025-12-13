@@ -20,14 +20,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 
 // Mock activity data - in a real app this would come from the database
@@ -375,7 +377,7 @@ export default function DealDetail() {
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
                         {deal.lenders.map((lender, index) => (
-                          <div key={lender.id} className={`grid grid-cols-[140px_120px_180px_28px] items-center gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
+                          <div key={lender.id} className={`grid grid-cols-[140px_120px_180px_1fr] items-center gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
                             <span className="font-medium truncate">{lender.name}</span>
                             <Select
                               value={lender.status}
@@ -417,25 +419,46 @@ export default function DealDetail() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
-                                setDeal(prev => {
-                                  if (!prev) return prev;
-                                  setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
-                                  return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
-                                });
-                                toast({
-                                  title: "Lender removed",
-                                  description: `${lender.name} has been removed from the deal.`,
-                                });
-                              }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                            <div className="flex justify-end">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure you want to delete {lender.name}?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will remove the lender from this deal. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => {
+                                        const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
+                                        setDeal(prev => {
+                                          if (!prev) return prev;
+                                          setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+                                          return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+                                        });
+                                        toast({
+                                          title: "Lender removed",
+                                          description: `${lender.name} has been removed from the deal.`,
+                                        });
+                                      }}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </div>
                         ))}
                       </>
