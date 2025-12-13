@@ -113,7 +113,34 @@ export default function DealDetail() {
   const [statusHistory, setStatusHistory] = useState<{ note: string; timestamp: Date }[]>([]);
   const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
-  const activities = getMockActivities(id || '');
+  const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
+  const baseActivities = getMockActivities(id || '');
+
+  // Combine base activities with lender removal activities
+  const activities: ActivityItem[] = [
+    ...removedLenders.map(item => ({
+      id: item.id,
+      type: 'lender_removed' as const,
+      description: `Removed lender ${item.lender.name}`,
+      user: 'You',
+      timestamp: item.timestamp,
+      metadata: { lenderName: item.lender.name, lenderData: item.lender },
+      onUndo: () => {
+        // Restore the lender
+        setDeal(prev => {
+          if (!prev) return prev;
+          return { ...prev, lenders: [...(prev.lenders || []), item.lender], updatedAt: new Date().toISOString() };
+        });
+        // Remove from removed lenders list
+        setRemovedLenders(prev => prev.filter(r => r.id !== item.id));
+        toast({
+          title: "Lender restored",
+          description: `${item.lender.name} has been restored to the deal.`,
+        });
+      },
+    })),
+    ...baseActivities,
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   // Get all deals where selected lender appears
   const getLenderDeals = useCallback((lenderName: string) => {
@@ -529,12 +556,19 @@ export default function DealDetail() {
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() => {
+                                        const removedLender = lender;
                                         const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
                                         setDeal(prev => {
                                           if (!prev) return prev;
                                           setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
                                           return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
                                         });
+                                        // Add to removed lenders for activity tracking
+                                        setRemovedLenders(prev => [...prev, {
+                                          lender: removedLender,
+                                          timestamp: new Date().toISOString(),
+                                          id: `removed-${Date.now()}`,
+                                        }]);
                                         toast({
                                           title: "Lender removed",
                                           description: `${lender.name} has been removed from the deal.`,
