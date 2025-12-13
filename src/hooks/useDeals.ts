@@ -7,18 +7,18 @@ export type SortDirection = 'asc' | 'desc';
 
 export interface DealFilters {
   search: string;
-  status: DealStatus | 'all';
-  industry: string | 'all';
-  priority: 'low' | 'medium' | 'high' | 'all';
+  status: DealStatus[];
+  industry: string[];
+  priority: ('low' | 'medium' | 'high')[];
 }
 
 export function useDeals() {
   const [deals, setDeals] = useState<Deal[]>(mockDeals);
   const [filters, setFilters] = useState<DealFilters>({
     search: '',
-    status: 'all',
-    industry: 'all',
-    priority: 'all',
+    status: [],
+    industry: [],
+    priority: [],
   });
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -37,16 +37,16 @@ export function useDeals() {
       );
     }
 
-    if (filters.status !== 'all') {
-      result = result.filter((deal) => deal.status === filters.status);
+    if (filters.status.length > 0) {
+      result = result.filter((deal) => filters.status.includes(deal.status));
     }
 
-    if (filters.industry !== 'all') {
-      result = result.filter((deal) => deal.industry === filters.industry);
+    if (filters.industry.length > 0) {
+      result = result.filter((deal) => filters.industry.includes(deal.industry));
     }
 
-    if (filters.priority !== 'all') {
-      result = result.filter((deal) => deal.priority === filters.priority);
+    if (filters.priority.length > 0) {
+      result = result.filter((deal) => filters.priority.includes(deal.priority));
     }
 
     // Apply sorting
