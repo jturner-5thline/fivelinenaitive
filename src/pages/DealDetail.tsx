@@ -462,6 +462,21 @@ export default function DealDetail() {
                   </SelectContent>
                 </Select>
               </div>
+              
+              <div className="mt-4">
+                <InlineEditField
+                  value={deal.notes || ''}
+                  onSave={(value) => {
+                    if (deal.notes && deal.notes.trim()) {
+                      setStatusHistory(prev => [...prev, { note: deal.notes!, timestamp: new Date() }]);
+                    }
+                    updateDeal('notes', value);
+                  }}
+                  type="textarea"
+                  placeholder="Click to add status notes..."
+                  displayClassName="text-sm text-muted-foreground"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-end pt-2 border-t border-border">
@@ -485,13 +500,13 @@ export default function DealDetail() {
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Left Column - Notes & Actions */}
             <div className="lg:col-span-2 space-y-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Status
-                  </CardTitle>
-                  {statusHistory.length > 0 && (
+              {statusHistory.length > 0 && (
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Status History
+                    </CardTitle>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -501,33 +516,18 @@ export default function DealDetail() {
                       {isStatusHistoryExpanded ? (
                         <>
                           <ChevronUp className="h-4 w-4" />
-                          Hide History
+                          Hide
                         </>
                       ) : (
                         <>
                           <ChevronDown className="h-4 w-4" />
-                          Show History ({statusHistory.length})
+                          Show ({statusHistory.length})
                         </>
                       )}
                     </Button>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <InlineEditField
-                    value={deal.notes || ''}
-                    onSave={(value) => {
-                      if (deal.notes && deal.notes.trim()) {
-                        setStatusHistory(prev => [...prev, { note: deal.notes!, timestamp: new Date() }]);
-                      }
-                      updateDeal('notes', value);
-                    }}
-                    type="textarea"
-                    placeholder="Click to add notes..."
-                    displayClassName="text-muted-foreground"
-                  />
-                  {isStatusHistoryExpanded && statusHistory.length > 0 && (
-                    <div className="pt-4 border-t border-border space-y-3">
-                      <p className="text-xs font-medium text-muted-foreground">Previous Statuses</p>
+                  </CardHeader>
+                  {isStatusHistoryExpanded && (
+                    <CardContent className="space-y-3 pt-0">
                       {[...statusHistory].reverse().map((item, index) => (
                         <div key={index} className="text-sm p-3 bg-muted/50 rounded-lg">
                           <p className="text-muted-foreground">{item.note}</p>
@@ -536,10 +536,10 @@ export default function DealDetail() {
                           </p>
                         </div>
                       ))}
-                    </div>
+                    </CardContent>
                   )}
-                </CardContent>
-              </Card>
+                </Card>
+              )}
 
               {/* Outstanding Items */}
               <OutstandingItems
