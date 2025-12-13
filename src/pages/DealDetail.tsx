@@ -237,11 +237,13 @@ export default function DealDetail() {
                     displayClassName="text-muted-foreground"
                   />
                 </div>
-                <InlineEditField
-                  value={formatValue(deal.value)}
-                  onSave={(value) => updateDeal('value', parseValue(value) * 1000000)}
-                  displayClassName="text-5xl font-semibold text-purple-600"
-                />
+                <div className="flex items-center justify-center self-stretch">
+                  <InlineEditField
+                    value={formatValue(deal.value)}
+                    onSave={(value) => updateDeal('value', parseValue(value) * 1000000)}
+                    displayClassName="text-5xl font-semibold text-purple-600"
+                  />
+                </div>
               </div>
               
               <div className="flex items-center gap-2 mt-4">
