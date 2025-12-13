@@ -97,7 +97,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
               ) : (
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               )}
-              <span className="font-semibold text-purple-700">Deal Milestones</span>
+              <span className="text-lg font-semibold text-purple-700">Deal Milestones</span>
               {milestones.length > 0 && (
                 <span className="text-xs text-muted-foreground">
                   ({completedCount}/{totalCount})
