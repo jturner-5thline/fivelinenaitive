@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { BarChart3, Menu, X } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -41,8 +42,8 @@ export const Header = () => {
           <Button variant="ghost" size="sm">
             Sign In
           </Button>
-          <Button size="sm">
-            Get Started
+          <Button size="sm" asChild>
+            <Link to="/dashboard">Get Started</Link>
           </Button>
         </div>
 
