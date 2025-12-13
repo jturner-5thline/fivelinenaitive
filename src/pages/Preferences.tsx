@@ -14,9 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 export default function Preferences() {
   const { theme, setTheme } = useTheme();
+  const { preferences, updatePreference } = usePreferences();
 
   return (
     <>
@@ -72,7 +74,10 @@ export default function Preferences() {
                     <Label>Compact Mode</Label>
                     <p className="text-sm text-muted-foreground">Use smaller spacing and fonts</p>
                   </div>
-                  <Switch />
+                  <Switch
+                    checked={preferences.compactMode}
+                    onCheckedChange={(checked) => updatePreference('compactMode', checked)}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -91,14 +96,20 @@ export default function Preferences() {
                     <Label>Email Notifications</Label>
                     <p className="text-sm text-muted-foreground">Receive updates via email</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={preferences.emailNotifications}
+                    onCheckedChange={(checked) => updatePreference('emailNotifications', checked)}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Deal Status Alerts</Label>
                     <p className="text-sm text-muted-foreground">Get notified when deal status changes</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch
+                    checked={preferences.dealStatusAlerts}
+                    onCheckedChange={(checked) => updatePreference('dealStatusAlerts', checked)}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -117,7 +128,10 @@ export default function Preferences() {
                     <Label>Currency</Label>
                     <p className="text-sm text-muted-foreground">Display currency format</p>
                   </div>
-                  <Select defaultValue="usd">
+                  <Select
+                    value={preferences.currency}
+                    onValueChange={(value: 'usd' | 'eur' | 'gbp') => updatePreference('currency', value)}
+                  >
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
@@ -133,7 +147,10 @@ export default function Preferences() {
                     <Label>Date Format</Label>
                     <p className="text-sm text-muted-foreground">How dates are displayed</p>
                   </div>
-                  <Select defaultValue="mdy">
+                  <Select
+                    value={preferences.dateFormat}
+                    onValueChange={(value: 'mdy' | 'dmy' | 'ymd') => updatePreference('dateFormat', value)}
+                  >
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
