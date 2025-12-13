@@ -1,14 +1,24 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Building2, User, Calendar, Landmark, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, User, Calendar, Landmark, FileText, Clock } from 'lucide-react';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { mockDeals } from '@/data/mockDeals';
-import { STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDERS } from '@/types/deal';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
+import { InlineEditField } from '@/components/ui/inline-edit-field';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
 
 // Mock activity data - in a real app this would come from the database
 const getMockActivities = (dealId: string): ActivityItem[] => [
@@ -67,7 +77,8 @@ const getMockActivities = (dealId: string): ActivityItem[] => [
 
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
-  const deal = mockDeals.find((d) => d.id === id);
+  const initialDeal = mockDeals.find((d) => d.id === id);
+  const [deal, setDeal] = useState<Deal | undefined>(initialDeal);
   const activities = getMockActivities(id || '');
 
   if (!deal) {
@@ -94,6 +105,11 @@ export default function DealDetail() {
       return `$${(value / 1000000).toFixed(1)}M`;
     }
     return `$${(value / 1000).toFixed(0)}K`;
+  };
+
+  const parseValue = (valueStr: string): number => {
+    const cleaned = valueStr.replace(/[^0-9.]/g, '');
+    return parseFloat(cleaned) || 0;
   };
 
   const getTimeAgoData = (dateString: string) => {
@@ -128,6 +144,18 @@ export default function DealDetail() {
     return { text, highlightClass };
   };
 
+  const updateDeal = (field: keyof Deal, value: string | number) => {
+    setDeal(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
+      toast({
+        title: "Deal updated",
+        description: `${field.charAt(0).toUpperCase() + field.slice(1)} has been updated.`,
+      });
+      return updated;
+    });
+  };
+
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
   return (
@@ -153,37 +181,88 @@ export default function DealDetail() {
           <Card className="mb-6">
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <h1 className="text-xl font-semibold text-purple-600">{deal.company}</h1>
-                  <p className="text-muted-foreground mt-1">{deal.name}</p>
+                <div className="space-y-2">
+                  <InlineEditField
+                    value={deal.company}
+                    onSave={(value) => updateDeal('company', value)}
+                    displayClassName="text-xl font-semibold text-purple-600"
+                  />
+                  <InlineEditField
+                    value={deal.name}
+                    onSave={(value) => updateDeal('name', value)}
+                    displayClassName="text-muted-foreground"
+                  />
                 </div>
-                <span className="text-xl font-semibold text-purple-600">{formatValue(deal.value)}</span>
+                <InlineEditField
+                  value={formatValue(deal.value)}
+                  onSave={(value) => updateDeal('value', parseValue(value) * 1000000)}
+                  displayClassName="text-xl font-semibold text-purple-600"
+                />
               </div>
               
               <div className="flex items-center gap-2 mt-4">
-                <Badge
-                  variant="outline"
-                  className={`${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg`}
+                <Select
+                  value={deal.status}
+                  onValueChange={(value: DealStatus) => updateDeal('status', value)}
                 >
-                  {statusConfig.label}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="text-xs rounded-lg"
+                  <SelectTrigger className={`w-auto ${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg h-6 px-2`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2 w-2 rounded-full ${config.dotColor}`} />
+                          {config.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={deal.stage}
+                  onValueChange={(value: DealStage) => updateDeal('stage', value)}
                 >
-                  {stageConfig.label}
-                </Badge>
+                  <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STAGE_CONFIG).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
+                        {config.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <p className={`text-sm line-clamp-2 mt-4 ${deal.notes ? 'text-muted-foreground' : 'text-muted-foreground/50 italic'}`}>
-                {deal.notes || 'No Status'}
-              </p>
+              <div className="mt-4">
+                <InlineEditField
+                  value={deal.notes || ''}
+                  onSave={(value) => updateDeal('notes', value)}
+                  type="textarea"
+                  placeholder="Add notes..."
+                  displayClassName={`text-sm ${deal.notes ? 'text-muted-foreground' : 'text-muted-foreground/50 italic'}`}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between pt-2 border-t border-border">
-                <Badge variant="secondary" className="text-xs rounded-lg">
-                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-                </Badge>
+                <Select
+                  value={deal.engagementType}
+                  onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
+                >
+                  <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 bg-secondary border-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
+                        {config.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
                   <Clock className="h-3 w-3" />
                   <span>{timeAgoData.text}</span>
@@ -206,19 +285,51 @@ export default function DealDetail() {
                       <span className="text-muted-foreground">Manager</span>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{deal.manager}</span>
+                        <Select
+                          value={deal.manager}
+                          onValueChange={(value) => updateDeal('manager', value)}
+                        >
+                          <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MANAGERS.map((manager) => (
+                              <SelectItem key={manager} value={manager}>
+                                {manager}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Lender</span>
                       <div className="flex items-center gap-2">
                         <Landmark className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{deal.lender}</span>
+                        <Select
+                          value={deal.lender}
+                          onValueChange={(value) => updateDeal('lender', value)}
+                        >
+                          <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {LENDERS.map((lender) => (
+                              <SelectItem key={lender} value={lender}>
+                                {lender}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Contact</span>
-                      <span className="font-medium">{deal.contact}</span>
+                      <InlineEditField
+                        value={deal.contact}
+                        onSave={(value) => updateDeal('contact', value)}
+                        displayClassName="font-medium"
+                      />
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Engagement Type</span>
@@ -250,23 +361,27 @@ export default function DealDetail() {
                 </Card>
               </div>
 
-              {deal.notes && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Notes
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">{deal.notes}</p>
-                  </CardContent>
-                </Card>
-              )}
+              {/* Notes Card - Always visible for editing */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <InlineEditField
+                    value={deal.notes || ''}
+                    onSave={(value) => updateDeal('notes', value)}
+                    type="textarea"
+                    placeholder="Click to add notes..."
+                    displayClassName="text-muted-foreground"
+                  />
+                </CardContent>
+              </Card>
 
               {/* Actions */}
               <div className="flex gap-3">
-                <Button>Edit Deal</Button>
                 <Button variant="outline">Export Details</Button>
                 <Button variant="destructive">Delete Deal</Button>
               </div>
