@@ -441,7 +441,7 @@ export default function DealDetail() {
                       </>
                     )}
                     <div className={`${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                      <div className="relative">
+                      <div className="relative w-1/2">
                         <Input
                           placeholder="Type to add a lender..."
                           value={lenderSearchQuery}
