@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, LayoutGrid, ArrowRight } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, LayoutGrid, ArrowRight, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +68,162 @@ const moveToStage = (stage: KanbanStage): Partial<OutstandingItem> => {
       return {};
   }
 };
+
+// Draggable Kanban Item
+function DraggableKanbanItem({ item }: { item: OutstandingItem }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: item.id,
+    data: { item },
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "bg-card border border-border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50 shadow-lg"
+      )}
+      {...listeners}
+      {...attributes}
+    >
+      <div className="flex items-start gap-2">
+        <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium mb-2">{item.text}</p>
+          <div className="text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <User className="h-3 w-3" />
+              {Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Droppable Kanban Column
+function DroppableColumn({ 
+  stage, 
+  stageItems 
+}: { 
+  stage: { key: KanbanStage; label: string; color: string }; 
+  stageItems: OutstandingItem[];
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: stage.key,
+  });
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2 mb-3">
+        <div className={cn("w-3 h-3 rounded-full", stage.color)} />
+        <h3 className="font-medium text-sm">{stage.label}</h3>
+        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+          {stageItems.length}
+        </span>
+      </div>
+      <div 
+        ref={setNodeRef}
+        className={cn(
+          "flex-1 bg-muted/30 rounded-lg p-2 min-h-[300px] space-y-2 transition-colors",
+          isOver && "bg-primary/10 ring-2 ring-primary/30"
+        )}
+      >
+        {stageItems.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Drop items here
+          </p>
+        )}
+        {stageItems.map((item) => (
+          <DraggableKanbanItem key={item.id} item={item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Kanban Board with DnD
+function KanbanBoard({ 
+  items, 
+  onUpdate, 
+  getItemsByStage 
+}: { 
+  items: OutstandingItem[];
+  onUpdate: (id: string, updates: Partial<OutstandingItem>) => void;
+  getItemsByStage: (stage: KanbanStage) => OutstandingItem[];
+}) {
+  const [activeItem, setActiveItem] = useState<OutstandingItem | null>(null);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const item = items.find(i => i.id === active.id);
+    if (item) {
+      setActiveItem(item);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveItem(null);
+
+    if (over && active.id !== over.id) {
+      const targetStage = over.id as KanbanStage;
+      if (KANBAN_STAGES.some(s => s.key === targetStage)) {
+        onUpdate(active.id as string, moveToStage(targetStage));
+      }
+    }
+  };
+
+  return (
+    <DndContext 
+      sensors={sensors}
+      onDragStart={handleDragStart} 
+      onDragEnd={handleDragEnd}
+    >
+      <div className="grid grid-cols-4 gap-4 overflow-auto py-4">
+        {KANBAN_STAGES.map((stage) => (
+          <DroppableColumn 
+            key={stage.key} 
+            stage={stage} 
+            stageItems={getItemsByStage(stage.key)} 
+          />
+        ))}
+      </div>
+      <DragOverlay>
+        {activeItem ? (
+          <div className="bg-card border border-primary rounded-lg p-3 shadow-xl rotate-3">
+            <div className="flex items-start gap-2">
+              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium mb-2">{activeItem.text}</p>
+                <div className="text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {Array.isArray(activeItem.requestedBy) ? activeItem.requestedBy.join(', ') : activeItem.requestedBy}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
 
 export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
   const [newItemText, setNewItemText] = useState('');
@@ -330,73 +487,11 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               Outstanding Items Board
             </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-4 gap-4 overflow-auto py-4">
-            {KANBAN_STAGES.map((stage) => {
-              const stageItems = getItemsByStage(stage.key);
-              return (
-                <div key={stage.key} className="flex flex-col">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={cn("w-3 h-3 rounded-full", stage.color)} />
-                    <h3 className="font-medium text-sm">{stage.label}</h3>
-                    <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-                      {stageItems.length}
-                    </span>
-                  </div>
-                  <div className="flex-1 bg-muted/30 rounded-lg p-2 min-h-[300px] space-y-2">
-                    {stageItems.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-4">
-                        No items
-                      </p>
-                    )}
-                    {stageItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="bg-card border border-border rounded-lg p-3 shadow-sm animate-fade-in"
-                      >
-                        <p className="text-sm font-medium mb-2">{item.text}</p>
-                        <div className="text-xs text-muted-foreground mb-3">
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            {Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
-                          </span>
-                        </div>
-                        <div className="flex gap-1">
-                          {KANBAN_STAGES.map((targetStage, idx) => {
-                            const currentIdx = KANBAN_STAGES.findIndex(s => s.key === stage.key);
-                            const isNext = idx === currentIdx + 1;
-                            const isPrev = idx === currentIdx - 1;
-                            
-                            if (!isNext && !isPrev) return null;
-                            
-                            return (
-                              <Button
-                                key={targetStage.key}
-                                variant="outline"
-                                size="sm"
-                                className="text-xs h-7 gap-1"
-                                onClick={() => onUpdate(item.id, moveToStage(targetStage.key))}
-                              >
-                                {isNext ? (
-                                  <>
-                                    <ArrowRight className="h-3 w-3" />
-                                    {targetStage.label}
-                                  </>
-                                ) : (
-                                  <>
-                                    ← {targetStage.label}
-                                  </>
-                                )}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <KanbanBoard 
+            items={items} 
+            onUpdate={onUpdate} 
+            getItemsByStage={getItemsByStage}
+          />
         </DialogContent>
       </Dialog>
     </>
