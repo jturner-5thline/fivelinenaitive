@@ -18,6 +18,7 @@ export const mockDeals: Deal[] = [
     manager: 'Paz',
     lender: 'JPMorgan Chase',
     value: 15000000,
+    totalFee: 375000,
     contact: 'John Smith',
     createdAt: '2024-01-15',
     updatedAt: getRecentDate(15), // 15 minutes ago
@@ -33,6 +34,7 @@ export const mockDeals: Deal[] = [
     manager: 'James',
     lender: 'Wells Fargo',
     value: 8500000,
+    totalFee: 212500,
     contact: 'Jane Doe',
     createdAt: '2024-01-18',
     updatedAt: getRecentDate(180), // 3 hours ago
@@ -47,6 +49,7 @@ export const mockDeals: Deal[] = [
     manager: 'Niki',
     lender: 'Goldman Sachs',
     value: 45000000,
+    totalFee: 650000,
     contact: 'Robert Johnson',
     createdAt: '2024-01-10',
     updatedAt: getRecentDate(60 * 20), // 20 hours ago
@@ -62,6 +65,7 @@ export const mockDeals: Deal[] = [
     manager: 'Paz',
     lender: 'First National Bank',
     value: 2500000,
+    totalFee: 75000,
     contact: 'Emily Davis',
     createdAt: '2024-01-20',
     updatedAt: getRecentDate(60 * 24 * 3), // 3 days ago
@@ -76,6 +80,7 @@ export const mockDeals: Deal[] = [
     manager: 'James',
     lender: 'Capital One',
     value: 12000000,
+    totalFee: 300000,
     contact: 'Chris Wilson',
     createdAt: '2024-01-05',
     updatedAt: getRecentDate(60 * 24 * 14), // 2 weeks ago
@@ -91,6 +96,7 @@ export const mockDeals: Deal[] = [
     manager: 'Niki',
     lender: 'Bank of America',
     value: 6000000,
+    totalFee: 150000,
     contact: 'Amanda Brown',
     createdAt: '2024-01-08',
     updatedAt: getRecentDate(60 * 24 * 45), // over 30 days
@@ -106,6 +112,7 @@ export const mockDeals: Deal[] = [
     manager: 'Paz',
     lender: 'JPMorgan Chase',
     value: 4000000,
+    totalFee: 100000,
     contact: 'Lisa Wong',
     createdAt: '2024-01-12',
     updatedAt: getRecentDate(60 * 5), // 5 hours ago
@@ -120,6 +127,7 @@ export const mockDeals: Deal[] = [
     manager: 'James',
     lender: 'Wells Fargo',
     value: 18000000,
+    totalFee: 450000,
     contact: 'James Miller',
     createdAt: '2024-01-19',
     updatedAt: getRecentDate(60 * 24 * 5), // 5 days ago

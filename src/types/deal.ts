@@ -14,6 +14,7 @@ export interface Deal {
   manager: string;
   lender: string;
   value: number;
+  totalFee: number;
   contact: string;
   createdAt: string;
   updatedAt: string;
