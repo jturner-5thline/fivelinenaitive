@@ -20,7 +20,7 @@ export default function Dashboard() {
   return (
     <>
       <Helmet>
-        <title>Deal Pipeline - DealFlow Pro</title>
+        <title>Deal Pipeline - nAItive</title>
         <meta
           name="description"
           content="Manage your deal pipeline with advanced filtering, sorting, and status tracking."

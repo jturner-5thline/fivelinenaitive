@@ -11,7 +11,7 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <title>DealFlow Pro | Deal Analysis Platform for Growth Investors</title>
+        <title>nAItive | Deal Analysis Platform for Growth Investors</title>
         <meta 
           name="description" 
           content="Streamline due diligence with AI-powered insights and automated financial modeling for growth-stage and lower-middle-market transactions." 
