@@ -372,9 +372,9 @@ export default function DealDetail() {
       <div className="min-h-screen bg-background">
         <DashboardHeader />
 
-        <main className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="container mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
           {/* Back button and Undo */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-3">
             <Button variant="ghost" size="sm" className="gap-2" asChild>
               <Link to="/dashboard">
                 <ArrowLeft className="h-4 w-4" />
