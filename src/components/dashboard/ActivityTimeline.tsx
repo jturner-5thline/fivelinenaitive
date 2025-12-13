@@ -6,12 +6,15 @@ import {
   MessageSquare, 
   CheckCircle,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Trash2,
+  Undo2
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface ActivityItem {
   id: string;
-  type: 'status_change' | 'stage_change' | 'note_added' | 'contact_added' | 'value_updated' | 'comment' | 'created';
+  type: 'status_change' | 'stage_change' | 'note_added' | 'contact_added' | 'value_updated' | 'comment' | 'created' | 'lender_removed';
   description: string;
   user: string;
   timestamp: string;
@@ -19,7 +22,10 @@ export interface ActivityItem {
     from?: string;
     to?: string;
     value?: string;
+    lenderName?: string;
+    lenderData?: any;
   };
+  onUndo?: () => void;
 }
 
 interface ActivityTimelineProps {
@@ -34,6 +40,7 @@ const activityIcons: Record<ActivityItem['type'], typeof Clock> = {
   value_updated: TrendingUp,
   comment: MessageSquare,
   created: CheckCircle,
+  lender_removed: Trash2,
 };
 
 const activityColors: Record<ActivityItem['type'], string> = {
@@ -44,6 +51,7 @@ const activityColors: Record<ActivityItem['type'], string> = {
   value_updated: 'bg-success',
   comment: 'bg-slate-500',
   created: 'bg-primary',
+  lender_removed: 'bg-destructive',
 };
 
 export function ActivityTimeline({ activities }: ActivityTimelineProps) {
@@ -79,7 +87,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
                     <Icon className="h-4 w-4 text-white" aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="text-sm text-foreground">
                         {activity.description}
                         {activity.metadata?.from && activity.metadata?.to && (
@@ -89,6 +97,17 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
                           </span>
                         )}
                       </p>
+                      {activity.onUndo && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs gap-1 px-2 shrink-0"
+                          onClick={activity.onUndo}
+                        >
+                          <Undo2 className="h-3 w-3" />
+                          Undo
+                        </Button>
+                      )}
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{activity.user}</span>
