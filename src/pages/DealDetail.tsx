@@ -15,6 +15,7 @@ import { useLenders } from '@/contexts/LendersContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
+import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
 import {
   Select,
   SelectContent,
@@ -117,6 +118,7 @@ export default function DealDetail() {
   const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
+  const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
   const baseActivities = getMockActivities(id || '');
 
   // Combine base activities with lender removal activities
@@ -215,6 +217,32 @@ export default function DealDetail() {
     });
     toast({
       title: "Milestone deleted",
+    });
+  }, []);
+
+  const addOutstandingItem = useCallback((text: string) => {
+    const newItem: OutstandingItem = {
+      id: `oi${Date.now()}`,
+      text,
+      completed: false,
+      createdAt: new Date().toISOString(),
+    };
+    setOutstandingItems(prev => [...prev, newItem]);
+    toast({
+      title: "Item added",
+    });
+  }, []);
+
+  const updateOutstandingItem = useCallback((id: string, updates: Partial<OutstandingItem>) => {
+    setOutstandingItems(prev =>
+      prev.map(item => (item.id === id ? { ...item, ...updates } : item))
+    );
+  }, []);
+
+  const deleteOutstandingItem = useCallback((id: string) => {
+    setOutstandingItems(prev => prev.filter(item => item.id !== id));
+    toast({
+      title: "Item removed",
     });
   }, []);
 
@@ -497,6 +525,14 @@ export default function DealDetail() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Outstanding Items */}
+              <OutstandingItems
+                items={outstandingItems}
+                onAdd={addOutstandingItem}
+                onUpdate={updateOutstandingItem}
+                onDelete={deleteOutstandingItem}
+              />
 
               {/* Lenders Card */}
               <Card>
