@@ -485,9 +485,9 @@ export default function DealDetail() {
           </Card>
 
           {/* Main Content Grid */}
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-3 items-start">
             {/* Left Column - Notes & Actions */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 flex flex-col gap-6">
               {statusHistory.length > 0 && (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -796,7 +796,7 @@ export default function DealDetail() {
             </div>
 
             {/* Right Column - Deal Info & Activity */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="lg:col-span-1 flex flex-col gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold text-purple-700">Deal Information</CardTitle>
