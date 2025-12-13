@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { mockDeals } from '@/data/mockDeals';
 import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderTrackingStatus, DealLender, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import {
@@ -104,6 +105,7 @@ interface EditHistory {
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const { getLenderNames, getLenderDetails } = useLenders();
+  const { formatCurrencyValue } = usePreferences();
   const lenderNames = getLenderNames();
   const initialDeal = mockDeals.find((d) => d.id === id);
   const [deal, setDeal] = useState<Deal | undefined>(initialDeal);
@@ -195,16 +197,9 @@ export default function DealDetail() {
   const stageConfig = STAGE_CONFIG[deal.stage];
   const statusConfig = STATUS_CONFIG[deal.status];
 
-  const formatValue = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    return `$${(value / 1000).toFixed(0)}K`;
-  };
+  const formatValue = (value: number) => formatCurrencyValue(value);
 
-  const formatFee = (value: number) => {
-    return `$${(value / 1000).toFixed(0)}K`;
-  };
+  const formatFee = (value: number) => formatCurrencyValue(value);
 
   const parseFee = (valueStr: string): number => {
     const cleaned = valueStr.replace(/[^0-9.]/g, '');

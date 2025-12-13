@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { useWidgets, Widget, WidgetMetric } from '@/contexts/WidgetsContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { WidgetCard } from './WidgetCard';
 import { WidgetEditor } from './WidgetEditor';
 import { Deal } from '@/types/deal';
@@ -27,6 +28,7 @@ interface WidgetsSectionProps {
 
 export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets } = useWidgets();
+  const { formatCurrencyValue } = usePreferences();
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<Widget | undefined>();
@@ -38,23 +40,16 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     })
   );
 
-  const formatValue = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    return `$${(value / 1000).toFixed(0)}K`;
-  };
-
   const calculateMetric = (metric: WidgetMetric): string | number => {
     switch (metric) {
       case 'active-deals':
         return deals.filter(d => d.status !== 'archived').length;
       case 'active-deal-volume':
-        return formatValue(deals.filter(d => d.status !== 'archived').reduce((sum, d) => sum + d.value, 0));
+        return formatCurrencyValue(deals.filter(d => d.status !== 'archived').reduce((sum, d) => sum + d.value, 0));
       case 'deals-in-diligence':
         return deals.filter(d => d.stage === 'due-diligence').length;
       case 'dollars-in-diligence':
-        return formatValue(deals.filter(d => d.stage === 'due-diligence').reduce((sum, d) => sum + d.value, 0));
+        return formatCurrencyValue(deals.filter(d => d.stage === 'due-diligence').reduce((sum, d) => sum + d.value, 0));
       case 'total-deals':
         return deals.length;
       case 'archived-deals':
@@ -64,10 +59,10 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       case 'at-risk-deals':
         return deals.filter(d => d.status === 'at-risk').length;
       case 'total-pipeline-value':
-        return formatValue(deals.reduce((sum, d) => sum + d.value, 0));
+        return formatCurrencyValue(deals.reduce((sum, d) => sum + d.value, 0));
       case 'average-deal-size':
         return deals.length > 0 
-          ? formatValue(deals.reduce((sum, d) => sum + d.value, 0) / deals.length)
+          ? formatCurrencyValue(deals.reduce((sum, d) => sum + d.value, 0) / deals.length)
           : '$0';
       default:
         return 0;
