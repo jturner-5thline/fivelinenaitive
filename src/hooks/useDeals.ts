@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { mockDeals } from '@/data/mockDeals';
 
-export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt';
+export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status';
 export type SortDirection = 'asc' | 'desc';
 
 export interface DealFilters {
@@ -62,6 +62,15 @@ export function useDeals() {
     }
 
     // Apply sorting
+    // Status order for sorting
+    const statusOrder: Record<DealStatus, number> = {
+      'on-track': 0,
+      'at-risk': 1,
+      'off-track': 2,
+      'on-hold': 3,
+      'archived': 4,
+    };
+
     result.sort((a, b) => {
       let comparison = 0;
 
@@ -77,6 +86,9 @@ export function useDeals() {
           break;
         case 'updatedAt':
           comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+        case 'status':
+          comparison = statusOrder[a.status] - statusOrder[b.status];
           break;
       }
 
