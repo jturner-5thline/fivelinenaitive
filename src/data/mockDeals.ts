@@ -28,6 +28,13 @@ export const mockDeals: Deal[] = [
       { id: 'l2', name: 'SLR', status: 'terms-issued', stage: 'draft-terms', trackingStatus: 'active' },
       { id: 'l3', name: 'Decathlon', status: 'in-review', stage: 'reviewing-drl', trackingStatus: 'on-deck' },
     ],
+    milestones: [
+      { id: 'm1', title: 'Deal Kick Off', dueDate: '2024-01-15T00:00:00Z', completed: true },
+      { id: 'm2', title: 'First Management Call', dueDate: '2024-01-22T00:00:00Z', completed: true },
+      { id: 'm3', title: 'Draft Terms', dueDate: '2024-02-05T00:00:00Z', completed: false },
+      { id: 'm4', title: 'Qualified Terms', dueDate: '2024-02-15T00:00:00Z', completed: false },
+      { id: 'm5', title: 'Terms Signed', dueDate: '2024-02-28T00:00:00Z', completed: false },
+    ],
   },
   {
     id: '2',
