@@ -1,4 +1,4 @@
-import { MoreHorizontal, Building2, User, Calendar, TrendingUp, Landmark } from 'lucide-react';
+import { MoreHorizontal, User, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -88,21 +88,14 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
               {statusConfig.label}
             </Badge>
           </div>
-          <div className="flex items-center gap-1 text-lg font-semibold text-foreground">
-            <TrendingUp className="h-4 w-4 text-success" />
+          <div className="text-lg font-semibold text-foreground">
             {formatValue(deal.value)}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <User className="h-3.5 w-3.5" />
-            <span className="truncate">{deal.manager}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Landmark className="h-3.5 w-3.5" />
-            <span className="truncate">{deal.lender}</span>
-          </div>
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <User className="h-3.5 w-3.5" />
+          <span className="truncate">{deal.manager}</span>
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-border">
