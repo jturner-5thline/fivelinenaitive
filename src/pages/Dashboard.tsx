@@ -35,13 +35,13 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background">
         <DashboardHeader />
 
-        <main className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="container mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
           <div className="space-y-6">
+            {/* Page Header */}
+            <h1 className="text-3xl font-semibold text-foreground">Deal Pipeline</h1>
+
             {/* Widgets */}
             <WidgetsSection deals={mockDeals} />
-
-            {/* Page Header */}
-            <h1 className="text-2xl font-semibold text-foreground">Deal Pipeline</h1>
 
             {/* Filters */}
             <DealFilters
