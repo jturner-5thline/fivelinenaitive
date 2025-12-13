@@ -227,6 +227,7 @@ export default function DealDetail() {
       completed: false,
       received: false,
       approved: false,
+      deliveredToLenders: false,
       createdAt: new Date().toISOString(),
       requestedBy,
     };
