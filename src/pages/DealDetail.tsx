@@ -343,7 +343,7 @@ export default function DealDetail() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Manager</span>
+                    <span className="text-muted-foreground">Deal Manager</span>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <Select
@@ -364,51 +364,16 @@ export default function DealDetail() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Lender</span>
-                    <div className="flex items-center gap-2">
-                      <Landmark className="h-4 w-4 text-muted-foreground" />
-                      <Select
-                        value={deal.lender}
-                        onValueChange={(value) => updateDeal('lender', value)}
-                      >
-                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LENDERS.map((lender) => (
-                            <SelectItem key={lender} value={lender}>
-                              {lender}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Contact</span>
-                    <InlineEditField
-                      value={deal.contact}
-                      onSave={(value) => updateDeal('contact', value)}
-                      displayClassName="font-medium"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Engagement Type</span>
                     <span className="font-medium">{ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}</span>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <span className="text-muted-foreground">Created</span>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{deal.createdAt}</span>
-                    </div>
-                  </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Last Updated</span>
-                    <div className={`flex items-center gap-2 ${timeAgoData.highlightClass}`}>
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{timeAgoData.text}</span>
-                    </div>
+                    <span className="text-muted-foreground">Total Fee</span>
+                    <InlineEditField
+                      value={formatValue(deal.value)}
+                      onSave={(value) => updateDeal('value', parseValue(value) * 1000000)}
+                      displayClassName="font-medium text-purple-600"
+                    />
                   </div>
                 </CardContent>
               </Card>
