@@ -34,10 +34,10 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
       <Card className="group transition-all hover:shadow-md hover:border-primary/20 cursor-pointer">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="space-y-1">
-          <h3 className="font-semibold text-foreground leading-tight">{deal.name}</h3>
+          <h3 className="font-semibold text-foreground leading-tight">{deal.company}</h3>
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Building2 className="h-3.5 w-3.5" />
-            {deal.company}
+            {deal.name}
           </div>
         </div>
         <DropdownMenu>
