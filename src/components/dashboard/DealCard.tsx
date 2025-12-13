@@ -30,7 +30,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
     return `$${(value / 1000).toFixed(0)}K`;
   };
 
-  const formatTimeAgo = (dateString: string) => {
+  const getTimeAgoData = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     
@@ -39,18 +39,30 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
     const days = differenceInDays(now, date);
     const weeks = differenceInWeeks(now, date);
     
+    let text: string;
+    let highlightClass = '';
+    
     if (minutes < 60) {
-      return `${minutes} Min. Ago`;
+      text = `${minutes} Min. Ago`;
     } else if (hours < 24) {
-      return `${hours} Hours Ago`;
+      text = `${hours} Hours Ago`;
     } else if (days < 7) {
-      return `${days} Days Ago`;
+      text = `${days} Days Ago`;
+      if (days > 3) {
+        highlightClass = 'bg-warning/20 px-1.5 py-0.5 rounded';
+      }
     } else if (days <= 30) {
-      return `${weeks} Weeks Ago`;
+      text = `${weeks} Weeks Ago`;
+      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
     } else {
-      return 'Over 30 Days';
+      text = 'Over 30 Days';
+      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
     }
+    
+    return { text, highlightClass };
   };
+
+  const timeAgoData = getTimeAgoData(deal.updatedAt);
 
   return (
     <Link to={`/deal/${deal.id}`} className="block">
@@ -123,9 +135,9 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
           <Badge variant="secondary" className="text-xs">
             {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
           </Badge>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
             <Clock className="h-3 w-3" />
-            <span>{formatTimeAgo(deal.updatedAt)}</span>
+            <span>{timeAgoData.text}</span>
           </div>
         </div>
       </CardContent>
