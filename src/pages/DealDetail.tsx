@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, Calendar, Landmark, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, User, Calendar, Landmark, FileText, Clock, Undo2 } from 'lucide-react';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
@@ -75,10 +75,17 @@ const getMockActivities = (dealId: string): ActivityItem[] => [
   },
 ];
 
+interface EditHistory {
+  deal: Deal;
+  field: string;
+  timestamp: Date;
+}
+
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const initialDeal = mockDeals.find((d) => d.id === id);
   const [deal, setDeal] = useState<Deal | undefined>(initialDeal);
+  const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   const activities = getMockActivities(id || '');
 
   if (!deal) {
@@ -144,9 +151,11 @@ export default function DealDetail() {
     return { text, highlightClass };
   };
 
-  const updateDeal = (field: keyof Deal, value: string | number) => {
+  const updateDeal = useCallback((field: keyof Deal, value: string | number) => {
     setDeal(prev => {
       if (!prev) return prev;
+      // Save current state to history before updating
+      setEditHistory(history => [...history, { deal: prev, field, timestamp: new Date() }]);
       const updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
       toast({
         title: "Deal updated",
@@ -154,7 +163,20 @@ export default function DealDetail() {
       });
       return updated;
     });
-  };
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (editHistory.length === 0) return;
+    
+    const lastEdit = editHistory[editHistory.length - 1];
+    setDeal(lastEdit.deal);
+    setEditHistory(history => history.slice(0, -1));
+    
+    toast({
+      title: "Change undone",
+      description: `Reverted ${lastEdit.field} to previous value.`,
+    });
+  }, [editHistory]);
 
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
@@ -169,13 +191,26 @@ export default function DealDetail() {
         <DashboardHeader />
 
         <main className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          {/* Back button */}
-          <Button variant="ghost" size="sm" className="mb-6 gap-2" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Pipeline
-            </Link>
-          </Button>
+          {/* Back button and Undo */}
+          <div className="flex items-center justify-between mb-6">
+            <Button variant="ghost" size="sm" className="gap-2" asChild>
+              <Link to="/dashboard">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Pipeline
+              </Link>
+            </Button>
+            {editHistory.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleUndo}
+              >
+                <Undo2 className="h-4 w-4" />
+                Undo ({editHistory.length})
+              </Button>
+            )}
+          </div>
 
           {/* Header Card */}
           <Card className="mb-6">
