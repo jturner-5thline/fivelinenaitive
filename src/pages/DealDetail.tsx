@@ -40,6 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 
 
@@ -857,64 +858,122 @@ export default function DealDetail() {
           </DialogHeader>
           {selectedLenderName && (() => {
             const lenderDetails = getLenderDetails(selectedLenderName);
+            const lenderOutstandingItems = outstandingItems.filter(
+              item => Array.isArray(item.requestedBy) 
+                ? item.requestedBy.includes(selectedLenderName)
+                : item.requestedBy === selectedLenderName
+            );
+            const lenderActivities = activities.filter(
+              activity => activity.description?.includes(selectedLenderName) || 
+                activity.metadata?.lenderName === selectedLenderName
+            );
             return (
-            <div className="space-y-6">
-              {/* Contact Information */}
-              <div>
-                <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
-                {lenderDetails?.contact.name ? (
-                  <div className="space-y-1 text-sm">
-                    <p><span className="text-muted-foreground">Name:</span> {lenderDetails.contact.name}</p>
-                    <p><span className="text-muted-foreground">Email:</span> {lenderDetails.contact.email}</p>
-                    <p><span className="text-muted-foreground">Phone:</span> {lenderDetails.contact.phone}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No contact information available</p>
-                )}
-              </div>
-
-              {/* Deal Preferences */}
-              <div>
-                <h4 className="text-sm font-semibold mb-2">Deal Preferences</h4>
-                {lenderDetails?.preferences && lenderDetails.preferences.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {lenderDetails.preferences.map((pref, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs">{pref}</Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No preferences listed</p>
-                )}
-              </div>
-
-              {/* All Deals with this Lender */}
-              <div>
-                <h4 className="text-sm font-semibold mb-2">Deals with {selectedLenderName}</h4>
-                <div className="space-y-2">
-                  {getLenderDeals(selectedLenderName).map((dealInfo) => (
-                    <div key={dealInfo.dealId} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
-                      <div>
-                        <p className="font-medium">{dealInfo.company}</p>
-                        <p className="text-xs text-muted-foreground">{dealInfo.dealName}</p>
+              <Tabs defaultValue="this-deal" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="this-deal">This Deal</TabsTrigger>
+                  <TabsTrigger value="about">About {selectedLenderName}</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="this-deal" className="space-y-6 mt-4">
+                  {/* Outstanding Items for this Lender */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Requested Items</h4>
+                    {lenderOutstandingItems.length > 0 ? (
+                      <div className="space-y-2">
+                        {lenderOutstandingItems.map((item) => (
+                          <div 
+                            key={item.id} 
+                            className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm"
+                          >
+                            <span className={item.deliveredToLenders ? "line-through text-muted-foreground" : ""}>
+                              {item.text}
+                            </span>
+                            {item.deliveredToLenders ? (
+                              <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">Delivered</Badge>
+                            ) : item.approved ? (
+                              <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700">Approved</Badge>
+                            ) : item.received ? (
+                              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">Received</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">Requested</Badge>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {dealInfo.lenderInfo && (
-                          <>
-                            <Badge variant="outline" className="text-xs">
-                              {LENDER_STATUS_CONFIG[dealInfo.lenderInfo.status].label}
-                            </Badge>
-                            <Badge variant="secondary" className="text-xs">
-                              {LENDER_TRACKING_STATUS_CONFIG[dealInfo.lenderInfo.trackingStatus].label}
-                            </Badge>
-                          </>
-                        )}
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">No items requested by this lender</p>
+                    )}
+                  </div>
+
+                  {/* Activity History for this Lender */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Activity History</h4>
+                    {lenderActivities.length > 0 ? (
+                      <ActivityTimeline activities={lenderActivities} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">No activity recorded for this lender on this deal</p>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="about" className="space-y-6 mt-4">
+                  {/* Contact Information */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
+                    {lenderDetails?.contact.name ? (
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-muted-foreground">Name:</span> {lenderDetails.contact.name}</p>
+                        <p><span className="text-muted-foreground">Email:</span> {lenderDetails.contact.email}</p>
+                        <p><span className="text-muted-foreground">Phone:</span> {lenderDetails.contact.phone}</p>
                       </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">No contact information available</p>
+                    )}
+                  </div>
+
+                  {/* Deal Preferences */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Deal Preferences</h4>
+                    {lenderDetails?.preferences && lenderDetails.preferences.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {lenderDetails.preferences.map((pref, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">{pref}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">No preferences listed</p>
+                    )}
+                  </div>
+
+                  {/* All Deals with this Lender */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Deals with {selectedLenderName}</h4>
+                    <div className="space-y-2">
+                      {getLenderDeals(selectedLenderName).map((dealInfo) => (
+                        <div key={dealInfo.dealId} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                          <div>
+                            <p className="font-medium">{dealInfo.company}</p>
+                            <p className="text-xs text-muted-foreground">{dealInfo.dealName}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {dealInfo.lenderInfo && (
+                              <>
+                                <Badge variant="outline" className="text-xs">
+                                  {LENDER_STATUS_CONFIG[dealInfo.lenderInfo.status].label}
+                                </Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  {LENDER_TRACKING_STATUS_CONFIG[dealInfo.lenderInfo.trackingStatus].label}
+                                </Badge>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
+                  </div>
+                </TabsContent>
+              </Tabs>
+            );
           })()}
         </DialogContent>
       </Dialog>
