@@ -114,6 +114,15 @@ export default function DealDetail() {
     return `$${(value / 1000).toFixed(0)}K`;
   };
 
+  const formatFee = (value: number) => {
+    return `$${(value / 1000).toFixed(0)}K`;
+  };
+
+  const parseFee = (valueStr: string): number => {
+    const cleaned = valueStr.replace(/[^0-9.]/g, '');
+    return (parseFloat(cleaned) || 0) * 1000;
+  };
+
   const parseValue = (valueStr: string): number => {
     const cleaned = valueStr.replace(/[^0-9.]/g, '');
     return parseFloat(cleaned) || 0;
@@ -370,8 +379,8 @@ export default function DealDetail() {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total Fee</span>
                     <InlineEditField
-                      value={formatValue(deal.value)}
-                      onSave={(value) => updateDeal('value', parseValue(value) * 1000000)}
+                      value={formatFee(deal.totalFee)}
+                      onSave={(value) => updateDeal('totalFee', parseFee(value))}
                       displayClassName="font-medium text-purple-600"
                     />
                   </div>
