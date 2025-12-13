@@ -364,104 +364,104 @@ export default function DealDetail() {
 
               {/* Lenders Card */}
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Building2 className="h-5 w-5" />
                     Lenders
                   </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Select
-                      onValueChange={(lenderName: string) => {
-                        addLender(lenderName);
-                      }}
-                    >
-                      <SelectTrigger className="w-auto h-8 text-xs gap-1 px-2">
-                        <Plus className="h-3 w-3" />
-                        <span>Add Lender</span>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LENDERS.filter(
-                          lenderName => !deal.lenders?.some(l => l.name === lenderName)
-                        ).map((lenderName) => (
-                          <SelectItem key={lenderName} value={lenderName}>
-                            {lenderName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </CardHeader>
                 <CardContent>
-                  {deal.lenders && deal.lenders.length > 0 ? (
-                    <div className="space-y-4">
-                      {deal.lenders.map((lender, index) => (
-                        <div key={lender.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                          <span className="font-medium min-w-[140px]">{lender.name}</span>
-                          <Select
-                            value={lender.status}
-                            onValueChange={(value: LenderStatus) => {
-                              const updatedLenders = deal.lenders?.map(l => 
-                                l.id === lender.id ? { ...l, status: value } : l
-                              );
-                              updateDeal('lenders', updatedLenders as any);
-                            }}
-                          >
-                            <SelectTrigger className="w-auto h-7 text-xs rounded-lg px-2">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(LENDER_STATUS_CONFIG).map(([key, config]) => (
-                                <SelectItem key={key} value={key}>
-                                  {config.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={lender.stage}
-                            onValueChange={(value: LenderStage) => {
-                              const updatedLenders = deal.lenders?.map(l => 
-                                l.id === lender.id ? { ...l, stage: value } : l
-                              );
-                              updateDeal('lenders', updatedLenders as any);
-                            }}
-                          >
-                            <SelectTrigger className="w-auto h-7 text-xs rounded-lg px-2 bg-secondary border-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(LENDER_STAGE_CONFIG).map(([key, config]) => (
-                                <SelectItem key={key} value={key}>
-                                  {config.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
-                              setDeal(prev => {
-                                if (!prev) return prev;
-                                setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
-                                return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
-                              });
-                              toast({
-                                title: "Lender removed",
-                                description: `${lender.name} has been removed from the deal.`,
-                              });
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                  <div className="space-y-4">
+                    {deal.lenders && deal.lenders.length > 0 && (
+                      <>
+                        {deal.lenders.map((lender, index) => (
+                          <div key={lender.id} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
+                            <span className="font-medium min-w-[140px]">{lender.name}</span>
+                            <Select
+                              value={lender.status}
+                              onValueChange={(value: LenderStatus) => {
+                                const updatedLenders = deal.lenders?.map(l => 
+                                  l.id === lender.id ? { ...l, status: value } : l
+                                );
+                                updateDeal('lenders', updatedLenders as any);
+                              }}
+                            >
+                              <SelectTrigger className="w-auto h-7 text-xs rounded-lg px-2">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(LENDER_STATUS_CONFIG).map(([key, config]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {config.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={lender.stage}
+                              onValueChange={(value: LenderStage) => {
+                                const updatedLenders = deal.lenders?.map(l => 
+                                  l.id === lender.id ? { ...l, stage: value } : l
+                                );
+                                updateDeal('lenders', updatedLenders as any);
+                              }}
+                            >
+                              <SelectTrigger className="w-auto h-7 text-xs rounded-lg px-2 bg-secondary border-0">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(LENDER_STAGE_CONFIG).map(([key, config]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {config.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
+                                setDeal(prev => {
+                                  if (!prev) return prev;
+                                  setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+                                  return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+                                });
+                                toast({
+                                  title: "Lender removed",
+                                  description: `${lender.name} has been removed from the deal.`,
+                                });
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    <div className={`flex justify-end ${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
+                      <Select
+                        onValueChange={(lenderName: string) => {
+                          addLender(lenderName);
+                        }}
+                      >
+                        <SelectTrigger className="w-auto h-8 text-xs gap-1 px-2">
+                          <Plus className="h-3 w-3" />
+                          <span>Add Lender</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LENDERS.filter(
+                            lenderName => !deal.lenders?.some(l => l.name === lenderName)
+                          ).map((lenderName) => (
+                            <SelectItem key={lenderName} value={lenderName}>
+                              {lenderName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  ) : (
-                    <p className="text-muted-foreground/50 italic">No lenders added</p>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
 
