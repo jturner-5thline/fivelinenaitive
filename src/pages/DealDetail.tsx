@@ -381,17 +381,20 @@ export default function DealDetail() {
                 Back to Pipeline
               </Link>
             </Button>
-            {editHistory.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={handleUndo}
-              >
-                <Undo2 className="h-4 w-4" />
-                Undo ({editHistory.length})
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {editHistory.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleUndo}
+                >
+                  <Undo2 className="h-4 w-4" />
+                  Undo ({editHistory.length})
+                </Button>
+              )}
+              <Button variant="outline" size="sm">Export</Button>
+            </div>
           </div>
 
           {/* Header Card */}
@@ -770,11 +773,6 @@ export default function DealDetail() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <Button variant="outline">Export Details</Button>
-              </div>
             </div>
 
             {/* Right Column - Deal Info & Activity */}
