@@ -9,6 +9,7 @@ import { LendersProvider } from "@/contexts/LendersContext";
 import { WidgetsProvider } from "@/contexts/WidgetsContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import DealDetail from "./pages/DealDetail";
 import Settings from "./pages/Settings";
@@ -30,6 +31,7 @@ const App = () => (
                 <BrowserRouter>
                   <Routes>
                     <Route path="/" element={<Index />} />
+                    <Route path="/login" element={<Auth />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/deal/:id" element={<DealDetail />} />
                     <Route path="/settings" element={<Settings />} />
