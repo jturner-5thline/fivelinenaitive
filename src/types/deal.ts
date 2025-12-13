@@ -18,6 +18,13 @@ export interface DealLender {
   trackingStatus: LenderTrackingStatus;
 }
 
+export interface DealMilestone {
+  id: string;
+  title: string;
+  dueDate?: string;
+  completed: boolean;
+}
+
 export interface Deal {
   id: string;
   name: string;
@@ -34,6 +41,7 @@ export interface Deal {
   updatedAt: string;
   notes?: string;
   lenders?: DealLender[];
+  milestones?: DealMilestone[];
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
