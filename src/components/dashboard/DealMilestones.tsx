@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { DealMilestone } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -61,6 +62,10 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
     setEditDate(undefined);
   };
 
+  const completedCount = milestones.filter(m => m.completed).length;
+  const totalCount = milestones.length;
+  const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
   return (
     <div className="pt-4 border-t border-border">
       <div className="flex items-center justify-between mb-3">
@@ -69,7 +74,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
           <h3 className="text-sm font-medium">Milestones</h3>
           {milestones.length > 0 && (
             <span className="text-xs text-muted-foreground">
-              ({milestones.filter(m => m.completed).length}/{milestones.length} completed)
+              ({completedCount}/{totalCount} completed)
             </span>
           )}
         </div>
@@ -85,6 +90,16 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
           </Button>
         )}
       </div>
+
+      {milestones.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-muted-foreground">Progress</span>
+            <span className="text-xs font-medium">{progressPercentage}%</span>
+          </div>
+          <Progress value={progressPercentage} className="h-2" />
+        </div>
+      )}
 
       <div className="space-y-2">
         {milestones.map((milestone) => (
