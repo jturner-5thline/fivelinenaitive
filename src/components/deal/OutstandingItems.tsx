@@ -22,7 +22,6 @@ interface OutstandingItemsProps {
 }
 
 export function OutstandingItems({ items, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
-  const [isAdding, setIsAdding] = useState(false);
   const [newItemText, setNewItemText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
@@ -31,7 +30,6 @@ export function OutstandingItems({ items, onAdd, onUpdate, onDelete }: Outstandi
     if (newItemText.trim()) {
       onAdd(newItemText.trim());
       setNewItemText('');
-      setIsAdding(false);
     }
   };
 
@@ -67,50 +65,9 @@ export function OutstandingItems({ items, onAdd, onUpdate, onDelete }: Outstandi
             </span>
           )}
         </CardTitle>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1"
-          onClick={() => setIsAdding(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Add Item
-        </Button>
       </CardHeader>
       <CardContent className="space-y-3">
-        {isAdding && (
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="Enter item..."
-              value={newItemText}
-              onChange={(e) => setNewItemText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAdd();
-                if (e.key === 'Escape') {
-                  setIsAdding(false);
-                  setNewItemText('');
-                }
-              }}
-              autoFocus
-              className="flex-1"
-            />
-            <Button size="sm" onClick={handleAdd}>
-              Add
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setIsAdding(false);
-                setNewItemText('');
-              }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {items.length === 0 && !isAdding && (
+        {items.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-4">
             No outstanding items
           </p>
@@ -185,6 +142,24 @@ export function OutstandingItems({ items, onAdd, onUpdate, onDelete }: Outstandi
             )}
           </div>
         ))}
+
+        {/* Always-visible input for adding new items */}
+        <div className={`${items.length > 0 ? 'pt-3 border-t border-border' : ''}`}>
+          <Input
+            placeholder="Type to add an item..."
+            value={newItemText}
+            onChange={(e) => setNewItemText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newItemText.trim()) {
+                handleAdd();
+              }
+              if (e.key === 'Escape') {
+                setNewItemText('');
+              }
+            }}
+            className="w-full"
+          />
+        </div>
       </CardContent>
     </Card>
   );
