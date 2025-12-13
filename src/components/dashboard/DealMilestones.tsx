@@ -29,7 +29,7 @@ interface DealMilestonesProps {
 
 export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMilestonesProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState<Date | undefined>();
