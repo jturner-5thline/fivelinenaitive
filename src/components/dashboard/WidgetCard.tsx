@@ -1,4 +1,6 @@
-import { Pencil, Trash2, TrendingUp, Briefcase, FileSearch, DollarSign, Target, CheckCircle, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Pencil, Trash2, GripVertical, TrendingUp, Briefcase, FileSearch, DollarSign, Target, CheckCircle, AlertTriangle, BarChart3 } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Widget, WidgetMetric } from '@/contexts/WidgetsContext';
@@ -36,10 +38,38 @@ export function WidgetCard({ widget, value, isEditMode, onEdit, onDelete }: Widg
   const Icon = metricIcons[widget.metric];
   const colors = colorClasses[widget.color];
 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: widget.id, disabled: !isEditMode });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
-    <Card className={`relative ${isEditMode ? 'ring-2 ring-primary/50' : ''}`}>
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`relative ${isEditMode ? 'ring-2 ring-primary/50' : ''} ${isDragging ? 'z-50' : ''}`}
+    >
       {isEditMode && (
         <div className="absolute top-2 right-2 flex gap-1 z-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 cursor-grab active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

@@ -1,5 +1,20 @@
 import { useState } from 'react';
 import { Plus, Settings2 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { useWidgets, Widget, WidgetMetric } from '@/contexts/WidgetsContext';
 import { WidgetCard } from './WidgetCard';
@@ -11,10 +26,17 @@ interface WidgetsSectionProps {
 }
 
 export function WidgetsSection({ deals }: WidgetsSectionProps) {
-  const { widgets, addWidget, updateWidget, deleteWidget } = useWidgets();
+  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets } = useWidgets();
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<Widget | undefined>();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const formatValue = (value: number) => {
     if (value >= 1000000) {
@@ -70,6 +92,16 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     }
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = widgets.findIndex((w) => w.id === active.id);
+      const newIndex = widgets.findIndex((w) => w.id === over.id);
+      reorderWidgets(arrayMove(widgets, oldIndex, newIndex));
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end gap-2">
@@ -90,23 +122,31 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {widgets.map((widget) => (
-          <WidgetCard
-            key={widget.id}
-            widget={widget}
-            value={calculateMetric(widget.metric)}
-            isEditMode={isEditMode}
-            onEdit={() => handleEdit(widget)}
-            onDelete={() => deleteWidget(widget.id)}
-          />
-        ))}
-        {widgets.length === 0 && (
-          <div className="col-span-full text-center py-8 text-muted-foreground">
-            No widgets configured. Click "Edit Widgets" to add some.
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {widgets.map((widget) => (
+              <WidgetCard
+                key={widget.id}
+                widget={widget}
+                value={calculateMetric(widget.metric)}
+                isEditMode={isEditMode}
+                onEdit={() => handleEdit(widget)}
+                onDelete={() => deleteWidget(widget.id)}
+              />
+            ))}
+            {widgets.length === 0 && (
+              <div className="col-span-full text-center py-8 text-muted-foreground">
+                No widgets configured. Click "Edit Widgets" to add some.
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       <WidgetEditor
         widget={editingWidget}
