@@ -1,6 +1,6 @@
 export type DealStage = 'prospecting' | 'initial-review' | 'due-diligence' | 'term-sheet' | 'closing' | 'closed';
 
-export type DealStatus = 'active' | 'on-hold' | 'pending' | 'completed' | 'cancelled';
+export type DealStatus = 'on-track' | 'at-risk' | 'off-track' | 'on-hold' | 'archived';
 
 export type EngagementType = 'direct' | 'syndicated' | 'club-deal' | 'sole-lender';
 
@@ -29,12 +29,12 @@ export const STAGE_CONFIG: Record<DealStage, { label: string; color: string }> =
   'closed': { label: 'Closed', color: 'bg-success' },
 };
 
-export const STATUS_CONFIG: Record<DealStatus, { label: string; color: string }> = {
-  'active': { label: 'Active', color: 'bg-success' },
-  'on-hold': { label: 'On Hold', color: 'bg-amber-500' },
-  'pending': { label: 'Pending', color: 'bg-blue-500' },
-  'completed': { label: 'Completed', color: 'bg-slate-500' },
-  'cancelled': { label: 'Cancelled', color: 'bg-destructive' },
+export const STATUS_CONFIG: Record<DealStatus, { label: string; dotColor: string; badgeColor: string }> = {
+  'on-track': { label: 'On Track', dotColor: 'bg-green-500', badgeColor: 'bg-green-500' },
+  'at-risk': { label: 'At Risk', dotColor: 'bg-yellow-500', badgeColor: 'bg-yellow-500' },
+  'off-track': { label: 'Off Track', dotColor: 'bg-red-500', badgeColor: 'bg-red-500' },
+  'on-hold': { label: 'On Hold', dotColor: 'bg-blue-500', badgeColor: 'bg-blue-500' },
+  'archived': { label: 'Archived', dotColor: 'bg-orange-500', badgeColor: 'bg-orange-500' },
 };
 
 export const ENGAGEMENT_TYPE_CONFIG: Record<EngagementType, { label: string }> = {

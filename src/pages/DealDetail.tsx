@@ -137,7 +137,7 @@ export default function DealDetail() {
               <Badge className={`${stageConfig.color} text-white border-0`}>
                 {stageConfig.label}
               </Badge>
-              <Badge className={`${statusConfig.color} text-white border-0`}>
+              <Badge className={`${statusConfig.badgeColor} text-white border-0`}>
                 {statusConfig.label}
               </Badge>
               <Badge variant="secondary">
