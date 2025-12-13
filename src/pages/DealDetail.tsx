@@ -406,7 +406,7 @@ export default function DealDetail() {
                                 updateDeal('lenders', updatedLenders as any);
                               }}
                             >
-                              <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0">
+                              <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
