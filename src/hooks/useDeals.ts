@@ -122,12 +122,16 @@ export function useDeals() {
   };
 
   const stats = useMemo(() => {
-    const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
-    const activeDeals = deals.filter((d) => d.status === 'on-track').length;
-    const archivedDeals = deals.filter((d) => d.status === 'archived').length;
-    const completionRate = deals.length > 0 ? (archivedDeals / deals.length) * 100 : 0;
+    const activeDeals = deals.filter((d) => d.status !== 'archived').length;
+    const activeDealValue = deals
+      .filter((d) => d.status !== 'archived')
+      .reduce((sum, deal) => sum + deal.value, 0);
+    const dealsInDiligence = deals.filter((d) => d.stage === 'due-diligence').length;
+    const dollarsInDiligence = deals
+      .filter((d) => d.stage === 'due-diligence')
+      .reduce((sum, deal) => sum + deal.value, 0);
 
-    return { totalValue, activeDeals, archivedDeals, completionRate, totalDeals: deals.length };
+    return { activeDeals, activeDealValue, dealsInDiligence, dollarsInDiligence, totalDeals: deals.length };
   }, [deals]);
 
   return {
