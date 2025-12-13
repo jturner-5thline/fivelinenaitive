@@ -396,16 +396,11 @@ export default function DealDetail() {
           <Card className="mb-6">
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="space-y-2">
+                <div>
                   <InlineEditField
                     value={deal.company}
                     onSave={(value) => updateDeal('company', value)}
                     displayClassName="text-xl font-semibold text-purple-600"
-                  />
-                  <InlineEditField
-                    value={deal.name}
-                    onSave={(value) => updateDeal('name', value)}
-                    displayClassName="text-muted-foreground"
                   />
                 </div>
                 <div className="flex items-center justify-center self-stretch">
