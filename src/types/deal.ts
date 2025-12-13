@@ -2,7 +2,7 @@ export type DealStage = 'prospecting' | 'initial-review' | 'due-diligence' | 'te
 
 export type DealStatus = 'on-track' | 'at-risk' | 'off-track' | 'on-hold' | 'archived';
 
-export type EngagementType = 'direct' | 'syndicated' | 'club-deal' | 'sole-lender';
+export type EngagementType = 'guided' | 'advisory' | 'managed-process';
 
 export interface Deal {
   id: string;
@@ -38,10 +38,9 @@ export const STATUS_CONFIG: Record<DealStatus, { label: string; dotColor: string
 };
 
 export const ENGAGEMENT_TYPE_CONFIG: Record<EngagementType, { label: string }> = {
-  'direct': { label: 'Direct' },
-  'syndicated': { label: 'Syndicated' },
-  'club-deal': { label: 'Club Deal' },
-  'sole-lender': { label: 'Sole Lender' },
+  'guided': { label: 'Guided' },
+  'advisory': { label: 'Advisory' },
+  'managed-process': { label: 'Managed Process' },
 };
 
 export const MANAGERS = [
