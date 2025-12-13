@@ -279,16 +279,6 @@ export default function DealDetail() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="mt-4">
-                <InlineEditField
-                  value={deal.notes || ''}
-                  onSave={(value) => updateDeal('notes', value)}
-                  type="textarea"
-                  placeholder="Add notes..."
-                  displayClassName={`text-sm ${deal.notes ? 'text-muted-foreground' : 'text-muted-foreground/50 italic'}`}
-                />
-              </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between pt-2 border-t border-border">
