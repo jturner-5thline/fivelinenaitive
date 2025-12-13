@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export type WidgetMetric = 
   | 'active-deals'
@@ -47,6 +47,28 @@ const DEFAULT_WIDGETS: Widget[] = [
   { id: 'w4', label: 'Dollars in Diligence', metric: 'dollars-in-diligence', color: 'warning' },
 ];
 
+const STORAGE_KEY = 'dashboard-widgets';
+
+const loadWidgets = (): Widget[] => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Failed to load widgets from localStorage:', error);
+  }
+  return DEFAULT_WIDGETS;
+};
+
+const saveWidgets = (widgets: Widget[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
+  } catch (error) {
+    console.error('Failed to save widgets to localStorage:', error);
+  }
+};
+
 interface WidgetsContextType {
   widgets: Widget[];
   addWidget: (widget: Omit<Widget, 'id'>) => void;
@@ -58,7 +80,11 @@ interface WidgetsContextType {
 const WidgetsContext = createContext<WidgetsContextType | undefined>(undefined);
 
 export function WidgetsProvider({ children }: { children: ReactNode }) {
-  const [widgets, setWidgets] = useState<Widget[]>(DEFAULT_WIDGETS);
+  const [widgets, setWidgets] = useState<Widget[]>(loadWidgets);
+
+  useEffect(() => {
+    saveWidgets(widgets);
+  }, [widgets]);
 
   const addWidget = (widget: Omit<Widget, 'id'>) => {
     const newWidget: Widget = {
