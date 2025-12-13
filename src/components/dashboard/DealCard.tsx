@@ -1,4 +1,5 @@
 import { MoreHorizontal, Building2, User, Calendar, TrendingUp, Landmark } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +30,8 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
   };
 
   return (
-    <Card className="group transition-all hover:shadow-md hover:border-primary/20">
+    <Link to={`/deal/${deal.id}`} className="block">
+      <Card className="group transition-all hover:shadow-md hover:border-primary/20 cursor-pointer">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="space-y-1">
           <h3 className="font-semibold text-foreground leading-tight">{deal.name}</h3>
@@ -111,5 +113,6 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
         </div>
       </CardContent>
     </Card>
+    </Link>
   );
 }
