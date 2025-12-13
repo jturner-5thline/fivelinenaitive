@@ -456,7 +456,7 @@ export default function DealDetail() {
                     }}
                     type="textarea"
                     placeholder="Click to add status notes..."
-                    displayClassName="text-lg text-foreground/70"
+                    displayClassName="text-lg text-foreground/90"
                   />
                 </div>
                 <div className={`flex items-center gap-2 text-sm text-muted-foreground shrink-0 ${timeAgoData.highlightClass}`}>
