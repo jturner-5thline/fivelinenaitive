@@ -240,7 +240,7 @@ function KanbanBoard({
 
 export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
   const [newItemText, setNewItemText] = useState('');
-  const [newRequestedBy, setNewRequestedBy] = useState<string[]>(['5th Line']);
+  const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
@@ -269,7 +269,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
     if (newItemText.trim() && newRequestedBy.length > 0) {
       onAdd(newItemText.trim(), newRequestedBy);
       setNewItemText('');
-      setNewRequestedBy(['5th Line']);
+      setNewRequestedBy([]);
     }
   };
 
