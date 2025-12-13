@@ -4,6 +4,17 @@ export type DealStatus = 'on-track' | 'at-risk' | 'off-track' | 'on-hold' | 'arc
 
 export type EngagementType = 'guided' | 'advisory' | 'managed-process';
 
+export type LenderStatus = 'in-review' | 'terms-issued' | 'in-diligence' | 'closed-funded';
+
+export type LenderStage = 'reviewing-drl' | 'management-call-set' | 'management-call-completed' | 'draft-terms' | 'term-sheets';
+
+export interface DealLender {
+  id: string;
+  name: string;
+  status: LenderStatus;
+  stage: LenderStage;
+}
+
 export interface Deal {
   id: string;
   name: string;
@@ -19,7 +30,23 @@ export interface Deal {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  lenders?: DealLender[];
 }
+
+export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
+  'in-review': { label: 'In Review' },
+  'terms-issued': { label: 'Terms Issued' },
+  'in-diligence': { label: 'In Diligence' },
+  'closed-funded': { label: 'Closed & Funded' },
+};
+
+export const LENDER_STAGE_CONFIG: Record<LenderStage, { label: string }> = {
+  'reviewing-drl': { label: 'Reviewing DRL' },
+  'management-call-set': { label: 'Management Call Set' },
+  'management-call-completed': { label: 'Management Call Completed' },
+  'draft-terms': { label: 'Draft Terms' },
+  'term-sheets': { label: 'Term Sheets' },
+};
 
 export const STAGE_CONFIG: Record<DealStage, { label: string; color: string }> = {
   'prospecting': { label: 'Prospecting', color: 'bg-slate-500' },
