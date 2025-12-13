@@ -779,7 +779,7 @@ export default function DealDetail() {
             <div className="lg:col-span-1 space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Deal Information</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-purple-700">Deal Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -834,8 +834,7 @@ export default function DealDetail() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
+                  <CardTitle className="text-lg font-semibold text-purple-700">
                     Activity
                   </CardTitle>
                 </CardHeader>
