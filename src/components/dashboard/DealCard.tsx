@@ -65,8 +65,8 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
   return (
-    <Link to={`/deal/${deal.id}`} className="block">
-      <Card className="group transition-all hover:shadow-md hover:border-primary/20 cursor-pointer">
+    <Link to={`/deal/${deal.id}`} className="block h-full">
+      <Card className="group transition-all hover:shadow-md hover:border-primary/20 cursor-pointer h-full flex flex-col">
       <CardHeader className="space-y-0 pb-3">
         <div className="flex flex-row items-start justify-between">
           <h3 className="font-semibold text-foreground leading-tight">{deal.company}</h3>
@@ -120,11 +120,11 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
             {stageConfig.label}
           </Badge>
         </div>
-        {deal.notes && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-3">{deal.notes}</p>
-        )}
+        <p className="text-sm text-muted-foreground line-clamp-2 mt-3 min-h-[2.5rem]">
+          {deal.notes || '\u00A0'}
+        </p>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 mt-auto">
 
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <User className="h-3.5 w-3.5" />
