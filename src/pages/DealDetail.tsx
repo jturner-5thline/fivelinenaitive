@@ -30,7 +30,41 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+
+// Mock lender contact and preference data
+const LENDER_DETAILS: Record<string, { contact: { name: string; email: string; phone: string }; preferences: string[] }> = {
+  'JPMorgan Chase': {
+    contact: { name: 'Michael Thompson', email: 'mthompson@jpmorgan.com', phone: '(212) 555-0101' },
+    preferences: ['$10M+ deals', 'Technology & Healthcare', 'Series B and later'],
+  },
+  'Goldman Sachs': {
+    contact: { name: 'Sarah Mitchell', email: 'smitchell@gs.com', phone: '(212) 555-0102' },
+    preferences: ['$25M+ deals', 'Financial Services', 'Growth Equity'],
+  },
+  'Wells Fargo': {
+    contact: { name: 'David Chen', email: 'dchen@wellsfargo.com', phone: '(415) 555-0103' },
+    preferences: ['$5M-$50M deals', 'Diversified Industries', 'Asset-based lending'],
+  },
+  'Bank of America': {
+    contact: { name: 'Jennifer Lee', email: 'jlee@bofa.com', phone: '(704) 555-0104' },
+    preferences: ['$10M+ deals', 'Consumer & Retail', 'Working capital'],
+  },
+  'Capital One': {
+    contact: { name: 'Robert Garcia', email: 'rgarcia@capitalone.com', phone: '(703) 555-0105' },
+    preferences: ['$5M-$25M deals', 'Technology', 'Venture debt'],
+  },
+  'First National Bank': {
+    contact: { name: 'Amanda Wilson', email: 'awilson@fnb.com', phone: '(412) 555-0106' },
+    preferences: ['$2M-$15M deals', 'Manufacturing & Services', 'Traditional lending'],
+  },
+};
 
 // Mock activity data - in a real app this would come from the database
 const getMockActivities = (dealId: string): ActivityItem[] => [
@@ -102,7 +136,20 @@ export default function DealDetail() {
   const [isLenderDropdownOpen, setIsLenderDropdownOpen] = useState(false);
   const [statusHistory, setStatusHistory] = useState<{ note: string; timestamp: Date }[]>([]);
   const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
+  const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const activities = getMockActivities(id || '');
+
+  // Get all deals where selected lender appears
+  const getLenderDeals = useCallback((lenderName: string) => {
+    return mockDeals
+      .filter(d => d.lenders?.some(l => l.name === lenderName))
+      .map(d => ({
+        dealId: d.id,
+        dealName: d.name,
+        company: d.company,
+        lenderInfo: d.lenders?.find(l => l.name === lenderName),
+      }));
+  }, []);
 
   const addLender = useCallback((lenderName: string) => {
     if (!deal || !lenderName.trim()) return;
@@ -438,7 +485,12 @@ export default function DealDetail() {
                       <>
                         {deal.lenders.map((lender, index) => (
                           <div key={lender.id} className={`grid grid-cols-[140px_120px_180px_1fr] items-center gap-4 ${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                            <span className="font-medium truncate">{lender.name}</span>
+                            <button 
+                              className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
+                              onClick={() => setSelectedLenderName(lender.name)}
+                            >
+                              {lender.name}
+                            </button>
                             <Select
                               value={lender.status}
                               onValueChange={(value: LenderStatus) => {
@@ -663,6 +715,73 @@ export default function DealDetail() {
           </div>
         </main>
       </div>
+
+      {/* Lender Detail Dialog */}
+      <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{selectedLenderName}</DialogTitle>
+          </DialogHeader>
+          {selectedLenderName && (
+            <div className="space-y-6">
+              {/* Contact Information */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
+                {LENDER_DETAILS[selectedLenderName] ? (
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-muted-foreground">Name:</span> {LENDER_DETAILS[selectedLenderName].contact.name}</p>
+                    <p><span className="text-muted-foreground">Email:</span> {LENDER_DETAILS[selectedLenderName].contact.email}</p>
+                    <p><span className="text-muted-foreground">Phone:</span> {LENDER_DETAILS[selectedLenderName].contact.phone}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No contact information available</p>
+                )}
+              </div>
+
+              {/* Deal Preferences */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Deal Preferences</h4>
+                {LENDER_DETAILS[selectedLenderName]?.preferences ? (
+                  <div className="flex flex-wrap gap-2">
+                    {LENDER_DETAILS[selectedLenderName].preferences.map((pref, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-xs">{pref}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No preferences listed</p>
+                )}
+              </div>
+
+              {/* All Deals with this Lender */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Deals with {selectedLenderName}</h4>
+                <div className="space-y-2">
+                  {getLenderDeals(selectedLenderName).map((dealInfo) => (
+                    <div key={dealInfo.dealId} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                      <div>
+                        <p className="font-medium">{dealInfo.company}</p>
+                        <p className="text-xs text-muted-foreground">{dealInfo.dealName}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {dealInfo.lenderInfo && (
+                          <>
+                            <Badge variant="outline" className="text-xs">
+                              {LENDER_STATUS_CONFIG[dealInfo.lenderInfo.status].label}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {LENDER_TRACKING_STATUS_CONFIG[dealInfo.lenderInfo.trackingStatus].label}
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
