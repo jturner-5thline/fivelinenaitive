@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BarChart3, Plus, Settings, Building2, CreditCard, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,7 @@ import {
 import { toast } from 'sonner';
 
 export function DashboardHeader() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
@@ -38,12 +39,17 @@ export function DashboardHeader() {
       return;
     }
 
-    // For now, just show success toast - actual deal creation would go here
+    // Generate a new deal ID (in a real app, this would come from the backend)
+    const newDealId = Date.now().toString();
+
     toast.success(`Deal "${dealName}" created successfully!`);
     setOpen(false);
     setDealName('');
     setDealAmount('');
     setDealManager('');
+    
+    // Navigate to the new deal page
+    navigate(`/deal/${newDealId}`);
   };
 
   return (
