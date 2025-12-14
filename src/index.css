@@ -63,6 +63,9 @@
     --sidebar-border: 190 50% 25%;
     --sidebar-ring: 183 56% 44%;
 
+    /* Brand color - #123456 */
+    --brand: 210 65% 20%;
+
     /* Chart colors */
     --chart-1: 183 56% 44%;
     --chart-2: 160 84% 39%;
@@ -131,6 +134,9 @@
     --sidebar-accent-foreground: 210 20% 96%;
     --sidebar-border: 215 28% 22%;
     --sidebar-ring: 183 56% 50%;
+
+    /* Brand color - lighter for dark mode */
+    --brand: 210 65% 50%;
 
     --chart-1: 183 56% 50%;
     --chart-2: 160 84% 45%;
