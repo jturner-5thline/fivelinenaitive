@@ -1,7 +1,19 @@
-import { BarChart3, Plus, Settings, User, Building2, CreditCard, SlidersHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { BarChart3, Plus, Settings, Building2, CreditCard, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,8 +22,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 export function DashboardHeader() {
+  const [open, setOpen] = useState(false);
+  const [dealName, setDealName] = useState('');
+  const [dealAmount, setDealAmount] = useState('');
+  const [dealManager, setDealManager] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!dealName.trim() || !dealAmount.trim() || !dealManager.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    // For now, just show success toast - actual deal creation would go here
+    toast.success(`Deal "${dealName}" created successfully!`);
+    setOpen(false);
+    setDealName('');
+    setDealAmount('');
+    setDealManager('');
+  };
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center justify-between px-6">
@@ -35,10 +69,57 @@ export function DashboardHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <Button size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Deal
-          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Deal
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Create New Deal</DialogTitle>
+                <DialogDescription>
+                  Enter the details for the new deal.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit}>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="dealName">Deal Name</Label>
+                    <Input
+                      id="dealName"
+                      value={dealName}
+                      onChange={(e) => setDealName(e.target.value)}
+                      placeholder="Enter deal name"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dealAmount">Deal Amount</Label>
+                    <Input
+                      id="dealAmount"
+                      type="number"
+                      value={dealAmount}
+                      onChange={(e) => setDealAmount(e.target.value)}
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dealManager">Deal Manager</Label>
+                    <Input
+                      id="dealManager"
+                      value={dealManager}
+                      onChange={(e) => setDealManager(e.target.value)}
+                      placeholder="Enter manager name"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit">Create Deal</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
