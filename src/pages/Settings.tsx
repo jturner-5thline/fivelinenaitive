@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
+import { LenderStagesSettings } from '@/components/settings/LenderStagesSettings';
 
 interface LenderForm {
   name: string;
@@ -222,6 +223,8 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+
+            <LenderStagesSettings />
 
             <Card>
               <CardHeader>
