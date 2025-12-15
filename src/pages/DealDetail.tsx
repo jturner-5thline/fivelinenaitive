@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save } from 'lucide-react';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -131,9 +131,61 @@ export default function DealDetail() {
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
-  const [isLendersExpanded, setIsLendersExpanded] = useState(true);
-  const [lenderGroupFilter, setLenderGroupFilter] = useState<StageGroup | 'all'>('all');
-  const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'term-sheets' | 'credit-file' | 'reports'>('all');
+  
+  // View preferences - load from localStorage
+  const savedViewPrefs = useMemo(() => {
+    const saved = localStorage.getItem('dealDetailViewPrefs');
+    return saved ? JSON.parse(saved) : null;
+  }, []);
+  
+  const [isLendersExpanded, setIsLendersExpanded] = useState<boolean>(
+    savedViewPrefs?.isLendersExpanded ?? true
+  );
+  const [lenderGroupFilter, setLenderGroupFilter] = useState<StageGroup | 'all'>(
+    savedViewPrefs?.lenderGroupFilter ?? 'all'
+  );
+  const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'term-sheets' | 'credit-file' | 'reports'>(
+    savedViewPrefs?.attachmentFilter ?? 'all'
+  );
+  
+  // Track if view has been modified from saved state
+  const [viewModified, setViewModified] = useState(false);
+  
+  // Check if current view differs from saved preferences
+  useEffect(() => {
+    const currentPrefs = {
+      isLendersExpanded,
+      lenderGroupFilter,
+      attachmentFilter,
+    };
+    const savedPrefs = savedViewPrefs || {
+      isLendersExpanded: true,
+      lenderGroupFilter: 'all',
+      attachmentFilter: 'all',
+    };
+    
+    const hasChanged = 
+      currentPrefs.isLendersExpanded !== savedPrefs.isLendersExpanded ||
+      currentPrefs.lenderGroupFilter !== savedPrefs.lenderGroupFilter ||
+      currentPrefs.attachmentFilter !== savedPrefs.attachmentFilter;
+    
+    setViewModified(hasChanged);
+  }, [isLendersExpanded, lenderGroupFilter, attachmentFilter, savedViewPrefs]);
+  
+  const saveViewPreferences = useCallback(() => {
+    const prefs = {
+      isLendersExpanded,
+      lenderGroupFilter,
+      attachmentFilter,
+    };
+    localStorage.setItem('dealDetailViewPrefs', JSON.stringify(prefs));
+    setViewModified(false);
+    toast({
+      title: "View saved",
+      description: "Your view preferences have been saved as the default.",
+    });
+  }, [isLendersExpanded, lenderGroupFilter, attachmentFilter]);
+  
   const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string; category: 'term-sheets' | 'credit-file' | 'reports' }[]>([
     { id: '1', name: 'Term Sheet v2.pdf', type: 'pdf', size: '245 KB', uploadedAt: '2024-01-18', category: 'term-sheets' },
     { id: '2', name: 'Financial Model.xlsx', type: 'xlsx', size: '1.2 MB', uploadedAt: '2024-01-17', category: 'credit-file' },
@@ -404,6 +456,17 @@ export default function DealDetail() {
               </Link>
             </Button>
             <div className="flex items-center gap-2">
+              {viewModified && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                  onClick={saveViewPreferences}
+                >
+                  <Save className="h-4 w-4" />
+                  Save View
+                </Button>
+              )}
               {editHistory.length > 0 && (
                 <Button
                   variant="outline"
