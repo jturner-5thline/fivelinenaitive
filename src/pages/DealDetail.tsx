@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload } from 'lucide-react';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -123,6 +123,11 @@ export default function DealDetail() {
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
   const [isLendersExpanded, setIsLendersExpanded] = useState(true);
+  const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string }[]>([
+    { id: '1', name: 'Term Sheet v2.pdf', type: 'pdf', size: '245 KB', uploadedAt: '2024-01-18' },
+    { id: '2', name: 'Financial Model.xlsx', type: 'xlsx', size: '1.2 MB', uploadedAt: '2024-01-17' },
+    { id: '3', name: 'Due Diligence Checklist.docx', type: 'docx', size: '89 KB', uploadedAt: '2024-01-15' },
+  ]);
   const baseActivities = getMockActivities(id || '');
 
   // Combine base activities with lender removal activities
@@ -849,6 +854,74 @@ export default function DealDetail() {
                       displayClassName="font-medium text-purple-600"
                     />
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Attachments & Documents */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold text-purple-700 flex items-center gap-2">
+                      <Paperclip className="h-5 w-5" />
+                      Attachments
+                    </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1"
+                      onClick={() => {
+                        const newAttachment = {
+                          id: `att-${Date.now()}`,
+                          name: 'New Document.pdf',
+                          type: 'pdf',
+                          size: '0 KB',
+                          uploadedAt: new Date().toISOString().split('T')[0],
+                        };
+                        setAttachments(prev => [...prev, newAttachment]);
+                        toast({ title: 'Attachment added' });
+                      }}
+                    >
+                      <Upload className="h-4 w-4" />
+                      Upload
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {attachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {attachments.map((attachment) => (
+                        <div
+                          key={attachment.id}
+                          className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group hover:bg-muted transition-colors"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <File className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{attachment.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {attachment.size} • {attachment.uploadedAt}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                              setAttachments(prev => prev.filter(a => a.id !== attachment.id));
+                              toast({ title: 'Attachment removed' });
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No attachments yet
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
