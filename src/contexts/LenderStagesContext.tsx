@@ -20,6 +20,11 @@ export interface SubstageOption {
   label: string;
 }
 
+export interface PassReasonOption {
+  id: string;
+  label: string;
+}
+
 interface LenderStagesContextType {
   stages: StageOption[];
   addStage: (stage: Omit<StageOption, 'id'>) => void;
@@ -31,6 +36,11 @@ interface LenderStagesContextType {
   updateSubstage: (id: string, substage: Omit<SubstageOption, 'id'>) => void;
   deleteSubstage: (id: string) => void;
   reorderSubstages: (substages: SubstageOption[]) => void;
+  passReasons: PassReasonOption[];
+  addPassReason: (reason: Omit<PassReasonOption, 'id'>) => void;
+  updatePassReason: (id: string, reason: Omit<PassReasonOption, 'id'>) => void;
+  deletePassReason: (id: string) => void;
+  reorderPassReasons: (reasons: PassReasonOption[]) => void;
   getStagesByGroup: (group: StageGroup) => StageOption[];
 }
 
@@ -49,6 +59,12 @@ const defaultSubstages: SubstageOption[] = [
   { id: 'in-review', label: 'In Review' },
   { id: 'follow-up-needed', label: 'Follow-up Needed' },
   { id: 'scheduled', label: 'Scheduled' },
+];
+
+const defaultPassReasons: PassReasonOption[] = [
+  { id: 'too-small', label: 'Too Small' },
+  { id: 'business-model', label: 'Business Model' },
+  { id: 'burn-too-high', label: 'Burn Too High' },
 ];
 
 export function LenderStagesProvider({ children }: { children: ReactNode }) {
@@ -70,6 +86,11 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     return saved ? JSON.parse(saved) : defaultSubstages;
   });
 
+  const [passReasons, setPassReasons] = useState<PassReasonOption[]>(() => {
+    const saved = localStorage.getItem('lenderPassReasons');
+    return saved ? JSON.parse(saved) : defaultPassReasons;
+  });
+
   const saveStages = (newStages: StageOption[]) => {
     setStages(newStages);
     localStorage.setItem('lenderStages', JSON.stringify(newStages));
@@ -78,6 +99,11 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
   const saveSubstages = (newSubstages: SubstageOption[]) => {
     setSubstages(newSubstages);
     localStorage.setItem('lenderSubstages', JSON.stringify(newSubstages));
+  };
+
+  const savePassReasons = (newReasons: PassReasonOption[]) => {
+    setPassReasons(newReasons);
+    localStorage.setItem('lenderPassReasons', JSON.stringify(newReasons));
   };
 
   const addStage = (stage: Omit<StageOption, 'id'>) => {
@@ -116,6 +142,24 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     saveSubstages(newSubstages);
   };
 
+  const addPassReason = (reason: Omit<PassReasonOption, 'id'>) => {
+    const id = reason.label.toLowerCase().replace(/\s+/g, '-');
+    const newReason = { id, ...reason };
+    savePassReasons([...passReasons, newReason]);
+  };
+
+  const updatePassReason = (id: string, reason: Omit<PassReasonOption, 'id'>) => {
+    savePassReasons(passReasons.map(r => r.id === id ? { ...r, ...reason } : r));
+  };
+
+  const deletePassReason = (id: string) => {
+    savePassReasons(passReasons.filter(r => r.id !== id));
+  };
+
+  const reorderPassReasons = (newReasons: PassReasonOption[]) => {
+    savePassReasons(newReasons);
+  };
+
   const getStagesByGroup = (group: StageGroup) => {
     return stages.filter(s => s.group === group);
   };
@@ -132,6 +176,11 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       updateSubstage,
       deleteSubstage,
       reorderSubstages,
+      passReasons,
+      addPassReason,
+      updatePassReason,
+      deletePassReason,
+      reorderPassReasons,
       getStagesByGroup,
     }}>
       {children}

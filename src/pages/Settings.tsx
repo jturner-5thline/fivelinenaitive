@@ -30,6 +30,7 @@ import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
 import { LenderStagesSettings } from '@/components/settings/LenderStagesSettings';
 import { LenderSubstagesSettings } from '@/components/settings/LenderSubstagesSettings';
+import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
 
 interface LenderForm {
   name: string;
@@ -228,6 +229,8 @@ export default function Settings() {
             <LenderStagesSettings />
 
             <LenderSubstagesSettings />
+
+            <PassReasonsSettings />
 
             <Card>
               <CardHeader>
