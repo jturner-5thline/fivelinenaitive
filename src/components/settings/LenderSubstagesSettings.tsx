@@ -40,13 +40,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { useLenderStages, StageOption } from '@/contexts/LenderStagesContext';
+import { useLenderStages, SubstageOption } from '@/contexts/LenderStagesContext';
 
 interface SortableSubstageItemProps {
-  substage: StageOption;
+  substage: SubstageOption;
   index: number;
-  onEdit: (substage: StageOption) => void;
-  onDelete: (substage: StageOption) => void;
+  onEdit: (substage: SubstageOption) => void;
+  onDelete: (substage: SubstageOption) => void;
 }
 
 function SortableSubstageItem({ substage, index, onEdit, onDelete }: SortableSubstageItemProps) {
@@ -125,7 +125,7 @@ function SortableSubstageItem({ substage, index, onEdit, onDelete }: SortableSub
 export function LenderSubstagesSettings() {
   const { substages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages } = useLenderStages();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingSubstage, setEditingSubstage] = useState<StageOption | null>(null);
+  const [editingSubstage, setEditingSubstage] = useState<SubstageOption | null>(null);
   const [label, setLabel] = useState('');
 
   const sensors = useSensors(
@@ -141,7 +141,7 @@ export function LenderSubstagesSettings() {
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (substage: StageOption) => {
+  const openEditDialog = (substage: SubstageOption) => {
     setEditingSubstage(substage);
     setLabel(substage.label);
     setIsDialogOpen(true);
@@ -171,7 +171,7 @@ export function LenderSubstagesSettings() {
     setEditingSubstage(null);
   };
 
-  const handleDelete = (substage: StageOption) => {
+  const handleDelete = (substage: SubstageOption) => {
     deleteSubstage(substage.id);
     toast({ title: 'Milestone deleted', description: `${substage.label} has been removed.` });
   };

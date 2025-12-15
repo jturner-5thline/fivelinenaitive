@@ -1,6 +1,21 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
+export type StageGroup = 'active' | 'on-deck' | 'passed' | 'on-hold';
+
+export const STAGE_GROUPS: { id: StageGroup; label: string; color: string }[] = [
+  { id: 'active', label: 'Active', color: 'bg-green-500' },
+  { id: 'on-deck', label: 'On Deck', color: 'bg-blue-500' },
+  { id: 'passed', label: 'Passed', color: 'bg-muted' },
+  { id: 'on-hold', label: 'On Hold', color: 'bg-yellow-500' },
+];
+
 export interface StageOption {
+  id: string;
+  label: string;
+  group: StageGroup;
+}
+
+export interface SubstageOption {
   id: string;
   label: string;
 }
@@ -8,27 +23,28 @@ export interface StageOption {
 interface LenderStagesContextType {
   stages: StageOption[];
   addStage: (stage: Omit<StageOption, 'id'>) => void;
-  updateStage: (id: string, stage: Omit<StageOption, 'id'>) => void;
+  updateStage: (id: string, stage: Partial<Omit<StageOption, 'id'>>) => void;
   deleteStage: (id: string) => void;
   reorderStages: (stages: StageOption[]) => void;
-  substages: StageOption[];
-  addSubstage: (substage: Omit<StageOption, 'id'>) => void;
-  updateSubstage: (id: string, substage: Omit<StageOption, 'id'>) => void;
+  substages: SubstageOption[];
+  addSubstage: (substage: Omit<SubstageOption, 'id'>) => void;
+  updateSubstage: (id: string, substage: Omit<SubstageOption, 'id'>) => void;
   deleteSubstage: (id: string) => void;
-  reorderSubstages: (substages: StageOption[]) => void;
+  reorderSubstages: (substages: SubstageOption[]) => void;
+  getStagesByGroup: (group: StageGroup) => StageOption[];
 }
 
 const LenderStagesContext = createContext<LenderStagesContextType | undefined>(undefined);
 
 const defaultStages: StageOption[] = [
-  { id: 'reviewing-drl', label: 'Reviewing DRL' },
-  { id: 'management-call-set', label: 'Management Call Set' },
-  { id: 'management-call-completed', label: 'Management Call Completed' },
-  { id: 'draft-terms', label: 'Draft Terms' },
-  { id: 'term-sheets', label: 'Term Sheets' },
+  { id: 'reviewing-drl', label: 'Reviewing DRL', group: 'active' },
+  { id: 'management-call-set', label: 'Management Call Set', group: 'active' },
+  { id: 'management-call-completed', label: 'Management Call Completed', group: 'active' },
+  { id: 'draft-terms', label: 'Draft Terms', group: 'active' },
+  { id: 'term-sheets', label: 'Term Sheets', group: 'active' },
 ];
 
-const defaultSubstages: StageOption[] = [
+const defaultSubstages: SubstageOption[] = [
   { id: 'awaiting-response', label: 'Awaiting Response' },
   { id: 'in-review', label: 'In Review' },
   { id: 'follow-up-needed', label: 'Follow-up Needed' },
@@ -38,10 +54,18 @@ const defaultSubstages: StageOption[] = [
 export function LenderStagesProvider({ children }: { children: ReactNode }) {
   const [stages, setStages] = useState<StageOption[]>(() => {
     const saved = localStorage.getItem('lenderStages');
-    return saved ? JSON.parse(saved) : defaultStages;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Migrate old stages without group
+      return parsed.map((s: any) => ({
+        ...s,
+        group: s.group || 'active'
+      }));
+    }
+    return defaultStages;
   });
 
-  const [substages, setSubstages] = useState<StageOption[]>(() => {
+  const [substages, setSubstages] = useState<SubstageOption[]>(() => {
     const saved = localStorage.getItem('lenderSubstages');
     return saved ? JSON.parse(saved) : defaultSubstages;
   });
@@ -51,7 +75,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('lenderStages', JSON.stringify(newStages));
   };
 
-  const saveSubstages = (newSubstages: StageOption[]) => {
+  const saveSubstages = (newSubstages: SubstageOption[]) => {
     setSubstages(newSubstages);
     localStorage.setItem('lenderSubstages', JSON.stringify(newSubstages));
   };
@@ -62,7 +86,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     saveStages([...stages, newStage]);
   };
 
-  const updateStage = (id: string, stage: Omit<StageOption, 'id'>) => {
+  const updateStage = (id: string, stage: Partial<Omit<StageOption, 'id'>>) => {
     saveStages(stages.map(s => s.id === id ? { ...s, ...stage } : s));
   };
 
@@ -74,13 +98,13 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     saveStages(newStages);
   };
 
-  const addSubstage = (substage: Omit<StageOption, 'id'>) => {
+  const addSubstage = (substage: Omit<SubstageOption, 'id'>) => {
     const id = substage.label.toLowerCase().replace(/\s+/g, '-');
     const newSubstage = { id, ...substage };
     saveSubstages([...substages, newSubstage]);
   };
 
-  const updateSubstage = (id: string, substage: Omit<StageOption, 'id'>) => {
+  const updateSubstage = (id: string, substage: Omit<SubstageOption, 'id'>) => {
     saveSubstages(substages.map(s => s.id === id ? { ...s, ...substage } : s));
   };
 
@@ -88,8 +112,12 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     saveSubstages(substages.filter(s => s.id !== id));
   };
 
-  const reorderSubstages = (newSubstages: StageOption[]) => {
+  const reorderSubstages = (newSubstages: SubstageOption[]) => {
     saveSubstages(newSubstages);
+  };
+
+  const getStagesByGroup = (group: StageGroup) => {
+    return stages.filter(s => s.group === group);
   };
 
   return (
@@ -104,6 +132,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       updateSubstage,
       deleteSubstage,
       reorderSubstages,
+      getStagesByGroup,
     }}>
       {children}
     </LenderStagesContext.Provider>
