@@ -1,8 +1,8 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, BorderStyle, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, BorderStyle, AlignmentType, PageOrientation } from 'docx';
 import { saveAs } from 'file-saver';
-import { Deal, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 
 const formatCurrency = (value: number) => {
   if (value >= 1000000) {
@@ -484,4 +484,268 @@ function createDataCell(text: string): TableCell {
       right: { style: BorderStyle.SINGLE, size: 1, color: 'E5E5E5' },
     },
   });
+}
+
+// ==================== PIPELINE EXPORTS (All Deals) ====================
+
+// Pipeline CSV Export
+export function exportPipelineToCSV(deals: Deal[]): void {
+  const statusGroups: Record<DealStatus, Deal[]> = {
+    'on-track': [],
+    'at-risk': [],
+    'off-track': [],
+    'on-hold': [],
+    'archived': [],
+  };
+
+  deals.forEach(deal => {
+    statusGroups[deal.status].push(deal);
+  });
+
+  const rows: string[][] = [
+    ['Pipeline Report - ' + formatDate(new Date().toISOString())],
+    [],
+    ['Summary'],
+    ['Total Deals', deals.length.toString()],
+    ['Total Pipeline Value', formatCurrency(deals.reduce((sum, d) => sum + d.value, 0))],
+    ['On Track', statusGroups['on-track'].length.toString()],
+    ['At Risk', statusGroups['at-risk'].length.toString()],
+    ['Off Track', statusGroups['off-track'].length.toString()],
+    ['On Hold', statusGroups['on-hold'].length.toString()],
+    [],
+    ['All Deals'],
+    ['Company', 'Deal Name', 'Status', 'Stage', 'Value', 'Fee', 'Manager', 'Lender', 'Contact', 'Updated'],
+  ];
+
+  deals.forEach(deal => {
+    rows.push([
+      deal.company,
+      deal.name,
+      STATUS_CONFIG[deal.status].label,
+      STAGE_CONFIG[deal.stage].label,
+      formatCurrency(deal.value),
+      formatCurrency(deal.totalFee),
+      deal.manager,
+      deal.lender,
+      deal.contact,
+      formatDate(deal.updatedAt),
+    ]);
+  });
+
+  const csvContent = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  saveAs(blob, `pipeline-report-${new Date().toISOString().split('T')[0]}.csv`);
+}
+
+// Pipeline PDF Export
+export function exportPipelineToPDF(deals: Deal[]): void {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Header
+  doc.setFillColor(147, 51, 234);
+  doc.rect(0, 0, pageWidth, 35, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Pipeline Report', 20, 22);
+  
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generated ${formatDate(new Date().toISOString())}`, 20, 30);
+  
+  doc.setTextColor(0, 0, 0);
+  
+  let yPos = 45;
+
+  // Summary stats
+  const totalValue = deals.reduce((sum, d) => sum + d.value, 0);
+  const activeDeals = deals.filter(d => d.status !== 'archived');
+  const activeValue = activeDeals.reduce((sum, d) => sum + d.value, 0);
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Summary', 20, yPos);
+  yPos += 8;
+  
+  const summaryData = [
+    ['Total Deals', deals.length.toString(), 'Total Pipeline Value', formatCurrency(totalValue)],
+    ['Active Deals', activeDeals.length.toString(), 'Active Value', formatCurrency(activeValue)],
+    ['On Track', deals.filter(d => d.status === 'on-track').length.toString(), 'At Risk', deals.filter(d => d.status === 'at-risk').length.toString()],
+  ];
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [],
+    body: summaryData,
+    theme: 'plain',
+    styles: { fontSize: 10, cellPadding: 3 },
+    columnStyles: { 0: { fontStyle: 'bold' }, 2: { fontStyle: 'bold' } },
+    margin: { left: 20, right: 20 },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 15;
+
+  // Deals table
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('All Deals', 20, yPos);
+  yPos += 8;
+
+  const dealsData = deals.map(deal => [
+    deal.company,
+    deal.name,
+    STATUS_CONFIG[deal.status].label,
+    STAGE_CONFIG[deal.stage].label,
+    formatCurrency(deal.value),
+    formatCurrency(deal.totalFee),
+    deal.manager,
+    deal.lender,
+  ]);
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Company', 'Deal', 'Status', 'Stage', 'Value', 'Fee', 'Manager', 'Lender']],
+    body: dealsData,
+    theme: 'striped',
+    headStyles: { fillColor: [147, 51, 234], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 8, cellPadding: 2 },
+    margin: { left: 20, right: 20 },
+  });
+
+  // Footer on all pages
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text(
+      `Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      doc.internal.pageSize.getHeight() - 10,
+      { align: 'center' }
+    );
+  }
+
+  doc.save(`pipeline-report-${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// Pipeline Word Document Export
+export async function exportPipelineToWord(deals: Deal[]): Promise<void> {
+  const totalValue = deals.reduce((sum, d) => sum + d.value, 0);
+  const activeDeals = deals.filter(d => d.status !== 'archived');
+  const activeValue = activeDeals.reduce((sum, d) => sum + d.value, 0);
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            size: {
+              orientation: PageOrientation.LANDSCAPE,
+            },
+          },
+        },
+        children: [
+          // Title
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: 'Pipeline Report',
+                bold: true,
+                size: 48,
+                color: '9333EA',
+              }),
+            ],
+            heading: HeadingLevel.TITLE,
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `Generated ${formatDate(new Date().toISOString())}`,
+                size: 22,
+                color: '666666',
+              }),
+            ],
+            spacing: { after: 400 },
+          }),
+
+          // Summary Header
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: 'Summary',
+                bold: true,
+                size: 28,
+              }),
+            ],
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 300, after: 200 },
+          }),
+
+          // Summary Table
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              createTableRow('Total Deals', deals.length.toString()),
+              createTableRow('Total Pipeline Value', formatCurrency(totalValue)),
+              createTableRow('Active Deals', activeDeals.length.toString()),
+              createTableRow('Active Value', formatCurrency(activeValue)),
+              createTableRow('On Track', deals.filter(d => d.status === 'on-track').length.toString()),
+              createTableRow('At Risk', deals.filter(d => d.status === 'at-risk').length.toString()),
+              createTableRow('Off Track', deals.filter(d => d.status === 'off-track').length.toString()),
+              createTableRow('On Hold', deals.filter(d => d.status === 'on-hold').length.toString()),
+            ],
+          }),
+
+          // Deals Section
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: 'All Deals',
+                bold: true,
+                size: 28,
+              }),
+            ],
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 400, after: 200 },
+          }),
+
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  createHeaderCell('Company'),
+                  createHeaderCell('Deal'),
+                  createHeaderCell('Status'),
+                  createHeaderCell('Stage'),
+                  createHeaderCell('Value'),
+                  createHeaderCell('Manager'),
+                ],
+              }),
+              ...deals.map(
+                deal =>
+                  new TableRow({
+                    children: [
+                      createDataCell(deal.company),
+                      createDataCell(deal.name),
+                      createDataCell(STATUS_CONFIG[deal.status].label),
+                      createDataCell(STAGE_CONFIG[deal.stage].label),
+                      createDataCell(formatCurrency(deal.value)),
+                      createDataCell(deal.manager),
+                    ],
+                  })
+              ),
+            ],
+          }),
+        ],
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `pipeline-report-${new Date().toISOString().split('T')[0]}.docx`);
 }
