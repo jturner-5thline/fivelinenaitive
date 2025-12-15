@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { LendersProvider } from "@/contexts/LendersContext";
+import { LenderStagesProvider } from "@/contexts/LenderStagesContext";
 import { WidgetsProvider } from "@/contexts/WidgetsContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import Index from "./pages/Index";
@@ -24,7 +25,8 @@ const App = () => (
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <PreferencesProvider>
           <LendersProvider>
-            <WidgetsProvider>
+            <LenderStagesProvider>
+              <WidgetsProvider>
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
@@ -41,7 +43,8 @@ const App = () => (
                   </Routes>
                 </BrowserRouter>
               </TooltipProvider>
-            </WidgetsProvider>
+              </WidgetsProvider>
+            </LenderStagesProvider>
           </LendersProvider>
         </PreferencesProvider>
       </ThemeProvider>
