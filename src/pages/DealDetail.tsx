@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { mockDeals } from '@/data/mockDeals';
-import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderTrackingStatus, DealLender, DealMilestone, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
+import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
@@ -117,6 +118,7 @@ interface EditHistory {
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const { getLenderNames, getLenderDetails } = useLenders();
+  const { stages: configuredStages, substages: configuredSubstages } = useLenderStages();
   const { formatCurrencyValue } = usePreferences();
   const lenderNames = getLenderNames();
   const initialDeal = mockDeals.find((d) => d.id === id);
@@ -640,7 +642,7 @@ export default function DealDetail() {
                           );
                           return (
                           <div key={lender.id} className={`${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                            <div className="grid grid-cols-[140px_120px_180px_1fr] items-center gap-4">
+                            <div className="grid grid-cols-[140px_120px_160px_140px_1fr] items-center gap-3">
                             <button 
                               className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                               onClick={() => setSelectedLenderName(lender.name)}
@@ -677,12 +679,37 @@ export default function DealDetail() {
                               }}
                             >
                               <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
-                                <SelectValue />
+                                <SelectValue>
+                                  {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
-                                {Object.entries(LENDER_STAGE_CONFIG).map(([key, config]) => (
-                                  <SelectItem key={key} value={key}>
-                                    {config.label}
+                                {configuredStages.map((stage) => (
+                                  <SelectItem key={stage.id} value={stage.id}>
+                                    {stage.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={lender.substage || ''}
+                              onValueChange={(value: LenderSubstage) => {
+                                const updatedLenders = deal.lenders?.map(l => 
+                                  l.id === lender.id ? { ...l, substage: value || undefined } : l
+                                );
+                                updateDeal('lenders', updatedLenders as any);
+                              }}
+                            >
+                              <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-muted/50 border-0 justify-start">
+                                <SelectValue placeholder="Substage">
+                                  {lender.substage ? (configuredSubstages.find(s => s.id === lender.substage)?.label || lender.substage) : 'Substage'}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">None</SelectItem>
+                                {configuredSubstages.map((substage) => (
+                                  <SelectItem key={substage.id} value={substage.id}>
+                                    {substage.label}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

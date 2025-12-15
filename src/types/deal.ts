@@ -6,7 +6,9 @@ export type EngagementType = 'guided' | 'advisory' | 'managed-process';
 
 export type LenderStatus = 'in-review' | 'terms-issued' | 'in-diligence' | 'closed-funded';
 
-export type LenderStage = 'reviewing-drl' | 'management-call-set' | 'management-call-completed' | 'draft-terms' | 'term-sheets';
+export type LenderStage = string;
+
+export type LenderSubstage = string;
 
 export type LenderTrackingStatus = 'active' | 'on-hold' | 'on-deck' | 'passed';
 
@@ -15,6 +17,7 @@ export interface DealLender {
   name: string;
   status: LenderStatus;
   stage: LenderStage;
+  substage?: LenderSubstage;
   trackingStatus: LenderTrackingStatus;
 }
 
