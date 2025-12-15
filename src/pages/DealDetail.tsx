@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { mockDeals } from '@/data/mockDeals';
 import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
-import { useLenderStages } from '@/contexts/LenderStagesContext';
+import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
@@ -132,6 +132,7 @@ export default function DealDetail() {
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
   const [isLendersExpanded, setIsLendersExpanded] = useState(true);
+  const [lenderGroupFilter, setLenderGroupFilter] = useState<StageGroup | 'all'>('all');
   const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'term-sheets' | 'credit-file' | 'reports'>('all');
   const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string; category: 'term-sheets' | 'credit-file' | 'reports' }[]>([
     { id: '1', name: 'Term Sheet v2.pdf', type: 'pdf', size: '245 KB', uploadedAt: '2024-01-18', category: 'term-sheets' },
@@ -611,20 +612,38 @@ export default function DealDetail() {
                         </button>
                       </CollapsibleTrigger>
                       {deal.lenders && deal.lenders.length > 0 && (
-                        <div className="flex items-center gap-4">
-                          {(['active', 'on-hold', 'on-deck', 'passed'] as LenderTrackingStatus[])
-                            .map(trackingStatus => {
-                              const count = deal.lenders?.filter(l => l.trackingStatus === trackingStatus).length || 0;
-                              if (count === 0) return null;
-                              const config = LENDER_TRACKING_STATUS_CONFIG[trackingStatus];
-                              return (
-                                <div key={trackingStatus} className="flex items-center gap-1.5 text-sm">
-                                  <span className={`h-2.5 w-2.5 rounded-full ${config.color}`} />
-                                  <span className="text-muted-foreground">{config.label}</span>
-                                  <span className="font-medium">{count}</span>
-                                </div>
-                              );
-                            })}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setLenderGroupFilter('all')}
+                            className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                              lenderGroupFilter === 'all'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            }`}
+                          >
+                            All
+                          </button>
+                          {STAGE_GROUPS.map(group => {
+                            const count = deal.lenders?.filter(l => {
+                              const stage = configuredStages.find(s => s.id === l.stage);
+                              return stage?.group === group.id;
+                            }).length || 0;
+                            return (
+                              <button
+                                key={group.id}
+                                onClick={() => setLenderGroupFilter(group.id)}
+                                className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${
+                                  lenderGroupFilter === group.id
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                }`}
+                              >
+                                <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                                {group.label}
+                                {count > 0 && <span className="font-medium">({count})</span>}
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -634,140 +653,160 @@ export default function DealDetail() {
                   <div className="space-y-4">
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
-                        {deal.lenders.map((lender, index) => {
-                          const lenderOutstandingItems = outstandingItems.filter(
-                            item => Array.isArray(item.requestedBy) 
-                              ? item.requestedBy.includes(lender.name)
-                              : item.requestedBy === lender.name
-                          );
-                          return (
-                          <div key={lender.id} className={`${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                            <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
-                            <button 
-                              className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
-                              onClick={() => setSelectedLenderName(lender.name)}
-                            >
-                              {lender.name}
-                            </button>
-                            <Select
-                              value={lender.stage}
-                              onValueChange={(value: LenderStage) => {
-                                const updatedLenders = deal.lenders?.map(l => 
-                                  l.id === lender.id ? { ...l, stage: value } : l
-                                );
-                                updateDeal('lenders', updatedLenders as any);
-                              }}
-                            >
-                              <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
-                                <SelectValue>
-                                  {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {configuredStages.map((stage) => (
-                                  <SelectItem key={stage.id} value={stage.id}>
-                                    {stage.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Select
-                              value={lender.substage || '__none__'}
-                              onValueChange={(value: LenderSubstage) => {
-                                const updatedLenders = deal.lenders?.map(l => 
-                                  l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value } : l
-                                );
-                                updateDeal('lenders', updatedLenders as any);
-                              }}
-                            >
-                              <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-muted/50 border-0 justify-start">
-                                <SelectValue placeholder="Milestone">
-                                  {lender.substage ? (configuredSubstages.find(s => s.id === lender.substage)?.label || lender.substage) : 'Milestone'}
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__none__">None</SelectItem>
-                                {configuredSubstages.map((substage) => (
-                                  <SelectItem key={substage.id} value={substage.id}>
-                                    {substage.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <div className="flex justify-end">
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure you want to delete {lender.name}?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will remove the lender from this deal. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => {
-                                        const removedLender = lender;
-                                        const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
-                                        setDeal(prev => {
-                                          if (!prev) return prev;
-                                          setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
-                                          return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
-                                        });
-                                        // Add to removed lenders for activity tracking
-                                        setRemovedLenders(prev => [...prev, {
-                                          lender: removedLender,
-                                          timestamp: new Date().toISOString(),
-                                          id: `removed-${Date.now()}`,
-                                        }]);
-                                        toast({
-                                          title: "Lender removed",
-                                          description: `${lender.name} has been removed from the deal.`,
-                                        });
-                                      }}
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                          {lenderOutstandingItems.length > 0 && (
-                            <div className="ml-2 mt-2 space-y-1">
-                              {lenderOutstandingItems.map((item) => (
-                                <div 
-                                  key={item.id} 
-                                  className="flex items-center gap-2 text-xs text-muted-foreground pl-2 border-l-2 border-muted"
-                                >
-                                  <span className={item.deliveredToLenders.includes(lender.name) ? "line-through" : ""}>
-                                    {item.text}
+                        {STAGE_GROUPS
+                          .filter(group => lenderGroupFilter === 'all' || lenderGroupFilter === group.id)
+                          .map(group => {
+                            const groupLenders = deal.lenders?.filter(l => {
+                              const stage = configuredStages.find(s => s.id === l.stage);
+                              return stage?.group === group.id;
+                            }) || [];
+                            
+                            if (groupLenders.length === 0) return null;
+                            
+                            return (
+                              <div key={group.id} className="space-y-3">
+                                <div className="flex items-center gap-2 pb-1 border-b border-border">
+                                  <span className={`h-2.5 w-2.5 rounded-full ${group.color}`} />
+                                  <span className="text-sm font-medium text-muted-foreground">
+                                    {group.label} ({groupLenders.length})
                                   </span>
-                                  {item.deliveredToLenders.includes(lender.name) ? (
-                                    <span className="text-emerald-600 text-[10px] font-medium">Delivered</span>
-                                  ) : item.approved ? (
-                                    <span className="text-emerald-600 text-[10px] font-medium">Approved</span>
-                                  ) : item.received ? (
-                                    <span className="text-blue-600 text-[10px] font-medium">Received</span>
-                                  ) : (
-                                    <span className="text-amber-600 text-[10px] font-medium">Pending</span>
-                                  )}
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                          </div>
-                          );
-                        })}
+                                {groupLenders.map((lender, index) => {
+                                  const lenderOutstandingItems = outstandingItems.filter(
+                                    item => Array.isArray(item.requestedBy) 
+                                      ? item.requestedBy.includes(lender.name)
+                                      : item.requestedBy === lender.name
+                                  );
+                                  return (
+                                    <div key={lender.id} className={`${index > 0 ? 'pt-3' : ''}`}>
+                                      <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
+                                        <button 
+                                          className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
+                                          onClick={() => setSelectedLenderName(lender.name)}
+                                        >
+                                          {lender.name}
+                                        </button>
+                                        <Select
+                                          value={lender.stage}
+                                          onValueChange={(value: LenderStage) => {
+                                            const updatedLenders = deal.lenders?.map(l => 
+                                              l.id === lender.id ? { ...l, stage: value } : l
+                                            );
+                                            updateDeal('lenders', updatedLenders as any);
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
+                                            <SelectValue>
+                                              {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                            </SelectValue>
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {configuredStages.map((stage) => (
+                                              <SelectItem key={stage.id} value={stage.id}>
+                                                {stage.label}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Select
+                                          value={lender.substage || '__none__'}
+                                          onValueChange={(value: LenderSubstage) => {
+                                            const updatedLenders = deal.lenders?.map(l => 
+                                              l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value } : l
+                                            );
+                                            updateDeal('lenders', updatedLenders as any);
+                                          }}
+                                        >
+                                          <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-muted/50 border-0 justify-start">
+                                            <SelectValue placeholder="Milestone">
+                                              {lender.substage ? (configuredSubstages.find(s => s.id === lender.substage)?.label || lender.substage) : 'Milestone'}
+                                            </SelectValue>
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="__none__">None</SelectItem>
+                                            {configuredSubstages.map((substage) => (
+                                              <SelectItem key={substage.id} value={substage.id}>
+                                                {substage.label}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <div className="flex justify-end">
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                              >
+                                                <X className="h-4 w-4" />
+                                              </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure you want to delete {lender.name}?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  This will remove the lender from this deal. This action cannot be undone.
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                  onClick={() => {
+                                                    const removedLender = lender;
+                                                    const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
+                                                    setDeal(prev => {
+                                                      if (!prev) return prev;
+                                                      setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+                                                      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+                                                    });
+                                                    setRemovedLenders(prev => [...prev, {
+                                                      lender: removedLender,
+                                                      timestamp: new Date().toISOString(),
+                                                      id: `removed-${Date.now()}`,
+                                                    }]);
+                                                    toast({
+                                                      title: "Lender removed",
+                                                      description: `${lender.name} has been removed from the deal.`,
+                                                    });
+                                                  }}
+                                                >
+                                                  Delete
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
+                                        </div>
+                                      </div>
+                                      {lenderOutstandingItems.length > 0 && (
+                                        <div className="ml-2 mt-2 space-y-1">
+                                          {lenderOutstandingItems.map((item) => (
+                                            <div 
+                                              key={item.id} 
+                                              className="flex items-center gap-2 text-xs text-muted-foreground pl-2 border-l-2 border-muted"
+                                            >
+                                              <span className={item.deliveredToLenders.includes(lender.name) ? "line-through" : ""}>
+                                                {item.text}
+                                              </span>
+                                              {item.deliveredToLenders.includes(lender.name) ? (
+                                                <span className="text-emerald-600 text-[10px] font-medium">Delivered</span>
+                                              ) : item.approved ? (
+                                                <span className="text-emerald-600 text-[10px] font-medium">Approved</span>
+                                              ) : item.received ? (
+                                                <span className="text-blue-600 text-[10px] font-medium">Received</span>
+                                              ) : (
+                                                <span className="text-amber-600 text-[10px] font-medium">Pending</span>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
                       </>
                     )}
                     <div className={`${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
