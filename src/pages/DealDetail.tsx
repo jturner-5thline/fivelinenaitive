@@ -642,33 +642,13 @@ export default function DealDetail() {
                           );
                           return (
                           <div key={lender.id} className={`${index > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                            <div className="grid grid-cols-[140px_120px_160px_140px_1fr] items-center gap-3">
+                            <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
                             <button 
                               className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                               onClick={() => setSelectedLenderName(lender.name)}
                             >
                               {lender.name}
                             </button>
-                            <Select
-                              value={lender.status}
-                              onValueChange={(value: LenderStatus) => {
-                                const updatedLenders = deal.lenders?.map(l => 
-                                  l.id === lender.id ? { ...l, status: value } : l
-                                );
-                                updateDeal('lenders', updatedLenders as any);
-                              }}
-                            >
-                              <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(LENDER_STATUS_CONFIG).map(([key, config]) => (
-                                  <SelectItem key={key} value={key}>
-                                    {config.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
                             <Select
                               value={lender.stage}
                               onValueChange={(value: LenderStage) => {
@@ -701,8 +681,8 @@ export default function DealDetail() {
                               }}
                             >
                               <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-muted/50 border-0 justify-start">
-                                <SelectValue placeholder="Substage">
-                                  {lender.substage ? (configuredSubstages.find(s => s.id === lender.substage)?.label || lender.substage) : 'Substage'}
+                                <SelectValue placeholder="Milestone">
+                                  {lender.substage ? (configuredSubstages.find(s => s.id === lender.substage)?.label || lender.substage) : 'Milestone'}
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
