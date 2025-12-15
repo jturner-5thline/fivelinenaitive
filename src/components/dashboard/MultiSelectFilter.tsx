@@ -37,7 +37,7 @@ export function MultiSelectFilter({
   };
 
   const displayText = selected.length === 0
-    ? `All ${label}`
+    ? label
     : selected.length === 1
     ? options.find((o) => o.value === selected[0])?.label || selected[0]
     : `${selected.length} selected`;
