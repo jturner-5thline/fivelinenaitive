@@ -154,7 +154,7 @@ export function DealFilters({
           />
 
           <MultiSelectFilter
-            label="Engagement Types"
+            label="Type"
             options={engagementTypeOptions}
             selected={filters.engagementType}
             onChange={(engagementType) => onFilterChange({ engagementType: engagementType as EngagementType[] })}
