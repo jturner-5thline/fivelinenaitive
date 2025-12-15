@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, GripVertical, GitBranch } from 'lucide-react';
+import { Plus, Pencil, Trash2, GripVertical, Flag } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -106,7 +106,7 @@ function SortableSubstageItem({ substage, index, onEdit, onDelete }: SortableSub
             <AlertDialogHeader>
               <AlertDialogTitle>Delete "{substage.label}"?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will remove the substage from available options. Existing deals using this substage won't be affected.
+                This will remove the milestone from available options. Existing deals using this milestone won't be affected.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -149,21 +149,21 @@ export function LenderSubstagesSettings() {
 
   const handleSubmit = () => {
     if (!label.trim()) {
-      toast({ title: 'Error', description: 'Substage name is required', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Milestone name is required', variant: 'destructive' });
       return;
     }
 
     if (editingSubstage) {
       updateSubstage(editingSubstage.id, { label: label.trim() });
-      toast({ title: 'Substage updated', description: `${label.trim()} has been updated.` });
+      toast({ title: 'Milestone updated', description: `${label.trim()} has been updated.` });
     } else {
       const exists = substages.some(s => s.label.toLowerCase() === label.trim().toLowerCase());
       if (exists) {
-        toast({ title: 'Error', description: 'A substage with this name already exists', variant: 'destructive' });
+        toast({ title: 'Error', description: 'A milestone with this name already exists', variant: 'destructive' });
         return;
       }
       addSubstage({ label: label.trim() });
-      toast({ title: 'Substage added', description: `${label.trim()} has been added.` });
+      toast({ title: 'Milestone added', description: `${label.trim()} has been added.` });
     }
 
     setIsDialogOpen(false);
@@ -173,7 +173,7 @@ export function LenderSubstagesSettings() {
 
   const handleDelete = (substage: StageOption) => {
     deleteSubstage(substage.id);
-    toast({ title: 'Substage deleted', description: `${substage.label} has been removed.` });
+    toast({ title: 'Milestone deleted', description: `${substage.label} has been removed.` });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -193,14 +193,14 @@ export function LenderSubstagesSettings() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
             <CardTitle className="text-lg flex items-center gap-2">
-              <GitBranch className="h-5 w-5" />
-              Lender Substages
+              <Flag className="h-5 w-5" />
+              Lender Milestones
             </CardTitle>
-            <CardDescription>Configure substage options for more detailed lender tracking. Drag to reorder.</CardDescription>
+            <CardDescription>Configure milestone options for more detailed lender tracking. Drag to reorder.</CardDescription>
           </div>
           <Button onClick={openAddDialog} size="sm" className="gap-1">
             <Plus className="h-4 w-4" />
-            Add Substage
+            Add Milestone
           </Button>
         </CardHeader>
         <CardContent>
@@ -222,7 +222,7 @@ export function LenderSubstagesSettings() {
                 ))}
                 {substages.length === 0 && (
                   <p className="text-center text-muted-foreground py-8">
-                    No substages configured. Add one to get started.
+                    No milestones configured. Add one to get started.
                   </p>
                 )}
               </div>
@@ -234,16 +234,16 @@ export function LenderSubstagesSettings() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingSubstage ? 'Edit Substage' : 'Add Substage'}</DialogTitle>
+            <DialogTitle>{editingSubstage ? 'Edit Milestone' : 'Add Milestone'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="substageName">Substage Name *</Label>
+              <Label htmlFor="substageName">Milestone Name *</Label>
               <Input
                 id="substageName"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                placeholder="Enter substage name"
+                placeholder="Enter milestone name"
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               />
             </div>
@@ -253,7 +253,7 @@ export function LenderSubstagesSettings() {
               Cancel
             </Button>
             <Button onClick={handleSubmit}>
-              {editingSubstage ? 'Save Changes' : 'Add Substage'}
+              {editingSubstage ? 'Save Changes' : 'Add Milestone'}
             </Button>
           </DialogFooter>
         </DialogContent>
