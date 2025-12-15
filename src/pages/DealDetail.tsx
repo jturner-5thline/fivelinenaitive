@@ -692,10 +692,10 @@ export default function DealDetail() {
                               </SelectContent>
                             </Select>
                             <Select
-                              value={lender.substage || ''}
+                              value={lender.substage || '__none__'}
                               onValueChange={(value: LenderSubstage) => {
                                 const updatedLenders = deal.lenders?.map(l => 
-                                  l.id === lender.id ? { ...l, substage: value || undefined } : l
+                                  l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value } : l
                                 );
                                 updateDeal('lenders', updatedLenders as any);
                               }}
@@ -706,7 +706,7 @@ export default function DealDetail() {
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value="__none__">None</SelectItem>
                                 {configuredSubstages.map((substage) => (
                                   <SelectItem key={substage.id} value={substage.id}>
                                     {substage.label}
