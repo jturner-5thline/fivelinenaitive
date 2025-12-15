@@ -1,6 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -79,6 +80,46 @@ export function DealFilters({
     value: lender,
     label: lender,
   }));
+
+  const removeFilter = (type: keyof FilterType, value: string) => {
+    if (type === 'search') {
+      onFilterChange({ search: '' });
+    } else {
+      const currentValues = filters[type] as string[];
+      onFilterChange({ [type]: currentValues.filter((v) => v !== value) });
+    }
+  };
+
+  const getActiveFilterChips = () => {
+    const chips: { type: keyof FilterType; value: string; label: string }[] = [];
+
+    filters.stage.forEach((value) => {
+      const label = STAGE_CONFIG[value as DealStage]?.label || value;
+      chips.push({ type: 'stage', value, label });
+    });
+
+    filters.status.forEach((value) => {
+      const label = STATUS_CONFIG[value as DealStatus]?.label || value;
+      chips.push({ type: 'status', value, label });
+    });
+
+    filters.engagementType.forEach((value) => {
+      const label = ENGAGEMENT_TYPE_CONFIG[value as EngagementType]?.label || value;
+      chips.push({ type: 'engagementType', value, label });
+    });
+
+    filters.manager.forEach((value) => {
+      chips.push({ type: 'manager', value, label: value });
+    });
+
+    filters.lender.forEach((value) => {
+      chips.push({ type: 'lender', value, label: value });
+    });
+
+    return chips;
+  };
+
+  const activeChips = getActiveFilterChips();
 
   return (
     <div className="space-y-4">
@@ -164,6 +205,27 @@ export function DealFilters({
           )}
         </div>
       </div>
+
+      {/* Active Filter Chips */}
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {activeChips.map((chip) => (
+            <Badge
+              key={`${chip.type}-${chip.value}`}
+              variant="secondary"
+              className="gap-1 pr-1"
+            >
+              {chip.label}
+              <button
+                onClick={() => removeFilter(chip.type, chip.value)}
+                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
