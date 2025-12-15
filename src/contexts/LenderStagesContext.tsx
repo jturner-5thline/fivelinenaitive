@@ -62,9 +62,21 @@ const defaultSubstages: SubstageOption[] = [
 ];
 
 const defaultPassReasons: PassReasonOption[] = [
-  { id: 'too-small', label: 'Too Small' },
-  { id: 'business-model', label: 'Business Model' },
-  { id: 'burn-too-high', label: 'Burn Too High' },
+  { id: 'flat-declining-revenue', label: 'Flat or Declining Revenue Growth' },
+  { id: 'low-gross-margins', label: 'Low Gross Margins' },
+  { id: 'high-burn-rate', label: 'High Burn Rate' },
+  { id: 'runway-liquidity', label: 'Runway / Liquidity Challenges' },
+  { id: 'no-path-profitability', label: 'No Clear Path to Profitability/Breakeven' },
+  { id: 'customer-concentration', label: 'Customer Concentration' },
+  { id: 'metric-issues', label: 'Metric Issues (Inefficient Customer Acquisition, poor LTV/CAC ratio, high S&M spend)' },
+  { id: 'overleveraged', label: 'Overleveraged Balance Sheet' },
+  { id: 'business-revenue-model', label: 'Business & Revenue Model' },
+  { id: 'industry-sector', label: 'Industry or Sector' },
+  { id: 'operational-concerns', label: 'Operational Concerns (Management, Key Man Risk, Unreliable Financials)' },
+  { id: 'refinancing', label: 'Refinancing Too Much' },
+  { id: 'pipeline-challenges', label: 'Pipeline Challenges (too busy, deal size, won\'t make it through committee)' },
+  { id: 'no-reason', label: 'No Reason Given' },
+  { id: 'other', label: 'Other' },
 ];
 
 export function LenderStagesProvider({ children }: { children: ReactNode }) {
