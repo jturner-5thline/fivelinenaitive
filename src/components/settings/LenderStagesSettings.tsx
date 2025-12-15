@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -39,17 +40,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { useLenderStages, StageOption } from '@/contexts/LenderStagesContext';
+import { useLenderStages, StageOption, StageGroup, STAGE_GROUPS } from '@/contexts/LenderStagesContext';
 
 interface SortableStageItemProps {
   stage: StageOption;
   index: number;
   onEdit: (stage: StageOption) => void;
   onDelete: (stage: StageOption) => void;
+  onGroupChange: (stageId: string, group: StageGroup) => void;
 }
 
-function SortableStageItem({ stage, index, onEdit, onDelete }: SortableStageItemProps) {
+function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange }: SortableStageItemProps) {
   const {
     attributes,
     listeners,
@@ -64,6 +73,8 @@ function SortableStageItem({ stage, index, onEdit, onDelete }: SortableStageItem
     transition,
   };
 
+  const groupConfig = STAGE_GROUPS.find(g => g.id === stage.group);
+
   return (
     <div
       ref={setNodeRef}
@@ -72,7 +83,7 @@ function SortableStageItem({ stage, index, onEdit, onDelete }: SortableStageItem
         isDragging ? 'opacity-50 shadow-lg' : ''
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
           {...attributes}
           {...listeners}
@@ -81,9 +92,27 @@ function SortableStageItem({ stage, index, onEdit, onDelete }: SortableStageItem
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
         <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
-        <p className="font-medium">{stage.label}</p>
+        <p className="font-medium truncate">{stage.label}</p>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
+        <Select
+          value={stage.group}
+          onValueChange={(value: StageGroup) => onGroupChange(stage.id, value)}
+        >
+          <SelectTrigger className="w-[100px] h-7 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STAGE_GROUPS.map((group) => (
+              <SelectItem key={group.id} value={group.id}>
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                  {group.label}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button
           variant="ghost"
           size="icon"
@@ -123,10 +152,11 @@ function SortableStageItem({ stage, index, onEdit, onDelete }: SortableStageItem
 }
 
 export function LenderStagesSettings() {
-  const { stages, addStage, updateStage, deleteStage, reorderStages } = useLenderStages();
+  const { stages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup } = useLenderStages();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<StageOption | null>(null);
   const [label, setLabel] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState<StageGroup>('active');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -138,12 +168,14 @@ export function LenderStagesSettings() {
   const openAddDialog = () => {
     setEditingStage(null);
     setLabel('');
+    setSelectedGroup('active');
     setIsDialogOpen(true);
   };
 
   const openEditDialog = (stage: StageOption) => {
     setEditingStage(stage);
     setLabel(stage.label);
+    setSelectedGroup(stage.group);
     setIsDialogOpen(true);
   };
 
@@ -154,7 +186,7 @@ export function LenderStagesSettings() {
     }
 
     if (editingStage) {
-      updateStage(editingStage.id, { label: label.trim() });
+      updateStage(editingStage.id, { label: label.trim(), group: selectedGroup });
       toast({ title: 'Stage updated', description: `${label.trim()} has been updated.` });
     } else {
       const exists = stages.some(s => s.label.toLowerCase() === label.trim().toLowerCase());
@@ -162,7 +194,7 @@ export function LenderStagesSettings() {
         toast({ title: 'Error', description: 'A stage with this name already exists', variant: 'destructive' });
         return;
       }
-      addStage({ label: label.trim() });
+      addStage({ label: label.trim(), group: selectedGroup });
       toast({ title: 'Stage added', description: `${label.trim()} has been added.` });
     }
 
@@ -174,6 +206,11 @@ export function LenderStagesSettings() {
   const handleDelete = (stage: StageOption) => {
     deleteStage(stage.id);
     toast({ title: 'Stage deleted', description: `${stage.label} has been removed.` });
+  };
+
+  const handleGroupChange = (stageId: string, group: StageGroup) => {
+    updateStage(stageId, { group });
+    toast({ title: 'Group updated', description: 'Stage group has been changed.' });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -196,7 +233,7 @@ export function LenderStagesSettings() {
               <Layers className="h-5 w-5" />
               Lender Stages
             </CardTitle>
-            <CardDescription>Configure the stages for tracking lender progress. Drag to reorder.</CardDescription>
+            <CardDescription>Configure stages and assign them to groups. Drag to reorder.</CardDescription>
           </div>
           <Button onClick={openAddDialog} size="sm" className="gap-1">
             <Plus className="h-4 w-4" />
@@ -204,6 +241,17 @@ export function LenderStagesSettings() {
           </Button>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {STAGE_GROUPS.map((group) => {
+              const count = getStagesByGroup(group.id).length;
+              return (
+                <Badge key={group.id} variant="secondary" className="gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                  {group.label}: {count}
+                </Badge>
+              );
+            })}
+          </div>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -218,6 +266,7 @@ export function LenderStagesSettings() {
                     index={index}
                     onEdit={openEditDialog}
                     onDelete={handleDelete}
+                    onGroupChange={handleGroupChange}
                   />
                 ))}
                 {stages.length === 0 && (
@@ -244,8 +293,25 @@ export function LenderStagesSettings() {
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="Enter stage name"
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stageGroup">Group</Label>
+              <Select value={selectedGroup} onValueChange={(value: StageGroup) => setSelectedGroup(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STAGE_GROUPS.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                        {group.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
