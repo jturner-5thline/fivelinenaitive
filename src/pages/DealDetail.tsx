@@ -41,6 +41,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -118,7 +119,7 @@ interface EditHistory {
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const { getLenderNames, getLenderDetails } = useLenders();
-  const { stages: configuredStages, substages: configuredSubstages } = useLenderStages();
+  const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
   const { formatCurrencyValue } = usePreferences();
   const lenderNames = getLenderNames();
   const initialDeal = mockDeals.find((d) => d.id === id);
@@ -185,6 +186,14 @@ export default function DealDetail() {
       description: "Your view preferences have been saved as the default.",
     });
   }, [isLendersExpanded, lenderGroupFilter, attachmentFilter]);
+  
+  // Pass reason dialog state
+  const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
+  const [pendingPassStageChange, setPendingPassStageChange] = useState<{
+    lenderId: string;
+    newStageId: string;
+  } | null>(null);
+  const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
   
   const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string; category: 'term-sheets' | 'credit-file' | 'reports' }[]>([
     { id: '1', name: 'Term Sheet v2.pdf', type: 'pdf', size: '245 KB', uploadedAt: '2024-01-18', category: 'term-sheets' },
@@ -752,10 +761,18 @@ export default function DealDetail() {
                                         <Select
                                           value={lender.stage}
                                           onValueChange={(value: LenderStage) => {
-                                            const updatedLenders = deal.lenders?.map(l => 
-                                              l.id === lender.id ? { ...l, stage: value } : l
-                                            );
-                                            updateDeal('lenders', updatedLenders as any);
+                                            const newStage = configuredStages.find(s => s.id === value);
+                                            // Check if new stage is in "passed" group
+                                            if (newStage?.group === 'passed') {
+                                              setPendingPassStageChange({ lenderId: lender.id, newStageId: value });
+                                              setSelectedPassReason(null);
+                                              setPassReasonDialogOpen(true);
+                                            } else {
+                                              const updatedLenders = deal.lenders?.map(l => 
+                                                l.id === lender.id ? { ...l, stage: value, passReason: undefined } : l
+                                              );
+                                              updateDeal('lenders', updatedLenders as any);
+                                            }
                                           }}
                                         >
                                           <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
@@ -1243,6 +1260,68 @@ export default function DealDetail() {
               </Tabs>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Pass Reason Dialog */}
+      <Dialog open={passReasonDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setPassReasonDialogOpen(false);
+          setPendingPassStageChange(null);
+          setSelectedPassReason(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Why is this lender being passed?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            {passReasons.map((reason) => (
+              <button
+                key={reason.id}
+                onClick={() => setSelectedPassReason(reason.id)}
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  selectedPassReason === reason.id
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:bg-muted'
+                }`}
+              >
+                {reason.label}
+              </button>
+            ))}
+            {passReasons.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No pass reasons configured. Add them in Settings.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setPassReasonDialogOpen(false);
+              setPendingPassStageChange(null);
+              setSelectedPassReason(null);
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (pendingPassStageChange && deal) {
+                  const updatedLenders = deal.lenders?.map(l => 
+                    l.id === pendingPassStageChange.lenderId 
+                      ? { ...l, stage: pendingPassStageChange.newStageId as LenderStage, passReason: selectedPassReason || undefined } 
+                      : l
+                  );
+                  updateDeal('lenders', updatedLenders as any);
+                  setPassReasonDialogOpen(false);
+                  setPendingPassStageChange(null);
+                  setSelectedPassReason(null);
+                }
+              }}
+              disabled={!selectedPassReason && passReasons.length > 0}
+            >
+              Confirm Pass
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
