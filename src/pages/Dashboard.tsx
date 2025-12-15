@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown } from 'lucide-react';
+import { Download, FileText, ChevronDown, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DealFilters } from '@/components/dashboard/DealFilters';
 import { DealsList } from '@/components/dashboard/DealsList';
@@ -15,12 +16,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { mockDeals } from '@/data/mockDeals';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   
   const {
     deals,
@@ -31,6 +41,19 @@ export default function Dashboard() {
     updateFilters,
     toggleSort,
   } = useDeals();
+
+  const dealsForExport = useMemo(() => {
+    return deals.filter(deal => {
+      const dealDate = new Date(deal.createdAt);
+      if (dateFrom && dealDate < dateFrom) return false;
+      if (dateTo && dealDate > dateTo) return false;
+      return true;
+    });
+  }, [deals, dateFrom, dateTo]);
+
+  const dateRangeLabel = dateFrom || dateTo
+    ? `${dateFrom ? format(dateFrom, 'MMM d') : 'Start'} - ${dateTo ? format(dateTo, 'MMM d') : 'End'}`
+    : 'All dates';
 
   return (
     <>
@@ -51,38 +74,83 @@ export default function Dashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-semibold text-foreground">5th Line</h1>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Download className="h-4 w-4" />
-                      Export
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => {
-                      exportPipelineToCSV(deals);
-                      toast({ title: "CSV exported", description: "Pipeline data exported to CSV file." });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      exportPipelineToPDF(deals);
-                      toast({ title: "PDF exported", description: "Pipeline report exported to PDF." });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={async () => {
-                      await exportPipelineToWord(deals);
-                      toast({ title: "Word document exported", description: "Pipeline report exported to Word document." });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as Word
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <CalendarIcon className="h-4 w-4" />
+                        {dateRangeLabel}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-4" align="end">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">From</Label>
+                          <Calendar
+                            mode="single"
+                            selected={dateFrom}
+                            onSelect={setDateFrom}
+                            className={cn("p-0 pointer-events-auto")}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">To</Label>
+                          <Calendar
+                            mode="single"
+                            selected={dateTo}
+                            onSelect={setDateTo}
+                            className={cn("p-0 pointer-events-auto")}
+                          />
+                        </div>
+                        {(dateFrom || dateTo) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              setDateFrom(undefined);
+                              setDateTo(undefined);
+                            }}
+                          >
+                            Clear dates
+                          </Button>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Export
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => {
+                        exportPipelineToCSV(dealsForExport);
+                        toast({ title: "CSV exported", description: `${dealsForExport.length} deals exported to CSV.` });
+                      }}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Export as CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        exportPipelineToPDF(dealsForExport);
+                        toast({ title: "PDF exported", description: `${dealsForExport.length} deals exported to PDF.` });
+                      }}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Export as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={async () => {
+                        await exportPipelineToWord(dealsForExport);
+                        toast({ title: "Word document exported", description: `${dealsForExport.length} deals exported to Word.` });
+                      }}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Export as Word
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
               <WidgetsSection deals={mockDeals} />
             </div>
