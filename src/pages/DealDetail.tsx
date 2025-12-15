@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download } from 'lucide-react';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -41,9 +41,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
+import { exportDealToCSV, exportDealToPDF, exportDealToWord } from '@/utils/dealExport';
 
 
 // Mock activity data - in a real app this would come from the database
@@ -405,7 +412,38 @@ export default function DealDetail() {
                   Undo ({editHistory.length})
                 </Button>
               )}
-              <Button variant="outline" size="sm">Export</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Export
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {
+                    exportDealToCSV(deal);
+                    toast({ title: "CSV exported", description: "Deal data exported to CSV file." });
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    exportDealToPDF(deal);
+                    toast({ title: "PDF exported", description: "Deal report exported to PDF." });
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={async () => {
+                    await exportDealToWord(deal);
+                    toast({ title: "Word document exported", description: "Deal report exported to Word document." });
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as Word
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
