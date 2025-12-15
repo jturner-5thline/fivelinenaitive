@@ -452,7 +452,7 @@ export default function DealDetail() {
               </div>
               
               <div className="flex items-start justify-between gap-4 border-t border-border mt-4 pt-4">
-                <div className="flex-1 flex items-start gap-2 pl-4">
+                <div className="w-[60%] flex items-start gap-2 pl-4">
                   <span className="text-lg text-foreground/90 mt-0.5">•</span>
                   <InlineEditField
                     value={deal.notes || ''}
