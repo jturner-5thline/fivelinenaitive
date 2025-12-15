@@ -123,11 +123,16 @@ export default function DealDetail() {
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
   const [isLendersExpanded, setIsLendersExpanded] = useState(true);
-  const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string }[]>([
-    { id: '1', name: 'Term Sheet v2.pdf', type: 'pdf', size: '245 KB', uploadedAt: '2024-01-18' },
-    { id: '2', name: 'Financial Model.xlsx', type: 'xlsx', size: '1.2 MB', uploadedAt: '2024-01-17' },
-    { id: '3', name: 'Due Diligence Checklist.docx', type: 'docx', size: '89 KB', uploadedAt: '2024-01-15' },
+  const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'term-sheets' | 'credit-file' | 'reports'>('all');
+  const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string; category: 'term-sheets' | 'credit-file' | 'reports' }[]>([
+    { id: '1', name: 'Term Sheet v2.pdf', type: 'pdf', size: '245 KB', uploadedAt: '2024-01-18', category: 'term-sheets' },
+    { id: '2', name: 'Financial Model.xlsx', type: 'xlsx', size: '1.2 MB', uploadedAt: '2024-01-17', category: 'credit-file' },
+    { id: '3', name: 'Due Diligence Checklist.docx', type: 'docx', size: '89 KB', uploadedAt: '2024-01-15', category: 'credit-file' },
+    { id: '4', name: 'Q4 Performance Report.pdf', type: 'pdf', size: '512 KB', uploadedAt: '2024-01-14', category: 'reports' },
   ]);
+  const filteredAttachments = attachmentFilter === 'all' 
+    ? attachments 
+    : attachments.filter(a => a.category === attachmentFilter);
   const baseActivities = getMockActivities(id || '');
 
   // Combine base activities with lender removal activities
@@ -876,7 +881,8 @@ export default function DealDetail() {
                           type: 'pdf',
                           size: '0 KB',
                           uploadedAt: new Date().toISOString().split('T')[0],
-                        };
+                          category: attachmentFilter === 'all' ? 'credit-file' : attachmentFilter,
+                        } as const;
                         setAttachments(prev => [...prev, newAttachment]);
                         toast({ title: 'Attachment added' });
                       }}
@@ -885,11 +891,30 @@ export default function DealDetail() {
                       Upload
                     </Button>
                   </div>
+                  {/* Filter tabs */}
+                  <div className="flex gap-1 mt-3">
+                    {[
+                      { value: 'all', label: 'All' },
+                      { value: 'term-sheets', label: 'Term Sheets' },
+                      { value: 'credit-file', label: 'Credit File' },
+                      { value: 'reports', label: 'Reports' },
+                    ].map((filter) => (
+                      <Button
+                        key={filter.value}
+                        variant={attachmentFilter === filter.value ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setAttachmentFilter(filter.value as typeof attachmentFilter)}
+                      >
+                        {filter.label}
+                      </Button>
+                    ))}
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  {attachments.length > 0 ? (
+                  {filteredAttachments.length > 0 ? (
                     <div className="space-y-2">
-                      {attachments.map((attachment) => (
+                      {filteredAttachments.map((attachment) => (
                         <div
                           key={attachment.id}
                           className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group hover:bg-muted transition-colors"
@@ -919,7 +944,7 @@ export default function DealDetail() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      No attachments yet
+                      No attachments in this category
                     </p>
                   )}
                 </CardContent>
