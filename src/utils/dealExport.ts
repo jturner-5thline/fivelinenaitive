@@ -749,3 +749,231 @@ export async function exportPipelineToWord(deals: Deal[]): Promise<void> {
   const blob = await Packer.toBlob(doc);
   saveAs(blob, `pipeline-report-${new Date().toISOString().split('T')[0]}.docx`);
 }
+
+// ==================== STATUS REPORT EXPORTS ====================
+
+interface LenderStageConfig {
+  id: string;
+  label: string;
+}
+
+// Status Report PDF Export
+export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[]): void {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Header with brand color
+  doc.setFillColor(147, 51, 234); // Purple
+  doc.rect(0, 0, pageWidth, 40, 'F');
+  
+  // Title
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${deal.company} - Status Report`, 20, 25);
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generated ${formatDate(new Date().toISOString())}`, 20, 35);
+  
+  // Reset text color
+  doc.setTextColor(0, 0, 0);
+  
+  let yPos = 55;
+  
+  // Deal Status Section (Notes from top box)
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Deal Status', 20, yPos);
+  yPos += 10;
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  if (deal.notes) {
+    const splitNotes = doc.splitTextToSize(deal.notes, pageWidth - 40);
+    doc.text(splitNotes, 20, yPos);
+    yPos += splitNotes.length * 5 + 15;
+  } else {
+    doc.setTextColor(128, 128, 128);
+    doc.text('No status notes available', 20, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 15;
+  }
+
+  // Lenders Section
+  if (deal.lenders && deal.lenders.length > 0) {
+    if (yPos > 230) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Current Lenders', 20, yPos);
+    yPos += 10;
+
+    const lenderData = deal.lenders.map(lender => {
+      const stageName = configuredStages?.find(s => s.id === lender.stage)?.label || 
+                        LENDER_STAGE_CONFIG[lender.stage]?.label || 
+                        lender.stage;
+      const substageName = lender.substage 
+        ? (configuredSubstages?.find(s => s.id === lender.substage)?.label || lender.substage)
+        : '-';
+      return [
+        lender.name,
+        stageName,
+        substageName,
+        LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus]?.label || lender.trackingStatus,
+        lender.notes || '-',
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Lender Name', 'Stage', 'Substage', 'Tracking', 'Notes']],
+      body: lenderData,
+      theme: 'striped',
+      headStyles: { fillColor: [147, 51, 234], textColor: 255 },
+      styles: { fontSize: 8, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 45 },
+      },
+      margin: { left: 20, right: 20 },
+    });
+  }
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text(
+      `Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      doc.internal.pageSize.getHeight() - 10,
+      { align: 'center' }
+    );
+  }
+
+  doc.save(`${deal.company}-status-report.pdf`);
+}
+
+// Status Report Word Export
+export async function exportStatusReportToWord(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[]): Promise<void> {
+  const children: any[] = [
+    // Title
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `${deal.company} - Status Report`,
+          bold: true,
+          size: 48,
+          color: '9333EA',
+        }),
+      ],
+      heading: HeadingLevel.TITLE,
+      spacing: { after: 200 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `Generated ${formatDate(new Date().toISOString())}`,
+          size: 22,
+          color: '666666',
+        }),
+      ],
+      spacing: { after: 400 },
+    }),
+
+    // Deal Status Header
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: 'Deal Status',
+          bold: true,
+          size: 28,
+        }),
+      ],
+      heading: HeadingLevel.HEADING_1,
+      spacing: { before: 300, after: 200 },
+    }),
+
+    // Deal Status Content
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: deal.notes || 'No status notes available',
+          size: 22,
+          italics: !deal.notes,
+          color: deal.notes ? '000000' : '888888',
+        }),
+      ],
+      spacing: { after: 400 },
+    }),
+  ];
+
+  // Lenders Section
+  if (deal.lenders && deal.lenders.length > 0) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: 'Current Lenders',
+            bold: true,
+            size: 28,
+          }),
+        ],
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 300, after: 200 },
+      }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              createHeaderCell('Lender Name'),
+              createHeaderCell('Stage'),
+              createHeaderCell('Substage'),
+              createHeaderCell('Tracking'),
+              createHeaderCell('Notes'),
+            ],
+          }),
+          ...deal.lenders.map(lender => {
+            const stageName = configuredStages?.find(s => s.id === lender.stage)?.label || 
+                              LENDER_STAGE_CONFIG[lender.stage]?.label || 
+                              lender.stage;
+            const substageName = lender.substage 
+              ? (configuredSubstages?.find(s => s.id === lender.substage)?.label || lender.substage)
+              : '-';
+            return new TableRow({
+              children: [
+                createDataCell(lender.name),
+                createDataCell(stageName),
+                createDataCell(substageName),
+                createDataCell(LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus]?.label || lender.trackingStatus),
+                createDataCell(lender.notes || '-'),
+              ],
+            });
+          }),
+        ],
+      })
+    );
+  }
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {},
+        children,
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `${deal.company}-status-report.docx`);
+}
