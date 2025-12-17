@@ -58,6 +58,55 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from '@/hooks/use-toast';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord } from '@/utils/dealExport';
 
+// Helper to calculate business days between two dates
+const getBusinessDaysDiff = (date: Date) => {
+  const now = new Date();
+  let count = 0;
+  const current = new Date(date);
+  
+  while (current < now) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+};
+
+// Helper to get relative time string and highlight class for lender
+const getLenderTimeInfo = (updatedAt?: string) => {
+  if (!updatedAt) return { text: '', highlightClass: '' };
+  
+  const date = new Date(updatedAt);
+  const now = new Date();
+  
+  const minutes = differenceInMinutes(now, date);
+  const hours = differenceInHours(now, date);
+  const days = differenceInDays(now, date);
+  const weeks = differenceInWeeks(now, date);
+  const businessDays = getBusinessDaysDiff(date);
+  
+  let text: string;
+  if (minutes < 60) {
+    text = `${minutes} min. ago`;
+  } else if (hours < 24) {
+    text = `${hours} hr${hours > 1 ? 's' : ''} ago`;
+  } else if (days < 7) {
+    text = `${days} day${days > 1 ? 's' : ''} ago`;
+  } else {
+    text = `${weeks} wk${weeks > 1 ? 's' : ''} ago`;
+  }
+  
+  let highlightClass = '';
+  if (businessDays >= 5) {
+    highlightClass = 'bg-destructive/20 text-destructive px-1.5 py-0.5 rounded';
+  } else if (businessDays > 3) {
+    highlightClass = 'bg-amber-500/20 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded';
+  }
+  
+  return { text, highlightClass };
+};
 
 // Mock activity data - in a real app this would come from the database
 const getMockActivities = (dealId: string): ActivityItem[] => [
@@ -278,6 +327,7 @@ export default function DealDetail() {
       status: 'in-review',
       stage: 'reviewing-drl',
       trackingStatus: 'active',
+      updatedAt: new Date().toISOString(),
     };
     const updatedLenders = [...(deal.lenders || []), newLender];
     setDeal(prev => {
@@ -321,9 +371,10 @@ export default function DealDetail() {
         
         return {
           ...l,
-          savedNotes: currentNote, // Update the committed version
+          savedNotes: currentNote,
           notesUpdatedAt: new Date().toISOString(),
           notesHistory: newHistory,
+          updatedAt: new Date().toISOString(),
         };
       });
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
@@ -810,12 +861,22 @@ export default function DealDetail() {
                                   <SortableLenderItem key={lender.id} lender={lender}>
                                     <div className={`${index > 0 ? 'pt-3 border-t border-border' : ''} pl-6`}>
                                       <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
-                                  <button 
-                                    className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
-                                    onClick={() => setSelectedLenderName(lender.name)}
-                                  >
-                                    {lender.name}
-                                  </button>
+                                  <div className="flex flex-col">
+                                    <button 
+                                      className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
+                                      onClick={() => setSelectedLenderName(lender.name)}
+                                    >
+                                      {lender.name}
+                                    </button>
+                                    {(() => {
+                                      const timeInfo = getLenderTimeInfo(lender.updatedAt);
+                                      return timeInfo.text ? (
+                                        <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
+                                          {timeInfo.text}
+                                        </span>
+                                      ) : null;
+                                    })()}
+                                  </div>
                                   <Select
                                     value={lender.stage}
                                     onValueChange={(value: LenderStage) => {
@@ -826,7 +887,7 @@ export default function DealDetail() {
                                         setPassReasonDialogOpen(true);
                                       } else {
                                         const updatedLenders = deal.lenders?.map(l => 
-                                          l.id === lender.id ? { ...l, stage: value, passReason: undefined } : l
+                                          l.id === lender.id ? { ...l, stage: value, passReason: undefined, updatedAt: new Date().toISOString() } : l
                                         );
                                         updateDeal('lenders', updatedLenders as any);
                                       }
@@ -849,7 +910,7 @@ export default function DealDetail() {
                                     value={lender.substage || '__none__'}
                                     onValueChange={(value: LenderSubstage) => {
                                       const updatedLenders = deal.lenders?.map(l => 
-                                        l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value } : l
+                                        l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value, updatedAt: new Date().toISOString() } : l
                                       );
                                       updateDeal('lenders', updatedLenders as any);
                                     }}
@@ -1060,12 +1121,22 @@ export default function DealDetail() {
                                     return (
                                       <div key={lender.id} className={`${index > 0 ? 'pt-3' : ''}`}>
                                         <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
-                                          <button 
-                                            className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
-                                            onClick={() => setSelectedLenderName(lender.name)}
-                                          >
-                                            {lender.name}
-                                          </button>
+                                          <div className="flex flex-col">
+                                            <button 
+                                              className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
+                                              onClick={() => setSelectedLenderName(lender.name)}
+                                            >
+                                              {lender.name}
+                                            </button>
+                                            {(() => {
+                                              const timeInfo = getLenderTimeInfo(lender.updatedAt);
+                                              return timeInfo.text ? (
+                                                <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
+                                                  {timeInfo.text}
+                                                </span>
+                                              ) : null;
+                                            })()}
+                                          </div>
                                           <Select
                                             value={lender.stage}
                                             onValueChange={(value: LenderStage) => {
@@ -1076,7 +1147,7 @@ export default function DealDetail() {
                                                 setPassReasonDialogOpen(true);
                                               } else {
                                                 const updatedLenders = deal.lenders?.map(l => 
-                                                  l.id === lender.id ? { ...l, stage: value, passReason: undefined } : l
+                                                  l.id === lender.id ? { ...l, stage: value, passReason: undefined, updatedAt: new Date().toISOString() } : l
                                                 );
                                                 updateDeal('lenders', updatedLenders as any);
                                               }
@@ -1099,7 +1170,7 @@ export default function DealDetail() {
                                             value={lender.substage || '__none__'}
                                             onValueChange={(value: LenderSubstage) => {
                                               const updatedLenders = deal.lenders?.map(l => 
-                                                l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value } : l
+                                                l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value, updatedAt: new Date().toISOString() } : l
                                               );
                                               updateDeal('lenders', updatedLenders as any);
                                             }}
@@ -1703,7 +1774,7 @@ export default function DealDetail() {
                 if (pendingPassStageChange && deal) {
                   const updatedLenders = deal.lenders?.map(l => 
                     l.id === pendingPassStageChange.lenderId 
-                      ? { ...l, stage: pendingPassStageChange.newStageId as LenderStage, passReason: selectedPassReason || undefined } 
+                      ? { ...l, stage: pendingPassStageChange.newStageId as LenderStage, passReason: selectedPassReason || undefined, updatedAt: new Date().toISOString() } 
                       : l
                   );
                   updateDeal('lenders', updatedLenders as any);
