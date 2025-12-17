@@ -1476,6 +1476,15 @@ export default function DealDetail() {
                   <CardTitle className="text-lg font-semibold text-purple-700">Deal Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm text-muted-foreground">Narrative</label>
+                    <Textarea
+                      value={deal.narrative || ''}
+                      onChange={(e) => updateDeal('narrative', e.target.value)}
+                      placeholder="Enter deal narrative..."
+                      className="w-full min-h-[80px] resize-none"
+                    />
+                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Deal Manager</span>
                     <div className="flex items-center gap-2">

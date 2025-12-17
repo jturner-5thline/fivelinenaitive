@@ -52,7 +52,7 @@ export interface Deal {
   id: string;
   name: string;
   company: string;
-  companyDescription?: string;
+  narrative?: string;
   companyUrl?: string;
   businessModel?: string;
   contactInfo?: string;
