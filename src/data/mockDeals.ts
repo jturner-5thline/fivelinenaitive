@@ -1,4 +1,12 @@
-import { Deal } from '@/types/deal';
+import { Deal, Referrer } from '@/types/deal';
+
+// Mock referrers database
+export const mockReferrers: Referrer[] = [
+  { id: 'r1', name: 'Sarah Mitchell', email: 'sarah.m@vcpartners.com', phone: '(415) 555-0101', company: 'VC Partners' },
+  { id: 'r2', name: 'David Chen', email: 'david.chen@capitaladvisors.com', phone: '(212) 555-0202', company: 'Capital Advisors' },
+  { id: 'r3', name: 'Emily Rodriguez', email: 'emily.r@fundingnetwork.io', phone: '(617) 555-0303', company: 'Funding Network' },
+  { id: 'r4', name: 'Michael Thompson', email: 'mthompson@investco.com', phone: '(312) 555-0404', company: 'InvestCo' },
+];
 
 // Helper to generate recent dates for demo purposes
 const getRecentDate = (minutesAgo: number) => {
@@ -19,6 +27,7 @@ export const mockDeals: Deal[] = [
     lender: 'Trinity',
     value: 15000000,
     totalFee: 375000,
+    referredBy: mockReferrers[0],
     contact: 'John Smith',
     createdAt: '2024-01-15',
     updatedAt: getRecentDate(15),
@@ -66,6 +75,7 @@ export const mockDeals: Deal[] = [
     lender: 'Eastward',
     value: 45000000,
     totalFee: 650000,
+    referredBy: mockReferrers[1],
     contact: 'Robert Johnson',
     createdAt: '2024-01-10',
     updatedAt: getRecentDate(60 * 20),
@@ -105,6 +115,7 @@ export const mockDeals: Deal[] = [
     lender: 'Five Crowns',
     value: 12000000,
     totalFee: 300000,
+    referredBy: mockReferrers[0],
     contact: 'Chris Wilson',
     createdAt: '2024-01-05',
     updatedAt: getRecentDate(60 * 24 * 14),
@@ -164,6 +175,7 @@ export const mockDeals: Deal[] = [
     lender: 'LAGO',
     value: 18000000,
     totalFee: 450000,
+    referredBy: mockReferrers[2],
     contact: 'James Miller',
     createdAt: '2024-01-19',
     updatedAt: getRecentDate(60 * 24 * 5),

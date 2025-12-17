@@ -39,6 +39,14 @@ export interface DealMilestone {
   completed: boolean;
 }
 
+export interface Referrer {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+}
+
 export interface Deal {
   id: string;
   name: string;
@@ -50,6 +58,7 @@ export interface Deal {
   lender: string;
   value: number;
   totalFee: number;
+  referredBy?: Referrer;
   contact: string;
   createdAt: string;
   updatedAt: string;
