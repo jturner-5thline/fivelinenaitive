@@ -92,13 +92,16 @@ function DraggableKanbanItem({ item }: { item: OutstandingItem }) {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
   } : undefined;
 
+  const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card border border-border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-50 shadow-lg"
+        "bg-card border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50 shadow-lg",
+        hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border"
       )}
       {...listeners}
       {...attributes}
@@ -107,10 +110,12 @@ function DraggableKanbanItem({ item }: { item: OutstandingItem }) {
         <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium mb-2">{item.text}</p>
-          <div className="text-xs text-muted-foreground">
+          <div className={cn("text-xs", hasNoRequester ? "text-destructive" : "text-muted-foreground")}>
             <span className="flex items-center gap-1">
               <User className="h-3 w-3" />
-              {Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
+              {hasNoRequester
+                ? 'No requester'
+                : Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
             </span>
           </div>
         </div>
@@ -217,22 +222,30 @@ function KanbanBoard({
         ))}
       </div>
       <DragOverlay>
-        {activeItem ? (
-          <div className="bg-card border border-primary rounded-lg p-3 shadow-xl rotate-3">
-            <div className="flex items-start gap-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium mb-2">{activeItem.text}</p>
-                <div className="text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    {Array.isArray(activeItem.requestedBy) ? activeItem.requestedBy.join(', ') : activeItem.requestedBy}
-                  </span>
+        {activeItem ? (() => {
+          const hasNoRequester = !activeItem.requestedBy || activeItem.requestedBy.length === 0;
+          return (
+            <div className={cn(
+              "bg-card border rounded-lg p-3 shadow-xl rotate-3",
+              hasNoRequester ? "border-destructive/50" : "border-primary"
+            )}>
+              <div className="flex items-start gap-2">
+                <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium mb-2">{activeItem.text}</p>
+                  <div className={cn("text-xs", hasNoRequester ? "text-destructive" : "text-muted-foreground")}>
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {hasNoRequester
+                        ? 'No requester'
+                        : Array.isArray(activeItem.requestedBy) ? activeItem.requestedBy.join(', ') : activeItem.requestedBy}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ) : null}
+          );
+        })() : null}
       </DragOverlay>
     </DndContext>
   );
@@ -266,7 +279,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
       });
 
   const handleAdd = () => {
-    if (newItemText.trim() && newRequestedBy.length > 0) {
+    if (newItemText.trim()) {
       onAdd(newItemText.trim(), newRequestedBy);
       setNewItemText('');
       setNewRequestedBy([]);
@@ -289,8 +302,8 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
     );
   };
 
-  const getDisplayText = (selected: string[]) => {
-    if (selected.length === 0) return 'Select requester *';
+  const getDisplayText = (selected: string[], isNew: boolean = false) => {
+    if (selected.length === 0) return isNew ? 'Select requester' : 'No requester';
     if (selected.length === 1) return selected[0];
     return `${selected.length} selected`;
   };
@@ -302,7 +315,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   };
 
   const handleSaveEdit = () => {
-    if (editingId && editingText.trim() && editingRequestedBy.length > 0) {
+    if (editingId && editingText.trim()) {
       onUpdate(editingId, { text: editingText.trim(), requestedBy: editingRequestedBy });
       setEditingId(null);
       setEditingText('');
@@ -423,12 +436,15 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                 </p>
               )}
 
-          {filteredItems.map((item) => (
+          {filteredItems.map((item) => {
+            const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
+            return (
             <div
               key={item.id}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border border-border bg-card",
-                isFullyDelivered(item) && "opacity-60"
+                "flex items-center gap-3 p-3 rounded-lg border bg-card",
+                isFullyDelivered(item) && "opacity-60",
+                hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border"
               )}
             >
               {editingId === item.id ? (
@@ -449,7 +465,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                         variant="outline"
                         className={cn(
                           'w-40 justify-between gap-2 font-normal text-xs',
-                          editingRequestedBy.length > 0 && 'border-primary/50 bg-primary/5'
+                          editingRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 bg-destructive/5'
                         )}
                       >
                         <span className="truncate">{getDisplayText(editingRequestedBy)}</span>
@@ -505,9 +521,14 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                         <Calendar className="h-3 w-3" />
                         Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
                       </span>
-                      <span className="flex items-center gap-1">
+                      <span className={cn(
+                        "flex items-center gap-1",
+                        (!item.requestedBy || item.requestedBy.length === 0) && "text-destructive"
+                      )}>
                         <User className="h-3 w-3" />
-                        by {Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
+                        {!item.requestedBy || item.requestedBy.length === 0
+                          ? 'No requester assigned'
+                          : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
                       </span>
                     </div>
                   </div>
@@ -568,7 +589,8 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                 </>
               )}
             </div>
-          ))}
+            );
+          })}
 
           {/* Always-visible input for adding new items */}
           <div className={`${items.length > 0 ? 'pt-3 border-t border-border' : ''}`}>
@@ -578,7 +600,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                 value={newItemText}
                 onChange={(e) => setNewItemText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newItemText.trim() && newRequestedBy.length > 0) {
+                  if (e.key === 'Enter' && newItemText.trim()) {
                     handleAdd();
                   }
                   if (e.key === 'Escape') {
@@ -586,7 +608,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                   }
                 }}
                 onBlur={() => {
-                  if (newItemText.trim() && newRequestedBy.length > 0) {
+                  if (newItemText.trim()) {
                     handleAdd();
                   }
                 }}
@@ -601,7 +623,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                       newRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 text-muted-foreground'
                     )}
                   >
-                    <span className="truncate">{getDisplayText(newRequestedBy)}</span>
+                    <span className="truncate">{getDisplayText(newRequestedBy, true)}</span>
                     <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
