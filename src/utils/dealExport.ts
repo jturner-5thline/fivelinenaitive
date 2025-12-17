@@ -777,12 +777,14 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
   // Header with brand color
   doc.setFillColor(147, 51, 234); // Purple
   doc.rect(0, 0, pageWidth, 40, 'F');
+  const dateMMDD = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }).replace('/', '-');
+  const reportTitle = `${deal.company} Debt Status Report - ${dateMMDD}`;
   
   // Title
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text(`${deal.company} - Status Report`, 20, 25);
+  doc.text(reportTitle, 20, 25);
   
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
@@ -930,17 +932,20 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
     );
   }
 
-  doc.save(`${deal.company}-status-report.pdf`);
+  doc.save(`${deal.company} Debt Status Report - ${dateMMDD}.pdf`);
 }
 
 // Status Report Word Export
 export async function exportStatusReportToWord(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[]): Promise<void> {
+  const dateMMDD = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }).replace('/', '-');
+  const reportTitle = `${deal.company} Debt Status Report - ${dateMMDD}`;
+  
   const children: any[] = [
     // Title
     new Paragraph({
       children: [
         new TextRun({
-          text: `${deal.company} - Status Report`,
+          text: reportTitle,
           bold: true,
           size: 48,
           color: '9333EA',
@@ -1103,5 +1108,5 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `${deal.company}-status-report.docx`);
+  saveAs(blob, `${deal.company} Debt Status Report - ${dateMMDD}.docx`);
 }
