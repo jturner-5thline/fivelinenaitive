@@ -646,14 +646,14 @@ export default function DealDetail() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover">
                   <DropdownMenuItem onClick={() => {
-                    exportStatusReportToPDF(deal, configuredStages, configuredSubstages);
+                    exportStatusReportToPDF(deal, configuredStages, configuredSubstages, outstandingItems);
                     toast({ title: "PDF exported", description: "Status report exported to PDF." });
                   }}>
                     <FileText className="h-4 w-4 mr-2" />
                     Export as PDF
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={async () => {
-                    await exportStatusReportToWord(deal, configuredStages, configuredSubstages);
+                    await exportStatusReportToWord(deal, configuredStages, configuredSubstages, outstandingItems);
                     toast({ title: "Word document exported", description: "Status report exported to Word document." });
                   }}>
                     <FileText className="h-4 w-4 mr-2" />
