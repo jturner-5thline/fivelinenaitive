@@ -757,8 +757,20 @@ interface LenderStageConfig {
   label: string;
 }
 
+interface OutstandingItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  received: boolean;
+  approved: boolean;
+  deliveredToLenders: string[];
+  createdAt: string;
+  completedAt?: string;
+  requestedBy: string[];
+}
+
 // Status Report PDF Export
-export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[]): void {
+export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[]): void {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
@@ -849,6 +861,59 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
       },
       margin: { left: 20, right: 20 },
     });
+
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+  }
+
+  // Outstanding Items Section
+  if (outstandingItems && outstandingItems.length > 0) {
+    if (yPos > 230) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Outstanding Items', 20, yPos);
+    yPos += 10;
+
+    const itemData = outstandingItems.map(item => {
+      const status = item.received && item.approved 
+        ? 'Completed' 
+        : item.approved 
+          ? 'Approved' 
+          : item.received 
+            ? 'Received' 
+            : 'Requested';
+      const requestedBy = Array.isArray(item.requestedBy) 
+        ? item.requestedBy.join(', ') 
+        : item.requestedBy || '-';
+      const completedDate = item.completedAt 
+        ? formatDate(item.completedAt) 
+        : '-';
+      return [
+        item.text,
+        status,
+        requestedBy,
+        completedDate,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Item', 'Status', 'Requested By', 'Completed']],
+      body: itemData,
+      theme: 'striped',
+      headStyles: { fillColor: [147, 51, 234], textColor: 255 },
+      styles: { fontSize: 8, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 35 },
+      },
+      margin: { left: 20, right: 20 },
+    });
   }
 
   // Footer
@@ -869,7 +934,7 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
 }
 
 // Status Report Word Export
-export async function exportStatusReportToWord(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[]): Promise<void> {
+export async function exportStatusReportToWord(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[]): Promise<void> {
   const children: any[] = [
     // Title
     new Paragraph({
@@ -967,6 +1032,59 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
                 createDataCell(LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus]?.label || lender.trackingStatus),
                 createDataCell(passReason),
                 createDataCell(lender.notes || '-'),
+              ],
+            });
+          }),
+        ],
+      })
+    );
+  }
+
+  // Outstanding Items Section
+  if (outstandingItems && outstandingItems.length > 0) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: 'Outstanding Items',
+            bold: true,
+            size: 28,
+          }),
+        ],
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 300, after: 200 },
+      }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              createHeaderCell('Item'),
+              createHeaderCell('Status'),
+              createHeaderCell('Requested By'),
+              createHeaderCell('Completed'),
+            ],
+          }),
+          ...outstandingItems.map(item => {
+            const status = item.received && item.approved 
+              ? 'Completed' 
+              : item.approved 
+                ? 'Approved' 
+                : item.received 
+                  ? 'Received' 
+                  : 'Requested';
+            const requestedBy = Array.isArray(item.requestedBy) 
+              ? item.requestedBy.join(', ') 
+              : item.requestedBy || '-';
+            const completedDate = item.completedAt 
+              ? formatDate(item.completedAt) 
+              : '-';
+            return new TableRow({
+              children: [
+                createDataCell(item.text),
+                createDataCell(status),
+                createDataCell(requestedBy),
+                createDataCell(completedDate),
               ],
             });
           }),
