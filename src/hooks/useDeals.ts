@@ -12,6 +12,7 @@ export interface DealFilters {
   engagementType: EngagementType[];
   manager: string[];
   lender: string[];
+  referredBy: string[];
 }
 
 export function useDeals() {
@@ -23,6 +24,7 @@ export function useDeals() {
     engagementType: [],
     manager: [],
     lender: [],
+    referredBy: [],
   });
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -59,6 +61,10 @@ export function useDeals() {
 
     if (filters.lender.length > 0) {
       result = result.filter((deal) => filters.lender.includes(deal.lender));
+    }
+
+    if (filters.referredBy.length > 0) {
+      result = result.filter((deal) => deal.referredBy && filters.referredBy.includes(deal.referredBy.id));
     }
 
     // Apply sorting

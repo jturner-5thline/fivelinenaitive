@@ -2,14 +2,7 @@ import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { DealFilters as FilterType, SortField, SortDirection } from '@/hooks/useDeals';
+import { DealFilters as FilterType } from '@/hooks/useDeals';
 import { 
   DealStage, 
   DealStatus, 
@@ -20,22 +13,17 @@ import {
   MANAGERS,
   LENDERS,
 } from '@/types/deal';
+import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 
 interface DealFiltersProps {
   filters: FilterType;
-  sortField: SortField;
-  sortDirection: SortDirection;
   onFilterChange: (filters: Partial<FilterType>) => void;
-  onSortChange: (field: SortField) => void;
 }
 
 export function DealFilters({
   filters,
-  sortField,
-  sortDirection,
   onFilterChange,
-  onSortChange,
 }: DealFiltersProps) {
   const activeFiltersCount = [
     filters.stage.length > 0,
@@ -43,6 +31,7 @@ export function DealFilters({
     filters.engagementType.length > 0,
     filters.manager.length > 0,
     filters.lender.length > 0,
+    filters.referredBy.length > 0,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -53,6 +42,7 @@ export function DealFilters({
       engagementType: [],
       manager: [],
       lender: [],
+      referredBy: [],
     });
   };
 
@@ -79,6 +69,11 @@ export function DealFilters({
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
     label: lender,
+  }));
+
+  const referredByOptions = mockReferrers.map((referrer) => ({
+    value: referrer.id,
+    label: referrer.name,
   }));
 
   const removeFilter = (type: keyof FilterType, value: string) => {
@@ -114,6 +109,11 @@ export function DealFilters({
 
     filters.lender.forEach((value) => {
       chips.push({ type: 'lender', value, label: value });
+    });
+
+    filters.referredBy.forEach((value) => {
+      const referrer = mockReferrers.find(r => r.id === value);
+      chips.push({ type: 'referredBy', value, label: referrer?.name || value });
     });
 
     return chips;
@@ -177,25 +177,13 @@ export function DealFilters({
             className="w-[160px]"
           />
 
-          <Select
-            value={`${sortField}-${sortDirection}`}
-            onValueChange={(value) => {
-              const field = value.split('-')[0] as SortField;
-              onSortChange(field);
-            }}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="updatedAt-desc">Recently Updated</SelectItem>
-              <SelectItem value="createdAt-desc">Newest First</SelectItem>
-              <SelectItem value="value-desc">Highest Value</SelectItem>
-              <SelectItem value="value-asc">Lowest Value</SelectItem>
-              <SelectItem value="name-asc">Name A-Z</SelectItem>
-              <SelectItem value="status-asc">By Status</SelectItem>
-            </SelectContent>
-          </Select>
+          <MultiSelectFilter
+            label="Referred by"
+            options={referredByOptions}
+            selected={filters.referredBy}
+            onChange={(referredBy) => onFilterChange({ referredBy })}
+            className="w-[160px]"
+          />
 
           {activeFiltersCount > 0 && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">

@@ -158,10 +158,7 @@ export default function Dashboard() {
             {/* Filters */}
             <DealFilters
               filters={filters}
-              sortField={sortField}
-              sortDirection={sortDirection}
               onFilterChange={updateFilters}
-              onSortChange={toggleSort}
             />
 
             {/* Results Count & Group Toggle */}
