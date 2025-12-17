@@ -1600,6 +1600,52 @@ export default function DealDetail() {
                 </CardContent>
               </Card>
 
+              {/* Company Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-purple-700 flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Company
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm text-muted-foreground">Company Description</label>
+                    <Textarea
+                      value={deal.companyDescription || ''}
+                      onChange={(e) => updateDeal('companyDescription', e.target.value)}
+                      placeholder="Enter company description..."
+                      className="min-h-[80px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm text-muted-foreground">Company URL</label>
+                    <Input
+                      value={deal.companyUrl || ''}
+                      onChange={(e) => updateDeal('companyUrl', e.target.value)}
+                      placeholder="https://example.com"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm text-muted-foreground">Business Model</label>
+                    <Input
+                      value={deal.businessModel || ''}
+                      onChange={(e) => updateDeal('businessModel', e.target.value)}
+                      placeholder="Enter business model..."
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm text-muted-foreground">Contact Name & Information</label>
+                    <Textarea
+                      value={deal.contactInfo || ''}
+                      onChange={(e) => updateDeal('contactInfo', e.target.value)}
+                      placeholder="Enter contact details..."
+                      className="min-h-[60px] resize-none"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Attachments & Documents */}
               <Card>
                 <CardHeader className="pb-3">
