@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History } from 'lucide-react';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -134,6 +134,7 @@ export default function DealDetail() {
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
+  const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   
   // View preferences - load from localStorage
   const savedViewPrefs = useMemo(() => {
@@ -271,9 +272,25 @@ export default function DealDetail() {
   const updateLenderNotes = useCallback((lenderId: string, notes: string) => {
     setDeal(prev => {
       if (!prev) return prev;
-      const updatedLenders = prev.lenders?.map(l =>
-        l.id === lenderId ? { ...l, notes, notesUpdatedAt: new Date().toISOString() } : l
-      );
+      const updatedLenders = prev.lenders?.map(l => {
+        if (l.id !== lenderId) return l;
+        
+        // Save current note to history if it exists and is different
+        const newHistory = [...(l.notesHistory || [])];
+        if (l.notes && l.notes.trim() && l.notes !== notes) {
+          newHistory.unshift({
+            text: l.notes,
+            updatedAt: l.notesUpdatedAt || new Date().toISOString(),
+          });
+        }
+        
+        return {
+          ...l,
+          notes,
+          notesUpdatedAt: new Date().toISOString(),
+          notesHistory: newHistory,
+        };
+      });
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
   }, []);
@@ -877,44 +894,85 @@ export default function DealDetail() {
                                   </div>
                                 )}
                                 {/* Lender Notes */}
-                                <div className="ml-2 mt-2 flex items-start gap-2">
-                                  <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
-                                  {lender.notesUpdatedAt && (
-                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
-                                      {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
-                                    </span>
-                                  )}
-                                  <div className="flex-1">
-                                    <Textarea
-                                      placeholder="Add notes..."
-                                      value={lender.notes || ''}
-                                      onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
-                                      className={`text-xs resize-none py-1.5 transition-all ${
-                                        expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
-                                      }`}
-                                      rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
-                                    />
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      setExpandedLenderNotes(prev => {
-                                        const next = new Set(prev);
-                                        if (next.has(lender.id)) {
-                                          next.delete(lender.id);
-                                        } else {
-                                          next.add(lender.id);
-                                        }
-                                        return next;
-                                      });
-                                    }}
-                                    className="text-muted-foreground hover:text-foreground mt-1.5"
-                                  >
-                                    {expandedLenderNotes.has(lender.id) ? (
-                                      <Minimize2 className="h-3.5 w-3.5" />
-                                    ) : (
-                                      <Maximize2 className="h-3.5 w-3.5" />
+                                <div className="ml-2 mt-2 space-y-1">
+                                  <div className="flex items-start gap-2">
+                                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
+                                    {lender.notesUpdatedAt && (
+                                      <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
+                                        {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
+                                      </span>
                                     )}
-                                  </button>
+                                    <div className="flex-1">
+                                      <Textarea
+                                        placeholder="Add notes..."
+                                        value={lender.notes || ''}
+                                        onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
+                                        className={`text-xs resize-none py-1.5 transition-all ${
+                                          expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
+                                        }`}
+                                        rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setExpandedLenderNotes(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(lender.id)) {
+                                            next.delete(lender.id);
+                                          } else {
+                                            next.add(lender.id);
+                                          }
+                                          return next;
+                                        });
+                                      }}
+                                      className="text-muted-foreground hover:text-foreground mt-1.5"
+                                    >
+                                      {expandedLenderNotes.has(lender.id) ? (
+                                        <Minimize2 className="h-3.5 w-3.5" />
+                                      ) : (
+                                        <Maximize2 className="h-3.5 w-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+                                  {/* Notes History */}
+                                  {lender.notesHistory && lender.notesHistory.length > 0 && (
+                                    <div className="ml-5">
+                                      <button
+                                        onClick={() => {
+                                          setExpandedLenderHistory(prev => {
+                                            const next = new Set(prev);
+                                            if (next.has(lender.id)) {
+                                              next.delete(lender.id);
+                                            } else {
+                                              next.add(lender.id);
+                                            }
+                                            return next;
+                                          });
+                                        }}
+                                        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                                      >
+                                        <History className="h-3 w-3" />
+                                        <span>{lender.notesHistory.length} previous note{lender.notesHistory.length > 1 ? 's' : ''}</span>
+                                        {expandedLenderHistory.has(lender.id) ? (
+                                          <ChevronUp className="h-3 w-3" />
+                                        ) : (
+                                          <ChevronDown className="h-3 w-3" />
+                                        )}
+                                      </button>
+                                      {expandedLenderHistory.has(lender.id) && (
+                                        <div className="mt-1 space-y-1 border-l-2 border-muted pl-2">
+                                          {lender.notesHistory.map((historyItem, idx) => (
+                                            <div key={idx} className="text-xs">
+                                              <span className="text-[10px] text-muted-foreground">
+                                                {format(new Date(historyItem.updatedAt), 'MM-dd')}
+                                              </span>
+                                              <p className="text-muted-foreground mt-0.5">{historyItem.text}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -1077,44 +1135,85 @@ export default function DealDetail() {
                                           </div>
                                         )}
                                         {/* Lender Notes */}
-                                        <div className="ml-2 mt-2 flex items-start gap-2">
-                                          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
-                                          {lender.notesUpdatedAt && (
-                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
-                                              {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
-                                            </span>
-                                          )}
-                                          <div className="flex-1">
-                                            <Textarea
-                                              placeholder="Add notes..."
-                                              value={lender.notes || ''}
-                                              onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
-                                              className={`text-xs resize-none py-1.5 transition-all ${
-                                                expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
-                                              }`}
-                                              rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
-                                            />
-                                          </div>
-                                          <button
-                                            onClick={() => {
-                                              setExpandedLenderNotes(prev => {
-                                                const next = new Set(prev);
-                                                if (next.has(lender.id)) {
-                                                  next.delete(lender.id);
-                                                } else {
-                                                  next.add(lender.id);
-                                                }
-                                                return next;
-                                              });
-                                            }}
-                                            className="text-muted-foreground hover:text-foreground mt-1.5"
-                                          >
-                                            {expandedLenderNotes.has(lender.id) ? (
-                                              <Minimize2 className="h-3.5 w-3.5" />
-                                            ) : (
-                                              <Maximize2 className="h-3.5 w-3.5" />
+                                        <div className="ml-2 mt-2 space-y-1">
+                                          <div className="flex items-start gap-2">
+                                            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
+                                            {lender.notesUpdatedAt && (
+                                              <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
+                                                {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
+                                              </span>
                                             )}
-                                          </button>
+                                            <div className="flex-1">
+                                              <Textarea
+                                                placeholder="Add notes..."
+                                                value={lender.notes || ''}
+                                                onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
+                                                className={`text-xs resize-none py-1.5 transition-all ${
+                                                  expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
+                                                }`}
+                                                rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
+                                              />
+                                            </div>
+                                            <button
+                                              onClick={() => {
+                                                setExpandedLenderNotes(prev => {
+                                                  const next = new Set(prev);
+                                                  if (next.has(lender.id)) {
+                                                    next.delete(lender.id);
+                                                  } else {
+                                                    next.add(lender.id);
+                                                  }
+                                                  return next;
+                                                });
+                                              }}
+                                              className="text-muted-foreground hover:text-foreground mt-1.5"
+                                            >
+                                              {expandedLenderNotes.has(lender.id) ? (
+                                                <Minimize2 className="h-3.5 w-3.5" />
+                                              ) : (
+                                                <Maximize2 className="h-3.5 w-3.5" />
+                                              )}
+                                            </button>
+                                          </div>
+                                          {/* Notes History */}
+                                          {lender.notesHistory && lender.notesHistory.length > 0 && (
+                                            <div className="ml-5">
+                                              <button
+                                                onClick={() => {
+                                                  setExpandedLenderHistory(prev => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(lender.id)) {
+                                                      next.delete(lender.id);
+                                                    } else {
+                                                      next.add(lender.id);
+                                                    }
+                                                    return next;
+                                                  });
+                                                }}
+                                                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                                              >
+                                                <History className="h-3 w-3" />
+                                                <span>{lender.notesHistory.length} previous note{lender.notesHistory.length > 1 ? 's' : ''}</span>
+                                                {expandedLenderHistory.has(lender.id) ? (
+                                                  <ChevronUp className="h-3 w-3" />
+                                                ) : (
+                                                  <ChevronDown className="h-3 w-3" />
+                                                )}
+                                              </button>
+                                              {expandedLenderHistory.has(lender.id) && (
+                                                <div className="mt-1 space-y-1 border-l-2 border-muted pl-2">
+                                                  {lender.notesHistory.map((historyItem, idx) => (
+                                                    <div key={idx} className="text-xs">
+                                                      <span className="text-[10px] text-muted-foreground">
+                                                        {format(new Date(historyItem.updatedAt), 'MM-dd')}
+                                                      </span>
+                                                      <p className="text-muted-foreground mt-0.5">{historyItem.text}</p>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     );
