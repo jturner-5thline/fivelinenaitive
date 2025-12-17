@@ -28,7 +28,8 @@ export interface DealLender {
   notes?: string;
   notesUpdatedAt?: string;
   notesHistory?: LenderNoteHistory[];
-  savedNotes?: string; // Last committed note value
+  savedNotes?: string;
+  updatedAt?: string; // Last update timestamp for the lender
 }
 
 export interface DealMilestone {
