@@ -28,6 +28,7 @@ export interface DealLender {
   notes?: string;
   notesUpdatedAt?: string;
   notesHistory?: LenderNoteHistory[];
+  savedNotes?: string; // Last committed note value
 }
 
 export interface DealMilestone {

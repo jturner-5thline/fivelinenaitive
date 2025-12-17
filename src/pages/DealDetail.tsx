@@ -285,18 +285,21 @@ export default function DealDetail() {
       const updatedLenders = prev.lenders?.map(l => {
         if (l.id !== lenderId) return l;
         
-        // Save current note to history if it exists and differs from last history entry
+        const currentNote = l.notes?.trim() || '';
+        const previousSavedNote = l.savedNotes?.trim() || '';
+        
+        // Only save to history if there was a previous saved note AND it differs from current
         const newHistory = [...(l.notesHistory || [])];
-        const lastHistoryNote = newHistory[0]?.text;
-        if (l.notes && l.notes.trim() && l.notes !== lastHistoryNote) {
+        if (previousSavedNote && previousSavedNote !== currentNote) {
           newHistory.unshift({
-            text: l.notes,
-            updatedAt: new Date().toISOString(),
+            text: previousSavedNote,
+            updatedAt: l.notesUpdatedAt || new Date().toISOString(),
           });
         }
         
         return {
           ...l,
+          savedNotes: currentNote, // Update the committed version
           notesUpdatedAt: new Date().toISOString(),
           notesHistory: newHistory,
         };
