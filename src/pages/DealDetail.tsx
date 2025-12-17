@@ -1,14 +1,15 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare } from 'lucide-react';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
-import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
+import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { mockDeals } from '@/data/mockDeals';
 import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
@@ -265,6 +266,16 @@ export default function DealDetail() {
       description: `${lenderName} has been added to the deal.`,
     });
   }, [deal]);
+
+  const updateLenderNotes = useCallback((lenderId: string, notes: string) => {
+    setDeal(prev => {
+      if (!prev) return prev;
+      const updatedLenders = prev.lenders?.map(l =>
+        l.id === lenderId ? { ...l, notes, notesUpdatedAt: new Date().toISOString() } : l
+      );
+      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    });
+  }, []);
 
   const addMilestone = useCallback((milestone: Omit<DealMilestone, 'id'>) => {
     if (!deal) return;
@@ -864,6 +875,24 @@ export default function DealDetail() {
                                     ))}
                                   </div>
                                 )}
+                                {/* Lender Notes */}
+                                <div className="ml-2 mt-2 flex items-start gap-2">
+                                  <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <Textarea
+                                      placeholder="Add notes..."
+                                      value={lender.notes || ''}
+                                      onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
+                                      className="min-h-[32px] h-8 text-xs resize-none py-1.5"
+                                      rows={1}
+                                    />
+                                  </div>
+                                  {lender.notesUpdatedAt && (
+                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
+                                      {format(new Date(lender.notesUpdatedAt), 'dd-MM')}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             );
                           })
@@ -1024,6 +1053,24 @@ export default function DealDetail() {
                                             ))}
                                           </div>
                                         )}
+                                        {/* Lender Notes */}
+                                        <div className="ml-2 mt-2 flex items-start gap-2">
+                                          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
+                                          <div className="flex-1">
+                                            <Textarea
+                                              placeholder="Add notes..."
+                                              value={lender.notes || ''}
+                                              onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
+                                              className="min-h-[32px] h-8 text-xs resize-none py-1.5"
+                                              rows={1}
+                                            />
+                                          </div>
+                                          {lender.notesUpdatedAt && (
+                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
+                                              {format(new Date(lender.notesUpdatedAt), 'dd-MM')}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   })}
