@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useDealTypes } from '@/contexts/DealTypesContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,8 +23,18 @@ interface DealCardProps {
 
 export function DealCard({ deal, onStatusChange }: DealCardProps) {
   const { formatCurrencyValue } = usePreferences();
+  const { dealTypes } = useDealTypes();
   const statusConfig = STATUS_CONFIG[deal.status];
   const stageConfig = STAGE_CONFIG[deal.stage];
+
+  const getDealTypeLabels = () => {
+    if (!deal.dealTypes || deal.dealTypes.length === 0) return [];
+    return deal.dealTypes
+      .map(id => dealTypes.find(dt => dt.id === id)?.label)
+      .filter(Boolean);
+  };
+
+  const dealTypeLabels = getDealTypeLabels();
 
   const getTimeAgoData = (dateString: string) => {
     const date = new Date(dateString);
@@ -126,11 +137,16 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
           <span className="truncate">{deal.manager}</span>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-border">
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
           <Badge variant="secondary" className="text-xs rounded-lg">
             {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
           </Badge>
-          <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
+          {dealTypeLabels.map((label, index) => (
+            <Badge key={index} variant="outline" className="text-xs rounded-lg">
+              {label}
+            </Badge>
+          ))}
+          <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ml-auto ${timeAgoData.highlightClass}`}>
             <Clock className="h-3 w-3" />
             <span>{timeAgoData.text}</span>
           </div>
