@@ -2,6 +2,9 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -135,7 +138,26 @@ export default function DealDetail() {
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
-  
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleLenderDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setDeal(prev => {
+        if (!prev || !prev.lenders) return prev;
+        const oldIndex = prev.lenders.findIndex(l => l.id === active.id);
+        const newIndex = prev.lenders.findIndex(l => l.id === over.id);
+        const newLenders = arrayMove(prev.lenders, oldIndex, newIndex);
+        return { ...prev, lenders: newLenders, updatedAt: new Date().toISOString() };
+      });
+    }
+  }, []);
+
   // View preferences - load from localStorage
   const savedViewPrefs = useMemo(() => {
     const saved = localStorage.getItem('dealDetailViewPrefs');
@@ -768,16 +790,26 @@ export default function DealDetail() {
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
                         {lenderGroupFilter === 'all' ? (
-                          // Flat list when "All" is selected
-                          deal.lenders.map((lender, index) => {
-                            const lenderOutstandingItems = outstandingItems.filter(
-                              item => Array.isArray(item.requestedBy) 
-                                ? item.requestedBy.includes(lender.name)
-                                : item.requestedBy === lender.name
-                            );
-                            return (
-                              <div key={lender.id} className={`${index > 0 ? 'pt-3 border-t border-border' : ''}`}>
-                                <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
+                          // Flat list when "All" is selected - with drag and drop
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleLenderDragEnd}
+                          >
+                            <SortableContext
+                              items={deal.lenders.map(l => l.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {deal.lenders.map((lender, index) => {
+                                const lenderOutstandingItems = outstandingItems.filter(
+                                  item => Array.isArray(item.requestedBy) 
+                                    ? item.requestedBy.includes(lender.name)
+                                    : item.requestedBy === lender.name
+                                );
+                                return (
+                                  <SortableLenderItem key={lender.id} lender={lender}>
+                                    <div className={`${index > 0 ? 'pt-3 border-t border-border' : ''} pl-6`}>
+                                      <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
                                   <button 
                                     className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                                     onClick={() => setSelectedLenderName(lender.name)}
@@ -993,9 +1025,12 @@ export default function DealDetail() {
                                     </div>
                                   )}
                                 </div>
-                              </div>
-                            );
-                          })
+                                    </div>
+                                  </SortableLenderItem>
+                                );
+                              })}
+                            </SortableContext>
+                          </DndContext>
                         ) : (
                           // Grouped list when a specific group is selected
                           STAGE_GROUPS
