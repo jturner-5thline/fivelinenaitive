@@ -819,28 +819,33 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
       const substageName = lender.substage 
         ? (configuredSubstages?.find(s => s.id === lender.substage)?.label || lender.substage)
         : '-';
+      const passReason = lender.trackingStatus === 'passed' && lender.passReason 
+        ? lender.passReason 
+        : '-';
       return [
         lender.name,
         stageName,
         substageName,
         LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus]?.label || lender.trackingStatus,
+        passReason,
         lender.notes || '-',
       ];
     });
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Lender Name', 'Stage', 'Substage', 'Tracking', 'Notes']],
+      head: [['Lender Name', 'Stage', 'Substage', 'Tracking', 'Pass Reason', 'Notes']],
       body: lenderData,
       theme: 'striped',
       headStyles: { fillColor: [147, 51, 234], textColor: 255 },
       styles: { fontSize: 8, cellPadding: 3 },
       columnStyles: {
-        0: { cellWidth: 35 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 45 },
+        0: { cellWidth: 30 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 22 },
+        4: { cellWidth: 30 },
+        5: { cellWidth: 33 },
       },
       margin: { left: 20, right: 20 },
     });
@@ -940,6 +945,7 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
               createHeaderCell('Stage'),
               createHeaderCell('Substage'),
               createHeaderCell('Tracking'),
+              createHeaderCell('Pass Reason'),
               createHeaderCell('Notes'),
             ],
           }),
@@ -950,12 +956,16 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
             const substageName = lender.substage 
               ? (configuredSubstages?.find(s => s.id === lender.substage)?.label || lender.substage)
               : '-';
+            const passReason = lender.trackingStatus === 'passed' && lender.passReason 
+              ? lender.passReason 
+              : '-';
             return new TableRow({
               children: [
                 createDataCell(lender.name),
                 createDataCell(stageName),
                 createDataCell(substageName),
                 createDataCell(LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus]?.label || lender.trackingStatus),
+                createDataCell(passReason),
                 createDataCell(lender.notes || '-'),
               ],
             });
