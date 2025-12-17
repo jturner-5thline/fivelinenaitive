@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2 } from 'lucide-react';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -133,6 +133,7 @@ export default function DealDetail() {
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
+  const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
   
   // View preferences - load from localStorage
   const savedViewPrefs = useMemo(() => {
@@ -883,10 +884,32 @@ export default function DealDetail() {
                                       placeholder="Add notes..."
                                       value={lender.notes || ''}
                                       onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
-                                      className="min-h-[32px] h-8 text-xs resize-none py-1.5"
-                                      rows={1}
+                                      className={`text-xs resize-none py-1.5 transition-all ${
+                                        expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
+                                      }`}
+                                      rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
                                     />
                                   </div>
+                                  <button
+                                    onClick={() => {
+                                      setExpandedLenderNotes(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(lender.id)) {
+                                          next.delete(lender.id);
+                                        } else {
+                                          next.add(lender.id);
+                                        }
+                                        return next;
+                                      });
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground mt-1.5"
+                                  >
+                                    {expandedLenderNotes.has(lender.id) ? (
+                                      <Minimize2 className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <Maximize2 className="h-3.5 w-3.5" />
+                                    )}
+                                  </button>
                                   {lender.notesUpdatedAt && (
                                     <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
                                       {format(new Date(lender.notesUpdatedAt), 'dd-MM')}
@@ -1061,10 +1084,32 @@ export default function DealDetail() {
                                               placeholder="Add notes..."
                                               value={lender.notes || ''}
                                               onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
-                                              className="min-h-[32px] h-8 text-xs resize-none py-1.5"
-                                              rows={1}
+                                              className={`text-xs resize-none py-1.5 transition-all ${
+                                                expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
+                                              }`}
+                                              rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
                                             />
                                           </div>
+                                          <button
+                                            onClick={() => {
+                                              setExpandedLenderNotes(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(lender.id)) {
+                                                  next.delete(lender.id);
+                                                } else {
+                                                  next.add(lender.id);
+                                                }
+                                                return next;
+                                              });
+                                            }}
+                                            className="text-muted-foreground hover:text-foreground mt-1.5"
+                                          >
+                                            {expandedLenderNotes.has(lender.id) ? (
+                                              <Minimize2 className="h-3.5 w-3.5" />
+                                            ) : (
+                                              <Maximize2 className="h-3.5 w-3.5" />
+                                            )}
+                                          </button>
                                           {lender.notesUpdatedAt && (
                                             <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
                                               {format(new Date(lender.notesUpdatedAt), 'dd-MM')}
