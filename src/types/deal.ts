@@ -54,6 +54,7 @@ export interface Deal {
   stage: DealStage;
   status: DealStatus;
   engagementType: EngagementType;
+  dealTypes?: string[]; // Array of deal type IDs
   manager: string;
   lender: string;
   value: number;

@@ -7,6 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { LendersProvider } from "@/contexts/LendersContext";
 import { LenderStagesProvider } from "@/contexts/LenderStagesContext";
+import { DealTypesProvider } from "@/contexts/DealTypesContext";
 import { WidgetsProvider } from "@/contexts/WidgetsContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import Index from "./pages/Index";
@@ -26,24 +27,26 @@ const App = () => (
         <PreferencesProvider>
           <LendersProvider>
             <LenderStagesProvider>
-              <WidgetsProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/login" element={<Auth />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/deal/:id" element={<DealDetail />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/preferences" element={<Preferences />} />
-                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-              </TooltipProvider>
-              </WidgetsProvider>
+              <DealTypesProvider>
+                <WidgetsProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/login" element={<Auth />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/deal/:id" element={<DealDetail />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/preferences" element={<Preferences />} />
+                      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </TooltipProvider>
+                </WidgetsProvider>
+              </DealTypesProvider>
             </LenderStagesProvider>
           </LendersProvider>
         </PreferencesProvider>
