@@ -982,7 +982,7 @@ export default function DealDetail() {
                                               <span className="text-[10px] text-muted-foreground">
                                                 {format(new Date(historyItem.updatedAt), 'MM-dd')}
                                               </span>
-                                              <p className="text-muted-foreground mt-0.5">{historyItem.text}</p>
+                                              <p className="text-foreground/80 mt-0.5">{historyItem.text}</p>
                                             </div>
                                           ))}
                                         </div>
@@ -1229,7 +1229,7 @@ export default function DealDetail() {
                                                       <span className="text-[10px] text-muted-foreground">
                                                         {format(new Date(historyItem.updatedAt), 'MM-dd')}
                                                       </span>
-                                                      <p className="text-muted-foreground mt-0.5">{historyItem.text}</p>
+                                                      <p className="text-foreground/80 mt-0.5">{historyItem.text}</p>
                                                     </div>
                                                   ))}
                                                 </div>
