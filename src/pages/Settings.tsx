@@ -31,6 +31,7 @@ import { useLenders } from '@/contexts/LendersContext';
 import { LenderStagesSettings } from '@/components/settings/LenderStagesSettings';
 import { LenderSubstagesSettings } from '@/components/settings/LenderSubstagesSettings';
 import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
+import { DealTypesSettings } from '@/components/settings/DealTypesSettings';
 
 interface LenderForm {
   name: string;
@@ -231,6 +232,8 @@ export default function Settings() {
             <LenderSubstagesSettings />
 
             <PassReasonsSettings />
+
+            <DealTypesSettings />
 
             <Card>
               <CardHeader>

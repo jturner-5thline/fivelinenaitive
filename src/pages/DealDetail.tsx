@@ -18,6 +18,7 @@ import { mockDeals, mockReferrers } from '@/data/mockDeals';
 import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
+import { useDealTypes } from '@/contexts/DealTypesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
@@ -53,6 +54,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
@@ -173,6 +180,7 @@ export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const { getLenderNames, getLenderDetails } = useLenders();
   const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
+  const { dealTypes: availableDealTypes } = useDealTypes();
   const { formatCurrencyValue } = usePreferences();
   const lenderNames = getLenderNames();
   const initialDeal = mockDeals.find((d) => d.id === id);
@@ -557,7 +565,7 @@ export default function DealDetail() {
     return { text, highlightClass };
   };
 
-  const updateDeal = useCallback((field: keyof Deal, value: string | number) => {
+  const updateDeal = useCallback((field: keyof Deal, value: string | number | string[] | undefined) => {
     setDeal(prev => {
       if (!prev) return prev;
       // Save current state to history before updating
@@ -1506,6 +1514,67 @@ export default function DealDetail() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="flex items-start justify-between">
+                    <span className="text-muted-foreground pt-1">Deal Type</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="h-auto p-0 px-1 font-medium hover:bg-muted/50 rounded max-w-[200px] justify-end"
+                        >
+                          {deal.dealTypes && deal.dealTypes.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {deal.dealTypes.map(typeId => {
+                                const dealType = availableDealTypes.find(dt => dt.id === typeId);
+                                return dealType ? (
+                                  <Badge key={typeId} variant="secondary" className="text-xs">
+                                    {dealType.label}
+                                  </Badge>
+                                ) : null;
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground italic text-sm">Select types</span>
+                          )}
+                          <ChevronDown className="h-3 w-3 ml-1 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="end">
+                        <div className="max-h-[300px] overflow-auto p-1">
+                          {availableDealTypes.map((dealType) => {
+                            const isSelected = deal.dealTypes?.includes(dealType.id) || false;
+                            return (
+                              <div
+                                key={dealType.id}
+                                className={cn(
+                                  'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                                  isSelected && 'bg-accent/50'
+                                )}
+                                onClick={() => {
+                                  const currentTypes = deal.dealTypes || [];
+                                  const newTypes = isSelected
+                                    ? currentTypes.filter(t => t !== dealType.id)
+                                    : [...currentTypes, dealType.id];
+                                  updateDeal('dealTypes', newTypes);
+                                }}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  className="pointer-events-none"
+                                />
+                                <span className="flex-1">{dealType.label}</span>
+                              </div>
+                            );
+                          })}
+                          {availableDealTypes.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-4">
+                              No deal types configured. Add them in Settings.
+                            </p>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total Fee</span>
