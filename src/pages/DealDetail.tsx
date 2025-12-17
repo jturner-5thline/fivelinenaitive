@@ -14,8 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { mockDeals } from '@/data/mockDeals';
-import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { mockDeals, mockReferrers } from '@/data/mockDeals';
+import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -187,6 +187,7 @@ export default function DealDetail() {
   const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
+  const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -315,6 +316,19 @@ export default function DealDetail() {
         dealName: d.name,
         company: d.company,
         lenderInfo: d.lenders?.find(l => l.name === lenderName),
+      }));
+  }, []);
+
+  // Get all deals referred by a specific referrer
+  const getReferrerDeals = useCallback((referrerId: string) => {
+    return mockDeals
+      .filter(d => d.referredBy?.id === referrerId)
+      .map(d => ({
+        dealId: d.id,
+        dealName: d.name,
+        company: d.company,
+        stage: d.stage,
+        status: d.status,
       }));
   }, []);
 
@@ -1489,6 +1503,19 @@ export default function DealDetail() {
                       displayClassName="font-medium text-purple-600"
                     />
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Referred by</span>
+                    {deal.referredBy ? (
+                      <button
+                        className="font-medium text-purple-600 hover:underline cursor-pointer"
+                        onClick={() => setSelectedReferrer(deal.referredBy!)}
+                      >
+                        {deal.referredBy.name}
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground italic text-sm">Not set</span>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1788,6 +1815,70 @@ export default function DealDetail() {
               Confirm Pass
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Referrer Detail Dialog */}
+      <Dialog open={!!selectedReferrer} onOpenChange={(open) => !open && setSelectedReferrer(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{selectedReferrer?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedReferrer && (() => {
+            const referrerDeals = getReferrerDeals(selectedReferrer.id);
+            return (
+              <div className="space-y-6 mt-4">
+                {/* Contact Information */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
+                  <div className="space-y-1 text-sm">
+                    {selectedReferrer.company && (
+                      <p><span className="text-muted-foreground">Company:</span> {selectedReferrer.company}</p>
+                    )}
+                    {selectedReferrer.email && (
+                      <p><span className="text-muted-foreground">Email:</span> {selectedReferrer.email}</p>
+                    )}
+                    {selectedReferrer.phone && (
+                      <p><span className="text-muted-foreground">Phone:</span> {selectedReferrer.phone}</p>
+                    )}
+                    {!selectedReferrer.company && !selectedReferrer.email && !selectedReferrer.phone && (
+                      <p className="text-muted-foreground italic">No contact information available</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Deals Referred */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Deals Referred ({referrerDeals.length})</h4>
+                  {referrerDeals.length > 0 ? (
+                    <div className="space-y-2">
+                      {referrerDeals.map((dealInfo) => (
+                        <div key={dealInfo.dealId} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                          <div>
+                            <p className="font-medium">{dealInfo.company}</p>
+                            <p className="text-xs text-muted-foreground">{dealInfo.dealName}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {STAGE_CONFIG[dealInfo.stage].label}
+                            </Badge>
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-xs ${STATUS_CONFIG[dealInfo.status].badgeColor} text-white`}
+                            >
+                              {STATUS_CONFIG[dealInfo.status].label}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No deals referred yet</p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </>
