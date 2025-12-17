@@ -1610,15 +1610,6 @@ export default function DealDetail() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm text-muted-foreground">Company Description</label>
-                    <Textarea
-                      value={deal.companyDescription || ''}
-                      onChange={(e) => updateDeal('companyDescription', e.target.value)}
-                      placeholder="Enter company description..."
-                      className="min-h-[80px] resize-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
                     <label className="text-sm text-muted-foreground">Company URL</label>
                     <Input
                       value={deal.companyUrl || ''}
