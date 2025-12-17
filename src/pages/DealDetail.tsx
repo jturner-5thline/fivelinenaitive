@@ -453,7 +453,19 @@ export default function DealDetail() {
 
   const updateOutstandingItem = useCallback((id: string, updates: Partial<OutstandingItem>) => {
     setOutstandingItems(prev =>
-      prev.map(item => (item.id === id ? { ...item, ...updates } : item))
+      prev.map(item => {
+        if (item.id !== id) return item;
+        const updatedItem = { ...item, ...updates };
+        // Set completedAt when both received and approved become true
+        const wasCompleted = item.received && item.approved;
+        const isNowCompleted = updatedItem.received && updatedItem.approved;
+        if (!wasCompleted && isNowCompleted) {
+          updatedItem.completedAt = new Date().toISOString();
+        } else if (wasCompleted && !isNowCompleted) {
+          updatedItem.completedAt = undefined;
+        }
+        return updatedItem;
+      })
     );
   }, []);
 

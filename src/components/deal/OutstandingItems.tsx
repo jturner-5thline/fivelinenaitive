@@ -32,6 +32,7 @@ export interface OutstandingItem {
   approved: boolean;
   deliveredToLenders: string[]; // Array of lender names who received this item
   createdAt: string;
+  completedAt?: string;
   requestedBy: string[];
 }
 
@@ -693,6 +694,10 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                                   {item.text}
                                 </span>
                                 <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
+                                  <span className="flex items-center gap-1 text-emerald-600">
+                                    <Check className="h-3 w-3" />
+                                    Completed {item.completedAt ? format(new Date(item.completedAt), 'MMM d, yyyy') : ''}
+                                  </span>
                                   <span className="flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
                                     Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
