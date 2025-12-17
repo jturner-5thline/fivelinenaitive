@@ -19,6 +19,9 @@ export interface DealLender {
   stage: LenderStage;
   substage?: LenderSubstage;
   trackingStatus: LenderTrackingStatus;
+  passReason?: string;
+  notes?: string;
+  notesUpdatedAt?: string;
 }
 
 export interface DealMilestone {
