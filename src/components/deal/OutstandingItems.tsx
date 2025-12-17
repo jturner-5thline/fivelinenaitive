@@ -259,6 +259,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(items.length > 0);
+  const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
 
   const requestedByOptions = ['5th Line', ...lenderNames];
@@ -277,6 +278,11 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
         const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
         return filterByLender.some(lender => requesters.includes(lender));
       });
+
+  // Split into active and completed (received + approved)
+  const isCompleted = (item: OutstandingItem) => item.received && item.approved;
+  const activeItems = filteredItems.filter(item => !isCompleted(item));
+  const completedItems = filteredItems.filter(item => isCompleted(item));
 
   const handleAdd = () => {
     if (newItemText.trim()) {
@@ -436,161 +442,318 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                 </p>
               )}
 
-          {filteredItems.map((item) => {
-            const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
-            return (
-            <div
-              key={item.id}
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border bg-card",
-                isFullyDelivered(item) && "opacity-60",
-                hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border"
-              )}
-            >
-              {editingId === item.id ? (
-                <div className="flex-1 flex items-center gap-2">
-                  <Input
-                    value={editingText}
-                    onChange={(e) => setEditingText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSaveEdit();
-                      if (e.key === 'Escape') handleCancelEdit();
-                    }}
-                    autoFocus
-                    className="flex-1"
-                  />
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-40 justify-between gap-2 font-normal text-xs',
-                          editingRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 bg-destructive/5'
-                        )}
-                      >
-                        <span className="truncate">{getDisplayText(editingRequestedBy)}</span>
-                        <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
-                      <div className="max-h-[300px] overflow-auto p-1">
-                        {requestedByOptions.map((option) => {
-                          const isSelected = editingRequestedBy.includes(option);
-                          return (
-                            <div
-                              key={option}
+              {/* Active Items */}
+              {activeItems.map((item) => {
+                const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border bg-card",
+                      isFullyDelivered(item) && "opacity-60",
+                      hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border"
+                    )}
+                  >
+                    {editingId === item.id ? (
+                      <div className="flex-1 flex items-center gap-2">
+                        <Input
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit();
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                          autoFocus
+                          className="flex-1"
+                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
                               className={cn(
-                                'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                                isSelected && 'bg-accent/50'
+                                'w-40 justify-between gap-2 font-normal text-xs',
+                                editingRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 bg-destructive/5'
                               )}
-                              onClick={() => toggleEditingRequestedBy(option)}
                             >
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleEditingRequestedBy(option)}
-                                className="pointer-events-none"
-                              />
-                              <span className="flex-1">{option}</span>
-                              {isSelected && <Check className="h-4 w-4 text-primary" />}
+                              <span className="truncate">{getDisplayText(editingRequestedBy)}</span>
+                              <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
+                            <div className="max-h-[300px] overflow-auto p-1">
+                              {requestedByOptions.map((option) => {
+                                const isSelected = editingRequestedBy.includes(option);
+                                return (
+                                  <div
+                                    key={option}
+                                    className={cn(
+                                      'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                                      isSelected && 'bg-accent/50'
+                                    )}
+                                    onClick={() => toggleEditingRequestedBy(option)}
+                                  >
+                                    <Checkbox
+                                      checked={isSelected}
+                                      onCheckedChange={() => toggleEditingRequestedBy(option)}
+                                      className="pointer-events-none"
+                                    />
+                                    <span className="flex-1">{option}</span>
+                                    {isSelected && <Check className="h-4 w-4 text-primary" />}
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
+                          </PopoverContent>
+                        </Popover>
+                        <Button size="sm" onClick={handleSaveEdit}>
+                          Save
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </PopoverContent>
-                  </Popover>
-                  <Button size="sm" onClick={handleSaveEdit} disabled={editingRequestedBy.length === 0}>
-                    Save
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex-1 min-w-0">
-                    <span
-                      className={cn(
-                        "text-sm block",
-                        isFullyDelivered(item) && "line-through text-muted-foreground"
+                    ) : (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <span
+                            className={cn(
+                              "text-sm block",
+                              isFullyDelivered(item) && "line-through text-muted-foreground"
+                            )}
+                          >
+                            {item.text}
+                          </span>
+                          <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
+                            </span>
+                            <span className={cn(
+                              "flex items-center gap-1",
+                              (!item.requestedBy || item.requestedBy.length === 0) && "text-destructive"
+                            )}>
+                              <User className="h-3 w-3" />
+                              {!item.requestedBy || item.requestedBy.length === 0
+                                ? 'No requester assigned'
+                                : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                            item.received && "bg-emerald-500/10"
+                          )}>
+                            <Checkbox
+                              checked={item.received}
+                              onCheckedChange={(checked) =>
+                                onUpdate(item.id, { received: checked === true })
+                              }
+                              className={cn(
+                                item.received && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                              )}
+                            />
+                            <span className={cn(
+                              "text-xs",
+                              item.received ? "text-emerald-600 font-medium" : "text-muted-foreground"
+                            )}>Received</span>
+                          </div>
+                          <div className={cn(
+                            "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                            item.approved && "bg-emerald-500/10"
+                          )}>
+                            <Checkbox
+                              checked={item.approved}
+                              onCheckedChange={(checked) =>
+                                onUpdate(item.id, { approved: checked === true })
+                              }
+                              className={cn(
+                                item.approved && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                              )}
+                            />
+                            <span className={cn(
+                              "text-xs",
+                              item.approved ? "text-emerald-600 font-medium" : "text-muted-foreground"
+                            )}>Approved</span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleStartEdit(item)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => onDelete(item.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Completed Items Section */}
+              {completedItems.length > 0 && (
+                <Collapsible open={isCompletedExpanded} onOpenChange={setIsCompletedExpanded}>
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-center gap-2 w-full pt-3 border-t border-border hover:text-primary transition-colors">
+                      {isCompletedExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       )}
-                    >
-                      {item.text}
-                    </span>
-                    <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
+                      <span className="text-sm font-medium text-emerald-600">
+                        Completed Items
                       </span>
-                      <span className={cn(
-                        "flex items-center gap-1",
-                        (!item.requestedBy || item.requestedBy.length === 0) && "text-destructive"
-                      )}>
-                        <User className="h-3 w-3" />
-                        {!item.requestedBy || item.requestedBy.length === 0
-                          ? 'No requester assigned'
-                          : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
+                      <span className="text-xs text-muted-foreground">
+                        ({completedItems.length})
                       </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
-                      item.received && "bg-emerald-500/10"
-                    )}>
-                      <Checkbox
-                        checked={item.received}
-                        onCheckedChange={(checked) =>
-                          onUpdate(item.id, { received: checked === true })
-                        }
-                        className={cn(
-                          item.received && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                        )}
-                      />
-                      <span className={cn(
-                        "text-xs",
-                        item.received ? "text-emerald-600 font-medium" : "text-muted-foreground"
-                      )}>Received</span>
-                    </div>
-                    <div className={cn(
-                      "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
-                      item.approved && "bg-emerald-500/10"
-                    )}>
-                      <Checkbox
-                        checked={item.approved}
-                        onCheckedChange={(checked) =>
-                          onUpdate(item.id, { approved: checked === true })
-                        }
-                        className={cn(
-                          item.approved && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                        )}
-                      />
-                      <span className={cn(
-                        "text-xs",
-                        item.approved ? "text-emerald-600 font-medium" : "text-muted-foreground"
-                      )}>Approved</span>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={() => handleStartEdit(item)}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => onDelete(item.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 pt-3">
+                    {completedItems.map((item) => {
+                      const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            "flex items-center gap-3 p-3 rounded-lg border bg-card opacity-60",
+                            hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border"
+                          )}
+                        >
+                          {editingId === item.id ? (
+                            <div className="flex-1 flex items-center gap-2">
+                              <Input
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveEdit();
+                                  if (e.key === 'Escape') handleCancelEdit();
+                                }}
+                                autoFocus
+                                className="flex-1"
+                              />
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      'w-40 justify-between gap-2 font-normal text-xs',
+                                      editingRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 bg-destructive/5'
+                                    )}
+                                  >
+                                    <span className="truncate">{getDisplayText(editingRequestedBy)}</span>
+                                    <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
+                                  <div className="max-h-[300px] overflow-auto p-1">
+                                    {requestedByOptions.map((option) => {
+                                      const isSelected = editingRequestedBy.includes(option);
+                                      return (
+                                        <div
+                                          key={option}
+                                          className={cn(
+                                            'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                                            isSelected && 'bg-accent/50'
+                                          )}
+                                          onClick={() => toggleEditingRequestedBy(option)}
+                                        >
+                                          <Checkbox
+                                            checked={isSelected}
+                                            onCheckedChange={() => toggleEditingRequestedBy(option)}
+                                            className="pointer-events-none"
+                                          />
+                                          <span className="flex-1">{option}</span>
+                                          {isSelected && <Check className="h-4 w-4 text-primary" />}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                              <Button size="sm" onClick={handleSaveEdit}>
+                                Save
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm block line-through text-muted-foreground">
+                                  {item.text}
+                                </span>
+                                <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
+                                  </span>
+                                  <span className={cn(
+                                    "flex items-center gap-1",
+                                    (!item.requestedBy || item.requestedBy.length === 0) && "text-destructive"
+                                  )}>
+                                    <User className="h-3 w-3" />
+                                    {!item.requestedBy || item.requestedBy.length === 0
+                                      ? 'No requester assigned'
+                                      : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10">
+                                  <Checkbox
+                                    checked={item.received}
+                                    onCheckedChange={(checked) =>
+                                      onUpdate(item.id, { received: checked === true })
+                                    }
+                                    className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                  />
+                                  <span className="text-xs text-emerald-600 font-medium">Received</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10">
+                                  <Checkbox
+                                    checked={item.approved}
+                                    onCheckedChange={(checked) =>
+                                      onUpdate(item.id, { approved: checked === true })
+                                    }
+                                    className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                  />
+                                  <span className="text-xs text-emerald-600 font-medium">Approved</span>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                onClick={() => handleStartEdit(item)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => onDelete(item.id)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
               )}
-            </div>
-            );
-          })}
 
           {/* Always-visible input for adding new items */}
           <div className={`${items.length > 0 ? 'pt-3 border-t border-border' : ''}`}>
