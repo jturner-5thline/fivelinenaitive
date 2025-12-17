@@ -177,15 +177,20 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                       <p className="font-medium">{milestone.title}</p>
                       {milestone.dueDate && (
                         <p className={isOverdue(milestone) ? "text-red-500" : "text-muted-foreground"}>
-                          {format(new Date(milestone.dueDate), 'MMM d, yyyy')}
+                          Due: {format(new Date(milestone.dueDate), 'MMM d, yyyy')}
                           {isOverdue(milestone) && " (Overdue)"}
                         </p>
                       )}
-                      <p className={cn(
-                        milestone.completed ? "text-success" : isOverdue(milestone) ? "text-red-500" : "text-muted-foreground"
-                      )}>
-                        {milestone.completed ? "Completed" : isOverdue(milestone) ? "Overdue" : "Pending"}
-                      </p>
+                      {milestone.completed && milestone.completedAt && (
+                        <p className="text-emerald-600">
+                          Completed: {format(new Date(milestone.completedAt), 'MMM d, yyyy')}
+                        </p>
+                      )}
+                      {!milestone.completed && (
+                        <p className={isOverdue(milestone) ? "text-red-500" : "text-muted-foreground"}>
+                          {isOverdue(milestone) ? "Overdue" : "Pending"}
+                        </p>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                   
@@ -274,7 +279,10 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                     <Checkbox
                       checked={milestone.completed}
                       onCheckedChange={(checked) =>
-                        onUpdate(milestone.id, { completed: checked === true })
+                        onUpdate(milestone.id, { 
+                          completed: checked === true,
+                          completedAt: checked === true ? new Date().toISOString() : undefined
+                        })
                       }
                     />
                     <span
@@ -286,15 +294,22 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete }: DealMi
                     >
                       {milestone.title}
                     </span>
-                    {milestone.dueDate && (
-                      <span className={cn(
-                        "text-xs",
-                        isOverdue(milestone) ? "text-red-500 font-medium" : "text-muted-foreground"
-                      )}>
-                        {format(new Date(milestone.dueDate), 'MMM d')}
-                        {isOverdue(milestone) && " (Overdue)"}
-                      </span>
-                    )}
+                    <div className="flex flex-col items-end gap-0.5">
+                      {milestone.dueDate && (
+                        <span className={cn(
+                          "text-xs",
+                          isOverdue(milestone) ? "text-red-500 font-medium" : "text-muted-foreground"
+                        )}>
+                          Due: {format(new Date(milestone.dueDate), 'MMM d')}
+                          {isOverdue(milestone) && " (Overdue)"}
+                        </span>
+                      )}
+                      {milestone.completed && milestone.completedAt && (
+                        <span className="text-xs text-emerald-600">
+                          Completed: {format(new Date(milestone.completedAt), 'MMM d, yyyy')}
+                        </span>
+                      )}
+                    </div>
                     <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                       <Button
                         variant="ghost"
