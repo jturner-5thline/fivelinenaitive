@@ -272,21 +272,31 @@ export default function DealDetail() {
   const updateLenderNotes = useCallback((lenderId: string, notes: string) => {
     setDeal(prev => {
       if (!prev) return prev;
+      const updatedLenders = prev.lenders?.map(l =>
+        l.id === lenderId ? { ...l, notes } : l
+      );
+      return { ...prev, lenders: updatedLenders };
+    });
+  }, []);
+
+  const commitLenderNotes = useCallback((lenderId: string) => {
+    setDeal(prev => {
+      if (!prev) return prev;
       const updatedLenders = prev.lenders?.map(l => {
         if (l.id !== lenderId) return l;
         
-        // Save current note to history if it exists and is different
+        // Save current note to history if it exists and differs from last history entry
         const newHistory = [...(l.notesHistory || [])];
-        if (l.notes && l.notes.trim() && l.notes !== notes) {
+        const lastHistoryNote = newHistory[0]?.text;
+        if (l.notes && l.notes.trim() && l.notes !== lastHistoryNote) {
           newHistory.unshift({
             text: l.notes,
-            updatedAt: l.notesUpdatedAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           });
         }
         
         return {
           ...l,
-          notes,
           notesUpdatedAt: new Date().toISOString(),
           notesHistory: newHistory,
         };
@@ -904,9 +914,15 @@ export default function DealDetail() {
                                     )}
                                     <div className="flex-1">
                                       <Textarea
-                                        placeholder="Add notes..."
+                                        placeholder="Add notes... (Press Enter to save)"
                                         value={lender.notes || ''}
                                         onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            commitLenderNotes(lender.id);
+                                          }
+                                        }}
                                         className={`text-xs resize-none py-1.5 transition-all ${
                                           expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
                                         }`}
@@ -1145,9 +1161,15 @@ export default function DealDetail() {
                                             )}
                                             <div className="flex-1">
                                               <Textarea
-                                                placeholder="Add notes..."
+                                                placeholder="Add notes... (Press Enter to save)"
                                                 value={lender.notes || ''}
                                                 onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
+                                                onKeyDown={(e) => {
+                                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    commitLenderNotes(lender.id);
+                                                  }
+                                                }}
                                                 className={`text-xs resize-none py-1.5 transition-all ${
                                                   expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
                                                 }`}
