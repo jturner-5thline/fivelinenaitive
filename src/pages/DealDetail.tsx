@@ -879,6 +879,11 @@ export default function DealDetail() {
                                 {/* Lender Notes */}
                                 <div className="ml-2 mt-2 flex items-start gap-2">
                                   <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
+                                  {lender.notesUpdatedAt && (
+                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
+                                      {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
+                                    </span>
+                                  )}
                                   <div className="flex-1">
                                     <Textarea
                                       placeholder="Add notes..."
@@ -910,11 +915,6 @@ export default function DealDetail() {
                                       <Maximize2 className="h-3.5 w-3.5" />
                                     )}
                                   </button>
-                                  {lender.notesUpdatedAt && (
-                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
-                                      {format(new Date(lender.notesUpdatedAt), 'dd-MM')}
-                                    </span>
-                                  )}
                                 </div>
                               </div>
                             );
@@ -1079,6 +1079,11 @@ export default function DealDetail() {
                                         {/* Lender Notes */}
                                         <div className="ml-2 mt-2 flex items-start gap-2">
                                           <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
+                                          {lender.notesUpdatedAt && (
+                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
+                                              {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
+                                            </span>
+                                          )}
                                           <div className="flex-1">
                                             <Textarea
                                               placeholder="Add notes..."
@@ -1110,11 +1115,6 @@ export default function DealDetail() {
                                               <Maximize2 className="h-3.5 w-3.5" />
                                             )}
                                           </button>
-                                          {lender.notesUpdatedAt && (
-                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
-                                              {format(new Date(lender.notesUpdatedAt), 'dd-MM')}
-                                            </span>
-                                          )}
                                         </div>
                                       </div>
                                     );
