@@ -63,7 +63,7 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
-import { exportDealToCSV, exportDealToPDF, exportDealToWord } from '@/utils/dealExport';
+import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 
 // Helper to calculate business days between two dates
 const getBusinessDaysDiff = (date: Date) => {
@@ -639,12 +639,37 @@ export default function DealDetail() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Status Report
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover">
+                  <DropdownMenuItem onClick={() => {
+                    exportStatusReportToPDF(deal, configuredStages, configuredSubstages);
+                    toast({ title: "PDF exported", description: "Status report exported to PDF." });
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={async () => {
+                    await exportStatusReportToWord(deal, configuredStages, configuredSubstages);
+                    toast({ title: "Word document exported", description: "Status report exported to Word document." });
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as Word
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
                     <Download className="h-4 w-4" />
                     Export
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-popover">
                   <DropdownMenuItem onClick={() => {
                     exportDealToCSV(deal);
                     toast({ title: "CSV exported", description: "Deal data exported to CSV file." });
