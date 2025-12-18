@@ -3,7 +3,6 @@ import { Helmet } from 'react-helmet-async';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +33,20 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
+import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 
 type SortOption = 'name-asc' | 'name-desc' | 'prefs-desc' | 'prefs-asc';
 type ViewMode = 'list' | 'grid';
+
+interface LenderInfo {
+  name: string;
+  contact: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  preferences: string[];
+}
 
 interface LenderForm {
   name: string;
@@ -62,6 +72,13 @@ export default function Lenders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [selectedLender, setSelectedLender] = useState<LenderInfo | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const openLenderDetail = (lender: LenderInfo) => {
+    setSelectedLender(lender);
+    setIsDetailOpen(true);
+  };
 
   // Filter lenders based on search query
   const filteredLenders = lenders.filter(lender => {
@@ -249,9 +266,10 @@ export default function Lenders() {
                     {sortedLenders.map((lender) => (
                       <div
                         key={lender.name}
-                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer transition-colors hover:bg-muted"
+                        onClick={() => openLenderDetail(lender)}
                       >
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                           <p className="font-medium">{lender.name}</p>
                           {lender.contact.name && (
                             <p className="text-sm text-muted-foreground truncate">
@@ -273,7 +291,7 @@ export default function Lenders() {
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 ml-4">
+                        <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -320,8 +338,9 @@ export default function Lenders() {
                       <div
                         key={lender.name}
                         className="aspect-square bg-muted/50 rounded-lg p-4 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer"
+                        onClick={() => openLenderDetail(lender)}
                       >
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -467,6 +486,12 @@ export default function Lenders() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <LenderDetailDialog
+        lender={selectedLender}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+      />
     </>
   );
 }
