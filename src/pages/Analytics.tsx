@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { format, subDays, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -55,12 +58,24 @@ import {
 import { mockDeals } from '@/data/mockDeals';
 import { cn } from '@/lib/utils';
 
-// Generate chart data based on data source
-const getChartData = (dataSource: string) => {
+interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
+
+// Generate chart data based on data source and date range
+const getChartData = (dataSource: string, dateRange?: DateRange) => {
+  // Filter deals by date range if provided
+  const filteredDeals = dateRange?.from && dateRange?.to 
+    ? mockDeals.filter(deal => {
+        const dealDate = new Date(deal.createdAt);
+        return isWithinInterval(dealDate, { start: dateRange.from!, end: dateRange.to! });
+      })
+    : mockDeals;
   switch (dataSource) {
     case 'deals-by-stage':
       const stageCounts: Record<string, number> = {};
-      mockDeals.forEach(deal => {
+      filteredDeals.forEach(deal => {
         stageCounts[deal.stage] = (stageCounts[deal.stage] || 0) + 1;
       });
       return Object.entries(stageCounts).map(([name, value]) => ({ name, value }));
@@ -77,37 +92,42 @@ const getChartData = (dataSource: string) => {
     
     case 'deals-by-status':
       const statusCounts: Record<string, number> = {};
-      mockDeals.forEach(deal => {
+      filteredDeals.forEach(deal => {
         statusCounts[deal.status] = (statusCounts[deal.status] || 0) + 1;
       });
       return Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
     
     case 'lender-activity':
-      return [
-        { name: 'Active', value: 15 },
-        { name: 'On Deck', value: 8 },
-        { name: 'Passed', value: 12 },
-        { name: 'On Hold', value: 5 },
-      ];
+      const activityCounts: Record<string, number> = { Active: 0, 'On Deck': 0, Passed: 0, 'On Hold': 0 };
+      filteredDeals.forEach(deal => {
+        deal.lenders?.forEach(lender => {
+          if (lender.trackingStatus === 'active') activityCounts['Active']++;
+          else if (lender.trackingStatus === 'on-deck') activityCounts['On Deck']++;
+          else if (lender.trackingStatus === 'passed') activityCounts['Passed']++;
+          else if (lender.trackingStatus === 'on-hold') activityCounts['On Hold']++;
+        });
+      });
+      return Object.entries(activityCounts).map(([name, value]) => ({ name, value }));
     
     case 'deal-value-distribution':
-      return [
-        { name: '$0-5M', value: 8 },
-        { name: '$5-10M', value: 12 },
-        { name: '$10-20M', value: 6 },
-        { name: '$20M+', value: 4 },
-      ];
+      const valueBuckets = { '$0-5M': 0, '$5-10M': 0, '$10-20M': 0, '$20M+': 0 };
+      filteredDeals.forEach(deal => {
+        if (deal.value < 5000000) valueBuckets['$0-5M']++;
+        else if (deal.value < 10000000) valueBuckets['$5-10M']++;
+        else if (deal.value < 20000000) valueBuckets['$10-20M']++;
+        else valueBuckets['$20M+']++;
+      });
+      return Object.entries(valueBuckets).map(([name, value]) => ({ name, value }));
     
     case 'lender-pass-reasons':
       const passReasonCounts: Record<string, number> = {};
-      mockDeals.forEach(deal => {
+      filteredDeals.forEach(deal => {
         deal.lenders?.forEach(lender => {
           if (lender.trackingStatus === 'passed' && lender.passReason) {
             passReasonCounts[lender.passReason] = (passReasonCounts[lender.passReason] || 0) + 1;
           }
         });
       });
-      // If no pass reasons found, return sample data
       if (Object.keys(passReasonCounts).length === 0) {
         return [
           { name: 'Deal size too small', value: 5 },
@@ -151,8 +171,8 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
   }
 };
 
-function ChartRenderer({ chart }: { chart: ChartConfig }) {
-  const data = getChartData(chart.dataSource);
+function ChartRenderer({ chart, dateRange }: { chart: ChartConfig; dateRange?: DateRange }) {
+  const data = getChartData(chart.dataSource, dateRange);
   
   switch (chart.type) {
     case 'bar':
@@ -246,11 +266,13 @@ function ChartRenderer({ chart }: { chart: ChartConfig }) {
 
 // Sortable Chart Card Component
 function SortableChartCard({ 
-  chart, 
+  chart,
+  dateRange, 
   onEdit, 
   onDelete 
 }: { 
-  chart: ChartConfig; 
+  chart: ChartConfig;
+  dateRange?: DateRange;
   onEdit: (chart: ChartConfig) => void;
   onDelete: (chartId: string) => void;
 }) {
@@ -303,7 +325,7 @@ function SortableChartCard({
         </div>
       </CardHeader>
       <CardContent>
-        <ChartRenderer chart={chart} />
+        <ChartRenderer chart={chart} dateRange={dateRange} />
       </CardContent>
     </Card>
   );
@@ -315,6 +337,8 @@ export default function Analytics() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chartToDelete, setChartToDelete] = useState<string | null>(null);
   const [editingChart, setEditingChart] = useState<ChartConfig | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  const [datePreset, setDatePreset] = useState<string>('all');
   
   const [formData, setFormData] = useState({
     title: '',
@@ -322,6 +346,29 @@ export default function Analytics() {
     dataSource: 'deals-by-stage',
     color: '#9333ea',
   });
+
+  const handleDatePreset = (preset: string) => {
+    setDatePreset(preset);
+    const today = new Date();
+    switch (preset) {
+      case 'last7':
+        setDateRange({ from: subDays(today, 7), to: today });
+        break;
+      case 'last30':
+        setDateRange({ from: subDays(today, 30), to: today });
+        break;
+      case 'thisMonth':
+        setDateRange({ from: startOfMonth(today), to: endOfMonth(today) });
+        break;
+      case 'last3Months':
+        setDateRange({ from: subMonths(today, 3), to: today });
+        break;
+      case 'all':
+      default:
+        setDateRange({ from: undefined, to: undefined });
+        break;
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -407,17 +454,65 @@ export default function Analytics() {
         <DashboardHeader />
         
         <main className="container mx-auto px-6 py-8">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
             <div>
               <h1 className="text-3xl font-bold">Analytics</h1>
               <p className="text-muted-foreground mt-1">
                 View insights and manage your custom charts. Drag to reorder.
               </p>
             </div>
-            <Button onClick={() => handleOpenDialog()} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Chart
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={datePreset} onValueChange={handleDatePreset}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="last7">Last 7 Days</SelectItem>
+                  <SelectItem value="last30">Last 30 Days</SelectItem>
+                  <SelectItem value="thisMonth">This Month</SelectItem>
+                  <SelectItem value="last3Months">Last 3 Months</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {datePreset === 'custom' && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("justify-start text-left font-normal", !dateRange.from && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "LLL dd, y")
+                        )
+                      ) : (
+                        <span>Pick dates</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange.from}
+                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
+                      numberOfMonths={2}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+              
+              <Button onClick={() => handleOpenDialog()} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Chart
+              </Button>
+            </div>
           </div>
 
           {charts.length === 0 ? (
@@ -450,6 +545,7 @@ export default function Analytics() {
                     <SortableChartCard
                       key={chart.id}
                       chart={chart}
+                      dateRange={dateRange}
                       onEdit={handleOpenDialog}
                       onDelete={confirmDelete}
                     />
