@@ -111,10 +111,10 @@ export function useDealsDatabase() {
   const seedDeals = async () => {
     try {
       for (const deal of mockDeals) {
+        // Don't pass id - let Supabase generate UUID
         const { data: insertedDeal, error: dealError } = await supabase
           .from('deals')
           .insert({
-            id: deal.id,
             company: deal.company,
             value: deal.value,
             status: deal.status,
@@ -131,10 +131,10 @@ export function useDealsDatabase() {
           continue;
         }
 
-        // Insert lenders for this deal
-        if (deal.lenders && deal.lenders.length > 0) {
+        // Insert lenders for this deal using the generated deal id
+        if (deal.lenders && deal.lenders.length > 0 && insertedDeal) {
           const lendersToInsert = deal.lenders.map(lender => ({
-            deal_id: deal.id,
+            deal_id: insertedDeal.id,
             name: lender.name,
             stage: lender.stage,
             substage: lender.substage || null,

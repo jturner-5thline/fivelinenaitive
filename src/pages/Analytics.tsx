@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useCharts, ChartType, ChartConfig } from '@/contexts/ChartsContext';
-import { mockDeals } from '@/data/mockDeals';
+import { useDealsContext } from '@/contexts/DealsContext';
 import { Deal } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import { 
@@ -65,20 +65,20 @@ interface DateRange {
 }
 
 // Calculate hours data from deals
-const getHoursData = () => {
-  const totalPreSigning = mockDeals.reduce((sum, deal) => sum + (deal.preSigningHours ?? 0), 0);
-  const totalPostSigning = mockDeals.reduce((sum, deal) => sum + (deal.postSigningHours ?? 0), 0);
+const getHoursData = (deals: Deal[]) => {
+  const totalPreSigning = deals.reduce((sum, deal) => sum + (deal.preSigningHours ?? 0), 0);
+  const totalPostSigning = deals.reduce((sum, deal) => sum + (deal.postSigningHours ?? 0), 0);
   const totalHours = totalPreSigning + totalPostSigning;
-  const totalFees = mockDeals.reduce((sum, deal) => sum + (deal.totalFee || 0), 0);
-  const totalRetainer = mockDeals.reduce((sum, deal) => sum + (deal.retainerFee ?? 0), 0);
-  const totalMilestone = mockDeals.reduce((sum, deal) => sum + (deal.milestoneFee ?? 0), 0);
-  const avgSuccessFee = mockDeals.filter(d => d.successFeePercent != null).length > 0
-    ? mockDeals.reduce((sum, deal) => sum + (deal.successFeePercent ?? 0), 0) / mockDeals.filter(d => d.successFeePercent != null).length
+  const totalFees = deals.reduce((sum, deal) => sum + (deal.totalFee || 0), 0);
+  const totalRetainer = deals.reduce((sum, deal) => sum + (deal.retainerFee ?? 0), 0);
+  const totalMilestone = deals.reduce((sum, deal) => sum + (deal.milestoneFee ?? 0), 0);
+  const avgSuccessFee = deals.filter(d => d.successFeePercent != null).length > 0
+    ? deals.reduce((sum, deal) => sum + (deal.successFeePercent ?? 0), 0) / deals.filter(d => d.successFeePercent != null).length
     : 0;
   const revenuePerHour = totalHours > 0 ? totalFees / totalHours : 0;
   
   const hoursByManager: Record<string, { preSigning: number; postSigning: number; fees: number }> = {};
-  mockDeals.forEach(deal => {
+  deals.forEach(deal => {
     if (!hoursByManager[deal.manager]) {
       hoursByManager[deal.manager] = { preSigning: 0, postSigning: 0, fees: 0 };
     }
@@ -88,7 +88,7 @@ const getHoursData = () => {
   });
   
   const hoursByStage: Record<string, { preSigning: number; postSigning: number; fees: number }> = {};
-  mockDeals.forEach(deal => {
+  deals.forEach(deal => {
     if (!hoursByStage[deal.stage]) {
       hoursByStage[deal.stage] = { preSigning: 0, postSigning: 0, fees: 0 };
     }
@@ -110,13 +110,13 @@ const getHoursData = () => {
   };
 };
 
-const getChartData = (dataSource: string, dateRange?: DateRange) => {
+const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRange) => {
   const filteredDeals = dateRange?.from && dateRange?.to 
-    ? mockDeals.filter(deal => {
+    ? allDeals.filter(deal => {
         const dealDate = new Date(deal.createdAt);
         return isWithinInterval(dealDate, { start: dateRange.from!, end: dateRange.to! });
       })
-    : mockDeals;
+    : allDeals;
   switch (dataSource) {
     case 'deals-by-stage':
       const stageCounts: Record<string, number> = {};
@@ -185,11 +185,11 @@ const getChartData = (dataSource: string, dateRange?: DateRange) => {
       return Object.entries(passReasonCounts).map(([name, value]) => ({ name, value }));
     
     case 'hours-by-manager':
-      const hoursData = getHoursData();
+      const hoursData = getHoursData(allDeals);
       return hoursData.byManager.map(m => ({ name: m.name, value: m.total }));
     
     case 'hours-by-stage':
-      const hoursDataByStage = getHoursData();
+      const hoursDataByStage = getHoursData(allDeals);
       return hoursDataByStage.byStage.map(s => ({ name: s.name, value: s.total }));
     
     case 'fee-breakdown':
@@ -242,8 +242,8 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
   }
 };
 
-function ChartRenderer({ chart, dateRange }: { chart: ChartConfig; dateRange?: DateRange }) {
-  const data = getChartData(chart.dataSource, dateRange);
+function ChartRenderer({ chart, deals, dateRange }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange }) {
+  const data = getChartData(chart.dataSource, deals, dateRange);
   
   switch (chart.type) {
     case 'bar':
@@ -338,11 +338,13 @@ function ChartRenderer({ chart, dateRange }: { chart: ChartConfig; dateRange?: D
 // Sortable Chart Card Component
 function SortableChartCard({ 
   chart,
+  deals,
   dateRange, 
   onEdit, 
   onDelete 
 }: { 
   chart: ChartConfig;
+  deals: Deal[];
   dateRange?: DateRange;
   onEdit: (chart: ChartConfig) => void;
   onDelete: (chartId: string) => void;
@@ -396,7 +398,7 @@ function SortableChartCard({
         </div>
       </CardHeader>
       <CardContent>
-        <ChartRenderer chart={chart} dateRange={dateRange} />
+        <ChartRenderer chart={chart} deals={deals} dateRange={dateRange} />
       </CardContent>
     </Card>
   );
@@ -404,6 +406,7 @@ function SortableChartCard({
 
 export default function Analytics() {
   const { charts, addChart, updateChart, deleteChart, reorderCharts } = useCharts();
+  const { deals } = useDealsContext();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chartToDelete, setChartToDelete] = useState<string | null>(null);
@@ -417,6 +420,9 @@ export default function Analytics() {
     dataSource: 'deals-by-stage',
     color: '#9333ea',
   });
+
+  // Memoize hours data to avoid recalculating on every render
+  const hoursData = useMemo(() => getHoursData(deals), [deals]);
 
   const handleDatePreset = (preset: string) => {
     setDatePreset(preset);
@@ -594,7 +600,7 @@ export default function Analytics() {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Pre-Signing Hours</p>
-                    <p className="text-3xl font-bold text-purple-600">{getHoursData().totalPreSigning.toFixed(1)}</p>
+                    <p className="text-3xl font-bold text-purple-600">{hoursData.totalPreSigning.toFixed(1)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -602,7 +608,7 @@ export default function Analytics() {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Post-Signing Hours</p>
-                    <p className="text-3xl font-bold text-purple-600">{getHoursData().totalPostSigning.toFixed(1)}</p>
+                    <p className="text-3xl font-bold text-purple-600">{hoursData.totalPostSigning.toFixed(1)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -610,7 +616,7 @@ export default function Analytics() {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Total Hours</p>
-                    <p className="text-3xl font-bold text-purple-600">{getHoursData().totalHours.toFixed(1)}</p>
+                    <p className="text-3xl font-bold text-purple-600">{hoursData.totalHours.toFixed(1)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -618,7 +624,7 @@ export default function Analytics() {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Total Fees</p>
-                    <p className="text-3xl font-bold text-purple-600">${getHoursData().totalFees.toLocaleString()}</p>
+                    <p className="text-3xl font-bold text-purple-600">${hoursData.totalFees.toLocaleString()}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -627,8 +633,8 @@ export default function Analytics() {
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Revenue per Hour</p>
                     <p className="text-3xl font-bold text-purple-600">
-                      {getHoursData().revenuePerHour > 0 
-                        ? `$${getHoursData().revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                      {hoursData.revenuePerHour > 0 
+                        ? `$${hoursData.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                         : '-'
                       }
                     </p>
@@ -643,7 +649,7 @@ export default function Analytics() {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Total Retainer</p>
-                    <p className="text-2xl font-bold text-purple-600">${(getHoursData().totalRetainer / 1000).toFixed(1)}K</p>
+                    <p className="text-2xl font-bold text-purple-600">${(hoursData.totalRetainer / 1000).toFixed(1)}K</p>
                   </div>
                 </CardContent>
               </Card>
@@ -651,7 +657,7 @@ export default function Analytics() {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Total Milestone</p>
-                    <p className="text-2xl font-bold text-purple-600">${(getHoursData().totalMilestone / 1000).toFixed(1)}K</p>
+                    <p className="text-2xl font-bold text-purple-600">${(hoursData.totalMilestone / 1000).toFixed(1)}K</p>
                   </div>
                 </CardContent>
               </Card>
@@ -660,7 +666,7 @@ export default function Analytics() {
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Avg Success Fee</p>
                     <p className="text-2xl font-bold text-purple-600">
-                      {getHoursData().avgSuccessFee > 0 ? `${getHoursData().avgSuccessFee.toFixed(1)}%` : '-'}
+                      {hoursData.avgSuccessFee > 0 ? `${hoursData.avgSuccessFee.toFixed(1)}%` : '-'}
                     </p>
                   </div>
                 </CardContent>
@@ -674,8 +680,8 @@ export default function Analytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {getHoursData().byManager.length > 0 ? (
-                      getHoursData().byManager.map((manager) => (
+                    {hoursData.byManager.length > 0 ? (
+                      hoursData.byManager.map((manager) => (
                         <div key={manager.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                           <span className="font-medium">{manager.name}</span>
                           <div className="flex gap-4 text-sm">
@@ -700,8 +706,8 @@ export default function Analytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {getHoursData().byStage.length > 0 ? (
-                      getHoursData().byStage.map((stage) => (
+                    {hoursData.byStage.length > 0 ? (
+                      hoursData.byStage.map((stage) => (
                         <div key={stage.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                           <span className="font-medium capitalize">{stage.name.replace('-', ' ')}</span>
                           <div className="flex gap-4 text-sm">
@@ -754,6 +760,7 @@ export default function Analytics() {
                     <SortableChartCard
                       key={chart.id}
                       chart={chart}
+                      deals={deals}
                       dateRange={dateRange}
                       onEdit={handleOpenDialog}
                       onDelete={confirmDelete}
