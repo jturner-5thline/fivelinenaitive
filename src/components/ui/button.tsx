@@ -19,6 +19,7 @@ const buttonVariants = cva(
         success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm",
         hero: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl hover:-translate-y-0.5",
         "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-primary hover:text-primary-foreground",
+        gradient: "bg-brand-gradient text-white hover:opacity-90 shadow-sm hover:shadow-md",
       },
       size: {
         default: "h-10 px-4 py-2",

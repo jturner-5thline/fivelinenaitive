@@ -77,7 +77,7 @@ export function DashboardHeader() {
         <div className="flex items-center gap-3">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
+              <Button variant="gradient" size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
                 New Deal
               </Button>
@@ -121,7 +121,7 @@ export function DashboardHeader() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit">Create Deal</Button>
+                  <Button type="submit" variant="gradient">Create Deal</Button>
                 </DialogFooter>
               </form>
             </DialogContent>

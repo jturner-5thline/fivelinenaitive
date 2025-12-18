@@ -520,7 +520,7 @@ export default function DealDetail() {
         <main className="container mx-auto max-w-5xl px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-semibold text-foreground mb-4">Deal Not Found</h1>
-            <Button asChild>
+            <Button variant="gradient" asChild>
               <Link to="/dashboard">Back to Dashboard</Link>
             </Button>
           </div>

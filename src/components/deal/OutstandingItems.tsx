@@ -506,7 +506,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                             </div>
                           </PopoverContent>
                         </Popover>
-                        <Button size="sm" onClick={handleSaveEdit}>
+                        <Button size="sm" variant="gradient" onClick={handleSaveEdit}>
                           Save
                         </Button>
                         <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
@@ -680,7 +680,7 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
                                   </div>
                                 </PopoverContent>
                               </Popover>
-                              <Button size="sm" onClick={handleSaveEdit}>
+                              <Button size="sm" variant="gradient" onClick={handleSaveEdit}>
                                 Save
                               </Button>
                               <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
