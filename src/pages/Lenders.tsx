@@ -82,7 +82,15 @@ export default function Lenders() {
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('lenders-view-mode');
+    return (saved === 'grid' || saved === 'list') ? saved : 'list';
+  });
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem('lenders-view-mode', mode);
+  };
   const [selectedLender, setSelectedLender] = useState<LenderInfo | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
@@ -377,7 +385,7 @@ export default function Lenders() {
                       variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                       size="icon"
                       className="h-10 w-10 rounded-r-none"
-                      onClick={() => setViewMode('list')}
+                      onClick={() => handleViewModeChange('list')}
                     >
                       <List className="h-4 w-4" />
                     </Button>
@@ -385,7 +393,7 @@ export default function Lenders() {
                       variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                       size="icon"
                       className="h-10 w-10 rounded-l-none"
-                      onClick={() => setViewMode('grid')}
+                      onClick={() => handleViewModeChange('grid')}
                     >
                       <LayoutGrid className="h-4 w-4" />
                     </Button>
