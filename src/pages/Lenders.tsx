@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
+import { useDealsContext } from '@/contexts/DealsContext';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 
 type SortOption = 'name-asc' | 'name-desc' | 'prefs-desc' | 'prefs-asc';
@@ -66,6 +67,7 @@ const emptyForm: LenderForm = {
 
 export default function Lenders() {
   const { lenders, addLender, updateLender, deleteLender } = useLenders();
+  const { deals } = useDealsContext();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLender, setEditingLender] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
@@ -74,6 +76,19 @@ export default function Lenders() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedLender, setSelectedLender] = useState<LenderInfo | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Calculate active deals count for each lender
+  const activeDealCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    deals.forEach(deal => {
+      deal.lenders?.forEach(lender => {
+        if (lender.trackingStatus === 'active') {
+          counts[lender.name] = (counts[lender.name] || 0) + 1;
+        }
+      });
+    });
+    return counts;
+  }, [deals]);
 
   const openLenderDetail = (lender: LenderInfo) => {
     setSelectedLender(lender);
@@ -270,7 +285,14 @@ export default function Lenders() {
                         onClick={() => openLenderDetail(lender)}
                       >
                         <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                          <p className="font-medium">{lender.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{lender.name}</p>
+                            {activeDealCounts[lender.name] > 0 && (
+                              <Badge variant="default" className="text-xs">
+                                {activeDealCounts[lender.name]} active
+                              </Badge>
+                            )}
+                          </div>
                           {lender.contact.name && (
                             <p className="text-sm text-muted-foreground truncate">
                               {lender.contact.name} • {lender.contact.email}
@@ -378,6 +400,11 @@ export default function Lenders() {
                         <div className="flex-1 flex flex-col justify-center items-center text-center">
                           <Building2 className="h-8 w-8 text-muted-foreground mb-2" />
                           <p className="font-medium text-sm line-clamp-2">{lender.name}</p>
+                          {activeDealCounts[lender.name] > 0 && (
+                            <Badge variant="default" className="text-xs mt-1">
+                              {activeDealCounts[lender.name]} active
+                            </Badge>
+                          )}
                           {lender.contact.name && (
                             <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
                               {lender.contact.name}
