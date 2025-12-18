@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -36,6 +36,7 @@ import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
 
 type SortOption = 'name-asc' | 'name-desc' | 'prefs-desc' | 'prefs-asc';
+type ViewMode = 'list' | 'grid';
 
 interface LenderForm {
   name: string;
@@ -60,6 +61,7 @@ export default function Lenders() {
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   // Filter lenders based on search query
   const filteredLenders = lenders.filter(lender => {
@@ -213,6 +215,24 @@ export default function Lenders() {
                       <SelectItem value="prefs-asc">Fewest Preferences</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="flex border rounded-md">
+                    <Button
+                      variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                      size="icon"
+                      className="h-10 w-10 rounded-r-none"
+                      onClick={() => setViewMode('list')}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                      size="icon"
+                      className="h-10 w-10 rounded-l-none"
+                      onClick={() => setViewMode('grid')}
+                    >
+                      <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Results count */}
@@ -222,82 +242,157 @@ export default function Lenders() {
                   </p>
                 )}
 
-                <div className="space-y-3">
-                  {sortedLenders.map((lender) => (
-                    <div
-                      key={lender.name}
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium">{lender.name}</p>
-                        {lender.contact.name && (
-                          <p className="text-sm text-muted-foreground truncate">
-                            {lender.contact.name} • {lender.contact.email}
-                          </p>
-                        )}
+                {/* List View */}
+                {viewMode === 'list' && (
+                  <div className="space-y-3">
+                    {sortedLenders.map((lender) => (
+                      <div
+                        key={lender.name}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium">{lender.name}</p>
+                          {lender.contact.name && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {lender.contact.name} • {lender.contact.email}
+                            </p>
+                          )}
+                          {lender.preferences.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {lender.preferences.slice(0, 3).map((pref, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {pref}
+                                </Badge>
+                              ))}
+                              {lender.preferences.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{lender.preferences.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 ml-4">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEditDialog(lender.name)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete {lender.name}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will remove the lender from the available options. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(lender.name)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Grid View */}
+                {viewMode === 'grid' && (
+                  <div className="grid grid-cols-3 gap-4">
+                    {sortedLenders.map((lender) => (
+                      <div
+                        key={lender.name}
+                        className="aspect-square bg-muted/50 rounded-lg p-4 flex flex-col"
+                      >
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => openEditDialog(lender.name)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete {lender.name}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will remove the lender from the available options. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(lender.name)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                        <div className="flex-1 flex flex-col justify-center items-center text-center">
+                          <Building2 className="h-8 w-8 text-muted-foreground mb-2" />
+                          <p className="font-medium text-sm line-clamp-2">{lender.name}</p>
+                          {lender.contact.name && (
+                            <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
+                              {lender.contact.name}
+                            </p>
+                          )}
+                        </div>
                         {lender.preferences.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {lender.preferences.slice(0, 3).map((pref, idx) => (
+                          <div className="flex flex-wrap gap-1 justify-center mt-2">
+                            {lender.preferences.slice(0, 2).map((pref, idx) => (
                               <Badge key={idx} variant="secondary" className="text-xs">
                                 {pref}
                               </Badge>
                             ))}
-                            {lender.preferences.length > 3 && (
+                            {lender.preferences.length > 2 && (
                               <Badge variant="outline" className="text-xs">
-                                +{lender.preferences.length - 3} more
+                                +{lender.preferences.length - 2}
                               </Badge>
                             )}
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 ml-4">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openEditDialog(lender.name)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete {lender.name}?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will remove the lender from the available options. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(lender.name)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  ))}
-                  {sortedLenders.length === 0 && lenders.length > 0 && (
-                    <p className="text-center text-muted-foreground py-8">
-                      No lenders match your search.
-                    </p>
-                  )}
-                  {lenders.length === 0 && (
-                    <p className="text-center text-muted-foreground py-8">
-                      No lenders configured. Add one to get started.
-                    </p>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
+
+                {sortedLenders.length === 0 && lenders.length > 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    No lenders match your search.
+                  </p>
+                )}
+                {lenders.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    No lenders configured. Add one to get started.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
