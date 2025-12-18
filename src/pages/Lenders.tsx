@@ -160,28 +160,23 @@ export default function Lenders() {
       <div className="min-h-screen bg-background">
         <DashboardHeader />
 
-        <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Lenders</h1>
-              <p className="text-muted-foreground">Manage your lender directory</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold flex items-center gap-2">
+                  <Building2 className="h-6 w-6" />
+                  Lender Directory
+                </h1>
+                <p className="text-muted-foreground">Manage your lender directory</p>
+              </div>
+              <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
+                <Plus className="h-4 w-4" />
+                Add Lender
+              </Button>
             </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Lender Directory
-                  </CardTitle>
-                  <CardDescription>Manage the list of available lenders</CardDescription>
-                </div>
-                <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
-                  <Plus className="h-4 w-4" />
-                  Add Lender
-                </Button>
-              </CardHeader>
-              <CardContent>
+            <div>
                 {/* Search and Sort Controls */}
                 <div className="flex flex-col sm:flex-row gap-3 mb-4">
                   <div className="relative flex-1">
@@ -393,8 +388,7 @@ export default function Lenders() {
                     No lenders configured. Add one to get started.
                   </p>
                 )}
-              </CardContent>
-            </Card>
+            </div>
           </div>
         </main>
       </div>
