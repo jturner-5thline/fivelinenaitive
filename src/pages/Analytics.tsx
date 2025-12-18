@@ -202,9 +202,9 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         return sum;
       }, 0);
       return [
-        { name: 'Retainer', value: totalRetainer / 1000 },
-        { name: 'Milestone', value: totalMilestone / 1000 },
-        { name: 'Success Fee', value: totalSuccessFee / 1000 },
+        { name: 'Retainer', value: totalRetainer },
+        { name: 'Milestone', value: totalMilestone },
+        { name: 'Success Fee', value: totalSuccessFee },
       ].filter(item => item.value > 0);
     
     default:
@@ -649,7 +649,7 @@ export default function Analytics() {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Total Retainer</p>
-                    <p className="text-2xl font-bold text-purple-600">${(hoursData.totalRetainer / 1000).toFixed(1)}K</p>
+                    <p className="text-2xl font-bold text-purple-600">${hoursData.totalRetainer.toLocaleString('en-US')}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -657,7 +657,7 @@ export default function Analytics() {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Total Milestone</p>
-                    <p className="text-2xl font-bold text-purple-600">${(hoursData.totalMilestone / 1000).toFixed(1)}K</p>
+                    <p className="text-2xl font-bold text-purple-600">${hoursData.totalMilestone.toLocaleString('en-US')}</p>
                   </div>
                 </CardContent>
               </Card>
