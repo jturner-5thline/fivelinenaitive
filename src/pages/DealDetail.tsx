@@ -608,9 +608,17 @@ export default function DealDetail() {
 
   const formatFee = (value: number) => formatCurrencyValue(value);
 
-  const parseFee = (valueStr: string): number => {
+  // Format number with commas for display in inputs
+  const formatWithCommas = (value: number | undefined): string => {
+    if (!value) return '';
+    return value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  };
+
+  // Parse currency string (with commas) to number
+  const parseCurrencyInput = (valueStr: string): number | undefined => {
     const cleaned = valueStr.replace(/[^0-9.]/g, '');
-    return (parseFloat(cleaned) || 0) * 1000;
+    if (!cleaned) return undefined;
+    return parseFloat(cleaned);
   };
 
   const parseValue = (valueStr: string): number => {
@@ -1736,10 +1744,10 @@ export default function DealDetail() {
                       <Input
                         type="text"
                         inputMode="decimal"
-                        value={deal.totalFee ? deal.totalFee.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                        value={formatWithCommas(deal.totalFee)}
                         onChange={(e) => {
-                          const cleaned = e.target.value.replace(/[^0-9.]/g, '');
-                          updateDeal('totalFee', cleaned ? parseFloat(cleaned) : 0);
+                          const value = parseCurrencyInput(e.target.value);
+                          updateDeal('totalFee', value ?? 0);
                         }}
                         placeholder="0"
                         className="w-28 h-8 text-right font-medium text-purple-600"
@@ -1763,10 +1771,10 @@ export default function DealDetail() {
                           <Input
                             type="text"
                             inputMode="decimal"
-                            value={deal.retainerFee ? deal.retainerFee.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                            value={formatWithCommas(deal.retainerFee)}
                             onChange={(e) => {
-                              const cleaned = e.target.value.replace(/[^0-9.]/g, '');
-                              updateDeal('retainerFee', cleaned ? parseFloat(cleaned) : undefined);
+                              const value = parseCurrencyInput(e.target.value);
+                              updateDeal('retainerFee', value);
                             }}
                             placeholder="0"
                             className="w-24 h-7 text-right text-sm"
@@ -1780,10 +1788,10 @@ export default function DealDetail() {
                           <Input
                             type="text"
                             inputMode="decimal"
-                            value={deal.milestoneFee ? deal.milestoneFee.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                            value={formatWithCommas(deal.milestoneFee)}
                             onChange={(e) => {
-                              const cleaned = e.target.value.replace(/[^0-9.]/g, '');
-                              updateDeal('milestoneFee', cleaned ? parseFloat(cleaned) : undefined);
+                              const value = parseCurrencyInput(e.target.value);
+                              updateDeal('milestoneFee', value);
                             }}
                             placeholder="0"
                             className="w-24 h-7 text-right text-sm"
