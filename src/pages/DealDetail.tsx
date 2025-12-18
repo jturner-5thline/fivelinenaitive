@@ -799,12 +799,12 @@ export default function DealDetail() {
                 <InlineEditField
                   value={deal.company}
                   onSave={(value) => updateDeal('company', value)}
-                  displayClassName="text-5xl font-semibold text-[#861E81]"
+                  displayClassName="text-5xl font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent"
                 />
                 <InlineEditField
                   value={formatValue(deal.value)}
                   onSave={(value) => updateDeal('value', parseValue(value))}
-                  displayClassName="text-5xl font-semibold text-[#861E81]"
+                  displayClassName="text-5xl font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent"
                 />
               </div>
               
