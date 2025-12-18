@@ -33,9 +33,9 @@ export const mockDeals: Deal[] = [
     updatedAt: getRecentDate(15),
     notes: 'Strong revenue growth, expanding to APAC market',
     lenders: [
-      { id: 'l1', name: 'Trinity', status: 'in-diligence', stage: 'management-call-completed', trackingStatus: 'active' },
-      { id: 'l2', name: 'SLR', status: 'terms-issued', stage: 'draft-terms', trackingStatus: 'active' },
-      { id: 'l3', name: 'Decathlon', status: 'in-review', stage: 'reviewing-drl', trackingStatus: 'on-deck' },
+      { id: 'l1', name: 'Trinity', status: 'in-diligence', stage: 'management-call-completed', trackingStatus: 'active', updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'l2', name: 'SLR', status: 'terms-issued', stage: 'draft-terms', trackingStatus: 'active', updatedAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'l3', name: 'Decathlon', status: 'in-review', stage: 'reviewing-drl', trackingStatus: 'on-deck', updatedAt: new Date().toISOString() },
     ],
     milestones: [
       { id: 'm1', title: 'Deal Kick Off', dueDate: '2024-01-15T00:00:00Z', completed: true },
@@ -60,8 +60,8 @@ export const mockDeals: Deal[] = [
     createdAt: '2024-01-18',
     updatedAt: getRecentDate(180),
     lenders: [
-      { id: 'l1', name: 'SaaS Capital', status: 'in-review', stage: 'management-call-set', trackingStatus: 'active' },
-      { id: 'l2', name: 'TIMIA', status: 'in-review', stage: 'reviewing-drl', trackingStatus: 'on-hold' },
+      { id: 'l1', name: 'SaaS Capital', status: 'in-review', stage: 'management-call-set', trackingStatus: 'active', updatedAt: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'l2', name: 'TIMIA', status: 'in-review', stage: 'reviewing-drl', trackingStatus: 'on-hold', updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
     ],
   },
   {
@@ -81,9 +81,9 @@ export const mockDeals: Deal[] = [
     updatedAt: getRecentDate(60 * 20),
     notes: 'Final terms under review',
     lenders: [
-      { id: 'l1', name: 'Eastward', status: 'terms-issued', stage: 'term-sheets', trackingStatus: 'active' },
-      { id: 'l2', name: 'Trinity', status: 'terms-issued', stage: 'draft-terms', trackingStatus: 'active' },
-      { id: 'l3', name: 'Matterhorn', status: 'in-diligence', stage: 'management-call-completed', trackingStatus: 'passed' },
+      { id: 'l1', name: 'Eastward', status: 'terms-issued', stage: 'term-sheets', trackingStatus: 'active', updatedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'l2', name: 'Trinity', status: 'terms-issued', stage: 'draft-terms', trackingStatus: 'active', updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'l3', name: 'Matterhorn', status: 'in-diligence', stage: 'management-call-completed', trackingStatus: 'passed', updatedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
     ],
   },
   {
