@@ -313,7 +313,7 @@ export default function Lenders() {
                     {sortedLenders.map((lender) => (
                       <div
                         key={lender.name}
-                        className="aspect-square bg-muted/50 rounded-lg p-4 flex flex-col"
+                        className="aspect-square bg-muted/50 rounded-lg p-4 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer"
                       >
                         <div className="flex justify-end gap-1">
                           <Button
