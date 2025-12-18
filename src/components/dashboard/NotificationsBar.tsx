@@ -63,7 +63,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
       {staleDeals.red.map((deal) => (
         <Link
           key={`red-${deal.dealId}`}
-          to={`/deal/${deal.dealId}`}
+          to={`/deal/${deal.dealId}?highlight=stale`}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer"
         >
           <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
@@ -75,7 +75,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
       {staleDeals.yellow.map((deal) => (
         <Link
           key={`yellow-${deal.dealId}`}
-          to={`/deal/${deal.dealId}`}
+          to={`/deal/${deal.dealId}?highlight=stale`}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-warning/10 border border-warning/20 hover:bg-warning/20 transition-colors cursor-pointer"
         >
           <AlertTriangle className="h-4 w-4 text-warning shrink-0" />

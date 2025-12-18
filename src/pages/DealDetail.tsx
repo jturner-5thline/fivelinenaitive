@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -179,10 +179,12 @@ interface EditHistory {
 
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const highlightStale = searchParams.get('highlight') === 'stale';
   const { getLenderNames, getLenderDetails } = useLenders();
   const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
   const { dealTypes: availableDealTypes } = useDealTypes();
-  const { formatCurrencyValue } = usePreferences();
+  const { formatCurrencyValue, preferences } = usePreferences();
   const lenderNames = getLenderNames();
   const initialDeal = mockDeals.find((d) => d.id === id);
   const [deal, setDeal] = useState<Deal | undefined>(initialDeal);
@@ -217,6 +219,15 @@ export default function DealDetail() {
       });
     }
   }, []);
+
+  // Helper to check if a lender is stale based on preferences
+  const isLenderStale = useCallback((lender: DealLender) => {
+    if (!lender.updatedAt || lender.trackingStatus !== 'active') return { isStale: false, isUrgent: false };
+    const daysSinceUpdate = differenceInDays(new Date(), new Date(lender.updatedAt));
+    const isUrgent = daysSinceUpdate >= preferences.lenderUpdateRedDays;
+    const isStale = daysSinceUpdate >= preferences.lenderUpdateYellowDays;
+    return { isStale, isUrgent };
+  }, [preferences.lenderUpdateYellowDays, preferences.lenderUpdateRedDays]);
 
   // View preferences - load from localStorage
   const savedViewPrefs = useMemo(() => {
@@ -942,9 +953,16 @@ export default function DealDetail() {
                                     ? item.requestedBy.includes(lender.name)
                                     : item.requestedBy === lender.name
                                 );
+                                const staleStatus = isLenderStale(lender);
+                                const shouldHighlight = highlightStale && staleStatus.isStale;
                                 return (
                                   <SortableLenderItem key={lender.id} lender={lender}>
-                                    <div className={`${index > 0 ? 'pt-3 border-t border-border' : ''} pl-6`}>
+                                    <div className={cn(
+                                      index > 0 ? 'pt-3 border-t border-border' : '',
+                                      'pl-6',
+                                      shouldHighlight && staleStatus.isUrgent && 'bg-destructive/10 -ml-2 pl-8 pr-2 py-2 rounded-lg border border-destructive/20',
+                                      shouldHighlight && !staleStatus.isUrgent && 'bg-warning/10 -ml-2 pl-8 pr-2 py-2 rounded-lg border border-warning/20'
+                                    )}>
                                       <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
                                   <div className="flex flex-col">
                                     <button 
