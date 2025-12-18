@@ -180,6 +180,12 @@ export function DashboardHeader() {
               <DropdownMenuLabel>{user?.email || 'Settings'}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
+                <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
                 <Link to="/preferences" className="flex items-center gap-2 cursor-pointer">
                   <SlidersHorizontal className="h-4 w-4" />
                   Preferences
