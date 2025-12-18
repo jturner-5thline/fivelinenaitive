@@ -11,6 +11,7 @@ import { WidgetsSectionSkeleton } from '@/components/dashboard/WidgetsSectionSke
 import { NotificationsBar } from '@/components/dashboard/NotificationsBar';
 import { EmailVerificationBanner } from '@/components/dashboard/EmailVerificationBanner';
 import { DemoBanner } from '@/components/dashboard/DemoBanner';
+import { DemoTour } from '@/components/dashboard/DemoTour';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -81,6 +82,7 @@ export default function Dashboard() {
 
         <main className="container mx-auto max-w-7xl px-4 pt-4 pb-3 sm:px-6 lg:px-8">
           <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
+          <DemoTour />
           <EmailVerificationBanner />
           <DemoBanner onDataCleared={refreshDeals} />
           <div className="space-y-6">
