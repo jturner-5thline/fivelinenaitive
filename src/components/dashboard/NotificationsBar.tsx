@@ -1,5 +1,6 @@
 import { AlertTriangle, AlertCircle } from 'lucide-react';
-import { Deal, DealLender } from '@/types/deal';
+import { Link } from 'react-router-dom';
+import { Deal } from '@/types/deal';
 import { differenceInDays } from 'date-fns';
 
 interface NotificationsBarProps {
@@ -7,6 +8,7 @@ interface NotificationsBarProps {
 }
 
 interface StaleLender {
+  dealId: string;
   dealName: string;
   lenderName: string;
   daysSinceUpdate: number;
@@ -27,12 +29,14 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
         
         if (daysSinceUpdate >= RED_THRESHOLD_DAYS) {
           staleLenders.red.push({
+            dealId: deal.id,
             dealName: deal.name,
             lenderName: lender.name,
             daysSinceUpdate,
           });
         } else if (daysSinceUpdate >= YELLOW_THRESHOLD_DAYS) {
           staleLenders.yellow.push({
+            dealId: deal.id,
             dealName: deal.name,
             lenderName: lender.name,
             daysSinceUpdate,
@@ -48,22 +52,30 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
 
   return (
     <div className="flex flex-wrap gap-3">
-      {staleLenders.red.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+      {staleLenders.red.map((item, index) => (
+        <Link
+          key={`red-${item.dealId}-${item.lenderName}-${index}`}
+          to={`/deals/${item.dealId}`}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer"
+        >
           <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
           <span className="text-sm font-medium text-destructive">
-            {staleLenders.red.length} lender{staleLenders.red.length !== 1 ? 's' : ''} need urgent update (14+ days)
+            {item.lenderName} on {item.dealName} ({item.daysSinceUpdate}d)
           </span>
-        </div>
-      )}
-      {staleLenders.yellow.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-warning/10 border border-warning/20">
+        </Link>
+      ))}
+      {staleLenders.yellow.map((item, index) => (
+        <Link
+          key={`yellow-${item.dealId}-${item.lenderName}-${index}`}
+          to={`/deals/${item.dealId}`}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-warning/10 border border-warning/20 hover:bg-warning/20 transition-colors cursor-pointer"
+        >
           <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
           <span className="text-sm font-medium text-warning">
-            {staleLenders.yellow.length} lender{staleLenders.yellow.length !== 1 ? 's' : ''} approaching stale (7+ days)
+            {item.lenderName} on {item.dealName} ({item.daysSinceUpdate}d)
           </span>
-        </div>
-      )}
+        </Link>
+      ))}
     </div>
   );
 }
