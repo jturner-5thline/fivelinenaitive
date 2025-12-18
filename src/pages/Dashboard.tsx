@@ -74,7 +74,7 @@ export default function Dashboard() {
             {/* Page Header & Widgets */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-semibold text-foreground">5th Line</h1>
+                <h1 className="text-3xl font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent">5th Line</h1>
                 <div className="flex items-center gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
