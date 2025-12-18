@@ -9,7 +9,11 @@ interface LenderInfo {
     phone: string;
   };
   preferences: string[];
+  website?: string;
+  description?: string;
 }
+
+export type { LenderInfo };
 
 interface LendersContextType {
   lenders: LenderInfo[];
@@ -38,6 +42,8 @@ const INITIAL_LENDERS: LenderInfo[] = [
     name: 'Decathlon',
     contact: { name: 'Michael Thompson', email: 'mthompson@decathlon.com', phone: '(212) 555-0101' },
     preferences: ['$5M-$25M deals', 'SaaS & Technology', 'Revenue-based financing'],
+    website: 'https://decathloncapital.com',
+    description: 'Decathlon Capital Partners provides growth capital to revenue-generating technology companies, specializing in $5M-$25M deals with a focus on SaaS and recurring revenue businesses.',
   },
   {
     name: 'Eastward',
