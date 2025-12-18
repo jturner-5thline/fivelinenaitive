@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { mockDeals, mockReferrers } from '@/data/mockDeals';
+import { useDealsContext } from '@/contexts/DealsContext';
 import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
@@ -185,9 +185,20 @@ export default function DealDetail() {
   const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { formatCurrencyValue, preferences } = usePreferences();
+  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deals } = useDealsContext();
   const lenderNames = getLenderNames();
-  const initialDeal = mockDeals.find((d) => d.id === id);
-  const [deal, setDeal] = useState<Deal | undefined>(initialDeal);
+  
+  // Get deal from context
+  const contextDeal = getDealById(id || '');
+  const [deal, setDeal] = useState<Deal | undefined>(contextDeal);
+  
+  // Update local deal state when context deal changes
+  useEffect(() => {
+    if (contextDeal) {
+      setDeal(contextDeal);
+    }
+  }, [contextDeal]);
+  
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   const [lenderSearchQuery, setLenderSearchQuery] = useState('');
   const [isLenderDropdownOpen, setIsLenderDropdownOpen] = useState(false);
@@ -330,7 +341,7 @@ export default function DealDetail() {
 
   // Get all deals where selected lender appears
   const getLenderDeals = useCallback((lenderName: string) => {
-    return mockDeals
+    return deals
       .filter(d => d.lenders?.some(l => l.name === lenderName))
       .map(d => ({
         dealId: d.id,
@@ -338,11 +349,11 @@ export default function DealDetail() {
         company: d.company,
         lenderInfo: d.lenders?.find(l => l.name === lenderName),
       }));
-  }, []);
+  }, [deals]);
 
   // Get all deals referred by a specific referrer
   const getReferrerDeals = useCallback((referrerId: string) => {
-    return mockDeals
+    return deals
       .filter(d => d.referredBy?.id === referrerId)
       .map(d => ({
         dealId: d.id,
@@ -351,30 +362,31 @@ export default function DealDetail() {
         stage: d.stage,
         status: d.status,
       }));
-  }, []);
+  }, [deals]);
 
-  const addLender = useCallback((lenderName: string) => {
+  const addLender = useCallback(async (lenderName: string) => {
     if (!deal || !lenderName.trim()) return;
     
-    const newLender: DealLender = {
-      id: `l${Date.now()}`,
+    // Add to database
+    const newLender = await addLenderToDeal(deal.id, {
       name: lenderName.trim(),
-      status: 'in-review',
       stage: 'reviewing-drl',
       trackingStatus: 'active',
-      updatedAt: new Date().toISOString(),
-    };
-    const updatedLenders = [...(deal.lenders || []), newLender];
-    setDeal(prev => {
-      if (!prev) return prev;
-      setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
-      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
-    toast({
-      title: "Lender added",
-      description: `${lenderName} has been added to the deal.`,
-    });
-  }, [deal]);
+    
+    if (newLender) {
+      // Update local state
+      setDeal(prev => {
+        if (!prev) return prev;
+        setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+        return { ...prev, lenders: [...(prev.lenders || []), newLender], updatedAt: new Date().toISOString() };
+      });
+      toast({
+        title: "Lender added",
+        description: `${lenderName} has been added to the deal.`,
+      });
+    }
+  }, [deal, addLenderToDeal]);
 
   const updateLenderNotes = useCallback((lenderId: string, notes: string) => {
     setDeal(prev => {
@@ -412,14 +424,27 @@ export default function DealDetail() {
           updatedAt: new Date().toISOString(),
         };
       });
+      
+      // Persist to database
+      const lender = updatedLenders?.find(l => l.id === lenderId);
+      if (lender) {
+        updateLenderInDb(lenderId, { notes: lender.notes });
+      }
+      
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
-  }, []);
+  }, [updateLenderInDb]);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
     // Find the first stage in the target group
     const targetStage = configuredStages.find(s => s.group === newGroup);
     if (!targetStage) return;
+    
+    // Persist to database
+    updateLenderInDb(lenderId, { 
+      stage: targetStage.id, 
+      passReason: newGroup === 'passed' ? passReason : undefined 
+    });
     
     setDeal(prev => {
       if (!prev) return prev;
@@ -430,7 +455,7 @@ export default function DealDetail() {
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
-  }, [configuredStages]);
+  }, [configuredStages, updateLenderInDb]);
 
   const addMilestone = useCallback((milestone: Omit<DealMilestone, 'id'>) => {
     if (!deal) return;

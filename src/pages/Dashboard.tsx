@@ -8,6 +8,7 @@ import { DealsList } from '@/components/dashboard/DealsList';
 import { WidgetsSection } from '@/components/dashboard/WidgetsSection';
 import { NotificationsBar } from '@/components/dashboard/NotificationsBar';
 import { useDeals } from '@/hooks/useDeals';
+import { useDealsContext } from '@/contexts/DealsContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,6 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { mockDeals } from '@/data/mockDeals';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 
@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const { deals: allDeals } = useDealsContext();
   
   const {
     deals,
@@ -153,8 +154,8 @@ export default function Dashboard() {
                   </DropdownMenu>
                 </div>
               </div>
-              <WidgetsSection deals={mockDeals} />
-              <NotificationsBar deals={mockDeals} />
+              <WidgetsSection deals={allDeals} />
+              <NotificationsBar deals={allDeals} />
             </div>
 
             {/* Filters */}

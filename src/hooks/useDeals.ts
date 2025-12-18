@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
-import { mockDeals } from '@/data/mockDeals';
+import { useDealsContext } from '@/contexts/DealsContext';
 
 export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status';
 export type SortDirection = 'asc' | 'desc';
@@ -16,7 +16,7 @@ export interface DealFilters {
 }
 
 export function useDeals() {
-  const [deals, setDeals] = useState<Deal[]>(mockDeals);
+  const { deals, updateDealStatus: updateStatus, isLoading } = useDealsContext();
   const [filters, setFilters] = useState<DealFilters>({
     search: '',
     stage: [],
@@ -105,13 +105,7 @@ export function useDeals() {
   }, [deals, filters, sortField, sortDirection]);
 
   const updateDealStatus = (dealId: string, newStatus: DealStatus) => {
-    setDeals((prev) =>
-      prev.map((deal) =>
-        deal.id === dealId
-          ? { ...deal, status: newStatus, updatedAt: new Date().toISOString().split('T')[0] }
-          : deal
-      )
-    );
+    updateStatus(dealId, newStatus);
   };
 
   const updateFilters = (newFilters: Partial<DealFilters>) => {
@@ -146,6 +140,7 @@ export function useDeals() {
     sortField,
     sortDirection,
     stats,
+    isLoading,
     updateDealStatus,
     updateFilters,
     toggleSort,
