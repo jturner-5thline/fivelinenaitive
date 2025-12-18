@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { ChartConfig } from './ChartsContext';
 
 export type WidgetType = 'stat' | 'list';
 
@@ -23,6 +24,15 @@ export interface WidgetConfig {
   createdAt: string;
 }
 
+export interface LayoutPreset {
+  id: string;
+  name: string;
+  widgets: WidgetConfig[];
+  charts: ChartConfig[];
+  layoutMode: 'compact' | 'expanded';
+  createdAt: string;
+}
+
 interface AnalyticsWidgetsContextType {
   widgets: WidgetConfig[];
   addWidget: (widget: Omit<WidgetConfig, 'id' | 'createdAt'>) => void;
@@ -30,6 +40,11 @@ interface AnalyticsWidgetsContextType {
   deleteWidget: (id: string) => void;
   reorderWidgets: (widgets: WidgetConfig[]) => void;
   resetToDefaults: () => void;
+  presets: LayoutPreset[];
+  savePreset: (name: string, charts: ChartConfig[], layoutMode: 'compact' | 'expanded') => void;
+  loadPreset: (id: string) => { charts: ChartConfig[]; layoutMode: 'compact' | 'expanded' } | null;
+  deletePreset: (id: string) => void;
+  renamePreset: (id: string, newName: string) => void;
 }
 
 const AnalyticsWidgetsContext = createContext<AnalyticsWidgetsContextType | undefined>(undefined);
@@ -123,9 +138,18 @@ export function AnalyticsWidgetsProvider({ children }: { children: ReactNode }) 
     return saved ? JSON.parse(saved) : defaultWidgets;
   });
 
+  const [presets, setPresets] = useState<LayoutPreset[]>(() => {
+    const saved = localStorage.getItem('analytics-presets');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   useEffect(() => {
     localStorage.setItem('analytics-widgets', JSON.stringify(widgets));
   }, [widgets]);
+
+  useEffect(() => {
+    localStorage.setItem('analytics-presets', JSON.stringify(presets));
+  }, [presets]);
 
   const addWidget = (widget: Omit<WidgetConfig, 'id' | 'createdAt'>) => {
     const newWidget: WidgetConfig = {
@@ -152,6 +176,35 @@ export function AnalyticsWidgetsProvider({ children }: { children: ReactNode }) 
     setWidgets(defaultWidgets);
   };
 
+  const savePreset = (name: string, charts: ChartConfig[], layoutMode: 'compact' | 'expanded') => {
+    const newPreset: LayoutPreset = {
+      id: `preset-${Date.now()}`,
+      name,
+      widgets: [...widgets],
+      charts: [...charts],
+      layoutMode,
+      createdAt: new Date().toISOString(),
+    };
+    setPresets(prev => [...prev, newPreset]);
+  };
+
+  const loadPreset = (id: string): { charts: ChartConfig[]; layoutMode: 'compact' | 'expanded' } | null => {
+    const preset = presets.find(p => p.id === id);
+    if (preset) {
+      setWidgets(preset.widgets);
+      return { charts: preset.charts, layoutMode: preset.layoutMode };
+    }
+    return null;
+  };
+
+  const deletePreset = (id: string) => {
+    setPresets(prev => prev.filter(p => p.id !== id));
+  };
+
+  const renamePreset = (id: string, newName: string) => {
+    setPresets(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p));
+  };
+
   return (
     <AnalyticsWidgetsContext.Provider value={{ 
       widgets, 
@@ -159,7 +212,12 @@ export function AnalyticsWidgetsProvider({ children }: { children: ReactNode }) 
       updateWidget, 
       deleteWidget, 
       reorderWidgets,
-      resetToDefaults 
+      resetToDefaults,
+      presets,
+      savePreset,
+      loadPreset,
+      deletePreset,
+      renamePreset,
     }}>
       {children}
     </AnalyticsWidgetsContext.Provider>

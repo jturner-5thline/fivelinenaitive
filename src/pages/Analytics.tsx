@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -38,7 +38,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useCharts, ChartType, ChartConfig } from '@/contexts/ChartsContext';
-import { useAnalyticsWidgets, WidgetConfig, WidgetDataSource, WIDGET_DATA_SOURCES } from '@/contexts/AnalyticsWidgetsContext';
+import { useAnalyticsWidgets, WidgetConfig, WidgetDataSource, WIDGET_DATA_SOURCES, LayoutPreset } from '@/contexts/AnalyticsWidgetsContext';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { Deal } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
@@ -415,7 +416,7 @@ function SortableChartCard({
 
 export default function Analytics() {
   const { charts, addChart, updateChart, deleteChart, reorderCharts } = useCharts();
-  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, resetToDefaults } = useAnalyticsWidgets();
+  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, resetToDefaults, presets, savePreset, loadPreset, deletePreset } = useAnalyticsWidgets();
   const { deals } = useDealsContext();
   
   // Chart dialogs
@@ -429,6 +430,12 @@ export default function Analytics() {
   const [deleteWidgetDialogOpen, setDeleteWidgetDialogOpen] = useState(false);
   const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null);
   const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null);
+
+  // Preset dialogs
+  const [savePresetDialogOpen, setSavePresetDialogOpen] = useState(false);
+  const [deletePresetDialogOpen, setDeletePresetDialogOpen] = useState(false);
+  const [presetToDelete, setPresetToDelete] = useState<string | null>(null);
+  const [presetName, setPresetName] = useState('');
   
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [datePreset, setDatePreset] = useState<string>('all');
@@ -634,6 +641,42 @@ export default function Analytics() {
     toast({ title: 'Widgets reset', description: 'All widgets have been reset to defaults.' });
   };
 
+  const handleSavePreset = () => {
+    if (!presetName.trim()) {
+      toast({ title: 'Error', description: 'Please enter a preset name', variant: 'destructive' });
+      return;
+    }
+    savePreset(presetName.trim(), charts, layoutMode);
+    toast({ title: 'Preset saved', description: `"${presetName}" has been saved.` });
+    setPresetName('');
+    setSavePresetDialogOpen(false);
+  };
+
+  const handleLoadPreset = (presetId: string) => {
+    const result = loadPreset(presetId);
+    if (result) {
+      reorderCharts(result.charts);
+      setLayoutMode(result.layoutMode);
+      const preset = presets.find(p => p.id === presetId);
+      toast({ title: 'Preset loaded', description: `"${preset?.name}" has been loaded.` });
+    }
+  };
+
+  const handleDeletePreset = () => {
+    if (presetToDelete) {
+      const preset = presets.find(p => p.id === presetToDelete);
+      deletePreset(presetToDelete);
+      toast({ title: 'Preset deleted', description: `"${preset?.name}" has been removed.` });
+      setPresetToDelete(null);
+      setDeletePresetDialogOpen(false);
+    }
+  };
+
+  const confirmDeletePreset = (presetId: string) => {
+    setPresetToDelete(presetId);
+    setDeletePresetDialogOpen(true);
+  };
+
   return (
     <>
       <Helmet>
@@ -728,6 +771,53 @@ export default function Analytics() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* Presets Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <FolderOpen className="h-4 w-4" />
+                      <span className="hidden sm:inline">Presets</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => setSavePresetDialogOpen(true)}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Current as Preset
+                    </DropdownMenuItem>
+                    {presets.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                          Saved Presets
+                        </div>
+                        {presets.map((preset) => (
+                          <DropdownMenuItem
+                            key={preset.id}
+                            className="flex items-center justify-between group"
+                          >
+                            <span
+                              className="flex-1 cursor-pointer"
+                              onClick={() => handleLoadPreset(preset.id)}
+                            >
+                              {preset.name}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                confirmDeletePreset(preset.id);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </DropdownMenuItem>
+                        ))}
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline" size="sm" onClick={handleResetWidgets} className="gap-1">
                   <RotateCcw className="h-4 w-4" />
                   Reset
@@ -1057,6 +1147,57 @@ export default function Analytics() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteWidget} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Save Preset Dialog */}
+      <Dialog open={savePresetDialogOpen} onOpenChange={setSavePresetDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save Preset</DialogTitle>
+            <DialogDescription>
+              Save your current widget and chart configuration as a preset.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="preset-name">Preset Name</Label>
+              <Input
+                id="preset-name"
+                placeholder="My Custom Layout"
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPresetName(''); setSavePresetDialogOpen(false); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePreset}>
+              Save Preset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Preset Confirmation Dialog */}
+      <AlertDialog open={deletePresetDialogOpen} onOpenChange={setDeletePresetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Preset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this preset? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePreset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
