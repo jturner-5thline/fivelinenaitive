@@ -1723,11 +1723,19 @@ export default function DealDetail() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total Fee</span>
-                    <InlineEditField
-                      value={formatFee(deal.totalFee)}
-                      onSave={(value) => updateDeal('totalFee', parseFee(value))}
-                      displayClassName="font-medium text-purple-600"
-                    />
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-muted-foreground">$</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={deal.totalFee ? (deal.totalFee / 1000).toFixed(2) : ''}
+                        onChange={(e) => updateDeal('totalFee', e.target.value ? parseFloat(e.target.value) * 1000 : 0)}
+                        placeholder="0.00"
+                        className="w-24 h-8 text-right font-medium text-purple-600"
+                      />
+                      <span className="text-sm text-muted-foreground">K</span>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Referred by</span>
