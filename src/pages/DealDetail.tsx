@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -23,6 +23,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
+import { LendersKanban } from '@/components/deal/LendersKanban';
 import {
   Select,
   SelectContent,
@@ -196,6 +197,7 @@ export default function DealDetail() {
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
+  const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -402,6 +404,22 @@ export default function DealDetail() {
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
   }, []);
+
+  const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup) => {
+    // Find the first stage in the target group
+    const targetStage = configuredStages.find(s => s.group === newGroup);
+    if (!targetStage) return;
+    
+    setDeal(prev => {
+      if (!prev) return prev;
+      const updatedLenders = prev.lenders?.map(l => 
+        l.id === lenderId 
+          ? { ...l, stage: targetStage.id as any, passReason: newGroup === 'passed' ? l.passReason : undefined, updatedAt: new Date().toISOString() } 
+          : l
+      );
+      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    });
+  }, [configuredStages]);
 
   const addMilestone = useCallback((milestone: Omit<DealMilestone, 'id'>) => {
     if (!deal) return;
@@ -890,6 +908,14 @@ export default function DealDetail() {
                               </button>
                             );
                           })}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => setIsLendersKanbanOpen(true)}
+                          >
+                            <LayoutGrid className="h-4 w-4" />
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -2031,6 +2057,22 @@ export default function DealDetail() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Lenders Kanban Dialog */}
+      <Dialog open={isLendersKanbanOpen} onOpenChange={setIsLendersKanbanOpen}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Lenders Kanban View</DialogTitle>
+          </DialogHeader>
+          {deal && deal.lenders && (
+            <LendersKanban
+              lenders={deal.lenders}
+              configuredStages={configuredStages}
+              onUpdateLenderGroup={updateLenderGroup}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>
