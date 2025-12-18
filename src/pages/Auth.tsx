@@ -316,6 +316,17 @@ const Auth = () => {
                       } else {
                         toast.success("Welcome to the demo!");
                       }
+                      
+                      // Seed demo data if needed
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (session) {
+                        try {
+                          await supabase.functions.invoke("seed-demo-data");
+                        } catch (seedError) {
+                          console.error("Failed to seed demo data:", seedError);
+                        }
+                      }
+                      
                       navigate("/dashboard");
                     } catch (error: any) {
                       toast.error(error.message || "Demo login failed. Please try again.");
@@ -325,7 +336,7 @@ const Auth = () => {
                   }}
                   className="w-full text-white/60 hover:text-white hover:bg-white/5 py-6 font-light tracking-wide"
                 >
-                  Continue as Demo User
+                  Try Demo
                 </Button>
               )}
             </form>
