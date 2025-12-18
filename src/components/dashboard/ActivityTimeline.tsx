@@ -5,16 +5,21 @@ import {
   TrendingUp, 
   MessageSquare, 
   CheckCircle,
-  AlertCircle,
   ArrowRight,
   Trash2,
-  Undo2
+  Undo2,
+  Edit,
+  DollarSign,
+  Building2,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActivityLog } from '@/hooks/useActivityLog';
+import { Json } from '@/integrations/supabase/types';
 
 export interface ActivityItem {
   id: string;
-  type: 'status_change' | 'stage_change' | 'note_added' | 'contact_added' | 'value_updated' | 'comment' | 'created' | 'lender_removed';
+  type: 'status_change' | 'stage_change' | 'note_added' | 'contact_added' | 'value_updated' | 'comment' | 'created' | 'lender_removed' | 'lender_added' | 'lender_stage_change' | 'deal_updated';
   description: string;
   user: string;
   timestamp: string;
@@ -24,6 +29,7 @@ export interface ActivityItem {
     value?: string;
     lenderName?: string;
     lenderData?: any;
+    field?: string;
   };
   onUndo?: () => void;
 }
@@ -32,27 +38,54 @@ interface ActivityTimelineProps {
   activities: ActivityItem[];
 }
 
-const activityIcons: Record<ActivityItem['type'], typeof Clock> = {
+const activityIcons: Record<string, typeof Clock> = {
   status_change: ArrowRight,
   stage_change: TrendingUp,
   note_added: FileText,
   contact_added: UserPlus,
-  value_updated: TrendingUp,
+  value_updated: DollarSign,
   comment: MessageSquare,
   created: CheckCircle,
   lender_removed: Trash2,
+  lender_added: Users,
+  lender_stage_change: TrendingUp,
+  deal_updated: Edit,
+  deal_created: CheckCircle,
 };
 
-const activityColors: Record<ActivityItem['type'], string> = {
+const activityColors: Record<string, string> = {
   status_change: 'bg-muted-foreground/20',
   stage_change: 'bg-muted-foreground/20',
   note_added: 'bg-muted-foreground/20',
   contact_added: 'bg-muted-foreground/20',
   value_updated: 'bg-muted-foreground/20',
   comment: 'bg-muted-foreground/20',
-  created: 'bg-muted-foreground/20',
-  lender_removed: 'bg-muted-foreground/20',
+  created: 'bg-brand/20',
+  lender_removed: 'bg-destructive/20',
+  lender_added: 'bg-brand/20',
+  lender_stage_change: 'bg-muted-foreground/20',
+  deal_updated: 'bg-muted-foreground/20',
+  deal_created: 'bg-brand/20',
 };
+
+// Convert ActivityLog from database to ActivityItem for display
+export function activityLogToItem(log: ActivityLog): ActivityItem {
+  const metadata = (log.metadata || {}) as Record<string, any>;
+  return {
+    id: log.id,
+    type: log.activity_type as ActivityItem['type'],
+    description: log.description,
+    user: metadata.user_name || 'You',
+    timestamp: log.created_at,
+    metadata: {
+      from: metadata.from,
+      to: metadata.to,
+      value: metadata.value,
+      lenderName: metadata.lender_name,
+      field: metadata.field,
+    },
+  };
+}
 
 export function ActivityTimeline({ activities }: ActivityTimelineProps) {
   const formatDate = (timestamp: string) => {
@@ -66,12 +99,23 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
     });
   };
 
+  if (activities.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">No activity yet</p>
+        <p className="text-xs mt-1">Activity will appear here as you work on this deal</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flow-root">
       <ul className="-mb-8">
         {activities.map((activity, index) => {
-          const Icon = activityIcons[activity.type];
+          const Icon = activityIcons[activity.type] || Clock;
           const isLast = index === activities.length - 1;
+          const colorClass = activityColors[activity.type] || 'bg-muted-foreground/20';
 
           return (
             <li key={activity.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
@@ -83,7 +127,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
                   />
                 )}
                 <div className="relative flex items-start space-x-3">
-                  <div className={`relative flex h-6 w-6 items-center justify-center rounded-full ${activityColors[activity.type]}`}>
+                  <div className={`relative flex h-6 w-6 items-center justify-center rounded-full ${colorClass}`}>
                     <Icon className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
