@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Palette, Bell, Globe, DollarSign } from 'lucide-react';
+import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/contexts/PreferencesContext';
 
 export default function Preferences() {
@@ -109,6 +110,45 @@ export default function Preferences() {
                   <Switch
                     checked={preferences.dealStatusAlerts}
                     onCheckedChange={(checked) => updatePreference('dealStatusAlerts', checked)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Lender Update Alerts
+                </CardTitle>
+                <CardDescription>Configure when to show stale lender notifications</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Warning Threshold (Yellow)</Label>
+                    <p className="text-sm text-muted-foreground">Days before showing yellow warning</p>
+                  </div>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={preferences.lenderUpdateRedDays - 1}
+                    value={preferences.lenderUpdateYellowDays}
+                    onChange={(e) => updatePreference('lenderUpdateYellowDays', Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 text-center"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Urgent Threshold (Red)</Label>
+                    <p className="text-sm text-muted-foreground">Days before showing red urgent alert</p>
+                  </div>
+                  <Input
+                    type="number"
+                    min={preferences.lenderUpdateYellowDays + 1}
+                    value={preferences.lenderUpdateRedDays}
+                    onChange={(e) => updatePreference('lenderUpdateRedDays', Math.max(preferences.lenderUpdateYellowDays + 1, parseInt(e.target.value) || 14))}
+                    className="w-20 text-center"
                   />
                 </div>
               </CardContent>

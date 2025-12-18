@@ -9,6 +9,8 @@ export interface Preferences {
   currency: 'usd' | 'eur' | 'gbp';
   currencyFormat: CurrencyFormat;
   dateFormat: 'mdy' | 'dmy' | 'ymd';
+  lenderUpdateYellowDays: number;
+  lenderUpdateRedDays: number;
 }
 
 export const CURRENCY_FORMAT_OPTIONS: { value: CurrencyFormat; label: string; example: string }[] = [
@@ -25,6 +27,8 @@ const DEFAULT_PREFERENCES: Preferences = {
   currency: 'usd',
   currencyFormat: 'abbreviated-1',
   dateFormat: 'mdy',
+  lenderUpdateYellowDays: 7,
+  lenderUpdateRedDays: 14,
 };
 
 const STORAGE_KEY = 'user-preferences';

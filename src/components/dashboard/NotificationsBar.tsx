@@ -2,6 +2,7 @@ import { AlertTriangle, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { differenceInDays } from 'date-fns';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface NotificationsBarProps {
   deals: Deal[];
@@ -14,11 +15,12 @@ interface StaleDeal {
   maxDaysSinceUpdate: number;
 }
 
-const YELLOW_THRESHOLD_DAYS = 7;
-const RED_THRESHOLD_DAYS = 14;
-
 export function NotificationsBar({ deals }: NotificationsBarProps) {
+  const { preferences } = usePreferences();
   const now = new Date();
+  
+  const yellowThreshold = preferences.lenderUpdateYellowDays;
+  const redThreshold = preferences.lenderUpdateRedDays;
   
   const staleDeals: { yellow: StaleDeal[]; red: StaleDeal[] } = { yellow: [], red: [] };
   
@@ -29,7 +31,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
     deal.lenders?.forEach(lender => {
       if (lender.trackingStatus === 'active' && lender.updatedAt) {
         const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
-        if (daysSinceUpdate >= YELLOW_THRESHOLD_DAYS) {
+        if (daysSinceUpdate >= yellowThreshold) {
           staleLenderCount++;
           maxDays = Math.max(maxDays, daysSinceUpdate);
         }
@@ -44,7 +46,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
         maxDaysSinceUpdate: maxDays,
       };
       
-      if (maxDays >= RED_THRESHOLD_DAYS) {
+      if (maxDays >= redThreshold) {
         staleDeals.red.push(staleDeal);
       } else {
         staleDeals.yellow.push(staleDeal);
