@@ -10,8 +10,10 @@ import { WidgetsSection } from '@/components/dashboard/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/dashboard/WidgetsSectionSkeleton';
 import { NotificationsBar } from '@/components/dashboard/NotificationsBar';
 import { EmailVerificationBanner } from '@/components/dashboard/EmailVerificationBanner';
+import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,9 @@ export default function Dashboard() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const { deals: allDeals, isLoading } = useDealsContext();
+  const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
+  
+  const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
   
   const {
     deals,
@@ -74,6 +79,7 @@ export default function Dashboard() {
         <DashboardHeader />
 
         <main className="container mx-auto max-w-7xl px-4 pt-4 pb-3 sm:px-6 lg:px-8">
+          <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
           <EmailVerificationBanner />
           <div className="space-y-6">
             {/* Page Header & Widgets */}
