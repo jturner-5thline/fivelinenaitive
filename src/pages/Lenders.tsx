@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -49,6 +49,19 @@ export default function Lenders() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLender, setEditingLender] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter lenders based on search query
+  const filteredLenders = lenders.filter(lender => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      lender.name.toLowerCase().includes(query) ||
+      lender.contact.name.toLowerCase().includes(query) ||
+      lender.contact.email.toLowerCase().includes(query) ||
+      lender.preferences.some(pref => pref.toLowerCase().includes(query))
+    );
+  });
 
   const openAddDialog = () => {
     setEditingLender(null);
@@ -141,8 +154,36 @@ export default function Lenders() {
                 </Button>
               </CardHeader>
               <CardContent>
+                {/* Search Input */}
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, contact, email, or preferences..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-9"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* Results count */}
+                {searchQuery && (
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Found {filteredLenders.length} {filteredLenders.length === 1 ? 'lender' : 'lenders'}
+                  </p>
+                )}
+
                 <div className="space-y-3">
-                  {lenders.map((lender) => (
+                  {filteredLenders.map((lender) => (
                     <div
                       key={lender.name}
                       className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
@@ -206,6 +247,11 @@ export default function Lenders() {
                       </div>
                     </div>
                   ))}
+                  {filteredLenders.length === 0 && lenders.length > 0 && (
+                    <p className="text-center text-muted-foreground py-8">
+                      No lenders match your search.
+                    </p>
+                  )}
                   {lenders.length === 0 && (
                     <p className="text-center text-muted-foreground py-8">
                       No lenders configured. Add one to get started.
