@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Info, X, Trash2 } from 'lucide-react';
+import { Info, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -21,7 +21,6 @@ interface DemoBannerProps {
 
 export function DemoBanner({ onDataCleared }: DemoBannerProps) {
   const [isDemoUser, setIsDemoUser] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
@@ -29,20 +28,10 @@ export function DemoBanner({ onDataCleared }: DemoBannerProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.email === 'demo@example.com') {
         setIsDemoUser(true);
-        // Check if banner was dismissed this session
-        const wasDismissed = sessionStorage.getItem('demo-banner-dismissed');
-        if (wasDismissed) {
-          setDismissed(true);
-        }
       }
     };
     checkDemoUser();
   }, []);
-
-  const handleDismiss = () => {
-    setDismissed(true);
-    sessionStorage.setItem('demo-banner-dismissed', 'true');
-  };
 
   const handleClearData = async () => {
     setIsClearing(true);
@@ -75,22 +64,13 @@ export function DemoBanner({ onDataCleared }: DemoBannerProps) {
     }
   };
 
-  if (!isDemoUser || dismissed) {
+  if (!isDemoUser) {
     return null;
   }
 
   return (
     <div className="relative rounded-lg border border-brand/30 bg-brand/5 p-4 mb-4">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute right-2 top-2 h-6 w-6 text-muted-foreground hover:text-foreground"
-        onClick={handleDismiss}
-      >
-        <X className="h-4 w-4" />
-      </Button>
-      
-      <div className="flex items-start gap-3 pr-8">
+      <div className="flex items-start gap-3">
         <Info className="h-5 w-5 text-brand mt-0.5 shrink-0" />
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">
