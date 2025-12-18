@@ -12,6 +12,7 @@ import { DealTypesProvider } from "@/contexts/DealTypesContext";
 import { WidgetsProvider } from "@/contexts/WidgetsContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChartsProvider } from "@/contexts/ChartsContext";
+import { AnalyticsWidgetsProvider } from "@/contexts/AnalyticsWidgetsContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -36,6 +37,7 @@ const App = () => (
                 <LenderStagesProvider>
                   <DealTypesProvider>
                     <ChartsProvider>
+                    <AnalyticsWidgetsProvider>
                     <WidgetsProvider>
                     <TooltipProvider>
                       <Toaster />
@@ -65,6 +67,7 @@ const App = () => (
                       </BrowserRouter>
                     </TooltipProvider>
                     </WidgetsProvider>
+                    </AnalyticsWidgetsProvider>
                     </ChartsProvider>
                   </DealTypesProvider>
                 </LenderStagesProvider>
