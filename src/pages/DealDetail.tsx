@@ -799,12 +799,12 @@ export default function DealDetail() {
                 <InlineEditField
                   value={deal.company}
                   onSave={(value) => updateDeal('company', value)}
-                  displayClassName="text-5xl font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent"
+                  displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent"
                 />
                 <InlineEditField
                   value={formatValue(deal.value)}
                   onSave={(value) => updateDeal('value', parseValue(value))}
-                  displayClassName="text-5xl font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent"
+                  displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent"
                 />
               </div>
               
@@ -943,7 +943,7 @@ export default function DealDetail() {
                           ) : (
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           )}
-                          <CardTitle className="text-lg bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent">
+                          <CardTitle className="text-lg bg-brand-gradient bg-clip-text text-transparent">
                             Lenders
                           </CardTitle>
                           {deal.lenders && deal.lenders.length > 0 && (
@@ -1609,7 +1609,7 @@ export default function DealDetail() {
             <div className="lg:col-span-1 flex flex-col gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent">Deal Information</CardTitle>
+                  <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent">Deal Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
@@ -1869,7 +1869,7 @@ export default function DealDetail() {
               {/* Company Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent flex items-center gap-2">
+                  <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent flex items-center gap-2">
                     <Building2 className="h-5 w-5" />
                     Company
                   </CardTitle>
@@ -1907,7 +1907,7 @@ export default function DealDetail() {
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent flex items-center gap-2">
+                    <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent flex items-center gap-2">
                       <Paperclip className="h-5 w-5" />
                       Attachments
                     </CardTitle>
@@ -1993,7 +1993,7 @@ export default function DealDetail() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold bg-gradient-to-r from-[#861E81] to-[#5B21B6] bg-clip-text text-transparent">
+                  <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent">
                     Activity
                   </CardTitle>
                 </CardHeader>
