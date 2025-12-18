@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3 } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -432,7 +432,14 @@ export default function Analytics() {
   
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [datePreset, setDatePreset] = useState<string>('all');
-  const [layoutMode, setLayoutMode] = useState<'compact' | 'expanded'>('expanded');
+  const [layoutMode, setLayoutMode] = useState<'compact' | 'expanded'>(() => {
+    const saved = localStorage.getItem('analytics-layout-mode');
+    return (saved === 'compact' || saved === 'expanded') ? saved : 'expanded';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('analytics-layout-mode', layoutMode);
+  }, [layoutMode]);
   
   const [chartFormData, setChartFormData] = useState({
     title: '',
