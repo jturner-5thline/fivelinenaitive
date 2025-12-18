@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
+import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 
 type SortOption = 'name-asc' | 'name-desc' | 'prefs-desc' | 'prefs-asc';
 type ViewMode = 'list' | 'grid';
@@ -236,6 +237,61 @@ export default function Lenders() {
     toast({ title: 'Lender deleted', description: `${name} has been removed.` });
   };
 
+  const handleExport = () => {
+    const csv = exportLendersToCsv(lenders);
+    downloadCsv(csv, `lenders-${new Date().toISOString().split('T')[0]}.csv`);
+    toast({ title: 'Export complete', description: `Exported ${lenders.length} lenders to CSV.` });
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const parsedLenders = parseCsvToLenders(content);
+        
+        let added = 0;
+        let skipped = 0;
+        
+        parsedLenders.forEach(row => {
+          const exists = lenders.some(l => l.name.toLowerCase() === row.name.toLowerCase());
+          if (!exists) {
+            addLender({
+              name: row.name,
+              contact: {
+                name: row.contactName,
+                email: row.email,
+                phone: row.phone,
+              },
+              preferences: row.preferences.split(';').map(p => p.trim()).filter(p => p),
+              website: row.website || undefined,
+              description: row.description || undefined,
+            });
+            added++;
+          } else {
+            skipped++;
+          }
+        });
+
+        toast({ 
+          title: 'Import complete', 
+          description: `Added ${added} lenders${skipped > 0 ? `, skipped ${skipped} duplicates` : ''}.` 
+        });
+      } catch (error) {
+        toast({ 
+          title: 'Import failed', 
+          description: error instanceof Error ? error.message : 'Failed to parse CSV file',
+          variant: 'destructive' 
+        });
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
   return (
     <>
       <Helmet>
@@ -256,10 +312,30 @@ export default function Lenders() {
                 </h1>
                 <p className="text-muted-foreground">Manage your lender directory</p>
               </div>
-              <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
-                <Plus className="h-4 w-4" />
-                Add Lender
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleExport} size="sm" className="gap-1">
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+                <label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
+                  <Button variant="outline" size="sm" className="gap-1" asChild>
+                    <span>
+                      <Upload className="h-4 w-4" />
+                      Import
+                    </span>
+                  </Button>
+                </label>
+                <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
+                  <Plus className="h-4 w-4" />
+                  Add Lender
+                </Button>
+              </div>
             </div>
 
             <div>
