@@ -68,42 +68,52 @@ const getHoursData = () => {
   const totalPreSigning = mockDeals.reduce((sum, deal) => sum + (deal.preSigningHours ?? 0), 0);
   const totalPostSigning = mockDeals.reduce((sum, deal) => sum + (deal.postSigningHours ?? 0), 0);
   const totalHours = totalPreSigning + totalPostSigning;
+  const totalFees = mockDeals.reduce((sum, deal) => sum + (deal.totalFee || 0), 0);
+  const revenuePerHour = totalHours > 0 ? totalFees / totalHours : 0;
   
   // Hours by manager
-  const hoursByManager: Record<string, { preSigning: number; postSigning: number }> = {};
+  const hoursByManager: Record<string, { preSigning: number; postSigning: number; fees: number }> = {};
   mockDeals.forEach(deal => {
     if (!hoursByManager[deal.manager]) {
-      hoursByManager[deal.manager] = { preSigning: 0, postSigning: 0 };
+      hoursByManager[deal.manager] = { preSigning: 0, postSigning: 0, fees: 0 };
     }
     hoursByManager[deal.manager].preSigning += deal.preSigningHours ?? 0;
     hoursByManager[deal.manager].postSigning += deal.postSigningHours ?? 0;
+    hoursByManager[deal.manager].fees += deal.totalFee || 0;
   });
   
   // Hours by stage
-  const hoursByStage: Record<string, { preSigning: number; postSigning: number }> = {};
+  const hoursByStage: Record<string, { preSigning: number; postSigning: number; fees: number }> = {};
   mockDeals.forEach(deal => {
     if (!hoursByStage[deal.stage]) {
-      hoursByStage[deal.stage] = { preSigning: 0, postSigning: 0 };
+      hoursByStage[deal.stage] = { preSigning: 0, postSigning: 0, fees: 0 };
     }
     hoursByStage[deal.stage].preSigning += deal.preSigningHours ?? 0;
     hoursByStage[deal.stage].postSigning += deal.postSigningHours ?? 0;
+    hoursByStage[deal.stage].fees += deal.totalFee || 0;
   });
   
   return {
     totalPreSigning,
     totalPostSigning,
     totalHours,
-    byManager: Object.entries(hoursByManager).map(([name, hours]) => ({
+    totalFees,
+    revenuePerHour,
+    byManager: Object.entries(hoursByManager).map(([name, data]) => ({
       name,
-      preSigning: hours.preSigning,
-      postSigning: hours.postSigning,
-      total: hours.preSigning + hours.postSigning,
+      preSigning: data.preSigning,
+      postSigning: data.postSigning,
+      total: data.preSigning + data.postSigning,
+      fees: data.fees,
+      revenuePerHour: (data.preSigning + data.postSigning) > 0 ? data.fees / (data.preSigning + data.postSigning) : 0,
     })),
-    byStage: Object.entries(hoursByStage).map(([name, hours]) => ({
+    byStage: Object.entries(hoursByStage).map(([name, data]) => ({
       name,
-      preSigning: hours.preSigning,
-      postSigning: hours.postSigning,
-      total: hours.preSigning + hours.postSigning,
+      preSigning: data.preSigning,
+      postSigning: data.postSigning,
+      total: data.preSigning + data.postSigning,
+      fees: data.fees,
+      revenuePerHour: (data.preSigning + data.postSigning) > 0 ? data.fees / (data.preSigning + data.postSigning) : 0,
     })),
   };
 };
@@ -573,7 +583,7 @@ export default function Analytics() {
           {/* Hours Summary Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Hours Summary</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center">
@@ -598,6 +608,27 @@ export default function Analytics() {
                   </div>
                 </CardContent>
               </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Fees</p>
+                    <p className="text-3xl font-bold text-purple-600">${getHoursData().totalFees.toLocaleString()}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Revenue per Hour</p>
+                    <p className="text-3xl font-bold text-purple-600">
+                      {getHoursData().revenuePerHour > 0 
+                        ? `$${getHoursData().revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                        : '-'
+                      }
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
             
             {/* Hours by Manager Table */}
@@ -613,9 +644,11 @@ export default function Analytics() {
                         <div key={manager.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                           <span className="font-medium">{manager.name}</span>
                           <div className="flex gap-4 text-sm">
-                            <span className="text-muted-foreground">Pre: {manager.preSigning.toFixed(1)}</span>
-                            <span className="text-muted-foreground">Post: {manager.postSigning.toFixed(1)}</span>
-                            <span className="font-semibold text-purple-600">{manager.total.toFixed(1)}h</span>
+                            <span className="text-muted-foreground">{manager.total.toFixed(1)}h</span>
+                            <span className="text-muted-foreground">${manager.fees.toLocaleString()}</span>
+                            <span className="font-semibold text-purple-600">
+                              {manager.revenuePerHour > 0 ? `$${manager.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr` : '-'}
+                            </span>
                           </div>
                         </div>
                       ))
@@ -637,9 +670,11 @@ export default function Analytics() {
                         <div key={stage.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                           <span className="font-medium capitalize">{stage.name.replace('-', ' ')}</span>
                           <div className="flex gap-4 text-sm">
-                            <span className="text-muted-foreground">Pre: {stage.preSigning.toFixed(1)}</span>
-                            <span className="text-muted-foreground">Post: {stage.postSigning.toFixed(1)}</span>
-                            <span className="font-semibold text-purple-600">{stage.total.toFixed(1)}h</span>
+                            <span className="text-muted-foreground">{stage.total.toFixed(1)}h</span>
+                            <span className="text-muted-foreground">${stage.fees.toLocaleString()}</span>
+                            <span className="font-semibold text-purple-600">
+                              {stage.revenuePerHour > 0 ? `$${stage.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr` : '-'}
+                            </span>
                           </div>
                         </div>
                       ))
