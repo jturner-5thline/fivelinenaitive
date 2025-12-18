@@ -5,7 +5,9 @@ import { format } from 'date-fns';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DealFilters } from '@/components/dashboard/DealFilters';
 import { DealsList } from '@/components/dashboard/DealsList';
+import { DealsListSkeleton } from '@/components/dashboard/DealsListSkeleton';
 import { WidgetsSection } from '@/components/dashboard/WidgetsSection';
+import { WidgetsSectionSkeleton } from '@/components/dashboard/WidgetsSectionSkeleton';
 import { NotificationsBar } from '@/components/dashboard/NotificationsBar';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -32,7 +34,7 @@ export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const { deals: allDeals } = useDealsContext();
+  const { deals: allDeals, isLoading } = useDealsContext();
   
   const {
     deals,
@@ -154,7 +156,11 @@ export default function Dashboard() {
                   </DropdownMenu>
                 </div>
               </div>
-              <WidgetsSection deals={allDeals} />
+              {isLoading ? (
+                <WidgetsSectionSkeleton />
+              ) : (
+                <WidgetsSection deals={allDeals} />
+              )}
               <NotificationsBar deals={allDeals} />
             </div>
 
@@ -183,7 +189,11 @@ export default function Dashboard() {
             </div>
 
             {/* Deals Grid */}
-            <DealsList deals={deals} onStatusChange={updateDealStatus} groupByStatus={groupByStatus} />
+            {isLoading ? (
+              <DealsListSkeleton groupByStatus={groupByStatus} />
+            ) : (
+              <DealsList deals={deals} onStatusChange={updateDealStatus} groupByStatus={groupByStatus} />
+            )}
           </div>
         </main>
       </div>
