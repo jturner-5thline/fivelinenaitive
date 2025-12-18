@@ -98,6 +98,27 @@ const getChartData = (dataSource: string) => {
         { name: '$20M+', value: 4 },
       ];
     
+    case 'lender-pass-reasons':
+      const passReasonCounts: Record<string, number> = {};
+      mockDeals.forEach(deal => {
+        deal.lenders?.forEach(lender => {
+          if (lender.trackingStatus === 'passed' && lender.passReason) {
+            passReasonCounts[lender.passReason] = (passReasonCounts[lender.passReason] || 0) + 1;
+          }
+        });
+      });
+      // If no pass reasons found, return sample data
+      if (Object.keys(passReasonCounts).length === 0) {
+        return [
+          { name: 'Deal size too small', value: 5 },
+          { name: 'Industry mismatch', value: 8 },
+          { name: 'Risk profile', value: 4 },
+          { name: 'Timing issues', value: 3 },
+          { name: 'Terms not competitive', value: 6 },
+        ];
+      }
+      return Object.entries(passReasonCounts).map(([name, value]) => ({ name, value }));
+    
     default:
       return [
         { name: 'A', value: 10 },
@@ -114,6 +135,7 @@ const DATA_SOURCES = [
   { id: 'deals-by-status', label: 'Deals by Status' },
   { id: 'lender-activity', label: 'Lender Activity' },
   { id: 'deal-value-distribution', label: 'Deal Value Distribution' },
+  { id: 'lender-pass-reasons', label: 'Lender Pass Reasons' },
 ];
 
 const CHART_COLORS = [
