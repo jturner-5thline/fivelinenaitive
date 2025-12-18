@@ -9,17 +9,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-brand-gradient hover:shadow-md",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
-        outline: "border border-input bg-background hover:bg-brand-gradient/10 hover:border-brand/30",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-brand-gradient/10",
-        ghost: "hover:bg-brand-gradient/10",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-brand-gradient hover:shadow-[0_0_20px_rgba(134,30,129,0.3)]",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm hover:shadow-[0_0_15px_rgba(239,68,68,0.25)]",
+        outline: "border border-input bg-background hover:bg-brand-gradient/10 hover:border-brand/30 hover:shadow-[0_0_15px_rgba(134,30,129,0.15)]",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-brand-gradient/10 hover:shadow-[0_0_15px_rgba(134,30,129,0.15)]",
+        ghost: "hover:bg-brand-gradient/10 hover:shadow-[0_0_12px_rgba(134,30,129,0.1)]",
         link: "text-primary underline-offset-4 hover:underline hover:scale-100",
-        accent: "bg-accent text-accent-foreground hover:bg-brand-gradient hover:text-white shadow-sm hover:shadow-md",
-        success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm",
-        hero: "bg-primary text-primary-foreground hover:bg-brand-gradient shadow-lg hover:shadow-xl hover:-translate-y-0.5",
-        "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-brand-gradient/10 hover:border-brand/50",
-        gradient: "bg-brand-gradient text-white hover:bg-brand-gradient-hover shadow-sm hover:shadow-md",
+        accent: "bg-accent text-accent-foreground hover:bg-brand-gradient hover:text-white shadow-sm hover:shadow-[0_0_20px_rgba(134,30,129,0.3)]",
+        success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]",
+        hero: "bg-primary text-primary-foreground hover:bg-brand-gradient shadow-lg hover:shadow-[0_4px_25px_rgba(134,30,129,0.4)] hover:-translate-y-0.5",
+        "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-brand-gradient/10 hover:border-brand/50 hover:shadow-[0_0_20px_rgba(134,30,129,0.2)]",
+        gradient: "bg-brand-gradient text-white hover:bg-brand-gradient-hover shadow-sm hover:shadow-[0_0_25px_rgba(134,30,129,0.4)]",
       },
       size: {
         default: "h-10 px-4 py-2",
