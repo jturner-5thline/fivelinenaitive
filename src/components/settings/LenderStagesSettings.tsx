@@ -235,7 +235,7 @@ export function LenderStagesSettings() {
             </CardTitle>
             <CardDescription>Configure stages and assign them to groups. Drag to reorder.</CardDescription>
           </div>
-          <Button onClick={openAddDialog} size="sm" className="gap-1">
+          <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
             <Plus className="h-4 w-4" />
             Add Stage
           </Button>
@@ -318,7 +318,7 @@ export function LenderStagesSettings() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button variant="gradient" onClick={handleSubmit}>
               {editingStage ? 'Save Changes' : 'Add Stage'}
             </Button>
           </DialogFooter>

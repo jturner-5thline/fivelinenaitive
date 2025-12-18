@@ -86,7 +86,7 @@ export function DealTypesSettings() {
             </CardTitle>
             <CardDescription>Manage the available deal type options</CardDescription>
           </div>
-          <Button onClick={openAddDialog} size="sm" className="gap-1">
+          <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
             <Plus className="h-4 w-4" />
             Add Type
           </Button>
@@ -166,7 +166,7 @@ export function DealTypesSettings() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button variant="gradient" onClick={handleSubmit}>
               {editingId ? 'Save Changes' : 'Add Deal Type'}
             </Button>
           </DialogFooter>

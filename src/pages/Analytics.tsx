@@ -822,7 +822,7 @@ export default function Analytics() {
                   <RotateCcw className="h-4 w-4" />
                   Reset
                 </Button>
-                <Button size="sm" onClick={() => handleOpenWidgetDialog()} className="gap-1">
+                <Button variant="gradient" size="sm" onClick={() => handleOpenWidgetDialog()} className="gap-1">
                   <Plus className="h-4 w-4" />
                   Add Widget
                 </Button>
@@ -841,7 +841,7 @@ export default function Analytics() {
                       Add widgets to display key metrics
                     </p>
                   </div>
-                  <Button onClick={() => handleOpenWidgetDialog()} className="gap-2 mt-2">
+                  <Button variant="gradient" onClick={() => handleOpenWidgetDialog()} className="gap-2 mt-2">
                     <Plus className="h-4 w-4" />
                     Add Widget
                   </Button>
@@ -903,7 +903,7 @@ export default function Analytics() {
           {/* Charts Section */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Charts</h2>
-            <Button size="sm" onClick={() => handleOpenChartDialog()} className="gap-1">
+            <Button variant="gradient" size="sm" onClick={() => handleOpenChartDialog()} className="gap-1">
               <Plus className="h-4 w-4" />
               Add Chart
             </Button>
@@ -921,7 +921,7 @@ export default function Analytics() {
                     Add your first chart to start visualizing your data
                   </p>
                 </div>
-                <Button onClick={() => handleOpenChartDialog()} className="gap-2 mt-2">
+                <Button variant="gradient" onClick={() => handleOpenChartDialog()} className="gap-2 mt-2">
                   <Plus className="h-4 w-4" />
                   Add Chart
                 </Button>
@@ -1179,7 +1179,7 @@ export default function Analytics() {
             <Button variant="outline" onClick={() => { setPresetName(''); setSavePresetDialogOpen(false); }}>
               Cancel
             </Button>
-            <Button onClick={handleSavePreset}>
+            <Button variant="gradient" onClick={handleSavePreset}>
               Save Preset
             </Button>
           </DialogFooter>
