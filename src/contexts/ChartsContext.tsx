@@ -16,6 +16,7 @@ interface ChartsContextType {
   addChart: (chart: Omit<ChartConfig, 'id' | 'createdAt'>) => void;
   updateChart: (id: string, chart: Partial<Omit<ChartConfig, 'id' | 'createdAt'>>) => void;
   deleteChart: (id: string) => void;
+  reorderCharts: (charts: ChartConfig[]) => void;
 }
 
 const ChartsContext = createContext<ChartsContextType | undefined>(undefined);
@@ -74,8 +75,12 @@ export function ChartsProvider({ children }: { children: ReactNode }) {
     setCharts(prev => prev.filter(c => c.id !== id));
   };
 
+  const reorderCharts = (newCharts: ChartConfig[]) => {
+    setCharts(newCharts);
+  };
+
   return (
-    <ChartsContext.Provider value={{ charts, addChart, updateChart, deleteChart }}>
+    <ChartsContext.Provider value={{ charts, addChart, updateChart, deleteChart, reorderCharts }}>
       {children}
     </ChartsContext.Provider>
   );
