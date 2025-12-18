@@ -47,6 +47,152 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_lenders: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          name: string
+          notes: string | null
+          pass_reason: string | null
+          quote_amount: number | null
+          quote_rate: number | null
+          quote_term: string | null
+          stage: string
+          substage: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          name: string
+          notes?: string | null
+          pass_reason?: string | null
+          quote_amount?: number | null
+          quote_rate?: number | null
+          quote_term?: string | null
+          stage?: string
+          substage?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          pass_reason?: string | null
+          quote_amount?: number | null
+          quote_rate?: number | null
+          quote_term?: string | null
+          stage?: string
+          substage?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_lenders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          company: string
+          created_at: string
+          deal_type: string | null
+          engagement_type: string | null
+          id: string
+          manager: string | null
+          referred_by: string | null
+          stage: string
+          status: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          company: string
+          created_at?: string
+          deal_type?: string | null
+          engagement_type?: string | null
+          id?: string
+          manager?: string | null
+          referred_by?: string | null
+          stage?: string
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          deal_type?: string | null
+          engagement_type?: string | null
+          id?: string
+          manager?: string | null
+          referred_by?: string | null
+          stage?: string
+          status?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      outstanding_items: {
+        Row: {
+          created_at: string
+          deal_id: string
+          description: string
+          due_date: string | null
+          id: string
+          lender_id: string | null
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          description: string
+          due_date?: string | null
+          id?: string
+          lender_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          lender_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outstanding_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outstanding_items_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "deal_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
