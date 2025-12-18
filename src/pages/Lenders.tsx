@@ -314,11 +314,11 @@ export default function Lenders() {
 
                 {/* Grid View */}
                 {viewMode === 'grid' && (
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-6">
                     {sortedLenders.map((lender) => (
                       <div
                         key={lender.name}
-                        className="aspect-square bg-muted/50 rounded-lg p-4 flex flex-col"
+                        className="aspect-square flex flex-col p-4"
                       >
                         <div className="flex justify-end gap-1">
                           <Button
