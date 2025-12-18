@@ -1737,6 +1737,66 @@ export default function DealDetail() {
                       <span className="text-sm text-muted-foreground">K</span>
                     </div>
                   </div>
+                  
+                  {/* Fee Breakdown Section */}
+                  <Collapsible className="pl-4 border-l-2 border-border/30">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full hover:bg-muted/50 rounded px-1 py-1 -mx-1">
+                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                        <ChevronRight className="h-3 w-3 transition-transform [[data-state=open]>&]:rotate-90" />
+                        Fee Breakdown
+                      </span>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-3 pt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">Retainer</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={deal.retainerFee ? (deal.retainerFee / 1000).toFixed(2) : ''}
+                            onChange={(e) => updateDeal('retainerFee', e.target.value ? parseFloat(e.target.value) * 1000 : undefined)}
+                            placeholder="0.00"
+                            className="w-20 h-7 text-right text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">K</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">Milestone</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={deal.milestoneFee ? (deal.milestoneFee / 1000).toFixed(2) : ''}
+                            onChange={(e) => updateDeal('milestoneFee', e.target.value ? parseFloat(e.target.value) * 1000 : undefined)}
+                            placeholder="0.00"
+                            className="w-20 h-7 text-right text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">K</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">Success Fee</span>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.1"
+                            value={deal.successFeePercent ?? ''}
+                            onChange={(e) => updateDeal('successFeePercent', e.target.value ? parseFloat(e.target.value) : undefined)}
+                            placeholder="0"
+                            className="w-16 h-7 text-right text-sm"
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Referred by</span>
                     {deal.referredBy ? (
