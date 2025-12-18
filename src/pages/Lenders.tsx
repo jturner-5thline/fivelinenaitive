@@ -129,6 +129,12 @@ export default function Lenders() {
     };
 
     if (editingLender) {
+      // Check if name changed and new name already exists
+      if (lenderData.name.toLowerCase() !== editingLender.toLowerCase() && 
+          lenders.some(l => l.name.toLowerCase() === lenderData.name.toLowerCase())) {
+        toast({ title: 'Error', description: 'A lender with this name already exists', variant: 'destructive' });
+        return;
+      }
       updateLender(editingLender, lenderData);
       toast({ title: 'Lender updated', description: `${lenderData.name} has been updated.` });
     } else {
@@ -407,7 +413,7 @@ export default function Lenders() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Enter lender name"
-                disabled={!!editingLender}
+                
               />
             </div>
             <div className="space-y-2">
