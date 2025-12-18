@@ -6,6 +6,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DealFilters } from '@/components/dashboard/DealFilters';
 import { DealsList } from '@/components/dashboard/DealsList';
 import { WidgetsSection } from '@/components/dashboard/WidgetsSection';
+import { NotificationsBar } from '@/components/dashboard/NotificationsBar';
 import { useDeals } from '@/hooks/useDeals';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -153,6 +154,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <WidgetsSection deals={mockDeals} />
+              <NotificationsBar deals={mockDeals} />
             </div>
 
             {/* Filters */}
