@@ -65,7 +65,14 @@ export default {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))'
         },
-        brand: 'hsl(var(--brand))'
+        brand: 'hsl(var(--brand))',
+        'brand-gradient': {
+          from: '#861E81',
+          to: '#5B21B6'
+        }
+      },
+      backgroundImage: {
+        'brand-gradient': 'linear-gradient(to right, #861E81, #5B21B6)'
       },
       borderRadius: {
         lg: 'var(--radius)',
