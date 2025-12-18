@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/contexts/PreferencesContext';
+import { ProfileSettings } from '@/components/settings/ProfileSettings';
 
 export default function Preferences() {
   const { theme, setTheme } = useTheme();
@@ -44,6 +45,8 @@ export default function Preferences() {
               <h1 className="text-2xl font-semibold">Preferences</h1>
               <p className="text-muted-foreground">Customize your experience</p>
             </div>
+
+            <ProfileSettings />
 
             <Card>
               <CardHeader>
