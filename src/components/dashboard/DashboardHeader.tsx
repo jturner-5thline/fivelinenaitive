@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, Plus, Settings, Building2, CreditCard, SlidersHorizontal, LogOut, FlaskConical } from 'lucide-react';
+import { BarChart3, Plus, Settings, CreditCard, SlidersHorizontal, LogOut, FlaskConical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -109,6 +109,9 @@ export function DashboardHeader() {
               <Link to="/dashboard">Pipeline</Link>
             </Button>
             <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
+              <Link to="/lenders">Lenders</Link>
+            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
               <Link to="/analytics">Analytics</Link>
             </Button>
             <Button variant="ghost" size="sm" className="text-muted-foreground">
@@ -189,12 +192,6 @@ export function DashboardHeader() {
                 <Link to="/preferences" className="flex items-center gap-2 cursor-pointer">
                   <SlidersHorizontal className="h-4 w-4" />
                   Preferences
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
-                  <Building2 className="h-4 w-4" />
-                  Manage Lenders
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
