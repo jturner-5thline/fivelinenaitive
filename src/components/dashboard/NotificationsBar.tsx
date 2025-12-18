@@ -10,7 +10,7 @@ interface NotificationsBarProps {
 
 interface StaleDeal {
   dealId: string;
-  dealName: string;
+  companyName: string;
   lenderCount: number;
   maxDaysSinceUpdate: number;
 }
@@ -41,7 +41,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
     if (staleLenderCount > 0) {
       const staleDeal: StaleDeal = {
         dealId: deal.id,
-        dealName: deal.name,
+        companyName: deal.company,
         lenderCount: staleLenderCount,
         maxDaysSinceUpdate: maxDays,
       };
@@ -68,7 +68,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
         >
           <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
           <span className="text-sm font-medium text-destructive">
-            {deal.dealName}
+            {deal.companyName}
           </span>
         </Link>
       ))}
@@ -80,7 +80,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
         >
           <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
           <span className="text-sm font-medium text-warning">
-            {deal.dealName}
+            {deal.companyName}
           </span>
         </Link>
       ))}
