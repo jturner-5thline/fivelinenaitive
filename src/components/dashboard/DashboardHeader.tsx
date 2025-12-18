@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { BarChart3, Plus, Settings, Building2, CreditCard, SlidersHorizontal, LogOut } from 'lucide-react';
+import { BarChart3, Plus, Settings, Building2, CreditCard, SlidersHorizontal, LogOut, FlaskConical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,8 @@ export function DashboardHeader() {
   const [dealAmount, setDealAmount] = useState('');
   const [dealManager, setDealManager] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+
+  const isDemoUser = user?.email === 'demo@example.com';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +88,12 @@ export function DashboardHeader() {
             </div>
             <Logo />
           </Link>
+          {isDemoUser && (
+            <Badge variant="outline" className="gap-1.5 border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <FlaskConical className="h-3 w-3" />
+              Demo Mode
+            </Badge>
+          )}
           <nav className="hidden items-center gap-1 md:flex">
             <Button variant="ghost" size="sm" className="text-foreground" asChild>
               <Link to="/dashboard">Pipeline</Link>
