@@ -20,7 +20,8 @@ import { useLenders } from '@/contexts/LendersContext';
 import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { ActivityTimeline, ActivityItem } from '@/components/dashboard/ActivityTimeline';
+import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/dashboard/ActivityTimeline';
+import { useActivityLog } from '@/hooks/useActivityLog';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
@@ -116,61 +117,6 @@ const getLenderTimeInfo = (updatedAt?: string) => {
   return { text, highlightClass };
 };
 
-// Mock activity data - in a real app this would come from the database
-const getMockActivities = (dealId: string): ActivityItem[] => [
-  {
-    id: '1',
-    type: 'created',
-    description: 'Deal created',
-    user: 'Sarah Chen',
-    timestamp: '2024-01-15T09:00:00Z',
-  },
-  {
-    id: '2',
-    type: 'stage_change',
-    description: 'Stage changed',
-    user: 'Sarah Chen',
-    timestamp: '2024-01-16T14:30:00Z',
-    metadata: { from: 'Prospecting', to: 'Initial Review' },
-  },
-  {
-    id: '3',
-    type: 'note_added',
-    description: 'Added note about revenue growth',
-    user: 'Michael Roberts',
-    timestamp: '2024-01-17T10:15:00Z',
-  },
-  {
-    id: '4',
-    type: 'contact_added',
-    description: 'Added contact John Smith',
-    user: 'Sarah Chen',
-    timestamp: '2024-01-18T11:00:00Z',
-  },
-  {
-    id: '5',
-    type: 'stage_change',
-    description: 'Stage changed',
-    user: 'Jennifer Walsh',
-    timestamp: '2024-01-19T09:45:00Z',
-    metadata: { from: 'Initial Review', to: 'Due Diligence' },
-  },
-  {
-    id: '6',
-    type: 'value_updated',
-    description: 'Deal value updated to $15M',
-    user: 'Sarah Chen',
-    timestamp: '2024-01-20T16:00:00Z',
-  },
-  {
-    id: '7',
-    type: 'comment',
-    description: 'Team discussion about APAC expansion plans',
-    user: 'Emma Thompson',
-    timestamp: '2024-01-20T17:30:00Z',
-  },
-];
-
 interface EditHistory {
   deal: Deal;
   field: string;
@@ -186,6 +132,7 @@ export default function DealDetail() {
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deals } = useDealsContext();
+  const { activities: activityLogs, logActivity } = useActivityLog(id);
   const lenderNames = getLenderNames();
   
   // Get deal from context
@@ -311,11 +258,11 @@ export default function DealDetail() {
   const filteredAttachments = attachmentFilter === 'all' 
     ? attachments 
     : attachments.filter(a => a.category === attachmentFilter);
-  const baseActivities = getMockActivities(id || '');
 
-  // Combine base activities with lender removal activities
-  const activities: ActivityItem[] = [
-    ...removedLenders.map(item => ({
+  // Convert activity logs to ActivityItem format and combine with local undo actions
+  const activities: ActivityItem[] = useMemo(() => {
+    const dbActivities = activityLogs.map(activityLogToItem);
+    const localActivities = removedLenders.map(item => ({
       id: item.id,
       type: 'lender_removed' as const,
       description: `Removed lender ${item.lender.name}`,
@@ -335,9 +282,11 @@ export default function DealDetail() {
           description: `${item.lender.name} has been restored to the deal.`,
         });
       },
-    })),
-    ...baseActivities,
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }));
+    return [...localActivities, ...dbActivities].sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }, [activityLogs, removedLenders]);
 
   // Get all deals where selected lender appears
   const getLenderDeals = useCallback((lenderName: string) => {
@@ -381,12 +330,16 @@ export default function DealDetail() {
         setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
         return { ...prev, lenders: [...(prev.lenders || []), newLender], updatedAt: new Date().toISOString() };
       });
+      
+      // Log activity
+      logActivity('lender_added', `Added lender ${lenderName}`, { lender_name: lenderName });
+      
       toast({
         title: "Lender added",
         description: `${lenderName} has been added to the deal.`,
       });
     }
-  }, [deal, addLenderToDeal]);
+  }, [deal, addLenderToDeal, logActivity]);
 
   const updateLenderNotes = useCallback((lenderId: string, notes: string) => {
     setDeal(prev => {
@@ -440,11 +393,24 @@ export default function DealDetail() {
     const targetStage = configuredStages.find(s => s.group === newGroup);
     if (!targetStage) return;
     
+    // Get lender name for activity log
+    const lender = deal?.lenders?.find(l => l.id === lenderId);
+    const oldStage = lender?.stage ? configuredStages.find(s => s.id === lender.stage) : undefined;
+    
     // Persist to database
     updateLenderInDb(lenderId, { 
       stage: targetStage.id, 
       passReason: newGroup === 'passed' ? passReason : undefined 
     });
+    
+    // Log activity
+    if (lender) {
+      logActivity('lender_stage_change', `${lender.name} stage changed`, {
+        lender_name: lender.name,
+        from: oldStage?.label || lender.stage,
+        to: targetStage.label,
+      });
+    }
     
     setDeal(prev => {
       if (!prev) return prev;
@@ -455,7 +421,7 @@ export default function DealDetail() {
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
-  }, [configuredStages, updateLenderInDb]);
+  }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity]);
 
   const addMilestone = useCallback((milestone: Omit<DealMilestone, 'id'>) => {
     if (!deal) return;
@@ -625,13 +591,28 @@ export default function DealDetail() {
       // Save current state to history before updating
       setEditHistory(history => [...history, { deal: prev, field, timestamp: new Date() }]);
       const updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
+      
+      // Log activity for significant changes
+      const oldValue = prev[field];
+      if (field === 'status' || field === 'stage') {
+        logActivity(
+          field === 'status' ? 'status_change' : 'stage_change',
+          `${field.charAt(0).toUpperCase() + field.slice(1)} changed`,
+          { from: String(oldValue), to: String(value) }
+        );
+      } else if (field === 'value') {
+        logActivity('value_updated', `Deal value updated to ${value}`, { value: String(value) });
+      } else {
+        logActivity('deal_updated', `${field.charAt(0).toUpperCase() + field.slice(1)} updated`, { field });
+      }
+      
       toast({
         title: "Deal updated",
         description: `${field.charAt(0).toUpperCase() + field.slice(1)} has been updated.`,
       });
       return updated;
     });
-  }, []);
+  }, [logActivity]);
 
   const handleUndo = useCallback(() => {
     if (editHistory.length === 0) return;
