@@ -385,9 +385,49 @@ export function useDealsDatabase() {
     return deals.find(d => d.id === dealId);
   }, [deals]);
 
-  // Initial fetch
+  // Initial fetch and realtime subscription
   useEffect(() => {
     fetchDeals();
+
+    // Subscribe to realtime changes on deals table
+    const dealsChannel = supabase
+      .channel('deals-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deals'
+        },
+        () => {
+          // Refetch all deals when any change occurs
+          fetchDeals();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to realtime changes on deal_lenders table
+    const lendersChannel = supabase
+      .channel('deal-lenders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deal_lenders'
+        },
+        () => {
+          // Refetch all deals when lenders change
+          fetchDeals();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(dealsChannel);
+      supabase.removeChannel(lendersChannel);
+    };
   }, [fetchDeals]);
 
   return {
