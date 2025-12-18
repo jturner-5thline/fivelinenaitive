@@ -9,6 +9,7 @@ import { DealsListSkeleton } from '@/components/dashboard/DealsListSkeleton';
 import { WidgetsSection } from '@/components/dashboard/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/dashboard/WidgetsSectionSkeleton';
 import { NotificationsBar } from '@/components/dashboard/NotificationsBar';
+import { EmailVerificationBanner } from '@/components/dashboard/EmailVerificationBanner';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { Switch } from '@/components/ui/switch';
@@ -73,6 +74,7 @@ export default function Dashboard() {
         <DashboardHeader />
 
         <main className="container mx-auto max-w-7xl px-4 pt-4 pb-3 sm:px-6 lg:px-8">
+          <EmailVerificationBanner />
           <div className="space-y-6">
             {/* Page Header & Widgets */}
             <div className="space-y-3">
