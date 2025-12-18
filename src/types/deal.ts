@@ -64,6 +64,9 @@ export interface Deal {
   lender: string;
   value: number;
   totalFee: number;
+  retainerFee?: number;
+  milestoneFee?: number;
+  successFeePercent?: number;
   preSigningHours?: number;
   postSigningHours?: number;
   referredBy?: Referrer;
