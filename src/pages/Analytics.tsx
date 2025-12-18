@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3 } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -245,13 +245,14 @@ const ChartTypeIcon = ({ type }: { type: ChartType }) => {
   }
 };
 
-function ChartRenderer({ chart, deals, dateRange }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange }) {
+function ChartRenderer({ chart, deals, dateRange, compact = false }: { chart: ChartConfig; deals: Deal[]; dateRange?: DateRange; compact?: boolean }) {
   const data = getChartData(chart.dataSource, deals, dateRange);
+  const chartHeight = compact ? 180 : 250;
   
   switch (chart.type) {
     case 'bar':
       return (
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
@@ -270,7 +271,7 @@ function ChartRenderer({ chart, deals, dateRange }: { chart: ChartConfig; deals:
     
     case 'line':
       return (
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <RechartsLineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
@@ -289,17 +290,17 @@ function ChartRenderer({ chart, deals, dateRange }: { chart: ChartConfig; deals:
     
     case 'pie':
       return (
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <RechartsPieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={40}
-              outerRadius={80}
+              innerRadius={compact ? 30 : 40}
+              outerRadius={compact ? 60 : 80}
               paddingAngle={2}
               dataKey="value"
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              label={compact ? undefined : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
               labelLine={false}
             >
               {data.map((_, index) => (
@@ -319,7 +320,7 @@ function ChartRenderer({ chart, deals, dateRange }: { chart: ChartConfig; deals:
     
     case 'area':
       return (
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <RechartsAreaChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
@@ -344,13 +345,15 @@ function SortableChartCard({
   deals,
   dateRange, 
   onEdit, 
-  onDelete 
+  onDelete,
+  compact = false
 }: { 
   chart: ChartConfig;
   deals: Deal[];
   dateRange?: DateRange;
   onEdit: (chart: ChartConfig) => void;
   onDelete: (chartId: string) => void;
+  compact?: boolean;
 }) {
   const {
     attributes,
@@ -368,40 +371,43 @@ function SortableChartCard({
   };
 
   return (
-    <Card ref={setNodeRef} style={style} className={cn("group", isDragging && "shadow-lg ring-2 ring-primary/20")}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card ref={setNodeRef} style={style} className={cn("group transition-all duration-300", isDragging && "shadow-lg ring-2 ring-primary/20")}>
+      <CardHeader className={cn(
+        "flex flex-row items-center justify-between space-y-0 pb-2",
+        compact && "py-3"
+      )}>
         <div className="flex items-center gap-2">
           <button
             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none opacity-0 group-hover:opacity-100 transition-opacity"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="h-4 w-4" />
+            <GripVertical className={cn("h-4 w-4", compact && "h-3 w-3")} />
           </button>
           <ChartTypeIcon type={chart.type} />
-          <CardTitle className="text-lg">{chart.title}</CardTitle>
+          <CardTitle className={cn("text-lg", compact && "text-base")}>{chart.title}</CardTitle>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8"
+            className={cn("h-8 w-8", compact && "h-6 w-6")}
             onClick={() => onEdit(chart)}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className={cn("h-4 w-4", compact && "h-3 w-3")} />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 text-destructive hover:text-destructive"
+            className={cn("h-8 w-8 text-destructive hover:text-destructive", compact && "h-6 w-6")}
             onClick={() => onDelete(chart.id)}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className={cn("h-4 w-4", compact && "h-3 w-3")} />
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <ChartRenderer chart={chart} deals={deals} dateRange={dateRange} />
+      <CardContent className={compact ? "pt-0 pb-3" : undefined}>
+        <ChartRenderer chart={chart} deals={deals} dateRange={dateRange} compact={compact} />
       </CardContent>
     </Card>
   );
@@ -426,6 +432,7 @@ export default function Analytics() {
   
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [datePreset, setDatePreset] = useState<string>('all');
+  const [layoutMode, setLayoutMode] = useState<'compact' | 'expanded'>('expanded');
   
   const [chartFormData, setChartFormData] = useState({
     title: '',
@@ -690,7 +697,29 @@ export default function Analytics() {
           {/* Widgets Section */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Widgets</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">Widgets</h2>
+                <div className="flex items-center border rounded-lg p-0.5 bg-muted/50">
+                  <Button
+                    variant={layoutMode === 'compact' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-2 gap-1"
+                    onClick={() => setLayoutMode('compact')}
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                    <span className="hidden sm:inline text-xs">Compact</span>
+                  </Button>
+                  <Button
+                    variant={layoutMode === 'expanded' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-2 gap-1"
+                    onClick={() => setLayoutMode('expanded')}
+                  >
+                    <Grid2X2 className="h-4 w-4" />
+                    <span className="hidden sm:inline text-xs">Expanded</span>
+                  </Button>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={handleResetWidgets} className="gap-1">
                   <RotateCcw className="h-4 w-4" />
@@ -730,7 +759,12 @@ export default function Analytics() {
                 <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
                   {/* Stat Widgets Grid */}
                   {statWidgets.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                    <div className={cn(
+                      "grid gap-4 mb-6 transition-all duration-300",
+                      layoutMode === 'compact' 
+                        ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-8"
+                        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5"
+                    )}>
                       {statWidgets.map(widget => (
                         <SortableStatWidget
                           key={widget.id}
@@ -738,6 +772,7 @@ export default function Analytics() {
                           hoursData={hoursData}
                           onEdit={handleOpenWidgetDialog}
                           onDelete={confirmDeleteWidget}
+                          compact={layoutMode === 'compact'}
                         />
                       ))}
                     </div>
@@ -745,7 +780,12 @@ export default function Analytics() {
                   
                   {/* List Widgets Grid */}
                   {listWidgets.length > 0 && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className={cn(
+                      "grid gap-6 transition-all duration-300",
+                      layoutMode === 'compact' 
+                        ? "grid-cols-1 lg:grid-cols-3"
+                        : "grid-cols-1 lg:grid-cols-2"
+                    )}>
                       {listWidgets.map(widget => (
                         <SortableListWidget
                           key={widget.id}
@@ -753,6 +793,7 @@ export default function Analytics() {
                           hoursData={hoursData}
                           onEdit={handleOpenWidgetDialog}
                           onDelete={confirmDeleteWidget}
+                          compact={layoutMode === 'compact'}
                         />
                       ))}
                     </div>
@@ -796,7 +837,12 @@ export default function Analytics() {
               onDragEnd={handleChartDragEnd}
             >
               <SortableContext items={charts.map(c => c.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className={cn(
+                  "grid gap-6 transition-all duration-300",
+                  layoutMode === 'compact' 
+                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                    : "grid-cols-1 md:grid-cols-2"
+                )}>
                   {charts.map(chart => (
                     <SortableChartCard
                       key={chart.id}
@@ -805,6 +851,7 @@ export default function Analytics() {
                       dateRange={dateRange}
                       onEdit={handleOpenChartDialog}
                       onDelete={confirmDeleteChart}
+                      compact={layoutMode === 'compact'}
                     />
                   ))}
                 </div>

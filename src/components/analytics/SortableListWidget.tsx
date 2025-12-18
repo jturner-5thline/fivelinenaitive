@@ -38,9 +38,10 @@ interface SortableListWidgetProps {
   hoursData: HoursData;
   onEdit: (widget: WidgetConfig) => void;
   onDelete: (widgetId: string) => void;
+  compact?: boolean;
 }
 
-export function SortableListWidget({ widget, hoursData, onEdit, onDelete }: SortableListWidgetProps) {
+export function SortableListWidget({ widget, hoursData, onEdit, onDelete, compact = false }: SortableListWidgetProps) {
   const {
     attributes,
     listeners,
@@ -64,49 +65,55 @@ export function SortableListWidget({ widget, hoursData, onEdit, onDelete }: Sort
       ref={setNodeRef} 
       style={style} 
       className={cn(
-        "group relative",
+        "group relative transition-all duration-300",
         isDragging && "shadow-lg ring-2 ring-primary/20"
       )}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardHeader className={cn(
+        "flex flex-row items-center justify-between space-y-0 pb-2",
+        compact && "py-3"
+      )}>
         <div className="flex items-center gap-2">
           <button
             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none opacity-0 group-hover:opacity-100 transition-opacity"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="h-4 w-4" />
+            <GripVertical className={cn("h-4 w-4", compact && "h-3 w-3")} />
           </button>
-          <CardTitle className="text-lg">{widget.title}</CardTitle>
+          <CardTitle className={cn("text-lg", compact && "text-base")}>{widget.title}</CardTitle>
         </div>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8"
+            className={cn("h-8 w-8", compact && "h-6 w-6")}
             onClick={() => onEdit(widget)}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className={cn("h-4 w-4", compact && "h-3 w-3")} />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 text-destructive hover:text-destructive"
+            className={cn("h-8 w-8 text-destructive hover:text-destructive", compact && "h-6 w-6")}
             onClick={() => onDelete(widget.id)}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className={cn("h-4 w-4", compact && "h-3 w-3")} />
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
+      <CardContent className={compact ? "pt-0 pb-3" : undefined}>
+        <div className={cn("space-y-3", compact && "space-y-2")}>
           {data.length > 0 ? (
             data.map((item) => (
-              <div key={item.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                <span className={cn("font-medium", isStage && "capitalize")}>
+              <div key={item.name} className={cn(
+                "flex items-center justify-between border-b border-border/50 last:border-0",
+                compact ? "py-1.5 text-sm" : "py-2"
+              )}>
+                <span className={cn("font-medium", isStage && "capitalize", compact && "text-sm")}>
                   {isStage ? item.name.replace('-', ' ') : item.name}
                 </span>
-                <div className="flex gap-4 text-sm">
+                <div className={cn("flex gap-4", compact ? "gap-2 text-xs" : "text-sm")}>
                   <span className="text-muted-foreground">{item.total.toFixed(1)}h</span>
                   <span className="text-muted-foreground">${item.fees.toLocaleString()}</span>
                   <span className="font-semibold bg-brand-gradient bg-clip-text text-transparent">
@@ -116,7 +123,7 @@ export function SortableListWidget({ widget, hoursData, onEdit, onDelete }: Sort
               </div>
             ))
           ) : (
-            <p className="text-muted-foreground text-center py-4">No hours recorded yet</p>
+            <p className={cn("text-muted-foreground text-center", compact ? "py-2 text-sm" : "py-4")}>No hours recorded yet</p>
           )}
         </div>
       </CardContent>

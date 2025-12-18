@@ -38,6 +38,7 @@ interface SortableStatWidgetProps {
   hoursData: HoursData;
   onEdit: (widget: WidgetConfig) => void;
   onDelete: (widgetId: string) => void;
+  compact?: boolean;
 }
 
 const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData): string => {
@@ -65,7 +66,7 @@ const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData): str
   }
 };
 
-export function SortableStatWidget({ widget, hoursData, onEdit, onDelete }: SortableStatWidgetProps) {
+export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compact = false }: SortableStatWidgetProps) {
   const {
     attributes,
     listeners,
@@ -88,41 +89,44 @@ export function SortableStatWidget({ widget, hoursData, onEdit, onDelete }: Sort
       ref={setNodeRef} 
       style={style} 
       className={cn(
-        "group relative",
+        "group relative transition-all duration-300",
         isDragging && "shadow-lg ring-2 ring-primary/20"
       )}
     >
-      <CardContent className="pt-6">
+      <CardContent className={cn("pt-6", compact && "pt-4 pb-4")}>
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
           <button
             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none p-1"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="h-4 w-4" />
+            <GripVertical className={cn("h-4 w-4", compact && "h-3 w-3")} />
           </button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-6 w-6"
+            className={cn("h-6 w-6", compact && "h-5 w-5")}
             onClick={() => onEdit(widget)}
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil className={cn("h-3 w-3", compact && "h-2.5 w-2.5")} />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-6 w-6 text-destructive hover:text-destructive"
+            className={cn("h-6 w-6 text-destructive hover:text-destructive", compact && "h-5 w-5")}
             onClick={() => onDelete(widget.id)}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className={cn("h-3 w-3", compact && "h-2.5 w-2.5")} />
           </Button>
         </div>
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">{widget.title}</p>
+          <p className={cn(
+            "text-muted-foreground",
+            compact ? "text-xs" : "text-sm"
+          )}>{widget.title}</p>
           <p className={cn(
             "font-bold bg-brand-gradient bg-clip-text text-transparent",
-            widget.size === 'small' ? "text-3xl" : "text-2xl"
+            compact ? "text-xl" : (widget.size === 'small' ? "text-3xl" : "text-2xl")
           )}>
             {value}
           </p>
