@@ -7,11 +7,11 @@ interface NotificationsBarProps {
   deals: Deal[];
 }
 
-interface StaleLender {
+interface StaleDeal {
   dealId: string;
   dealName: string;
-  lenderName: string;
-  daysSinceUpdate: number;
+  lenderCount: number;
+  maxDaysSinceUpdate: number;
 }
 
 const YELLOW_THRESHOLD_DAYS = 7;
@@ -20,59 +20,65 @@ const RED_THRESHOLD_DAYS = 14;
 export function NotificationsBar({ deals }: NotificationsBarProps) {
   const now = new Date();
   
-  const staleLenders: { yellow: StaleLender[]; red: StaleLender[] } = { yellow: [], red: [] };
+  const staleDeals: { yellow: StaleDeal[]; red: StaleDeal[] } = { yellow: [], red: [] };
   
   deals.forEach(deal => {
+    let maxDays = 0;
+    let staleLenderCount = 0;
+    
     deal.lenders?.forEach(lender => {
       if (lender.trackingStatus === 'active' && lender.updatedAt) {
         const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
-        
-        if (daysSinceUpdate >= RED_THRESHOLD_DAYS) {
-          staleLenders.red.push({
-            dealId: deal.id,
-            dealName: deal.name,
-            lenderName: lender.name,
-            daysSinceUpdate,
-          });
-        } else if (daysSinceUpdate >= YELLOW_THRESHOLD_DAYS) {
-          staleLenders.yellow.push({
-            dealId: deal.id,
-            dealName: deal.name,
-            lenderName: lender.name,
-            daysSinceUpdate,
-          });
+        if (daysSinceUpdate >= YELLOW_THRESHOLD_DAYS) {
+          staleLenderCount++;
+          maxDays = Math.max(maxDays, daysSinceUpdate);
         }
       }
     });
+    
+    if (staleLenderCount > 0) {
+      const staleDeal: StaleDeal = {
+        dealId: deal.id,
+        dealName: deal.name,
+        lenderCount: staleLenderCount,
+        maxDaysSinceUpdate: maxDays,
+      };
+      
+      if (maxDays >= RED_THRESHOLD_DAYS) {
+        staleDeals.red.push(staleDeal);
+      } else {
+        staleDeals.yellow.push(staleDeal);
+      }
+    }
   });
 
-  if (staleLenders.yellow.length === 0 && staleLenders.red.length === 0) {
+  if (staleDeals.yellow.length === 0 && staleDeals.red.length === 0) {
     return null;
   }
 
   return (
     <div className="flex flex-wrap gap-3">
-      {staleLenders.red.map((item, index) => (
+      {staleDeals.red.map((deal) => (
         <Link
-          key={`red-${item.dealId}-${item.lenderName}-${index}`}
-          to={`/deals/${item.dealId}`}
+          key={`red-${deal.dealId}`}
+          to={`/deals/${deal.dealId}`}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer"
         >
           <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
           <span className="text-sm font-medium text-destructive">
-            {item.lenderName} on {item.dealName} ({item.daysSinceUpdate}d)
+            {deal.dealName} - {deal.lenderCount} lender{deal.lenderCount !== 1 ? 's' : ''} need update ({deal.maxDaysSinceUpdate}d+)
           </span>
         </Link>
       ))}
-      {staleLenders.yellow.map((item, index) => (
+      {staleDeals.yellow.map((deal) => (
         <Link
-          key={`yellow-${item.dealId}-${item.lenderName}-${index}`}
-          to={`/deals/${item.dealId}`}
+          key={`yellow-${deal.dealId}`}
+          to={`/deals/${deal.dealId}`}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-warning/10 border border-warning/20 hover:bg-warning/20 transition-colors cursor-pointer"
         >
           <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
           <span className="text-sm font-medium text-warning">
-            {item.lenderName} on {item.dealName} ({item.daysSinceUpdate}d)
+            {deal.dealName} - {deal.lenderCount} lender{deal.lenderCount !== 1 ? 's' : ''} approaching stale ({deal.maxDaysSinceUpdate}d)
           </span>
         </Link>
       ))}
