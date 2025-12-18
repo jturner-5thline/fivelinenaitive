@@ -82,7 +82,7 @@ export function DemoBanner({ onDataCleared }: DemoBannerProps) {
           </p>
           <div className="flex flex-wrap gap-2 mt-1">
             <Button 
-              variant="outline" 
+              variant="gradient" 
               size="sm" 
               className="gap-2"
               onClick={() => {
@@ -95,7 +95,7 @@ export function DemoBanner({ onDataCleared }: DemoBannerProps) {
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button variant="gradient" size="sm" className="gap-2">
                   <Trash2 className="h-3.5 w-3.5" />
                   Clear demo data
                 </Button>
