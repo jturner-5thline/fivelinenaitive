@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -38,9 +38,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useCharts, ChartType, ChartConfig } from '@/contexts/ChartsContext';
+import { useAnalyticsWidgets, WidgetConfig, WidgetDataSource, WIDGET_DATA_SOURCES } from '@/contexts/AnalyticsWidgetsContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { Deal } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
+import { SortableStatWidget } from '@/components/analytics/SortableStatWidget';
+import { SortableListWidget } from '@/components/analytics/SortableListWidget';
 import { 
   BarChart, 
   Bar, 
@@ -365,11 +368,11 @@ function SortableChartCard({
   };
 
   return (
-    <Card ref={setNodeRef} style={style} className={cn(isDragging && "shadow-lg ring-2 ring-primary/20")}>
+    <Card ref={setNodeRef} style={style} className={cn("group", isDragging && "shadow-lg ring-2 ring-primary/20")}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
           <button
-            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none opacity-0 group-hover:opacity-100 transition-opacity"
             {...attributes}
             {...listeners}
           >
@@ -378,7 +381,7 @@ function SortableChartCard({
           <ChartTypeIcon type={chart.type} />
           <CardTitle className="text-lg">{chart.title}</CardTitle>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -406,23 +409,43 @@ function SortableChartCard({
 
 export default function Analytics() {
   const { charts, addChart, updateChart, deleteChart, reorderCharts } = useCharts();
+  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, resetToDefaults } = useAnalyticsWidgets();
   const { deals } = useDealsContext();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
+  // Chart dialogs
+  const [chartDialogOpen, setChartDialogOpen] = useState(false);
+  const [deleteChartDialogOpen, setDeleteChartDialogOpen] = useState(false);
   const [chartToDelete, setChartToDelete] = useState<string | null>(null);
   const [editingChart, setEditingChart] = useState<ChartConfig | null>(null);
+  
+  // Widget dialogs
+  const [widgetDialogOpen, setWidgetDialogOpen] = useState(false);
+  const [deleteWidgetDialogOpen, setDeleteWidgetDialogOpen] = useState(false);
+  const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null);
+  const [editingWidget, setEditingWidget] = useState<WidgetConfig | null>(null);
+  
   const [dateRange, setDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [datePreset, setDatePreset] = useState<string>('all');
   
-  const [formData, setFormData] = useState({
+  const [chartFormData, setChartFormData] = useState({
     title: '',
     type: 'bar' as ChartType,
     dataSource: 'deals-by-stage',
     color: '#9333ea',
   });
 
+  const [widgetFormData, setWidgetFormData] = useState({
+    title: '',
+    dataSource: 'total-fees' as WidgetDataSource,
+    size: 'small' as 'small' | 'medium' | 'large',
+  });
+
   // Memoize hours data to avoid recalculating on every render
   const hoursData = useMemo(() => getHoursData(deals), [deals]);
+
+  // Separate widgets by type
+  const statWidgets = widgets.filter(w => w.type === 'stat');
+  const listWidgets = widgets.filter(w => w.type === 'list');
 
   const handleDatePreset = (preset: string) => {
     setDatePreset(preset);
@@ -452,7 +475,8 @@ export default function Analytics() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  // Chart drag handling
+  const handleChartDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
@@ -462,8 +486,20 @@ export default function Analytics() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
+  // Widget drag handling
+  const handleWidgetDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = widgets.findIndex(w => w.id === active.id);
+      const newIndex = widgets.findIndex(w => w.id === over.id);
+      reorderWidgets(arrayMove(widgets, oldIndex, newIndex));
+    }
+  };
+
+  // Chart form handlers
+  const resetChartForm = () => {
+    setChartFormData({
       title: '',
       type: 'bar',
       dataSource: 'deals-by-stage',
@@ -472,37 +508,37 @@ export default function Analytics() {
     setEditingChart(null);
   };
 
-  const handleOpenDialog = (chart?: ChartConfig) => {
+  const handleOpenChartDialog = (chart?: ChartConfig) => {
     if (chart) {
       setEditingChart(chart);
-      setFormData({
+      setChartFormData({
         title: chart.title,
         type: chart.type,
         dataSource: chart.dataSource,
         color: chart.color,
       });
     } else {
-      resetForm();
+      resetChartForm();
     }
-    setDialogOpen(true);
+    setChartDialogOpen(true);
   };
 
   const handleSaveChart = () => {
-    if (!formData.title.trim()) {
+    if (!chartFormData.title.trim()) {
       toast({ title: 'Error', description: 'Please enter a chart title', variant: 'destructive' });
       return;
     }
 
     if (editingChart) {
-      updateChart(editingChart.id, formData);
-      toast({ title: 'Chart updated', description: `"${formData.title}" has been updated.` });
+      updateChart(editingChart.id, chartFormData);
+      toast({ title: 'Chart updated', description: `"${chartFormData.title}" has been updated.` });
     } else {
-      addChart(formData);
-      toast({ title: 'Chart added', description: `"${formData.title}" has been created.` });
+      addChart(chartFormData);
+      toast({ title: 'Chart added', description: `"${chartFormData.title}" has been created.` });
     }
     
-    setDialogOpen(false);
-    resetForm();
+    setChartDialogOpen(false);
+    resetChartForm();
   };
 
   const handleDeleteChart = () => {
@@ -511,13 +547,77 @@ export default function Analytics() {
       deleteChart(chartToDelete);
       toast({ title: 'Chart deleted', description: `"${chart?.title}" has been removed.` });
       setChartToDelete(null);
-      setDeleteDialogOpen(false);
+      setDeleteChartDialogOpen(false);
     }
   };
 
-  const confirmDelete = (chartId: string) => {
+  const confirmDeleteChart = (chartId: string) => {
     setChartToDelete(chartId);
-    setDeleteDialogOpen(true);
+    setDeleteChartDialogOpen(true);
+  };
+
+  // Widget form handlers
+  const resetWidgetForm = () => {
+    setWidgetFormData({
+      title: '',
+      dataSource: 'total-fees',
+      size: 'small',
+    });
+    setEditingWidget(null);
+  };
+
+  const handleOpenWidgetDialog = (widget?: WidgetConfig) => {
+    if (widget) {
+      setEditingWidget(widget);
+      setWidgetFormData({
+        title: widget.title,
+        dataSource: widget.dataSource,
+        size: widget.size,
+      });
+    } else {
+      resetWidgetForm();
+    }
+    setWidgetDialogOpen(true);
+  };
+
+  const handleSaveWidget = () => {
+    if (!widgetFormData.title.trim()) {
+      toast({ title: 'Error', description: 'Please enter a widget title', variant: 'destructive' });
+      return;
+    }
+
+    const widgetType = WIDGET_DATA_SOURCES.find(s => s.id === widgetFormData.dataSource)?.type || 'stat';
+
+    if (editingWidget) {
+      updateWidget(editingWidget.id, { ...widgetFormData, type: widgetType });
+      toast({ title: 'Widget updated', description: `"${widgetFormData.title}" has been updated.` });
+    } else {
+      addWidget({ ...widgetFormData, type: widgetType });
+      toast({ title: 'Widget added', description: `"${widgetFormData.title}" has been created.` });
+    }
+    
+    setWidgetDialogOpen(false);
+    resetWidgetForm();
+  };
+
+  const handleDeleteWidget = () => {
+    if (widgetToDelete) {
+      const widget = widgets.find(w => w.id === widgetToDelete);
+      deleteWidget(widgetToDelete);
+      toast({ title: 'Widget deleted', description: `"${widget?.title}" has been removed.` });
+      setWidgetToDelete(null);
+      setDeleteWidgetDialogOpen(false);
+    }
+  };
+
+  const confirmDeleteWidget = (widgetId: string) => {
+    setWidgetToDelete(widgetId);
+    setDeleteWidgetDialogOpen(true);
+  };
+
+  const handleResetWidgets = () => {
+    resetToDefaults();
+    toast({ title: 'Widgets reset', description: 'All widgets have been reset to defaults.' });
   };
 
   return (
@@ -535,7 +635,7 @@ export default function Analytics() {
             <div>
               <h1 className="text-3xl font-bold">Analytics</h1>
               <p className="text-muted-foreground mt-1">
-                View insights and manage your custom charts. Drag to reorder.
+                View insights and manage your custom widgets and charts. Drag to reorder.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -584,151 +684,92 @@ export default function Analytics() {
                   </PopoverContent>
                 </Popover>
               )}
-              
-              <Button onClick={() => handleOpenDialog()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Chart
-              </Button>
             </div>
           </div>
 
-          {/* Hours Summary Section */}
+          {/* Widgets Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Hours Summary</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Pre-Signing Hours</p>
-                    <p className="text-3xl font-bold text-purple-600">{hoursData.totalPreSigning.toFixed(1)}</p>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Widgets</h2>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleResetWidgets} className="gap-1">
+                  <RotateCcw className="h-4 w-4" />
+                  Reset
+                </Button>
+                <Button size="sm" onClick={() => handleOpenWidgetDialog()} className="gap-1">
+                  <Plus className="h-4 w-4" />
+                  Add Widget
+                </Button>
+              </div>
+            </div>
+
+            {widgets.length === 0 ? (
+              <Card className="p-12 text-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                    <LayoutGrid className="h-8 w-8 text-muted-foreground" />
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Post-Signing Hours</p>
-                    <p className="text-3xl font-bold text-purple-600">{hoursData.totalPostSigning.toFixed(1)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Total Hours</p>
-                    <p className="text-3xl font-bold text-purple-600">{hoursData.totalHours.toFixed(1)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Total Fees</p>
-                    <p className="text-3xl font-bold text-purple-600">${hoursData.totalFees.toLocaleString()}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Revenue per Hour</p>
-                    <p className="text-3xl font-bold text-purple-600">
-                      {hoursData.revenuePerHour > 0 
-                        ? `$${hoursData.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                        : '-'
-                      }
+                  <div>
+                    <h3 className="text-lg font-semibold">No widgets yet</h3>
+                    <p className="text-muted-foreground mt-1">
+                      Add widgets to display key metrics
                     </p>
                   </div>
-                </CardContent>
+                  <Button onClick={() => handleOpenWidgetDialog()} className="gap-2 mt-2">
+                    <Plus className="h-4 w-4" />
+                    Add Widget
+                  </Button>
+                </div>
               </Card>
-            </div>
-            
-            {/* Fee Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Total Retainer</p>
-                    <p className="text-2xl font-bold text-purple-600">${hoursData.totalRetainer.toLocaleString('en-US')}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Total Milestone</p>
-                    <p className="text-2xl font-bold text-purple-600">${hoursData.totalMilestone.toLocaleString('en-US')}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Avg Success Fee</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {hoursData.avgSuccessFee > 0 ? `${hoursData.avgSuccessFee.toFixed(1)}%` : '-'}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Hours by Manager</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {hoursData.byManager.length > 0 ? (
-                      hoursData.byManager.map((manager) => (
-                        <div key={manager.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                          <span className="font-medium">{manager.name}</span>
-                          <div className="flex gap-4 text-sm">
-                            <span className="text-muted-foreground">{manager.total.toFixed(1)}h</span>
-                            <span className="text-muted-foreground">${manager.fees.toLocaleString()}</span>
-                            <span className="font-semibold text-purple-600">
-                              {manager.revenuePerHour > 0 ? `$${manager.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground text-center py-4">No hours recorded yet</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Hours by Stage</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {hoursData.byStage.length > 0 ? (
-                      hoursData.byStage.map((stage) => (
-                        <div key={stage.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                          <span className="font-medium capitalize">{stage.name.replace('-', ' ')}</span>
-                          <div className="flex gap-4 text-sm">
-                            <span className="text-muted-foreground">{stage.total.toFixed(1)}h</span>
-                            <span className="text-muted-foreground">${stage.fees.toLocaleString()}</span>
-                            <span className="font-semibold text-purple-600">
-                              {stage.revenuePerHour > 0 ? `$${stage.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground text-center py-4">No hours recorded yet</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleWidgetDragEnd}
+              >
+                <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
+                  {/* Stat Widgets Grid */}
+                  {statWidgets.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                      {statWidgets.map(widget => (
+                        <SortableStatWidget
+                          key={widget.id}
+                          widget={widget}
+                          hoursData={hoursData}
+                          onEdit={handleOpenWidgetDialog}
+                          onDelete={confirmDeleteWidget}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* List Widgets Grid */}
+                  {listWidgets.length > 0 && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {listWidgets.map(widget => (
+                        <SortableListWidget
+                          key={widget.id}
+                          widget={widget}
+                          hoursData={hoursData}
+                          onEdit={handleOpenWidgetDialog}
+                          onDelete={confirmDeleteWidget}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </SortableContext>
+              </DndContext>
+            )}
           </div>
 
-          <h2 className="text-xl font-semibold mb-4">Charts</h2>
+          {/* Charts Section */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Charts</h2>
+            <Button size="sm" onClick={() => handleOpenChartDialog()} className="gap-1">
+              <Plus className="h-4 w-4" />
+              Add Chart
+            </Button>
+          </div>
 
           {charts.length === 0 ? (
             <Card className="p-12 text-center">
@@ -742,7 +783,7 @@ export default function Analytics() {
                     Add your first chart to start visualizing your data
                   </p>
                 </div>
-                <Button onClick={() => handleOpenDialog()} className="gap-2 mt-2">
+                <Button onClick={() => handleOpenChartDialog()} className="gap-2 mt-2">
                   <Plus className="h-4 w-4" />
                   Add Chart
                 </Button>
@@ -752,7 +793,7 @@ export default function Analytics() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
+              onDragEnd={handleChartDragEnd}
             >
               <SortableContext items={charts.map(c => c.id)} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -762,8 +803,8 @@ export default function Analytics() {
                       chart={chart}
                       deals={deals}
                       dateRange={dateRange}
-                      onEdit={handleOpenDialog}
-                      onDelete={confirmDelete}
+                      onEdit={handleOpenChartDialog}
+                      onDelete={confirmDeleteChart}
                     />
                   ))}
                 </div>
@@ -774,7 +815,7 @@ export default function Analytics() {
       </div>
 
       {/* Add/Edit Chart Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setDialogOpen(open); }}>
+      <Dialog open={chartDialogOpen} onOpenChange={(open) => { if (!open) resetChartForm(); setChartDialogOpen(open); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingChart ? 'Edit Chart' : 'Add New Chart'}</DialogTitle>
@@ -785,11 +826,11 @@ export default function Analytics() {
           
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Chart Title</Label>
+              <Label htmlFor="chartTitle">Chart Title</Label>
               <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                id="chartTitle"
+                value={chartFormData.title}
+                onChange={(e) => setChartFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Enter chart title"
               />
             </div>
@@ -801,10 +842,10 @@ export default function Analytics() {
                   <Button
                     key={type}
                     type="button"
-                    variant={formData.type === type ? 'default' : 'outline'}
+                    variant={chartFormData.type === type ? 'default' : 'outline'}
                     size="sm"
                     className="flex-1 gap-1"
-                    onClick={() => setFormData(prev => ({ ...prev, type }))}
+                    onClick={() => setChartFormData(prev => ({ ...prev, type }))}
                   >
                     <ChartTypeIcon type={type} />
                     {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -814,10 +855,10 @@ export default function Analytics() {
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="dataSource">Data Source</Label>
+              <Label htmlFor="chartDataSource">Data Source</Label>
               <Select
-                value={formData.dataSource}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, dataSource: value }))}
+                value={chartFormData.dataSource}
+                onValueChange={(value) => setChartFormData(prev => ({ ...prev, dataSource: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select data source" />
@@ -841,10 +882,10 @@ export default function Analytics() {
                     type="button"
                     className={cn(
                       "h-8 w-8 rounded-full border-2 transition-transform hover:scale-110",
-                      formData.color === color ? "border-foreground scale-110" : "border-transparent"
+                      chartFormData.color === color ? "border-foreground scale-110" : "border-transparent"
                     )}
                     style={{ backgroundColor: color }}
-                    onClick={() => setFormData(prev => ({ ...prev, color }))}
+                    onClick={() => setChartFormData(prev => ({ ...prev, color }))}
                   />
                 ))}
               </div>
@@ -852,7 +893,7 @@ export default function Analytics() {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => { resetForm(); setDialogOpen(false); }}>
+            <Button variant="outline" onClick={() => { resetChartForm(); setChartDialogOpen(false); }}>
               Cancel
             </Button>
             <Button onClick={handleSaveChart}>
@@ -862,8 +903,78 @@ export default function Analytics() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Add/Edit Widget Dialog */}
+      <Dialog open={widgetDialogOpen} onOpenChange={(open) => { if (!open) resetWidgetForm(); setWidgetDialogOpen(open); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingWidget ? 'Edit Widget' : 'Add New Widget'}</DialogTitle>
+            <DialogDescription>
+              {editingWidget ? 'Update your widget configuration' : 'Configure your new widget'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="widgetTitle">Widget Title</Label>
+              <Input
+                id="widgetTitle"
+                value={widgetFormData.title}
+                onChange={(e) => setWidgetFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Enter widget title"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="widgetDataSource">Data Source</Label>
+              <Select
+                value={widgetFormData.dataSource}
+                onValueChange={(value: WidgetDataSource) => setWidgetFormData(prev => ({ ...prev, dataSource: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select data source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WIDGET_DATA_SOURCES.map(source => (
+                    <SelectItem key={source.id} value={source.id}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Widget Size</Label>
+              <div className="flex gap-2">
+                {(['small', 'medium', 'large'] as const).map(size => (
+                  <Button
+                    key={size}
+                    type="button"
+                    variant={widgetFormData.size === size ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setWidgetFormData(prev => ({ ...prev, size }))}
+                  >
+                    {size.charAt(0).toUpperCase() + size.slice(1)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { resetWidgetForm(); setWidgetDialogOpen(false); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveWidget}>
+              {editingWidget ? 'Save Changes' : 'Add Widget'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Chart Confirmation Dialog */}
+      <AlertDialog open={deleteChartDialogOpen} onOpenChange={setDeleteChartDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Chart</AlertDialogTitle>
@@ -874,6 +985,24 @@ export default function Analytics() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteChart} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Widget Confirmation Dialog */}
+      <AlertDialog open={deleteWidgetDialogOpen} onOpenChange={setDeleteWidgetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Widget</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this widget? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteWidget} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
