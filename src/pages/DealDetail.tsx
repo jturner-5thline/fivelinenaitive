@@ -1750,9 +1750,17 @@ export default function DealDetail() {
                         <ChevronRight className="h-3 w-3 transition-transform [[data-state=open]>&]:rotate-90" />
                         Hours
                       </span>
-                      <span className="font-medium text-purple-600 text-sm">
-                        {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}h
-                      </span>
+                      <div className="text-right">
+                        <span className="font-medium text-purple-600 text-sm">
+                          {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}h
+                        </span>
+                        <p className="text-xs text-muted-foreground">
+                          {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)) > 0 
+                            ? `$${((deal.totalFee || 0) / ((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0))).toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr`
+                            : '-'
+                          }
+                        </p>
+                      </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-3 pt-3">
                       <div className="flex items-center justify-between">
