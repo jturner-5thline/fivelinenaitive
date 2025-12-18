@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Info, Trash2 } from 'lucide-react';
+import { Info, Trash2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -80,33 +80,47 @@ export function DemoBanner({ onDataCleared }: DemoBannerProps) {
             This account contains sample deals to help you explore the app. Feel free to edit, add, or delete deals. 
             You can also clear all demo data to start fresh.
           </p>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 mt-1">
-                <Trash2 className="h-3.5 w-3.5" />
-                Clear demo data
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear all demo data?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete all deals and lenders in the demo account. 
-                  This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleClearData}
-                  disabled={isClearing}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {isClearing ? 'Clearing...' : 'Clear all data'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="flex flex-wrap gap-2 mt-1">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => {
+                localStorage.removeItem('demo-tour-completed');
+                window.dispatchEvent(new Event('restart-demo-tour'));
+              }}
+            >
+              <Play className="h-3.5 w-3.5" />
+              Restart tour
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear demo data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear all demo data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all deals and lenders in the demo account. 
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleClearData}
+                    disabled={isClearing}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isClearing ? 'Clearing...' : 'Clear all data'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
     </div>

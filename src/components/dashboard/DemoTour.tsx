@@ -64,6 +64,14 @@ export function DemoTour() {
       }
     };
     checkDemoUser();
+
+    // Listen for restart tour event
+    const handleRestartTour = () => {
+      setCurrentStep(0);
+      setShowTour(true);
+    };
+    window.addEventListener('restart-demo-tour', handleRestartTour);
+    return () => window.removeEventListener('restart-demo-tour', handleRestartTour);
   }, []);
 
   const handleNext = () => {
