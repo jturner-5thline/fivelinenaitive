@@ -210,6 +210,21 @@ const getChartData = (dataSource: string, dateRange?: DateRange) => {
       const hoursDataByStage = getHoursData();
       return hoursDataByStage.byStage.map(s => ({ name: s.name, value: s.total }));
     
+    case 'fee-breakdown':
+      const totalRetainer = filteredDeals.reduce((sum, deal) => sum + (deal.retainerFee ?? 0), 0);
+      const totalMilestone = filteredDeals.reduce((sum, deal) => sum + (deal.milestoneFee ?? 0), 0);
+      const totalSuccessFee = filteredDeals.reduce((sum, deal) => {
+        if (deal.successFeePercent && deal.value) {
+          return sum + (deal.value * deal.successFeePercent / 100);
+        }
+        return sum;
+      }, 0);
+      return [
+        { name: 'Retainer', value: totalRetainer / 1000 },
+        { name: 'Milestone', value: totalMilestone / 1000 },
+        { name: 'Success Fee', value: totalSuccessFee / 1000 },
+      ].filter(item => item.value > 0);
+    
     default:
       return [
         { name: 'A', value: 10 },
@@ -229,6 +244,7 @@ const DATA_SOURCES = [
   { id: 'lender-pass-reasons', label: 'Lender Pass Reasons' },
   { id: 'hours-by-manager', label: 'Hours by Manager' },
   { id: 'hours-by-stage', label: 'Hours by Stage' },
+  { id: 'fee-breakdown', label: 'Fee Breakdown ($K)' },
 ];
 
 const CHART_COLORS = [
