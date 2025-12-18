@@ -8,6 +8,7 @@ interface Profile {
   user_id: string;
   display_name: string | null;
   avatar_url: string | null;
+  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -44,7 +45,7 @@ export function useProfile() {
     fetchProfile();
   }, [fetchProfile]);
 
-  const updateProfile = async (updates: { display_name?: string; avatar_url?: string }) => {
+  const updateProfile = async (updates: { display_name?: string; avatar_url?: string; onboarding_completed?: boolean }, showToast = true) => {
     if (!user) return;
 
     try {
@@ -56,10 +57,12 @@ export function useProfile() {
       if (error) throw error;
 
       setProfile(prev => prev ? { ...prev, ...updates } : null);
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully.",
-      });
+      if (showToast && !updates.onboarding_completed) {
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been updated successfully.",
+        });
+      }
     } catch (err) {
       console.error('Error updating profile:', err);
       toast({
@@ -68,6 +71,10 @@ export function useProfile() {
         variant: "destructive",
       });
     }
+  };
+
+  const completeOnboarding = async () => {
+    await updateProfile({ onboarding_completed: true }, false);
   };
 
   const uploadAvatar = async (file: File): Promise<string | null> => {
@@ -110,6 +117,7 @@ export function useProfile() {
     isLoading,
     updateProfile,
     uploadAvatar,
+    completeOnboarding,
     refreshProfile: fetchProfile,
   };
 }
