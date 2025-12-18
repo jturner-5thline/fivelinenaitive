@@ -504,6 +504,87 @@ export default function DealDetail() {
     });
   }, []);
 
+  const getTimeAgoData = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    const minutes = differenceInMinutes(now, date);
+    const hours = differenceInHours(now, date);
+    const days = differenceInDays(now, date);
+    const weeks = differenceInWeeks(now, date);
+    
+    let text: string;
+    let highlightClass = '';
+    
+    if (minutes < 60) {
+      text = `${minutes} Min. Ago`;
+    } else if (hours < 24) {
+      text = `${hours} Hours Ago`;
+    } else if (days < 7) {
+      text = `${days} Days Ago`;
+      if (days > 3) {
+        highlightClass = 'bg-warning/20 px-1.5 py-0.5 rounded';
+      }
+    } else if (days <= 30) {
+      text = `${weeks} Weeks Ago`;
+      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
+    } else {
+      text = 'Over 30 Days';
+      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
+    }
+    
+    return { text, highlightClass };
+  };
+
+  const timeAgoData = deal ? getTimeAgoData(deal.updatedAt) : { text: '', highlightClass: '' };
+
+  // Calculate stale lenders for notification banner
+  const staleLendersInfo = useMemo(() => {
+    if (!deal?.lenders) return null;
+    const yellowThreshold = preferences.lenderUpdateYellowDays;
+    const now = new Date();
+    let staleLenderCount = 0;
+    let maxDays = 0;
+    
+    deal.lenders.forEach(lender => {
+      if (lender.trackingStatus === 'active' && lender.updatedAt) {
+        const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
+        if (daysSinceUpdate >= yellowThreshold) {
+          staleLenderCount++;
+          maxDays = Math.max(maxDays, daysSinceUpdate);
+        }
+      }
+    });
+    
+    if (staleLenderCount === 0) return null;
+    return { count: staleLenderCount, maxDays };
+  }, [deal?.lenders, preferences.lenderUpdateYellowDays]);
+
+  // Check if notification is dismissed for this deal
+  const [isDealNotificationDismissed, setIsDealNotificationDismissed] = useState(() => {
+    if (!deal) return false;
+    try {
+      const stored = localStorage.getItem('dismissedNotifications');
+      if (stored) {
+        const dismissed = JSON.parse(stored);
+        const dismissedAt = dismissed[deal.id];
+        return dismissedAt && (Date.now() - dismissedAt) < 24 * 60 * 60 * 1000;
+      }
+    } catch {}
+    return false;
+  });
+
+  const handleDismissNotification = useCallback(() => {
+    if (!deal) return;
+    try {
+      const stored = localStorage.getItem('dismissedNotifications');
+      const dismissed = stored ? JSON.parse(stored) : {};
+      dismissed[deal.id] = Date.now();
+      localStorage.setItem('dismissedNotifications', JSON.stringify(dismissed));
+      setIsDealNotificationDismissed(true);
+    } catch {}
+  }, [deal?.id]);
+
   if (!deal) {
     return (
       <div className="min-h-screen bg-background">
@@ -553,39 +634,7 @@ export default function DealDetail() {
     return numValue * 1000000;
   };
 
-  const getTimeAgoData = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    
-    const minutes = differenceInMinutes(now, date);
-    const hours = differenceInHours(now, date);
-    const days = differenceInDays(now, date);
-    const weeks = differenceInWeeks(now, date);
-    
-    let text: string;
-    let highlightClass = '';
-    
-    if (minutes < 60) {
-      text = `${minutes} Min. Ago`;
-    } else if (hours < 24) {
-      text = `${hours} Hours Ago`;
-    } else if (days < 7) {
-      text = `${days} Days Ago`;
-      if (days > 3) {
-        highlightClass = 'bg-warning/20 px-1.5 py-0.5 rounded';
-      }
-    } else if (days <= 30) {
-      text = `${weeks} Weeks Ago`;
-      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
-    } else {
-      text = 'Over 30 Days';
-      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
-    }
-    
-    return { text, highlightClass };
-  };
-
-  const updateDeal = useCallback((field: keyof Deal, value: string | number | string[] | undefined) => {
+  const updateDeal = (field: keyof Deal, value: string | number | string[] | undefined) => {
     setDeal(prev => {
       if (!prev) return prev;
       // Save current state to history before updating
@@ -612,9 +661,9 @@ export default function DealDetail() {
       });
       return updated;
     });
-  }, [logActivity]);
+  };
 
-  const handleUndo = useCallback(() => {
+  const handleUndo = () => {
     if (editHistory.length === 0) return;
     
     const lastEdit = editHistory[editHistory.length - 1];
@@ -625,54 +674,7 @@ export default function DealDetail() {
       title: "Change undone",
       description: `Reverted ${lastEdit.field} to previous value.`,
     });
-  }, [editHistory]);
-
-  const timeAgoData = getTimeAgoData(deal.updatedAt);
-
-  // Calculate stale lenders for notification banner
-  const staleLendersInfo = useMemo(() => {
-    if (!deal.lenders) return null;
-    const yellowThreshold = preferences.lenderUpdateYellowDays;
-    const now = new Date();
-    let staleLenderCount = 0;
-    let maxDays = 0;
-    
-    deal.lenders.forEach(lender => {
-      if (lender.trackingStatus === 'active' && lender.updatedAt) {
-        const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
-        if (daysSinceUpdate >= yellowThreshold) {
-          staleLenderCount++;
-          maxDays = Math.max(maxDays, daysSinceUpdate);
-        }
-      }
-    });
-    
-    if (staleLenderCount === 0) return null;
-    return { count: staleLenderCount, maxDays };
-  }, [deal.lenders, preferences.lenderUpdateYellowDays]);
-
-  // Check if notification is dismissed for this deal
-  const [isDealNotificationDismissed, setIsDealNotificationDismissed] = useState(() => {
-    try {
-      const stored = localStorage.getItem('dismissedNotifications');
-      if (stored) {
-        const dismissed = JSON.parse(stored);
-        const dismissedAt = dismissed[deal.id];
-        return dismissedAt && (Date.now() - dismissedAt) < 24 * 60 * 60 * 1000;
-      }
-    } catch {}
-    return false;
-  });
-
-  const handleDismissNotification = useCallback(() => {
-    try {
-      const stored = localStorage.getItem('dismissedNotifications');
-      const dismissed = stored ? JSON.parse(stored) : {};
-      dismissed[deal.id] = Date.now();
-      localStorage.setItem('dismissedNotifications', JSON.stringify(dismissed));
-      setIsDealNotificationDismissed(true);
-    } catch {}
-  }, [deal.id]);
+  };
 
   return (
     <>
