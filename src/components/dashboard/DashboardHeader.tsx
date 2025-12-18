@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, Plus, Settings, Building2, CreditCard, SlidersHorizontal } from 'lucide-react';
+import { BarChart3, Plus, Settings, Building2, CreditCard, SlidersHorizontal, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
@@ -23,15 +23,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { useDealsContext } from '@/contexts/DealsContext';
 
 export function DashboardHeader() {
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
+  const { createDeal } = useDealsContext();
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
   const [dealManager, setDealManager] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!dealName.trim() || !dealAmount.trim() || !dealManager.trim()) {
@@ -39,17 +44,35 @@ export function DashboardHeader() {
       return;
     }
 
-    // Generate a new deal ID (in a real app, this would come from the backend)
-    const newDealId = Date.now().toString();
+    setIsCreating(true);
+    try {
+      const newDeal = await createDeal({
+        company: dealName,
+        value: parseFloat(dealAmount),
+        manager: dealManager,
+        status: 'on-track',
+        stage: 'prospecting',
+        engagementType: 'guided',
+      });
 
-    toast.success(`Deal "${dealName}" created successfully!`);
-    setOpen(false);
-    setDealName('');
-    setDealAmount('');
-    setDealManager('');
-    
-    // Navigate to the new deal page
-    navigate(`/deal/${newDealId}`);
+      if (newDeal) {
+        toast.success(`Deal "${dealName}" created successfully!`);
+        setOpen(false);
+        setDealName('');
+        setDealAmount('');
+        setDealManager('');
+        navigate(`/deal/${newDeal.id}`);
+      }
+    } catch (error) {
+      toast.error('Failed to create deal');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
   };
 
   return (
@@ -121,7 +144,9 @@ export function DashboardHeader() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" variant="gradient">Create Deal</Button>
+                  <Button type="submit" variant="gradient" disabled={isCreating}>
+                    {isCreating ? 'Creating...' : 'Create Deal'}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -133,7 +158,7 @@ export function DashboardHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Settings</DropdownMenuLabel>
+              <DropdownMenuLabel>{user?.email || 'Settings'}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/preferences" className="flex items-center gap-2 cursor-pointer">
@@ -150,6 +175,14 @@ export function DashboardHeader() {
               <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
                 <CreditCard className="h-4 w-4" />
                 Account
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={handleSignOut}
+                className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
