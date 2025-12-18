@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,8 @@ interface LenderInfo {
     phone: string;
   };
   preferences: string[];
+  website?: string;
+  description?: string;
 }
 
 interface LenderDetailDialogProps {
@@ -95,12 +97,39 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
 
         <ScrollArea className="max-h-[calc(85vh-100px)] pr-4">
           <div className="space-y-6">
-            {/* Contact Information */}
+            {/* Description */}
+            {lender.description && (
+              <>
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    About
+                  </h3>
+                  <p className="text-sm leading-relaxed">{lender.description}</p>
+                </section>
+                <Separator />
+              </>
+            )}
+
+            {/* Website & Contact Information */}
             <section>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Contact Information
               </h3>
               <div className="grid gap-3">
+                {lender.website && (
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <a 
+                      href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-primary hover:underline flex items-center gap-1"
+                    >
+                      {lender.website.replace(/^https?:\/\//, '')}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
                 {lender.contact.name && (
                   <div className="flex items-center gap-3">
                     <User className="h-4 w-4 text-muted-foreground" />
@@ -123,7 +152,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                     </a>
                   </div>
                 )}
-                {!lender.contact.name && !lender.contact.email && !lender.contact.phone && (
+                {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
                   <p className="text-muted-foreground text-sm">No contact information available</p>
                 )}
               </div>
