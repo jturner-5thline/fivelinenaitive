@@ -67,9 +67,14 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer"
         >
           <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-          <span className="text-sm font-medium text-destructive">
-            {deal.companyName}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-destructive">
+              {deal.companyName}
+            </span>
+            <span className="text-xs text-destructive/70">
+              {deal.lenderCount} lender{deal.lenderCount !== 1 ? 's' : ''} need update ({deal.maxDaysSinceUpdate}d)
+            </span>
+          </div>
         </Link>
       ))}
       {staleDeals.yellow.map((deal) => (
@@ -79,9 +84,14 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-warning/10 border border-warning/20 hover:bg-warning/20 transition-colors cursor-pointer"
         >
           <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
-          <span className="text-sm font-medium text-warning">
-            {deal.companyName}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-warning">
+              {deal.companyName}
+            </span>
+            <span className="text-xs text-warning/70">
+              {deal.lenderCount} lender{deal.lenderCount !== 1 ? 's' : ''} approaching stale ({deal.maxDaysSinceUpdate}d)
+            </span>
+          </div>
         </Link>
       ))}
     </div>
