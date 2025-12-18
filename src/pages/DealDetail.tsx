@@ -1734,12 +1734,14 @@ export default function DealDetail() {
                     <div className="flex items-center gap-1">
                       <span className="text-sm text-muted-foreground">$</span>
                       <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={deal.totalFee ? (deal.totalFee / 1000).toFixed(2) : ''}
-                        onChange={(e) => updateDeal('totalFee', e.target.value ? parseFloat(e.target.value) * 1000 : 0)}
-                        placeholder="0.00"
+                        type="text"
+                        inputMode="decimal"
+                        value={deal.totalFee ? (deal.totalFee / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                        onChange={(e) => {
+                          const cleaned = e.target.value.replace(/[^0-9.]/g, '');
+                          updateDeal('totalFee', cleaned ? parseFloat(cleaned) * 1000 : 0);
+                        }}
+                        placeholder="0"
                         className="w-24 h-8 text-right font-medium text-purple-600"
                       />
                       <span className="text-sm text-muted-foreground">K</span>
@@ -1760,12 +1762,14 @@ export default function DealDetail() {
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">$</span>
                           <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={deal.retainerFee ? (deal.retainerFee / 1000).toFixed(2) : ''}
-                            onChange={(e) => updateDeal('retainerFee', e.target.value ? parseFloat(e.target.value) * 1000 : undefined)}
-                            placeholder="0.00"
+                            type="text"
+                            inputMode="decimal"
+                            value={deal.retainerFee ? (deal.retainerFee / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                            onChange={(e) => {
+                              const cleaned = e.target.value.replace(/[^0-9.]/g, '');
+                              updateDeal('retainerFee', cleaned ? parseFloat(cleaned) * 1000 : undefined);
+                            }}
+                            placeholder="0"
                             className="w-20 h-7 text-right text-sm"
                           />
                           <span className="text-xs text-muted-foreground">K</span>
@@ -1776,12 +1780,14 @@ export default function DealDetail() {
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground">$</span>
                           <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={deal.milestoneFee ? (deal.milestoneFee / 1000).toFixed(2) : ''}
-                            onChange={(e) => updateDeal('milestoneFee', e.target.value ? parseFloat(e.target.value) * 1000 : undefined)}
-                            placeholder="0.00"
+                            type="text"
+                            inputMode="decimal"
+                            value={deal.milestoneFee ? (deal.milestoneFee / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                            onChange={(e) => {
+                              const cleaned = e.target.value.replace(/[^0-9.]/g, '');
+                              updateDeal('milestoneFee', cleaned ? parseFloat(cleaned) * 1000 : undefined);
+                            }}
+                            placeholder="0"
                             className="w-20 h-7 text-right text-sm"
                           />
                           <span className="text-xs text-muted-foreground">K</span>
