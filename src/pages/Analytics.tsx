@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -38,6 +38,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useCharts, ChartType, ChartConfig } from '@/contexts/ChartsContext';
+import { mockDeals } from '@/data/mockDeals';
+import { Deal } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import { 
   BarChart, 
@@ -55,7 +57,6 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { mockDeals } from '@/data/mockDeals';
 import { cn } from '@/lib/utils';
 
 interface DateRange {
@@ -76,7 +77,6 @@ const getHoursData = () => {
     : 0;
   const revenuePerHour = totalHours > 0 ? totalFees / totalHours : 0;
   
-  // Hours by manager
   const hoursByManager: Record<string, { preSigning: number; postSigning: number; fees: number }> = {};
   mockDeals.forEach(deal => {
     if (!hoursByManager[deal.manager]) {
@@ -87,7 +87,6 @@ const getHoursData = () => {
     hoursByManager[deal.manager].fees += deal.totalFee || 0;
   });
   
-  // Hours by stage
   const hoursByStage: Record<string, { preSigning: number; postSigning: number; fees: number }> = {};
   mockDeals.forEach(deal => {
     if (!hoursByStage[deal.stage]) {
@@ -99,36 +98,19 @@ const getHoursData = () => {
   });
   
   return {
-    totalPreSigning,
-    totalPostSigning,
-    totalHours,
-    totalFees,
-    totalRetainer,
-    totalMilestone,
-    avgSuccessFee,
-    revenuePerHour,
+    totalPreSigning, totalPostSigning, totalHours, totalFees, totalRetainer, totalMilestone, avgSuccessFee, revenuePerHour,
     byManager: Object.entries(hoursByManager).map(([name, data]) => ({
-      name,
-      preSigning: data.preSigning,
-      postSigning: data.postSigning,
-      total: data.preSigning + data.postSigning,
-      fees: data.fees,
-      revenuePerHour: (data.preSigning + data.postSigning) > 0 ? data.fees / (data.preSigning + data.postSigning) : 0,
+      name, preSigning: data.preSigning, postSigning: data.postSigning, total: data.preSigning + data.postSigning,
+      fees: data.fees, revenuePerHour: (data.preSigning + data.postSigning) > 0 ? data.fees / (data.preSigning + data.postSigning) : 0,
     })),
     byStage: Object.entries(hoursByStage).map(([name, data]) => ({
-      name,
-      preSigning: data.preSigning,
-      postSigning: data.postSigning,
-      total: data.preSigning + data.postSigning,
-      fees: data.fees,
-      revenuePerHour: (data.preSigning + data.postSigning) > 0 ? data.fees / (data.preSigning + data.postSigning) : 0,
+      name, preSigning: data.preSigning, postSigning: data.postSigning, total: data.preSigning + data.postSigning,
+      fees: data.fees, revenuePerHour: (data.preSigning + data.postSigning) > 0 ? data.fees / (data.preSigning + data.postSigning) : 0,
     })),
   };
 };
 
-// Generate chart data based on data source and date range
 const getChartData = (dataSource: string, dateRange?: DateRange) => {
-  // Filter deals by date range if provided
   const filteredDeals = dateRange?.from && dateRange?.to 
     ? mockDeals.filter(deal => {
         const dealDate = new Date(deal.createdAt);
