@@ -63,11 +63,11 @@ export function DashboardHeader() {
             <Logo />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
-            <Button variant="ghost" size="sm" className="text-foreground">
-              Pipeline
+            <Button variant="ghost" size="sm" className="text-foreground" asChild>
+              <Link to="/dashboard">Pipeline</Link>
             </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              Analytics
+            <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
+              <Link to="/analytics">Analytics</Link>
             </Button>
             <Button variant="ghost" size="sm" className="text-muted-foreground">
               Reports
