@@ -1,11 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -47,6 +49,8 @@ interface LenderInfo {
     phone: string;
   };
   preferences: string[];
+  website?: string;
+  description?: string;
 }
 
 interface LenderForm {
@@ -55,6 +59,8 @@ interface LenderForm {
   email: string;
   phone: string;
   preferences: string;
+  website: string;
+  description: string;
 }
 
 const emptyForm: LenderForm = {
@@ -63,6 +69,8 @@ const emptyForm: LenderForm = {
   email: '',
   phone: '',
   preferences: '',
+  website: '',
+  description: '',
 };
 
 export default function Lenders() {
@@ -76,6 +84,42 @@ export default function Lenders() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedLender, setSelectedLender] = useState<LenderInfo | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+
+  const fetchLenderSummary = useCallback(async (lenderName: string, websiteUrl: string) => {
+    if (!websiteUrl.trim() || !lenderName.trim()) return;
+    
+    setIsLoadingSummary(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('lender-summary', {
+        body: { lenderName, websiteUrl },
+      });
+
+      if (error) {
+        console.error('Error fetching summary:', error);
+        toast({ 
+          title: 'Could not generate summary', 
+          description: 'Please try again or add the description manually.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      if (data?.summary) {
+        setForm(prev => ({ ...prev, description: data.summary }));
+        toast({ title: 'Summary generated', description: 'Lender description has been auto-filled.' });
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      toast({ 
+        title: 'Could not generate summary', 
+        description: 'Please try again or add the description manually.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  }, []);
 
   // Calculate active deals count for each lender
   const activeDealCounts = useMemo(() => {
@@ -139,6 +183,8 @@ export default function Lenders() {
         email: lender.contact.email,
         phone: lender.contact.phone,
         preferences: lender.preferences.join(', '),
+        website: lender.website || '',
+        description: lender.description || '',
       });
       setIsDialogOpen(true);
     }
@@ -158,6 +204,8 @@ export default function Lenders() {
         phone: form.phone.trim(),
       },
       preferences: form.preferences.split(',').map(p => p.trim()).filter(p => p),
+      website: form.website.trim() || undefined,
+      description: form.description.trim() || undefined,
     };
 
     if (editingLender) {
@@ -491,6 +539,49 @@ export default function Lenders() {
                   placeholder="(555) 555-0100"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="website">Website URL</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="website"
+                    type="url"
+                    value={form.website}
+                    onChange={(e) => setForm({ ...form, website: e.target.value })}
+                    placeholder="https://lender.com"
+                    className="pl-9"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!form.website.trim() || !form.name.trim() || isLoadingSummary}
+                  onClick={() => fetchLenderSummary(form.name, form.website)}
+                >
+                  {isLoadingSummary ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Auto-fill Description'
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Add a URL to auto-generate a lender description</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Brief description of the lender..."
+                rows={3}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="preferences">Deal Preferences</Label>
