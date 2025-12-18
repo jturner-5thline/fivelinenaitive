@@ -645,6 +645,29 @@ export default function DealDetail() {
     return { count: staleLenderCount, maxDays };
   }, [deal.lenders, preferences.lenderUpdateYellowDays]);
 
+  // Check if notification is dismissed for this deal
+  const [isDealNotificationDismissed, setIsDealNotificationDismissed] = useState(() => {
+    try {
+      const stored = localStorage.getItem('dismissedNotifications');
+      if (stored) {
+        const dismissed = JSON.parse(stored);
+        const dismissedAt = dismissed[deal.id];
+        return dismissedAt && (Date.now() - dismissedAt) < 24 * 60 * 60 * 1000;
+      }
+    } catch {}
+    return false;
+  });
+
+  const handleDismissNotification = useCallback(() => {
+    try {
+      const stored = localStorage.getItem('dismissedNotifications');
+      const dismissed = stored ? JSON.parse(stored) : {};
+      dismissed[deal.id] = Date.now();
+      localStorage.setItem('dismissedNotifications', JSON.stringify(dismissed));
+      setIsDealNotificationDismissed(true);
+    } catch {}
+  }, [deal.id]);
+
   return (
     <>
       <Helmet>
@@ -748,10 +771,10 @@ export default function DealDetail() {
           </div>
 
           {/* Stale Lenders Notification */}
-          {staleLendersInfo && (
+          {staleLendersInfo && !isDealNotificationDismissed && (
             <div className="flex items-center gap-3 px-4 py-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
               <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1">
                 <span className="text-sm font-medium text-destructive">
                   Lenders need update
                 </span>
@@ -759,6 +782,13 @@ export default function DealDetail() {
                   {staleLendersInfo.count} lender{staleLendersInfo.count !== 1 ? 's' : ''} haven't been updated in {staleLendersInfo.maxDays}+ days
                 </span>
               </div>
+              <button
+                onClick={handleDismissNotification}
+                className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-destructive/20 transition-colors"
+                title="Dismiss for 24 hours"
+              >
+                <X className="h-4 w-4 text-destructive" />
+              </button>
             </div>
           )}
 
