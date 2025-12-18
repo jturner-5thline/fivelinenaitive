@@ -20,6 +20,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import DealDetail from "./pages/DealDetail";
 import Settings from "./pages/Settings";
+import Lenders from "./pages/Lenders";
 import Preferences from "./pages/Preferences";
 import Analytics from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
@@ -57,6 +58,9 @@ const App = () => (
                           } />
                           <Route path="/settings" element={
                             <ProtectedRoute><Settings /></ProtectedRoute>
+                          } />
+                          <Route path="/lenders" element={
+                            <ProtectedRoute><Lenders /></ProtectedRoute>
                           } />
                           <Route path="/preferences" element={
                             <ProtectedRoute><Preferences /></ProtectedRoute>
