@@ -410,7 +410,7 @@ export default function Lenders() {
                       >
                         <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
-                            <p className="font-medium">{lender.name}</p>
+                            <p className="font-medium text-2xl">{lender.name}</p>
                             {activeDealCounts[lender.name] > 0 && (
                               <Badge variant="default" className="text-xs">
                                 {activeDealCounts[lender.name]} active
@@ -522,8 +522,7 @@ export default function Lenders() {
                           </AlertDialog>
                         </div>
                         <div className="flex-1 flex flex-col justify-center items-center text-center">
-                          <Building2 className="h-8 w-8 text-muted-foreground mb-2" />
-                          <p className="font-medium text-sm line-clamp-2">{lender.name}</p>
+                          <p className="font-medium text-xl line-clamp-2">{lender.name}</p>
                           {activeDealCounts[lender.name] > 0 && (
                             <Badge variant="default" className="text-xs mt-1">
                               {activeDealCounts[lender.name]} active
