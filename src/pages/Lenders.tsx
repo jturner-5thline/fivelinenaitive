@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2, Search, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,8 +25,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
+
+type SortOption = 'name-asc' | 'name-desc' | 'prefs-desc' | 'prefs-asc';
 
 interface LenderForm {
   name: string;
@@ -50,6 +59,7 @@ export default function Lenders() {
   const [editingLender, setEditingLender] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('name-asc');
 
   // Filter lenders based on search query
   const filteredLenders = lenders.filter(lender => {
@@ -61,6 +71,22 @@ export default function Lenders() {
       lender.contact.email.toLowerCase().includes(query) ||
       lender.preferences.some(pref => pref.toLowerCase().includes(query))
     );
+  });
+
+  // Sort filtered lenders
+  const sortedLenders = [...filteredLenders].sort((a, b) => {
+    switch (sortOption) {
+      case 'name-asc':
+        return a.name.localeCompare(b.name);
+      case 'name-desc':
+        return b.name.localeCompare(a.name);
+      case 'prefs-desc':
+        return b.preferences.length - a.preferences.length;
+      case 'prefs-asc':
+        return a.preferences.length - b.preferences.length;
+      default:
+        return 0;
+    }
   });
 
   const openAddDialog = () => {
@@ -154,36 +180,50 @@ export default function Lenders() {
                 </Button>
               </CardHeader>
               <CardContent>
-                {/* Search Input */}
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name, contact, email, or preferences..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-9"
-                  />
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                      onClick={() => setSearchQuery('')}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                {/* Search and Sort Controls */}
+                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name, contact, email, or preferences..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 pr-9"
+                    />
+                    {searchQuery && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                        onClick={() => setSearchQuery('')}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <ArrowUpDown className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+                      <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                      <SelectItem value="prefs-desc">Most Preferences</SelectItem>
+                      <SelectItem value="prefs-asc">Fewest Preferences</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Results count */}
                 {searchQuery && (
                   <p className="text-sm text-muted-foreground mb-3">
-                    Found {filteredLenders.length} {filteredLenders.length === 1 ? 'lender' : 'lenders'}
+                    Found {sortedLenders.length} {sortedLenders.length === 1 ? 'lender' : 'lenders'}
                   </p>
                 )}
 
                 <div className="space-y-3">
-                  {filteredLenders.map((lender) => (
+                  {sortedLenders.map((lender) => (
                     <div
                       key={lender.name}
                       className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
@@ -247,7 +287,7 @@ export default function Lenders() {
                       </div>
                     </div>
                   ))}
-                  {filteredLenders.length === 0 && lenders.length > 0 && (
+                  {sortedLenders.length === 0 && lenders.length > 0 && (
                     <p className="text-center text-muted-foreground py-8">
                       No lenders match your search.
                     </p>
