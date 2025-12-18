@@ -1744,7 +1744,6 @@ export default function DealDetail() {
                         placeholder="0"
                         className="w-24 h-8 text-right font-medium text-purple-600"
                       />
-                      <span className="text-sm text-muted-foreground">K</span>
                     </div>
                   </div>
                   
@@ -1772,7 +1771,6 @@ export default function DealDetail() {
                             placeholder="0"
                             className="w-20 h-7 text-right text-sm"
                           />
-                          <span className="text-xs text-muted-foreground">K</span>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
@@ -1790,7 +1788,6 @@ export default function DealDetail() {
                             placeholder="0"
                             className="w-20 h-7 text-right text-sm"
                           />
-                          <span className="text-xs text-muted-foreground">K</span>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
