@@ -210,8 +210,20 @@ export function useDealsDatabase() {
     }
   }, []);
 
-  // Update a deal
+  // Update a deal (optimistic)
   const updateDeal = useCallback(async (dealId: string, updates: Partial<Deal>) => {
+    // Store previous state for rollback
+    const previousDeals = deals;
+    
+    // Optimistically update UI immediately
+    setDeals(prev =>
+      prev.map(deal =>
+        deal.id === dealId
+          ? { ...deal, ...updates, updatedAt: new Date().toISOString() }
+          : deal
+      )
+    );
+
     try {
       const dbUpdates: Record<string, any> = {};
       if (updates.company !== undefined) dbUpdates.company = updates.company;
@@ -227,15 +239,9 @@ export function useDealsDatabase() {
         .eq('id', dealId);
 
       if (error) throw error;
-
-      setDeals(prev =>
-        prev.map(deal =>
-          deal.id === dealId
-            ? { ...deal, ...updates, updatedAt: new Date().toISOString() }
-            : deal
-        )
-      );
     } catch (err) {
+      // Rollback on error
+      setDeals(previousDeals);
       console.error('Error updating deal:', err);
       toast({
         title: "Error",
@@ -243,7 +249,7 @@ export function useDealsDatabase() {
         variant: "destructive",
       });
     }
-  }, []);
+  }, [deals]);
 
   // Update deal status
   const updateDealStatus = useCallback(async (dealId: string, newStatus: DealStatus) => {
@@ -298,8 +304,21 @@ export function useDealsDatabase() {
     }
   }, []);
 
-  // Update lender
+  // Update lender (optimistic)
   const updateLender = useCallback(async (lenderId: string, updates: Partial<DealLender>) => {
+    // Store previous state for rollback
+    const previousDeals = deals;
+    
+    // Optimistically update UI immediately
+    setDeals(prev =>
+      prev.map(deal => ({
+        ...deal,
+        lenders: deal.lenders?.map(l =>
+          l.id === lenderId ? { ...l, ...updates, updatedAt: new Date().toISOString() } : l
+        ),
+      }))
+    );
+
     try {
       const dbUpdates: Record<string, any> = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;
@@ -314,16 +333,9 @@ export function useDealsDatabase() {
         .eq('id', lenderId);
 
       if (error) throw error;
-
-      setDeals(prev =>
-        prev.map(deal => ({
-          ...deal,
-          lenders: deal.lenders?.map(l =>
-            l.id === lenderId ? { ...l, ...updates, updatedAt: new Date().toISOString() } : l
-          ),
-        }))
-      );
     } catch (err) {
+      // Rollback on error
+      setDeals(previousDeals);
       console.error('Error updating lender:', err);
       toast({
         title: "Error",
@@ -331,10 +343,21 @@ export function useDealsDatabase() {
         variant: "destructive",
       });
     }
-  }, []);
+  }, [deals]);
 
-  // Delete lender
+  // Delete lender (optimistic)
   const deleteLender = useCallback(async (lenderId: string) => {
+    // Store previous state for rollback
+    const previousDeals = deals;
+    
+    // Optimistically remove from UI immediately
+    setDeals(prev =>
+      prev.map(deal => ({
+        ...deal,
+        lenders: deal.lenders?.filter(l => l.id !== lenderId),
+      }))
+    );
+
     try {
       const { error } = await supabase
         .from('deal_lenders')
@@ -342,14 +365,9 @@ export function useDealsDatabase() {
         .eq('id', lenderId);
 
       if (error) throw error;
-
-      setDeals(prev =>
-        prev.map(deal => ({
-          ...deal,
-          lenders: deal.lenders?.filter(l => l.id !== lenderId),
-        }))
-      );
     } catch (err) {
+      // Rollback on error
+      setDeals(previousDeals);
       console.error('Error deleting lender:', err);
       toast({
         title: "Error",
@@ -357,10 +375,16 @@ export function useDealsDatabase() {
         variant: "destructive",
       });
     }
-  }, []);
+  }, [deals]);
 
-  // Delete deal
+  // Delete deal (optimistic)
   const deleteDeal = useCallback(async (dealId: string) => {
+    // Store previous state for rollback
+    const previousDeals = deals;
+    
+    // Optimistically remove from UI immediately
+    setDeals(prev => prev.filter(d => d.id !== dealId));
+
     try {
       const { error } = await supabase
         .from('deals')
@@ -368,9 +392,9 @@ export function useDealsDatabase() {
         .eq('id', dealId);
 
       if (error) throw error;
-
-      setDeals(prev => prev.filter(d => d.id !== dealId));
     } catch (err) {
+      // Rollback on error
+      setDeals(previousDeals);
       console.error('Error deleting deal:', err);
       toast({
         title: "Error",
@@ -378,7 +402,7 @@ export function useDealsDatabase() {
         variant: "destructive",
       });
     }
-  }, []);
+  }, [deals]);
 
   // Get a single deal by ID
   const getDealById = useCallback((dealId: string): Deal | undefined => {
