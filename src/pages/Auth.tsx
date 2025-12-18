@@ -296,14 +296,29 @@ const Auth = () => {
                   onClick={async () => {
                     setLoading(true);
                     try {
-                      const { error } = await supabase.auth.signInWithPassword({
+                      // Try to sign in first
+                      const { error: signInError } = await supabase.auth.signInWithPassword({
                         email: "demo@example.com",
                         password: "demo123456",
                       });
-                      if (error) throw error;
-                      toast.success("Welcome to the demo!");
+                      
+                      if (signInError) {
+                        // If login fails, create the demo account
+                        const { error: signUpError } = await supabase.auth.signUp({
+                          email: "demo@example.com",
+                          password: "demo123456",
+                          options: {
+                            emailRedirectTo: `${window.location.origin}/dashboard`,
+                          },
+                        });
+                        if (signUpError) throw signUpError;
+                        toast.success("Demo account created! Welcome!");
+                      } else {
+                        toast.success("Welcome to the demo!");
+                      }
+                      navigate("/dashboard");
                     } catch (error: any) {
-                      toast.error("Demo account not available. Please sign up first.");
+                      toast.error(error.message || "Demo login failed. Please try again.");
                     } finally {
                       setLoading(false);
                     }
