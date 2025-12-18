@@ -14,60 +14,103 @@ const authSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
+const emailSchema = z.object({
+  email: z.string().trim().email({ message: "Invalid email address" }),
+});
+
+type AuthMode = "login" | "signup" | "forgot" | "reset";
+
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check for password recovery event
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (session?.user) {
+        if (event === "PASSWORD_RECOVERY") {
+          setMode("reset");
+        } else if (session?.user && mode !== "reset") {
           navigate("/dashboard");
         }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        navigate("/dashboard");
+      if (session?.user && mode !== "reset") {
+        // Check URL for recovery token
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        if (hashParams.get("type") === "recovery") {
+          setMode("reset");
+        } else {
+          navigate("/dashboard");
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const validation = authSchema.safeParse({ email, password });
-    if (!validation.success) {
-      toast.error(validation.error.errors[0].message);
-      return;
-    }
-
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
+      if (mode === "forgot") {
+        const validation = emailSchema.safeParse({ email });
+        if (!validation.success) {
+          toast.error(validation.error.errors[0].message);
+          setLoading(false);
+          return;
+        }
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/login`,
         });
         if (error) throw error;
-        toast.success("Welcome back!");
+        toast.success("Check your email for the password reset link!");
+        setMode("login");
+      } else if (mode === "reset") {
+        if (newPassword.length < 6) {
+          toast.error("Password must be at least 6 characters");
+          setLoading(false);
+          return;
+        }
+
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        toast.success("Password updated successfully!");
+        navigate("/dashboard");
       } else {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created successfully!");
+        const validation = authSchema.safeParse({ email, password });
+        if (!validation.success) {
+          toast.error(validation.error.errors[0].message);
+          setLoading(false);
+          return;
+        }
+
+        if (mode === "login") {
+          const { error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          if (error) throw error;
+          toast.success("Welcome back!");
+        } else {
+          const { error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/dashboard`,
+            },
+          });
+          if (error) throw error;
+          toast.success("Account created successfully!");
+        }
       }
     } catch (error: any) {
       if (error.message.includes("User already registered")) {
@@ -82,10 +125,28 @@ const Auth = () => {
     }
   };
 
+  const getTitle = () => {
+    switch (mode) {
+      case "forgot": return "Reset Password";
+      case "reset": return "Set New Password";
+      case "signup": return "Sign Up";
+      default: return "Login";
+    }
+  };
+
+  const getSubtitle = () => {
+    switch (mode) {
+      case "forgot": return "Enter your email to receive a reset link";
+      case "reset": return "Enter your new password";
+      case "signup": return "Create your account";
+      default: return "Welcome back";
+    }
+  };
+
   return (
     <>
       <Helmet>
-        <title>{isLogin ? "Login" : "Sign Up"} | nAItive</title>
+        <title>{getTitle()} | nAItive</title>
       </Helmet>
       
       <div className="min-h-screen bg-[#010114] relative overflow-hidden">
@@ -98,49 +159,82 @@ const Auth = () => {
               nAItive
             </h1>
             <p className="text-white/60 text-center mb-8 font-light">
-              {isLogin ? "Welcome back" : "Create your account"}
+              {getSubtitle()}
             </p>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-white/80 font-light">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-white/80 font-light">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40"
-                />
-              </div>
+              {mode === "reset" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword" className="text-white/80 font-light">
+                    New Password
+                  </Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-white/80 font-light">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                      className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40"
+                    />
+                  </div>
+                  
+                  {mode !== "forgot" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-white/80 font-light">
+                        Password
+                      </Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40"
+                      />
+                      {mode === "login" && (
+                        <button
+                          type="button"
+                          onClick={() => setMode("forgot")}
+                          className="text-sm text-white/50 hover:text-white/80 underline underline-offset-4"
+                        >
+                          Forgot password?
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
               
               <Button
                 type="submit"
                 disabled={loading}
                 className="w-full bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white/40 py-6 font-light tracking-wide"
               >
-                {loading ? "Please wait..." : isLogin ? "Login" : "Sign Up"}
+                {loading ? "Please wait..." : 
+                  mode === "forgot" ? "Send Reset Link" :
+                  mode === "reset" ? "Update Password" :
+                  mode === "login" ? "Login" : "Sign Up"}
               </Button>
               
-              {isLogin && (
+              {mode === "login" && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -167,16 +261,30 @@ const Auth = () => {
               )}
             </form>
             
-            <p className="text-center text-white/50 mt-6 font-light">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-white/80 hover:text-white underline underline-offset-4"
-              >
-                {isLogin ? "Sign up" : "Login"}
-              </button>
-            </p>
+            {mode !== "reset" && (
+              <p className="text-center text-white/50 mt-6 font-light">
+                {mode === "forgot" ? (
+                  <button
+                    type="button"
+                    onClick={() => setMode("login")}
+                    className="text-white/80 hover:text-white underline underline-offset-4"
+                  >
+                    Back to login
+                  </button>
+                ) : (
+                  <>
+                    {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+                    <button
+                      type="button"
+                      onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                      className="text-white/80 hover:text-white underline underline-offset-4"
+                    >
+                      {mode === "login" ? "Sign up" : "Login"}
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
           </div>
         </div>
       </div>
