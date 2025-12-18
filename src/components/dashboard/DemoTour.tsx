@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronRight, ChevronLeft, Sparkles, LayoutDashboard, BarChart3, Settings2, Plus } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Sparkles, LayoutDashboard, BarChart3, Settings2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -106,16 +106,8 @@ export function DemoTour() {
   const isFirstStep = currentStep === 0;
 
   return (
-    <Dialog open={showTour} onOpenChange={setShowTour}>
+    <Dialog open={showTour} onOpenChange={(open) => { if (!open) handleSkip(); setShowTour(open); }}>
       <DialogContent className="sm:max-w-md">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-4 h-6 w-6"
-          onClick={handleSkip}
-        >
-          <X className="h-4 w-4" />
-        </Button>
         <DialogHeader className="text-center sm:text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             {step.icon}
