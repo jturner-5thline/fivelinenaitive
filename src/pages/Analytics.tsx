@@ -63,6 +63,51 @@ interface DateRange {
   to: Date | undefined;
 }
 
+// Calculate hours data from deals
+const getHoursData = () => {
+  const totalPreSigning = mockDeals.reduce((sum, deal) => sum + (deal.preSigningHours ?? 0), 0);
+  const totalPostSigning = mockDeals.reduce((sum, deal) => sum + (deal.postSigningHours ?? 0), 0);
+  const totalHours = totalPreSigning + totalPostSigning;
+  
+  // Hours by manager
+  const hoursByManager: Record<string, { preSigning: number; postSigning: number }> = {};
+  mockDeals.forEach(deal => {
+    if (!hoursByManager[deal.manager]) {
+      hoursByManager[deal.manager] = { preSigning: 0, postSigning: 0 };
+    }
+    hoursByManager[deal.manager].preSigning += deal.preSigningHours ?? 0;
+    hoursByManager[deal.manager].postSigning += deal.postSigningHours ?? 0;
+  });
+  
+  // Hours by stage
+  const hoursByStage: Record<string, { preSigning: number; postSigning: number }> = {};
+  mockDeals.forEach(deal => {
+    if (!hoursByStage[deal.stage]) {
+      hoursByStage[deal.stage] = { preSigning: 0, postSigning: 0 };
+    }
+    hoursByStage[deal.stage].preSigning += deal.preSigningHours ?? 0;
+    hoursByStage[deal.stage].postSigning += deal.postSigningHours ?? 0;
+  });
+  
+  return {
+    totalPreSigning,
+    totalPostSigning,
+    totalHours,
+    byManager: Object.entries(hoursByManager).map(([name, hours]) => ({
+      name,
+      preSigning: hours.preSigning,
+      postSigning: hours.postSigning,
+      total: hours.preSigning + hours.postSigning,
+    })),
+    byStage: Object.entries(hoursByStage).map(([name, hours]) => ({
+      name,
+      preSigning: hours.preSigning,
+      postSigning: hours.postSigning,
+      total: hours.preSigning + hours.postSigning,
+    })),
+  };
+};
+
 // Generate chart data based on data source and date range
 const getChartData = (dataSource: string, dateRange?: DateRange) => {
   // Filter deals by date range if provided
@@ -139,6 +184,14 @@ const getChartData = (dataSource: string, dateRange?: DateRange) => {
       }
       return Object.entries(passReasonCounts).map(([name, value]) => ({ name, value }));
     
+    case 'hours-by-manager':
+      const hoursData = getHoursData();
+      return hoursData.byManager.map(m => ({ name: m.name, value: m.total }));
+    
+    case 'hours-by-stage':
+      const hoursDataByStage = getHoursData();
+      return hoursDataByStage.byStage.map(s => ({ name: s.name, value: s.total }));
+    
     default:
       return [
         { name: 'A', value: 10 },
@@ -156,6 +209,8 @@ const DATA_SOURCES = [
   { id: 'lender-activity', label: 'Lender Activity' },
   { id: 'deal-value-distribution', label: 'Deal Value Distribution' },
   { id: 'lender-pass-reasons', label: 'Lender Pass Reasons' },
+  { id: 'hours-by-manager', label: 'Hours by Manager' },
+  { id: 'hours-by-stage', label: 'Hours by Stage' },
 ];
 
 const CHART_COLORS = [
@@ -514,6 +569,90 @@ export default function Analytics() {
               </Button>
             </div>
           </div>
+
+          {/* Hours Summary Section */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4">Hours Summary</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Pre-Signing Hours</p>
+                    <p className="text-3xl font-bold text-purple-600">{getHoursData().totalPreSigning.toFixed(1)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Post-Signing Hours</p>
+                    <p className="text-3xl font-bold text-purple-600">{getHoursData().totalPostSigning.toFixed(1)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Hours</p>
+                    <p className="text-3xl font-bold text-purple-600">{getHoursData().totalHours.toFixed(1)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Hours by Manager Table */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Hours by Manager</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {getHoursData().byManager.length > 0 ? (
+                      getHoursData().byManager.map((manager) => (
+                        <div key={manager.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                          <span className="font-medium">{manager.name}</span>
+                          <div className="flex gap-4 text-sm">
+                            <span className="text-muted-foreground">Pre: {manager.preSigning.toFixed(1)}</span>
+                            <span className="text-muted-foreground">Post: {manager.postSigning.toFixed(1)}</span>
+                            <span className="font-semibold text-purple-600">{manager.total.toFixed(1)}h</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">No hours recorded yet</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Hours by Stage</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {getHoursData().byStage.length > 0 ? (
+                      getHoursData().byStage.map((stage) => (
+                        <div key={stage.name} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                          <span className="font-medium capitalize">{stage.name.replace('-', ' ')}</span>
+                          <div className="flex gap-4 text-sm">
+                            <span className="text-muted-foreground">Pre: {stage.preSigning.toFixed(1)}</span>
+                            <span className="text-muted-foreground">Post: {stage.postSigning.toFixed(1)}</span>
+                            <span className="font-semibold text-purple-600">{stage.total.toFixed(1)}h</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">No hours recorded yet</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <h2 className="text-xl font-semibold mb-4">Charts</h2>
 
           {charts.length === 0 ? (
             <Card className="p-12 text-center">
