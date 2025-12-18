@@ -1,15 +1,31 @@
 import { useState } from 'react';
-import { GripVertical, User, Clock, MessageSquare } from 'lucide-react';
+import { GripVertical, Clock, MessageSquare } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
-import { STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
+import { STAGE_GROUPS, StageGroup, PassReasonOption } from '@/contexts/LenderStagesContext';
 import { cn } from '@/lib/utils';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface LendersKanbanProps {
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
-  onUpdateLenderGroup: (lenderId: string, newGroup: StageGroup) => void;
+  passReasons: PassReasonOption[];
+  onUpdateLenderGroup: (lenderId: string, newGroup: StageGroup, passReason?: string) => void;
 }
 
 // Helper to get relative time string
@@ -135,8 +151,11 @@ function DroppableColumn({
   );
 }
 
-export function LendersKanban({ lenders, configuredStages, onUpdateLenderGroup }: LendersKanbanProps) {
+export function LendersKanban({ lenders, configuredStages, passReasons, onUpdateLenderGroup }: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
+  const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
+  const [pendingPassChange, setPendingPassChange] = useState<{ lenderId: string } | null>(null);
+  const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -161,9 +180,31 @@ export function LendersKanban({ lenders, configuredStages, onUpdateLenderGroup }
     if (over && active.id !== over.id) {
       const targetGroup = over.id as StageGroup;
       if (STAGE_GROUPS.some(g => g.id === targetGroup)) {
-        onUpdateLenderGroup(active.id as string, targetGroup);
+        // Check if dropping to passed column
+        if (targetGroup === 'passed') {
+          setPendingPassChange({ lenderId: active.id as string });
+          setSelectedPassReason(null);
+          setPassReasonDialogOpen(true);
+        } else {
+          onUpdateLenderGroup(active.id as string, targetGroup);
+        }
       }
     }
+  };
+
+  const handleConfirmPass = () => {
+    if (pendingPassChange && selectedPassReason) {
+      onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', selectedPassReason);
+      setPassReasonDialogOpen(false);
+      setPendingPassChange(null);
+      setSelectedPassReason(null);
+    }
+  };
+
+  const handleCancelPass = () => {
+    setPassReasonDialogOpen(false);
+    setPendingPassChange(null);
+    setSelectedPassReason(null);
   };
 
   const getLendersByGroup = (groupId: StageGroup) => {
@@ -174,38 +215,78 @@ export function LendersKanban({ lenders, configuredStages, onUpdateLenderGroup }
   };
 
   const stageLabel = activeLender ? configuredStages.find(s => s.id === activeLender.stage)?.label || activeLender.stage : '';
+  const pendingLenderName = pendingPassChange ? lenders.find(l => l.id === pendingPassChange.lenderId)?.name : '';
 
   return (
-    <DndContext 
-      sensors={sensors}
-      onDragStart={handleDragStart} 
-      onDragEnd={handleDragEnd}
-    >
-      <div className="grid grid-cols-4 gap-4 overflow-auto py-4">
-        {STAGE_GROUPS.map((group) => (
-          <DroppableColumn 
-            key={group.id} 
-            group={group} 
-            lenders={getLendersByGroup(group.id)}
-            configuredStages={configuredStages}
-          />
-        ))}
-      </div>
-      <DragOverlay>
-        {activeLender ? (
-          <div className="bg-card border border-primary rounded-lg p-3 shadow-xl rotate-3">
-            <div className="flex items-start gap-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium mb-1">{activeLender.name}</p>
-                <span className="bg-secondary px-1.5 py-0.5 rounded text-[10px]">
-                  {stageLabel}
-                </span>
+    <>
+      <DndContext 
+        sensors={sensors}
+        onDragStart={handleDragStart} 
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-4 gap-4 overflow-auto py-4">
+          {STAGE_GROUPS.map((group) => (
+            <DroppableColumn 
+              key={group.id} 
+              group={group} 
+              lenders={getLendersByGroup(group.id)}
+              configuredStages={configuredStages}
+            />
+          ))}
+        </div>
+        <DragOverlay>
+          {activeLender ? (
+            <div className="bg-card border border-primary rounded-lg p-3 shadow-xl rotate-3">
+              <div className="flex items-start gap-2">
+                <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium mb-1">{activeLender.name}</p>
+                  <span className="bg-secondary px-1.5 py-0.5 rounded text-[10px]">
+                    {stageLabel}
+                  </span>
+                </div>
               </div>
             </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+
+      {/* Pass Reason Dialog */}
+      <Dialog open={passReasonDialogOpen} onOpenChange={(open) => !open && handleCancelPass()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Pass Reason for {pendingLenderName}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Select
+              value={selectedPassReason || ''}
+              onValueChange={setSelectedPassReason}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a pass reason..." />
+              </SelectTrigger>
+              <SelectContent>
+                {passReasons.map((reason) => (
+                  <SelectItem key={reason.id} value={reason.label}>
+                    {reason.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelPass}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmPass}
+              disabled={!selectedPassReason}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

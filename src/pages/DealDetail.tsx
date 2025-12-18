@@ -405,7 +405,7 @@ export default function DealDetail() {
     });
   }, []);
 
-  const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup) => {
+  const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
     // Find the first stage in the target group
     const targetStage = configuredStages.find(s => s.group === newGroup);
     if (!targetStage) return;
@@ -414,7 +414,7 @@ export default function DealDetail() {
       if (!prev) return prev;
       const updatedLenders = prev.lenders?.map(l => 
         l.id === lenderId 
-          ? { ...l, stage: targetStage.id as any, passReason: newGroup === 'passed' ? l.passReason : undefined, updatedAt: new Date().toISOString() } 
+          ? { ...l, stage: targetStage.id as any, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() } 
           : l
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
@@ -2070,6 +2070,7 @@ export default function DealDetail() {
             <LendersKanban
               lenders={deal.lenders}
               configuredStages={configuredStages}
+              passReasons={passReasons}
               onUpdateLenderGroup={updateLenderGroup}
             />
           )}
