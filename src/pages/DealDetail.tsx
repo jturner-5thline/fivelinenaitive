@@ -1736,13 +1736,13 @@ export default function DealDetail() {
                       <Input
                         type="text"
                         inputMode="decimal"
-                        value={deal.totalFee ? (deal.totalFee / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                        value={deal.totalFee ? deal.totalFee.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
                         onChange={(e) => {
                           const cleaned = e.target.value.replace(/[^0-9.]/g, '');
-                          updateDeal('totalFee', cleaned ? parseFloat(cleaned) * 1000 : 0);
+                          updateDeal('totalFee', cleaned ? parseFloat(cleaned) : 0);
                         }}
                         placeholder="0"
-                        className="w-24 h-8 text-right font-medium text-purple-600"
+                        className="w-28 h-8 text-right font-medium text-purple-600"
                       />
                     </div>
                   </div>
@@ -1763,13 +1763,13 @@ export default function DealDetail() {
                           <Input
                             type="text"
                             inputMode="decimal"
-                            value={deal.retainerFee ? (deal.retainerFee / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                            value={deal.retainerFee ? deal.retainerFee.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
                             onChange={(e) => {
                               const cleaned = e.target.value.replace(/[^0-9.]/g, '');
-                              updateDeal('retainerFee', cleaned ? parseFloat(cleaned) * 1000 : undefined);
+                              updateDeal('retainerFee', cleaned ? parseFloat(cleaned) : undefined);
                             }}
                             placeholder="0"
-                            className="w-20 h-7 text-right text-sm"
+                            className="w-24 h-7 text-right text-sm"
                           />
                         </div>
                       </div>
@@ -1780,13 +1780,13 @@ export default function DealDetail() {
                           <Input
                             type="text"
                             inputMode="decimal"
-                            value={deal.milestoneFee ? (deal.milestoneFee / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
+                            value={deal.milestoneFee ? deal.milestoneFee.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : ''}
                             onChange={(e) => {
                               const cleaned = e.target.value.replace(/[^0-9.]/g, '');
-                              updateDeal('milestoneFee', cleaned ? parseFloat(cleaned) * 1000 : undefined);
+                              updateDeal('milestoneFee', cleaned ? parseFloat(cleaned) : undefined);
                             }}
                             placeholder="0"
-                            className="w-20 h-7 text-right text-sm"
+                            className="w-24 h-7 text-right text-sm"
                           />
                         </div>
                       </div>
