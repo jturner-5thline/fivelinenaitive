@@ -64,6 +64,8 @@ export interface Deal {
   lender: string;
   value: number;
   totalFee: number;
+  preSigningHours?: number;
+  postSigningHours?: number;
   referredBy?: Referrer;
   contact: string;
   createdAt: string;
