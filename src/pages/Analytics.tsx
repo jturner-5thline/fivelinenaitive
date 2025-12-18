@@ -69,6 +69,11 @@ const getHoursData = () => {
   const totalPostSigning = mockDeals.reduce((sum, deal) => sum + (deal.postSigningHours ?? 0), 0);
   const totalHours = totalPreSigning + totalPostSigning;
   const totalFees = mockDeals.reduce((sum, deal) => sum + (deal.totalFee || 0), 0);
+  const totalRetainer = mockDeals.reduce((sum, deal) => sum + (deal.retainerFee ?? 0), 0);
+  const totalMilestone = mockDeals.reduce((sum, deal) => sum + (deal.milestoneFee ?? 0), 0);
+  const avgSuccessFee = mockDeals.filter(d => d.successFeePercent != null).length > 0
+    ? mockDeals.reduce((sum, deal) => sum + (deal.successFeePercent ?? 0), 0) / mockDeals.filter(d => d.successFeePercent != null).length
+    : 0;
   const revenuePerHour = totalHours > 0 ? totalFees / totalHours : 0;
   
   // Hours by manager
@@ -98,6 +103,9 @@ const getHoursData = () => {
     totalPostSigning,
     totalHours,
     totalFees,
+    totalRetainer,
+    totalMilestone,
+    avgSuccessFee,
     revenuePerHour,
     byManager: Object.entries(hoursByManager).map(([name, data]) => ({
       name,
@@ -631,7 +639,36 @@ export default function Analytics() {
               </Card>
             </div>
             
-            {/* Hours by Manager Table */}
+            {/* Fee Breakdown */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Retainer</p>
+                    <p className="text-2xl font-bold text-purple-600">${(getHoursData().totalRetainer / 1000).toFixed(1)}K</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Total Milestone</p>
+                    <p className="text-2xl font-bold text-purple-600">${(getHoursData().totalMilestone / 1000).toFixed(1)}K</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Avg Success Fee</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {getHoursData().avgSuccessFee > 0 ? `${getHoursData().avgSuccessFee.toFixed(1)}%` : '-'}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
