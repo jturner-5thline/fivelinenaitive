@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, Clock, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -7,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -29,14 +31,20 @@ interface LenderDetailDialogProps {
 
 export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailDialogProps) {
   const { deals } = useDealsContext();
+  const navigate = useNavigate();
+
+  const handleNavigateToDeal = (dealId: string) => {
+    onOpenChange(false);
+    navigate(`/deals/${dealId}`);
+  };
 
   // Find all deals where this lender is involved
   const lenderDeals = useMemo(() => {
     if (!lender) return { active: [], sent: [], passReasons: [] };
 
-    const active: { dealName: string; company: string; stage: string; status: string }[] = [];
-    const sent: { dealName: string; company: string; stage: string; dateSent: string }[] = [];
-    const passReasons: { dealName: string; company: string; reason: string }[] = [];
+    const active: { dealId: string; dealName: string; company: string; stage: string; status: string }[] = [];
+    const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string }[] = [];
+    const passReasons: { dealId: string; dealName: string; company: string; reason: string }[] = [];
 
     deals.forEach(deal => {
       const dealLender = deal.lenders?.find(l => l.name === lender.name);
@@ -44,12 +52,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
         // Check if passed
         if (dealLender.trackingStatus === 'passed' && dealLender.passReason) {
           passReasons.push({
+            dealId: deal.id,
             dealName: deal.name,
             company: deal.company,
             reason: dealLender.passReason,
           });
         } else if (dealLender.trackingStatus === 'active') {
           active.push({
+            dealId: deal.id,
             dealName: deal.name,
             company: deal.company,
             stage: dealLender.stage,
@@ -58,6 +68,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
         } else {
           // All other deals sent to this lender
           sent.push({
+            dealId: deal.id,
             dealName: deal.name,
             company: deal.company,
             stage: dealLender.stage,
@@ -148,13 +159,20 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
               </h3>
               {lenderDeals.active.length > 0 ? (
                 <div className="space-y-2">
-                  {lenderDeals.active.map((deal, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  {lenderDeals.active.map((deal) => (
+                    <div 
+                      key={deal.dealId} 
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group"
+                      onClick={() => handleNavigateToDeal(deal.dealId)}
+                    >
                       <div>
                         <p className="font-medium">{deal.company}</p>
                         <p className="text-sm text-muted-foreground">{deal.dealName}</p>
                       </div>
-                      <Badge variant="outline">{deal.stage}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{deal.stage}</Badge>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -173,14 +191,19 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
               </h3>
               {lenderDeals.sent.length > 0 ? (
                 <div className="space-y-2">
-                  {lenderDeals.sent.map((deal, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  {lenderDeals.sent.map((deal) => (
+                    <div 
+                      key={deal.dealId} 
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group"
+                      onClick={() => handleNavigateToDeal(deal.dealId)}
+                    >
                       <div>
                         <p className="font-medium">{deal.company}</p>
                         <p className="text-sm text-muted-foreground">{deal.dealName}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="flex items-center gap-2">
                         <Badge variant="outline">{deal.stage}</Badge>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     </div>
                   ))}
@@ -200,10 +223,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
               </h3>
               {lenderDeals.passReasons.length > 0 ? (
                 <div className="space-y-2">
-                  {lenderDeals.passReasons.map((item, idx) => (
-                    <div key={idx} className="p-3 bg-muted/50 rounded-lg">
+                  {lenderDeals.passReasons.map((item) => (
+                    <div 
+                      key={item.dealId} 
+                      className="p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group"
+                      onClick={() => handleNavigateToDeal(item.dealId)}
+                    >
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-medium">{item.company}</p>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <p className="text-sm text-muted-foreground">{item.dealName}</p>
                       <p className="text-sm mt-2 text-destructive/80">Reason: {item.reason}</p>
