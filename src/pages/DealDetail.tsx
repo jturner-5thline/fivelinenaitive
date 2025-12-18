@@ -1744,39 +1744,49 @@ export default function DealDetail() {
                   </div>
                   
                   {/* Hours Section */}
-                  <div className="pt-3 border-t border-border/50 space-y-3">
-                    <span className="text-sm font-medium text-muted-foreground">Hours</span>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-sm">Pre-Signing</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.5"
-                        value={deal.preSigningHours ?? ''}
-                        onChange={(e) => updateDeal('preSigningHours', e.target.value ? parseFloat(e.target.value) : undefined)}
-                        placeholder="0"
-                        className="w-20 h-8 text-right"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-sm">Post-Signing</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.5"
-                        value={deal.postSigningHours ?? ''}
-                        onChange={(e) => updateDeal('postSigningHours', e.target.value ? parseFloat(e.target.value) : undefined)}
-                        placeholder="0"
-                        className="w-20 h-8 text-right"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between pt-1 border-t border-border/30">
-                      <span className="text-muted-foreground text-sm font-medium">Total Hours</span>
-                      <span className="font-medium text-purple-600">
-                        {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}
+                  <Collapsible className="pt-3 border-t border-border/50">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full hover:bg-muted/50 rounded px-1 py-1 -mx-1">
+                      <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                        <ChevronRight className="h-3 w-3 transition-transform [[data-state=open]>&]:rotate-90" />
+                        Hours
                       </span>
-                    </div>
-                  </div>
+                      <span className="font-medium text-purple-600 text-sm">
+                        {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}h
+                      </span>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-3 pt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">Pre-Signing</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={deal.preSigningHours ?? ''}
+                          onChange={(e) => updateDeal('preSigningHours', e.target.value ? parseFloat(e.target.value) : undefined)}
+                          placeholder="0"
+                          className="w-20 h-8 text-right"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">Post-Signing</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={deal.postSigningHours ?? ''}
+                          onChange={(e) => updateDeal('postSigningHours', e.target.value ? parseFloat(e.target.value) : undefined)}
+                          placeholder="0"
+                          className="w-20 h-8 text-right"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-border/30">
+                        <span className="text-muted-foreground text-sm font-medium">Total Hours</span>
+                        <span className="font-medium text-purple-600">
+                          {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}
+                        </span>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </CardContent>
               </Card>
 
