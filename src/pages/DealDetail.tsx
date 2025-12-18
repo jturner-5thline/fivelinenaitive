@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -623,6 +623,28 @@ export default function DealDetail() {
 
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
+  // Calculate stale lenders for notification banner
+  const staleLendersInfo = useMemo(() => {
+    if (!deal.lenders) return null;
+    const yellowThreshold = preferences.lenderUpdateYellowDays;
+    const now = new Date();
+    let staleLenderCount = 0;
+    let maxDays = 0;
+    
+    deal.lenders.forEach(lender => {
+      if (lender.trackingStatus === 'active' && lender.updatedAt) {
+        const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
+        if (daysSinceUpdate >= yellowThreshold) {
+          staleLenderCount++;
+          maxDays = Math.max(maxDays, daysSinceUpdate);
+        }
+      }
+    });
+    
+    if (staleLenderCount === 0) return null;
+    return { count: staleLenderCount, maxDays };
+  }, [deal.lenders, preferences.lenderUpdateYellowDays]);
+
   return (
     <>
       <Helmet>
@@ -724,6 +746,21 @@ export default function DealDetail() {
               </DropdownMenu>
             </div>
           </div>
+
+          {/* Stale Lenders Notification */}
+          {staleLendersInfo && (
+            <div className="flex items-center gap-3 px-4 py-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
+              <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-destructive">
+                  Lenders need update
+                </span>
+                <span className="text-xs text-destructive/70">
+                  {staleLendersInfo.count} lender{staleLendersInfo.count !== 1 ? 's' : ''} haven't been updated in {staleLendersInfo.maxDays}+ days
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Header Card */}
           <Card className="mb-6">
