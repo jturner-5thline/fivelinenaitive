@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Info, X, Trash2 } from 'lucide-react';
+import { Info, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -102,9 +102,8 @@ export function DemoBanner({ onDataCleared }: DemoBannerProps) {
           </p>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 mt-1">
-                <Trash2 className="h-3.5 w-3.5" />
-                Clear demo data
+              <Button variant="outline" size="sm" className="mt-1">
+                Create my own deals
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
