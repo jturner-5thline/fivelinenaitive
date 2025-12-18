@@ -1894,8 +1894,7 @@ export default function DealDetail() {
               {/* Company Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
+                  <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent">
                     Company
                   </CardTitle>
                 </CardHeader>
@@ -1932,8 +1931,7 @@ export default function DealDetail() {
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent flex items-center gap-2">
-                      <Paperclip className="h-5 w-5" />
+                    <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent">
                       Attachments
                     </CardTitle>
                     <Button
