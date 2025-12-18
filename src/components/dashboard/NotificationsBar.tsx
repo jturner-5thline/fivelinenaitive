@@ -66,7 +66,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
         >
           <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
           <span className="text-sm font-medium text-destructive">
-            {deal.dealName} - {deal.lenderCount} lender{deal.lenderCount !== 1 ? 's' : ''} need update ({deal.maxDaysSinceUpdate}d+)
+            {deal.dealName}
           </span>
         </Link>
       ))}
@@ -78,7 +78,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
         >
           <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
           <span className="text-sm font-medium text-warning">
-            {deal.dealName} - {deal.lenderCount} lender{deal.lenderCount !== 1 ? 's' : ''} approaching stale ({deal.maxDaysSinceUpdate}d)
+            {deal.dealName}
           </span>
         </Link>
       ))}
