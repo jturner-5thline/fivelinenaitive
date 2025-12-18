@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,7 +51,6 @@ import {
   Tooltip, 
   ResponsiveContainer,
   Cell,
-  Legend
 } from 'recharts';
 import { mockDeals } from '@/data/mockDeals';
 import { cn } from '@/lib/utils';
@@ -220,8 +222,73 @@ function ChartRenderer({ chart }: { chart: ChartConfig }) {
   }
 }
 
+// Sortable Chart Card Component
+function SortableChartCard({ 
+  chart, 
+  onEdit, 
+  onDelete 
+}: { 
+  chart: ChartConfig; 
+  onEdit: (chart: ChartConfig) => void;
+  onDelete: (chartId: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: chart.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style} className={cn(isDragging && "shadow-lg ring-2 ring-primary/20")}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="flex items-center gap-2">
+          <button
+            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <ChartTypeIcon type={chart.type} />
+          <CardTitle className="text-lg">{chart.title}</CardTitle>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8"
+            onClick={() => onEdit(chart)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-destructive hover:text-destructive"
+            onClick={() => onDelete(chart.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ChartRenderer chart={chart} />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Analytics() {
-  const { charts, addChart, updateChart, deleteChart } = useCharts();
+  const { charts, addChart, updateChart, deleteChart, reorderCharts } = useCharts();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chartToDelete, setChartToDelete] = useState<string | null>(null);
@@ -233,6 +300,21 @@ export default function Analytics() {
     dataSource: 'deals-by-stage',
     color: '#9333ea',
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = charts.findIndex(c => c.id === active.id);
+      const newIndex = charts.findIndex(c => c.id === over.id);
+      reorderCharts(arrayMove(charts, oldIndex, newIndex));
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -307,7 +389,7 @@ export default function Analytics() {
             <div>
               <h1 className="text-3xl font-bold">Analytics</h1>
               <p className="text-muted-foreground mt-1">
-                View insights and manage your custom charts
+                View insights and manage your custom charts. Drag to reorder.
               </p>
             </div>
             <Button onClick={() => handleOpenDialog()} className="gap-2">
@@ -335,39 +417,24 @@ export default function Analytics() {
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {charts.map(chart => (
-                <Card key={chart.id}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div className="flex items-center gap-2">
-                      <ChartTypeIcon type={chart.type} />
-                      <CardTitle className="text-lg">{chart.title}</CardTitle>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => handleOpenDialog(chart)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => confirmDelete(chart.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ChartRenderer chart={chart} />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={charts.map(c => c.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {charts.map(chart => (
+                    <SortableChartCard
+                      key={chart.id}
+                      chart={chart}
+                      onEdit={handleOpenDialog}
+                      onDelete={confirmDelete}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </main>
       </div>
