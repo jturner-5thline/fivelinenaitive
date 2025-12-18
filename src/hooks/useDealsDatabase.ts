@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Deal, DealLender, DealStatus, DealStage, EngagementType } from '@/types/deal';
-import { mockDeals } from '@/data/mockDeals';
 import { toast } from '@/hooks/use-toast';
 
 interface DbDeal {
@@ -16,6 +15,7 @@ interface DbDeal {
   manager: string | null;
   created_at: string;
   updated_at: string;
+  user_id: string | null;
 }
 
 interface DbDealLender {
@@ -37,9 +37,29 @@ export function useDealsDatabase() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get current user
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Fetch all deals from database
   const fetchDeals = useCallback(async () => {
+    if (!userId) {
+      setDeals([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       const { data: dbDeals, error: dealsError } = await supabase
@@ -50,8 +70,8 @@ export function useDealsDatabase() {
       if (dealsError) throw dealsError;
 
       if (!dbDeals || dbDeals.length === 0) {
-        // If no deals in database, seed with mock data
-        await seedDeals();
+        setDeals([]);
+        setIsLoading(false);
         return;
       }
 
@@ -80,7 +100,7 @@ export function useDealsDatabase() {
 
         return {
           id: dbDeal.id,
-          name: dbDeal.company, // Using company as name for now
+          name: dbDeal.company,
           company: dbDeal.company,
           stage: dbDeal.stage as DealStage,
           status: dbDeal.status as DealStatus,
@@ -100,69 +120,23 @@ export function useDealsDatabase() {
     } catch (err) {
       console.error('Error fetching deals:', err);
       setError(err as Error);
-      // Fall back to mock data on error
-      setDeals(mockDeals);
+      setDeals([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  // Seed database with mock data
-  const seedDeals = async () => {
-    try {
-      for (const deal of mockDeals) {
-        // Don't pass id - let Supabase generate UUID
-        const { data: insertedDeal, error: dealError } = await supabase
-          .from('deals')
-          .insert({
-            company: deal.company,
-            value: deal.value,
-            status: deal.status,
-            stage: deal.stage,
-            engagement_type: deal.engagementType,
-            manager: deal.manager,
-            referred_by: deal.referredBy?.name || null,
-          })
-          .select()
-          .single();
-
-        if (dealError) {
-          console.error('Error inserting deal:', dealError);
-          continue;
-        }
-
-        // Insert lenders for this deal using the generated deal id
-        if (deal.lenders && deal.lenders.length > 0 && insertedDeal) {
-          const lendersToInsert = deal.lenders.map(lender => ({
-            deal_id: insertedDeal.id,
-            name: lender.name,
-            stage: lender.stage,
-            substage: lender.substage || null,
-            notes: lender.notes || null,
-            pass_reason: lender.passReason || null,
-          }));
-
-          const { error: lendersError } = await supabase
-            .from('deal_lenders')
-            .insert(lendersToInsert);
-
-          if (lendersError) {
-            console.error('Error inserting lenders:', lendersError);
-          }
-        }
-      }
-
-      // Refetch after seeding
-      await fetchDeals();
-    } catch (err) {
-      console.error('Error seeding deals:', err);
-      setDeals(mockDeals);
-      setIsLoading(false);
-    }
-  };
+  }, [userId]);
 
   // Create a new deal
   const createDeal = useCallback(async (dealData: Partial<Deal>): Promise<Deal | null> => {
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to create a deal",
+        variant: "destructive",
+      });
+      return null;
+    }
+
     try {
       const { data, error } = await supabase
         .from('deals')
@@ -174,6 +148,7 @@ export function useDealsDatabase() {
           engagement_type: dealData.engagementType || 'guided',
           manager: dealData.manager || 'Paz',
           referred_by: dealData.referredBy?.name || null,
+          user_id: userId,
         })
         .select()
         .single();
@@ -208,7 +183,7 @@ export function useDealsDatabase() {
       });
       return null;
     }
-  }, []);
+  }, [userId]);
 
   // Update a deal (optimistic)
   const updateDeal = useCallback(async (dealId: string, updates: Partial<Deal>) => {
@@ -424,7 +399,6 @@ export function useDealsDatabase() {
           table: 'deals'
         },
         () => {
-          // Refetch all deals when any change occurs
           fetchDeals();
         }
       )
@@ -441,7 +415,6 @@ export function useDealsDatabase() {
           table: 'deal_lenders'
         },
         () => {
-          // Refetch all deals when lenders change
           fetchDeals();
         }
       )
