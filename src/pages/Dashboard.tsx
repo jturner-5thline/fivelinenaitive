@@ -1,7 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { Download, FileText, ChevronDown } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DealFilters } from '@/components/dashboard/DealFilters';
 import { DealsList } from '@/components/dashboard/DealsList';
@@ -25,20 +24,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const { deals: allDeals, isLoading, refreshDeals } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   
@@ -53,19 +43,6 @@ export default function Dashboard() {
     updateFilters,
     toggleSort,
   } = useDeals();
-
-  const dealsForExport = useMemo(() => {
-    return deals.filter(deal => {
-      const dealDate = new Date(deal.createdAt);
-      if (dateFrom && dealDate < dateFrom) return false;
-      if (dateTo && dealDate > dateTo) return false;
-      return true;
-    });
-  }, [deals, dateFrom, dateTo]);
-
-  const dateRangeLabel = dateFrom || dateTo
-    ? `${dateFrom ? format(dateFrom, 'MMM d') : 'Start'} - ${dateTo ? format(dateTo, 'MMM d') : 'End'}`
-    : 'All dates';
 
   return (
     <>
@@ -91,49 +68,6 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent">5th Line</h1>
                 <div className="flex items-center gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <CalendarIcon className="h-4 w-4" />
-                        {dateRangeLabel}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-4" align="end">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">From</Label>
-                          <Calendar
-                            mode="single"
-                            selected={dateFrom}
-                            onSelect={setDateFrom}
-                            className={cn("p-0 pointer-events-auto")}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">To</Label>
-                          <Calendar
-                            mode="single"
-                            selected={dateTo}
-                            onSelect={setDateTo}
-                            className={cn("p-0 pointer-events-auto")}
-                          />
-                        </div>
-                        {(dateFrom || dateTo) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              setDateFrom(undefined);
-                              setDateTo(undefined);
-                            }}
-                          >
-                            Clear dates
-                          </Button>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-2">
@@ -144,22 +78,22 @@ export default function Dashboard() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => {
-                        exportPipelineToCSV(dealsForExport);
-                        toast({ title: "CSV exported", description: `${dealsForExport.length} deals exported to CSV.` });
+                        exportPipelineToCSV(deals);
+                        toast({ title: "CSV exported", description: `${deals.length} deals exported to CSV.` });
                       }}>
                         <FileText className="h-4 w-4 mr-2" />
                         Export as CSV
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
-                        exportPipelineToPDF(dealsForExport);
-                        toast({ title: "PDF exported", description: `${dealsForExport.length} deals exported to PDF.` });
+                        exportPipelineToPDF(deals);
+                        toast({ title: "PDF exported", description: `${deals.length} deals exported to PDF.` });
                       }}>
                         <FileText className="h-4 w-4 mr-2" />
                         Export as PDF
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={async () => {
-                        await exportPipelineToWord(dealsForExport);
-                        toast({ title: "Word document exported", description: `${dealsForExport.length} deals exported to Word.` });
+                        await exportPipelineToWord(deals);
+                        toast({ title: "Word document exported", description: `${deals.length} deals exported to Word.` });
                       }}>
                         <FileText className="h-4 w-4 mr-2" />
                         Export as Word
