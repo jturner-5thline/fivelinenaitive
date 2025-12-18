@@ -43,7 +43,7 @@ export const Header = () => {
           <Button variant="ghost" size="sm">
             Sign In
           </Button>
-          <Button size="sm" asChild>
+          <Button variant="gradient" size="sm" asChild>
             <Link to="/dashboard">Get Started</Link>
           </Button>
         </div>
@@ -76,7 +76,7 @@ export const Header = () => {
               <Button variant="outline" className="w-full">
                 Sign In
               </Button>
-              <Button className="w-full">
+              <Button variant="gradient" className="w-full">
                 Get Started
               </Button>
             </div>

@@ -198,7 +198,7 @@ export function LenderSubstagesSettings() {
             </CardTitle>
             <CardDescription>Configure milestone options for more detailed lender tracking. Drag to reorder.</CardDescription>
           </div>
-          <Button onClick={openAddDialog} size="sm" className="gap-1">
+          <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
             <Plus className="h-4 w-4" />
             Add Milestone
           </Button>
@@ -252,7 +252,7 @@ export function LenderSubstagesSettings() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button variant="gradient" onClick={handleSubmit}>
               {editingSubstage ? 'Save Changes' : 'Add Milestone'}
             </Button>
           </DialogFooter>

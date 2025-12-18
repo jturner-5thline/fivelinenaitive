@@ -173,7 +173,7 @@ export function PassReasonsSettings() {
             <XCircle className="h-5 w-5 text-red-500" />
             <CardTitle>Pass Reasons</CardTitle>
           </div>
-          <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+          <Button variant="gradient" size="sm" onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add Reason
           </Button>
@@ -234,7 +234,7 @@ export function PassReasonsSettings() {
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddReason} disabled={!newReasonLabel.trim()}>
+            <Button variant="gradient" onClick={handleAddReason} disabled={!newReasonLabel.trim()}>
               Add Reason
             </Button>
           </DialogFooter>
@@ -263,7 +263,7 @@ export function PassReasonsSettings() {
             <Button variant="outline" onClick={() => setEditingReason(null)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateReason} disabled={!newReasonLabel.trim()}>
+            <Button variant="gradient" onClick={handleUpdateReason} disabled={!newReasonLabel.trim()}>
               Save Changes
             </Button>
           </DialogFooter>
