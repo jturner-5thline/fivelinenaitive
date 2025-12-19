@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -39,10 +39,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
+import { useAuth } from '@/contexts/AuthContext';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 
@@ -84,7 +91,11 @@ const emptyForm: LenderForm = {
 export default function Lenders() {
   const { lenders, addLender, updateLender, deleteLender } = useLenders();
   const { deals } = useDealsContext();
-  const { getLenderSummary } = useLenderAttachmentsSummary();
+  const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
+  const { user } = useAuth();
+  const quickUploadRef = useRef<HTMLInputElement>(null);
+  const [quickUploadTarget, setQuickUploadTarget] = useState<{ lenderName: string; category: 'nda' | 'marketing_materials' } | null>(null);
+  const [isQuickUploading, setIsQuickUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLender, setEditingLender] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
@@ -314,12 +325,74 @@ export default function Lenders() {
     event.target.value = '';
   };
 
+  const handleQuickUpload = (lenderName: string, category: 'nda' | 'marketing_materials') => {
+    if (!user) {
+      toast({ title: 'Please log in', description: 'You need to be logged in to upload files.', variant: 'destructive' });
+      return;
+    }
+    setQuickUploadTarget({ lenderName, category });
+    setTimeout(() => quickUploadRef.current?.click(), 0);
+  };
+
+  const handleQuickUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !quickUploadTarget || !user) return;
+
+    setIsQuickUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${user.id}/${quickUploadTarget.lenderName}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('lender-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase
+        .from('lender_attachments')
+        .insert({
+          user_id: user.id,
+          lender_name: quickUploadTarget.lenderName,
+          name: file.name,
+          file_path: filePath,
+          content_type: file.type,
+          size_bytes: file.size,
+          category: quickUploadTarget.category,
+        });
+
+      if (dbError) throw dbError;
+
+      toast({ 
+        title: 'File uploaded', 
+        description: `${quickUploadTarget.category === 'nda' ? 'NDA' : 'Marketing materials'} uploaded for ${quickUploadTarget.lenderName}.` 
+      });
+      refetchAttachmentSummaries();
+    } catch (error) {
+      console.error('Quick upload error:', error);
+      toast({ title: 'Upload failed', description: 'Could not upload the file.', variant: 'destructive' });
+    } finally {
+      setIsQuickUploading(false);
+      setQuickUploadTarget(null);
+      if (quickUploadRef.current) quickUploadRef.current.value = '';
+    }
+  };
+
   return (
     <>
       <Helmet>
         <title>Lenders - nAItive</title>
         <meta name="description" content="Manage your lender directory" />
       </Helmet>
+
+      {/* Hidden file input for quick uploads */}
+      <input
+        type="file"
+        ref={quickUploadRef}
+        onChange={handleQuickUploadChange}
+        className="hidden"
+      />
 
       <div className="min-h-screen bg-background">
         <DashboardHeader />
@@ -509,6 +582,32 @@ export default function Lenders() {
                           )}
                         </div>
                         <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                disabled={isQuickUploading && quickUploadTarget?.lenderName === lender.name}
+                              >
+                                {isQuickUploading && quickUploadTarget?.lenderName === lender.name ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Upload className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleQuickUpload(lender.name, 'nda')}>
+                                <FileCheck className="h-4 w-4 mr-2" />
+                                Upload NDA
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleQuickUpload(lender.name, 'marketing_materials')}>
+                                <Megaphone className="h-4 w-4 mr-2" />
+                                Upload Marketing Materials
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -558,6 +657,32 @@ export default function Lenders() {
                         onClick={() => openLenderDetail(lender)}
                       >
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                disabled={isQuickUploading && quickUploadTarget?.lenderName === lender.name}
+                              >
+                                {isQuickUploading && quickUploadTarget?.lenderName === lender.name ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Upload className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleQuickUpload(lender.name, 'nda')}>
+                                <FileCheck className="h-4 w-4 mr-2" />
+                                Upload NDA
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleQuickUpload(lender.name, 'marketing_materials')}>
+                                <Megaphone className="h-4 w-4 mr-2" />
+                                Upload Marketing Materials
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Button
                             variant="ghost"
                             size="icon"
