@@ -252,8 +252,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
             reason: dealLender.passReason,
           });
           activeAndPassedDealIds.add(deal.id);
-        } else if (dealLender.trackingStatus === 'active' && dealLender.stage !== 'Passed') {
-          // Only add to active if stage is NOT "Passed"
+        } else if (dealLender.trackingStatus === 'active' && dealLender.stage?.toLowerCase() !== 'passed') {
+          // Only add to active if stage is NOT "Passed" (case-insensitive)
           active.push({
             dealId: deal.id,
             dealName: deal.name,
