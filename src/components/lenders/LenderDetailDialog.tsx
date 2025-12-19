@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useLenderAttachments, LenderAttachment } from '@/hooks/useLenderAttachments';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LenderInfo {
   name: string;
@@ -31,13 +33,39 @@ interface LenderDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailDialogProps) {
   const { deals } = useDealsContext();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { attachments, isLoading: isLoadingAttachments, uploadAttachment, deleteAttachment } = useLenderAttachments(
+    open ? lender?.name ?? null : null
+  );
 
   const handleNavigateToDeal = (dealId: string) => {
     onOpenChange(false);
     navigate(`/deals/${dealId}`);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await uploadAttachment(file);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteAttachment = async (attachment: LenderAttachment) => {
+    await deleteAttachment(attachment);
   };
 
   // Find all deals where this lender is involved
@@ -179,6 +207,77 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
             </section>
 
             <Separator />
+
+            {/* Attachments Section */}
+            {user && (
+              <>
+                <section>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                      <Paperclip className="h-4 w-4" />
+                      Attachments ({attachments.length})
+                    </h3>
+                    <div>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {isLoadingAttachments ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : attachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {attachments.map((attachment) => (
+                        <div
+                          key={attachment.id}
+                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group"
+                        >
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 flex-1 min-w-0 hover:text-primary"
+                          >
+                            <FileText className="h-4 w-4 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{attachment.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatFileSize(attachment.size_bytes)}
+                              </p>
+                            </div>
+                          </a>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteAttachment(attachment)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No attachments uploaded</p>
+                  )}
+                </section>
+                <Separator />
+              </>
+            )}
 
             {/* Active Deals */}
             <section>
