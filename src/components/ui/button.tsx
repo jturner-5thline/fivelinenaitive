@@ -9,17 +9,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-brand-gradient hover:shadow-[0_0_20px_rgba(134,30,129,0.3)]",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-brand-gradient hover:shadow-[0_0_20px_hsl(292,46%,72%,0.4)]",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm hover:shadow-[0_0_15px_rgba(239,68,68,0.25)]",
-        outline: "border border-input bg-background hover:bg-brand-gradient/10 hover:border-brand/30 hover:shadow-[0_0_15px_rgba(134,30,129,0.15)]",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-brand-gradient/10 hover:shadow-[0_0_15px_rgba(134,30,129,0.15)]",
-        ghost: "hover:bg-brand-gradient/10 hover:shadow-[0_0_12px_rgba(134,30,129,0.1)]",
+        outline: "border border-input bg-background hover:bg-brand-gradient/10 hover:border-[hsl(292,46%,72%)]/40 hover:shadow-[0_0_15px_hsl(292,46%,72%,0.2)]",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-brand-gradient/10 hover:shadow-[0_0_15px_hsl(292,46%,72%,0.2)]",
+        ghost: "hover:bg-brand-gradient/10 hover:shadow-[0_0_12px_hsl(292,46%,72%,0.15)]",
         link: "text-primary underline-offset-4 hover:underline hover:scale-100",
-        accent: "bg-accent text-accent-foreground hover:bg-brand-gradient hover:text-white shadow-sm hover:shadow-[0_0_20px_rgba(134,30,129,0.3)]",
+        accent: "bg-accent text-accent-foreground hover:bg-brand-gradient hover:text-white shadow-sm hover:shadow-[0_0_20px_hsl(292,46%,72%,0.4)]",
         success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]",
-        hero: "bg-primary text-primary-foreground hover:bg-brand-gradient shadow-lg hover:shadow-[0_4px_25px_rgba(134,30,129,0.4)] hover:-translate-y-0.5",
-        "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-brand-gradient/10 hover:border-brand/50 hover:shadow-[0_0_20px_rgba(134,30,129,0.2)]",
-        gradient: "bg-brand-gradient text-white hover:bg-brand-gradient-hover shadow-sm hover:shadow-[0_0_25px_rgba(134,30,129,0.4)]",
+        hero: "bg-primary text-primary-foreground hover:bg-brand-gradient shadow-lg hover:shadow-[0_4px_25px_hsl(292,46%,72%,0.5)] hover:-translate-y-0.5",
+        "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-brand-gradient/10 hover:border-[hsl(292,46%,72%)]/60 hover:shadow-[0_0_20px_hsl(292,46%,72%,0.3)]",
+        gradient: "bg-brand-gradient text-white hover:bg-brand-gradient-hover shadow-sm hover:shadow-[0_0_25px_hsl(292,46%,72%,0.5)]",
       },
       size: {
         default: "h-10 px-4 py-2",
