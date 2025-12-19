@@ -15,6 +15,13 @@ interface Profile {
   company_url: string | null;
   company_size: string | null;
   company_role: string | null;
+  email_notifications: boolean;
+  deal_updates_email: boolean;
+  lender_updates_email: boolean;
+  weekly_summary_email: boolean;
+  in_app_notifications: boolean;
+  deal_updates_app: boolean;
+  lender_updates_app: boolean;
   created_at: string;
   updated_at: string;
 }
