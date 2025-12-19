@@ -1838,7 +1838,7 @@ export default function DealDetail() {
                         Hours
                       </span>
                       <div className="text-right">
-                        <span className="font-medium text-purple-600 text-sm">
+                        <span className="font-medium text-sm bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
                           {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}h
                         </span>
                         <p className="text-xs text-muted-foreground">
@@ -1876,7 +1876,7 @@ export default function DealDetail() {
                       </div>
                       <div className="flex items-center justify-between pt-1 border-t border-border/30">
                         <span className="text-muted-foreground text-sm font-medium">Total Hours</span>
-                        <span className="font-medium text-purple-600">
+                        <span className="font-medium bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
                           {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}
                         </span>
                       </div>
