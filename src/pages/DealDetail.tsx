@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle } from 'lucide-react';
+import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -1825,18 +1826,25 @@ export default function DealDetail() {
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Referred by</span>
-                    {deal.referredBy ? (
-                      <button
-                        className="font-medium text-purple-600 hover:underline cursor-pointer"
-                        onClick={() => setSelectedReferrer(deal.referredBy!)}
-                      >
-                        {deal.referredBy.name}
-                      </button>
-                    ) : (
-                      <span className="text-muted-foreground italic text-sm">Not set</span>
-                    )}
+                  <div className="space-y-1.5">
+                    <span className="text-muted-foreground text-sm">Referred by</span>
+                    <ReferralSourceInput
+                      value={deal.referredBy}
+                      onChange={(referrer) => {
+                        setDeal(prev => {
+                          if (!prev) return prev;
+                          return { 
+                            ...prev, 
+                            referredBy: referrer || undefined,
+                            updatedAt: new Date().toISOString() 
+                          };
+                        });
+                        // Persist to database
+                        if (deal.id) {
+                          updateDealInDb(deal.id, { referredBy: referrer?.name || null } as any);
+                        }
+                      }}
+                    />
                   </div>
                   
                   {/* Hours Section */}
