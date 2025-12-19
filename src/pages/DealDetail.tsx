@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -248,6 +248,7 @@ export default function DealDetail() {
     newStageId: string;
   } | null>(null);
   const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
+  const [passReasonSearch, setPassReasonSearch] = useState('');
   
   const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string; category: 'term-sheets' | 'credit-file' | 'reports' }[]>([
     { id: '1', name: 'Term Sheet v2.pdf', type: 'pdf', size: '245 KB', uploadedAt: '2024-01-18', category: 'term-sheets' },
@@ -2205,15 +2206,27 @@ export default function DealDetail() {
           setPassReasonDialogOpen(false);
           setPendingPassStageChange(null);
           setSelectedPassReason(null);
+          setPassReasonSearch('');
         }
       }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Why is this lender being passed?</DialogTitle>
           </DialogHeader>
-          <div className="py-2">
+          <div className="py-2 space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search pass reasons..."
+                value={passReasonSearch}
+                onChange={(e) => setPassReasonSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <div className="grid grid-cols-3 gap-2 max-h-[50vh] overflow-auto pr-1">
-              {passReasons.map((reason) => (
+              {passReasons
+                .filter((reason) => reason.label.toLowerCase().includes(passReasonSearch.toLowerCase()))
+                .map((reason) => (
                 <Button
                   key={reason.id}
                   type="button"
@@ -2227,6 +2240,11 @@ export default function DealDetail() {
               {passReasons.length === 0 && (
                 <p className="col-span-3 text-sm text-muted-foreground text-center py-4">
                   No pass reasons configured. Add them in Settings.
+                </p>
+              )}
+              {passReasons.length > 0 && passReasons.filter((r) => r.label.toLowerCase().includes(passReasonSearch.toLowerCase())).length === 0 && (
+                <p className="col-span-3 text-sm text-muted-foreground text-center py-4">
+                  No pass reasons match your search
                 </p>
               )}
             </div>
