@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { CompanySettings } from '@/components/settings/CompanySettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { SecuritySettings } from '@/components/settings/SecuritySettings';
 
 export default function Account() {
   return (
@@ -35,6 +36,8 @@ export default function Account() {
             <ProfileSettings />
 
             <CompanySettings />
+
+            <SecuritySettings />
 
             <NotificationSettings />
           </div>
