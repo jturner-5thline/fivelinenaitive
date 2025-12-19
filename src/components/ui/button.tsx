@@ -5,21 +5,21 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:scale-[1.02] active:scale-[0.98]",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:scale-[1.02] active:scale-[0.98]",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-brand-gradient hover:shadow-[0_0_20px_hsl(292,46%,72%,0.4)] dark:hover:shadow-none dark:hover:ring-2 dark:hover:ring-[hsl(292,46%,72%)]",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-brand-gradient hover:shadow-[0_0_20px_hsl(292,46%,72%,0.4)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm hover:shadow-[0_0_15px_rgba(239,68,68,0.25)]",
-        outline: "border border-input bg-background hover:bg-brand-gradient/10 hover:border-[hsl(292,46%,72%)]/40 hover:shadow-[0_0_15px_hsl(292,46%,72%,0.2)] dark:hover:shadow-none dark:hover:border-[hsl(292,46%,72%)] dark:hover:border-2",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-brand-gradient/10 hover:shadow-[0_0_15px_hsl(292,46%,72%,0.2)] dark:hover:shadow-none dark:hover:ring-2 dark:hover:ring-[hsl(292,46%,72%)]",
+        outline: "border border-input bg-background hover:bg-brand-gradient/10 hover:border-[hsl(292,46%,72%)]/40 hover:shadow-[0_0_15px_hsl(292,46%,72%,0.2)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-brand-gradient/10 hover:shadow-[0_0_15px_hsl(292,46%,72%,0.2)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
         ghost: "hover:bg-brand-gradient/10 hover:shadow-[0_0_12px_hsl(292,46%,72%,0.15)] dark:hover:shadow-none",
         link: "text-primary underline-offset-4 hover:underline hover:scale-100",
-        accent: "bg-accent text-accent-foreground hover:bg-brand-gradient hover:text-white shadow-sm hover:shadow-[0_0_20px_hsl(292,46%,72%,0.4)] dark:hover:shadow-none dark:hover:ring-2 dark:hover:ring-[hsl(292,46%,72%)]",
+        accent: "bg-accent text-accent-foreground hover:bg-brand-gradient hover:text-white shadow-sm hover:shadow-[0_0_20px_hsl(292,46%,72%,0.4)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
         success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]",
-        hero: "bg-primary text-primary-foreground hover:bg-brand-gradient shadow-lg hover:shadow-[0_4px_25px_hsl(292,46%,72%,0.5)] hover:-translate-y-0.5 dark:hover:shadow-none dark:hover:ring-2 dark:hover:ring-[hsl(292,46%,72%)]",
-        "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-brand-gradient/10 hover:border-[hsl(292,46%,72%)]/60 hover:shadow-[0_0_20px_hsl(292,46%,72%,0.3)] dark:hover:shadow-none dark:hover:border-[hsl(292,46%,72%)]",
-        gradient: "bg-brand-gradient text-white hover:bg-brand-gradient-hover shadow-sm hover:shadow-[0_0_25px_hsl(292,46%,72%,0.5)] dark:hover:shadow-none dark:hover:ring-2 dark:hover:ring-[hsl(292,46%,72%)]",
+        hero: "bg-primary text-primary-foreground hover:bg-brand-gradient shadow-lg hover:shadow-[0_4px_25px_hsl(292,46%,72%,0.5)] hover:-translate-y-0.5 dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
+        "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-brand-gradient/10 hover:border-[hsl(292,46%,72%)]/60 hover:shadow-[0_0_20px_hsl(292,46%,72%,0.3)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
+        gradient: "bg-brand-gradient text-white hover:bg-brand-gradient-hover shadow-sm hover:shadow-[0_0_25px_hsl(292,46%,72%,0.5)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
       },
       size: {
         default: "h-10 px-4 py-2",
