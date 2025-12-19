@@ -9,6 +9,12 @@ interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   onboarding_completed: boolean;
+  phone: string | null;
+  company_name: string | null;
+  backup_email: string | null;
+  company_url: string | null;
+  company_size: string | null;
+  company_role: string | null;
   created_at: string;
   updated_at: string;
 }

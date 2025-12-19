@@ -17,6 +17,7 @@ import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import DealDetail from "./pages/DealDetail";
 import Settings from "./pages/Settings";
@@ -47,6 +48,9 @@ const App = () => (
                         <Routes>
                           <Route path="/" element={<Index />} />
                           <Route path="/login" element={<Auth />} />
+                          <Route path="/onboarding" element={
+                            <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
+                          } />
                           <Route path="/dashboard" element={
                             <ProtectedRoute><Dashboard /></ProtectedRoute>
                           } />

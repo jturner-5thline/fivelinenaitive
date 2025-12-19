@@ -297,28 +297,46 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          backup_email: string | null
+          company_name: string | null
+          company_role: string | null
+          company_size: string | null
+          company_url: string | null
           created_at: string
           display_name: string | null
           id: string
           onboarding_completed: boolean
+          phone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          backup_email?: string | null
+          company_name?: string | null
+          company_role?: string | null
+          company_size?: string | null
+          company_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
           onboarding_completed?: boolean
+          phone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          backup_email?: string | null
+          company_name?: string | null
+          company_role?: string | null
+          company_size?: string | null
+          company_url?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
           onboarding_completed?: boolean
+          phone?: string | null
           updated_at?: string
           user_id?: string
         }

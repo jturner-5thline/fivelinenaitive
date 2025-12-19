@@ -1,13 +1,18 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  skipOnboarding?: boolean;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+export function ProtectedRoute({ children, skipOnboarding = false }: ProtectedRouteProps) {
+  const { user, isLoading: authLoading } = useAuth();
+  const { profile, isLoading: profileLoading } = useProfile();
+
+  const isLoading = authLoading || profileLoading;
 
   if (isLoading) {
     return (
@@ -23,6 +28,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Redirect to onboarding if not completed (unless skipOnboarding is true)
+  if (!skipOnboarding && profile && !profile.onboarding_completed) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <>{children}</>;
