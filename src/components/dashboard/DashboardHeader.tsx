@@ -110,7 +110,7 @@ export function DashboardHeader() {
               variant="ghost" 
               size="sm" 
               className={location.pathname === '/dashboard' 
-                ? "bg-brand-gradient/15 text-foreground" 
+                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
                 : "text-muted-foreground"
               } 
               asChild
@@ -121,7 +121,7 @@ export function DashboardHeader() {
               variant="ghost" 
               size="sm" 
               className={location.pathname === '/lenders' 
-                ? "bg-brand-gradient/15 text-foreground" 
+                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
                 : "text-muted-foreground"
               } 
               asChild
@@ -132,7 +132,7 @@ export function DashboardHeader() {
               variant="ghost" 
               size="sm" 
               className={location.pathname === '/analytics' 
-                ? "bg-brand-gradient/15 text-foreground" 
+                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
                 : "text-muted-foreground"
               } 
               asChild
