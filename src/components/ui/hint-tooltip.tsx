@@ -63,9 +63,9 @@ export function HintTooltip({
             alignClasses[align]
           )}
         >
-          <div className="relative flex items-start gap-2 rounded-lg bg-primary/90 px-3 py-2 text-primary-foreground shadow-lg backdrop-blur-sm max-w-[280px]">
-            <Lightbulb className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <p className="text-sm leading-relaxed">{hint}</p>
+          <div className="relative flex items-center gap-2 rounded-lg bg-primary/90 px-3 py-1.5 text-primary-foreground shadow-lg backdrop-blur-sm whitespace-nowrap">
+            <Lightbulb className="h-3.5 w-3.5 flex-shrink-0" />
+            <p className="text-xs">{hint}</p>
             <button
               onClick={(e) => {
                 e.stopPropagation();
