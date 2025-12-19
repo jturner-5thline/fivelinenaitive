@@ -18,6 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
 import { useAuth } from '@/contexts/AuthContext';
@@ -552,15 +557,23 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
               {lenderDeals.active.length > 0 ? (
                 <HorizontalScrollContainer>
                   {lenderDeals.active.map((deal) => (
-                    <div 
-                      key={deal.dealId} 
-                      className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
-                      onClick={() => handleNavigateToDeal(deal.dealId)}
-                    >
-                      <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
-                      <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
-                      <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                    </div>
+                    <Tooltip key={deal.dealId}>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                          onClick={() => handleNavigateToDeal(deal.dealId)}
+                        >
+                          <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
+                          <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+                          <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[200px]">
+                        <p className="font-medium">{deal.company}</p>
+                        <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+                        {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
+                      </TooltipContent>
+                    </Tooltip>
                   ))}
                 </HorizontalScrollContainer>
               ) : (
@@ -579,15 +592,23 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
               {lenderDeals.sent.length > 0 ? (
                 <HorizontalScrollContainer>
                   {lenderDeals.sent.map((deal) => (
-                    <div 
-                      key={deal.dealId} 
-                      className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
-                      onClick={() => handleNavigateToDeal(deal.dealId)}
-                    >
-                      <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
-                      <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
-                      <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                    </div>
+                    <Tooltip key={deal.dealId}>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                          onClick={() => handleNavigateToDeal(deal.dealId)}
+                        >
+                          <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
+                          <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+                          <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[200px]">
+                        <p className="font-medium">{deal.company}</p>
+                        <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+                        {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
+                      </TooltipContent>
+                    </Tooltip>
                   ))}
                 </HorizontalScrollContainer>
               ) : (
@@ -606,14 +627,21 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
               {lenderDeals.passReasons.length > 0 ? (
                 <HorizontalScrollContainer>
                   {lenderDeals.passReasons.map((item) => (
-                    <div 
-                      key={item.dealId} 
-                      className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
-                      onClick={() => handleNavigateToDeal(item.dealId)}
-                    >
-                      <p className="font-medium text-sm truncate mb-1">{item.company}</p>
-                      <p className="text-xs text-destructive/80 line-clamp-2">{item.reason}</p>
-                    </div>
+                    <Tooltip key={item.dealId}>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                          onClick={() => handleNavigateToDeal(item.dealId)}
+                        >
+                          <p className="font-medium text-sm truncate mb-1">{item.company}</p>
+                          <p className="text-xs text-destructive/80 line-clamp-2">{item.reason}</p>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[200px]">
+                        <p className="font-medium">{item.company}</p>
+                        <p className="text-xs text-muted-foreground">Reason: {item.reason}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   ))}
                 </HorizontalScrollContainer>
               ) : (
