@@ -42,7 +42,7 @@ export default function Preferences() {
 
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-semibold">Preferences</h1>
+              <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">Preferences</h1>
               <p className="text-muted-foreground">Customize your experience</p>
             </div>
 

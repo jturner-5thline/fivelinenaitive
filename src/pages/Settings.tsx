@@ -30,7 +30,7 @@ export default function Settings() {
 
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-semibold">Settings</h1>
+              <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">Settings</h1>
               <p className="text-muted-foreground">Manage your application settings</p>
             </div>
 
