@@ -13,13 +13,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface LendersKanbanProps {
   lenders: DealLender[];
@@ -253,26 +246,23 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
 
       {/* Pass Reason Dialog */}
       <Dialog open={passReasonDialogOpen} onOpenChange={(open) => !open && handleCancelPass()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Select Pass Reason for {pendingLenderName}</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <Select
-              value={selectedPassReason || ''}
-              onValueChange={setSelectedPassReason}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a pass reason..." />
-              </SelectTrigger>
-              <SelectContent>
-                {passReasons.map((reason) => (
-                  <SelectItem key={reason.id} value={reason.label}>
-                    {reason.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="py-2">
+            <div className="grid grid-cols-3 gap-2">
+              {passReasons.map((reason) => (
+                <Button
+                  key={reason.id}
+                  variant={selectedPassReason === reason.label ? "default" : "outline"}
+                  className="h-auto py-2 px-3 text-sm justify-start"
+                  onClick={() => setSelectedPassReason(reason.label)}
+                >
+                  {reason.label}
+                </Button>
+              ))}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCancelPass}>
