@@ -647,7 +647,16 @@ export default function DealDetail() {
       if (!prev) return prev;
       // Save current state to history before updating
       setEditHistory(history => [...history, { deal: prev, field, timestamp: new Date() }]);
-      const updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
+      let updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
+      
+      // Auto-calculate total fee when success fee percent or deal value changes
+      if (field === 'successFeePercent' || field === 'value') {
+        const dealValue = field === 'value' ? (value as number) : prev.value;
+        const successPercent = field === 'successFeePercent' ? (value as number | undefined) : prev.successFeePercent;
+        if (dealValue && successPercent) {
+          updated.totalFee = (successPercent / 100) * dealValue;
+        }
+      }
       
       // Log activity for significant changes
       const oldValue = prev[field];
