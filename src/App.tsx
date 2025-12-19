@@ -25,6 +25,7 @@ import Account from "./pages/Account";
 import Lenders from "./pages/Lenders";
 import Preferences from "./pages/Preferences";
 import Analytics from "./pages/Analytics";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,9 @@ const App = () => (
                           } />
                           <Route path="/analytics" element={
                             <ProtectedRoute><Analytics /></ProtectedRoute>
+                          } />
+                          <Route path="/reports" element={
+                            <ProtectedRoute><Reports /></ProtectedRoute>
                           } />
                           <Route path="/deal/:id" element={
                             <ProtectedRoute><DealDetail /></ProtectedRoute>
