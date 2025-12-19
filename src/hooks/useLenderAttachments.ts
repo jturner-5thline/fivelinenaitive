@@ -3,6 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+export const LENDER_ATTACHMENT_CATEGORIES = [
+  { value: 'general', label: 'General' },
+  { value: 'contracts', label: 'Contracts' },
+  { value: 'presentations', label: 'Presentations' },
+  { value: 'due_diligence', label: 'Due Diligence' },
+  { value: 'term_sheets', label: 'Term Sheets' },
+  { value: 'correspondence', label: 'Correspondence' },
+] as const;
+
+export type LenderAttachmentCategory = typeof LENDER_ATTACHMENT_CATEGORIES[number]['value'];
+
 export interface LenderAttachment {
   id: string;
   lender_name: string;
@@ -11,6 +22,7 @@ export interface LenderAttachment {
   content_type: string | null;
   size_bytes: number;
   created_at: string;
+  category: LenderAttachmentCategory;
   url?: string;
 }
 
@@ -41,7 +53,11 @@ export function useLenderAttachments(lenderName: string | null) {
         const { data: urlData } = supabase.storage
           .from('lender-attachments')
           .getPublicUrl(att.file_path);
-        return { ...att, url: urlData.publicUrl };
+        return { 
+          ...att, 
+          url: urlData.publicUrl,
+          category: att.category as LenderAttachmentCategory 
+        };
       });
 
       setAttachments(attachmentsWithUrls);
@@ -56,7 +72,7 @@ export function useLenderAttachments(lenderName: string | null) {
     fetchAttachments();
   }, [fetchAttachments]);
 
-  const uploadAttachment = async (file: File) => {
+  const uploadAttachment = async (file: File, category: LenderAttachmentCategory = 'general') => {
     if (!user || !lenderName) {
       toast.error('Please log in to upload attachments');
       return null;
@@ -84,6 +100,7 @@ export function useLenderAttachments(lenderName: string | null) {
           file_path: filePath,
           content_type: file.type,
           size_bytes: file.size,
+          category,
         })
         .select()
         .single();

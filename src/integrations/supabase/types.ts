@@ -188,6 +188,7 @@ export type Database = {
       }
       lender_attachments: {
         Row: {
+          category: string
           content_type: string | null
           created_at: string
           file_path: string
@@ -198,6 +199,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category?: string
           content_type?: string | null
           created_at?: string
           file_path: string
@@ -208,6 +210,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category?: string
           content_type?: string | null
           created_at?: string
           file_path?: string
