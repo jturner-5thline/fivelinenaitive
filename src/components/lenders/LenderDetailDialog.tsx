@@ -157,7 +157,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
 
   const handleNavigateToDeal = (dealId: string) => {
     onOpenChange(false);
-    navigate(`/deals/${dealId}`);
+    navigate(`/deal/${dealId}`);
   };
 
   const handleUpload = async (file: File, category: LenderAttachmentCategory) => {
