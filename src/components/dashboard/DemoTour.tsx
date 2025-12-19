@@ -18,7 +18,7 @@ interface TourStep {
   icon: React.ReactNode;
 }
 
-const tourSteps: TourStep[] = [
+const demoTourSteps: TourStep[] = [
   {
     title: 'Welcome to the Demo!',
     description: 'This quick tour will show you the key features. You can explore freely with sample data—nothing you do here affects real accounts.',
@@ -46,8 +46,37 @@ const tourSteps: TourStep[] = [
   },
 ];
 
+const newUserTourSteps: TourStep[] = [
+  {
+    title: 'Welcome to nAItive!',
+    description: "You're all set up! Let's take a quick tour of the key features to help you get started with managing your deals.",
+    icon: <Sparkles className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Your Pipeline Dashboard',
+    description: 'This is your home base. View all deals, filter by status or type, and export data to CSV, PDF, or Word anytime.',
+    icon: <LayoutDashboard className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Track Your Performance',
+    description: 'Head to Analytics to see customizable charts and metrics. Create widget presets to quickly switch between different views.',
+    icon: <BarChart3 className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Create Your First Deal',
+    description: 'Ready to add a deal? Click "New Deal" in the header. You can track lenders, quotes, and progress all in one place.',
+    icon: <Plus className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Make It Yours',
+    description: 'Visit Settings to configure lender stages, deal types, and more. Use Preferences to personalize your dashboard layout and currency format.',
+    icon: <Settings2 className="h-8 w-8 text-primary" />,
+  },
+];
+
 export function DemoTour() {
   const [shouldShowTour, setShouldShowTour] = useState(false);
+  const [isDemoUser, setIsDemoUser] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -58,9 +87,10 @@ export function DemoTour() {
 
       // Check if user just completed onboarding
       const justCompletedOnboarding = sessionStorage.getItem('just-completed-onboarding');
-      const isDemoUser = user.email === 'demo@example.com';
+      const isDemo = user.email === 'demo@example.com';
+      setIsDemoUser(isDemo);
       
-      if (justCompletedOnboarding || isDemoUser) {
+      if (justCompletedOnboarding || isDemo) {
         setShouldShowTour(true);
         const tourCompleted = localStorage.getItem('tour-completed');
         if (!tourCompleted) {
@@ -81,6 +111,8 @@ export function DemoTour() {
     window.addEventListener('restart-demo-tour', handleRestartTour);
     return () => window.removeEventListener('restart-demo-tour', handleRestartTour);
   }, []);
+
+  const tourSteps = isDemoUser ? demoTourSteps : newUserTourSteps;
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
