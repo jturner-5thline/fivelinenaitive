@@ -10,6 +10,7 @@ import { LenderStagesSettings } from '@/components/settings/LenderStagesSettings
 import { LenderSubstagesSettings } from '@/components/settings/LenderSubstagesSettings';
 import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
 import { DealTypesSettings } from '@/components/settings/DealTypesSettings';
+import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 
 const SETTINGS_SECTIONS = [
   {
@@ -31,6 +32,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'deal-types',
     keywords: ['deal', 'types', 'type', 'category', 'classification'],
+  },
+  {
+    id: 'referral-sources',
+    keywords: ['referral', 'sources', 'source', 'referred', 'by', 'referrer'],
   },
   {
     id: 'preferences',
@@ -144,6 +149,8 @@ export default function Settings() {
             {isVisible('pass-reasons') && <PassReasonsSettings />}
 
             {isVisible('deal-types') && <DealTypesSettings />}
+
+            {isVisible('referral-sources') && <ReferralSourcesSettings />}
 
             {isVisible('preferences') && (
               <Card>
