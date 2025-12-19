@@ -12,7 +12,8 @@ import {
   Filter,
   FileSpreadsheet,
   FileType,
-  Loader2
+  Loader2,
+  CheckCircle
 } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { reportGenerators } from '@/utils/reportGenerator';
 
 interface ReportType {
   id: string;
@@ -162,18 +164,33 @@ export default function Reports() {
   const handleGenerateReport = async (reportId: string, formatType: 'pdf' | 'csv' | 'xlsx') => {
     setGeneratingReport(`${reportId}-${formatType}`);
     
-    // Simulate report generation
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
     const report = reportTypes.find(r => r.id === reportId);
     const { start, end } = getPeriodDates();
     
-    toast({
-      title: 'Report Generated',
-      description: `${report?.name} (${formatType.toUpperCase()}) for ${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')} is ready for download.`,
-    });
-    
-    setGeneratingReport(null);
+    try {
+      const generator = reportGenerators[reportId];
+      if (generator) {
+        generator(deals, {
+          title: report?.name || 'Report',
+          dateRange: { start, end },
+        }, formatType);
+        
+        toast({
+          title: 'Report Downloaded',
+          description: `${report?.name} (${formatType.toUpperCase()}) for ${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')} has been downloaded.`,
+        });
+      } else {
+        throw new Error('Report generator not found');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Export Failed',
+        description: error.message || 'Failed to generate report. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingReport(null);
+    }
   };
 
   const filteredReports = selectedCategory === 'all' 
