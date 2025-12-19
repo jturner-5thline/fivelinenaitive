@@ -186,6 +186,39 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          file_path: string
+          id: string
+          lender_name: string
+          name: string
+          size_bytes: number
+          user_id: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          file_path: string
+          id?: string
+          lender_name: string
+          name: string
+          size_bytes?: number
+          user_id: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          file_path?: string
+          id?: string
+          lender_name?: string
+          name?: string
+          size_bytes?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       outstanding_items: {
         Row: {
           created_at: string
