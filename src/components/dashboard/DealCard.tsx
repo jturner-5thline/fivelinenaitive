@@ -72,7 +72,7 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
 
   return (
     <Link to={`/deal/${deal.id}`} className="block h-full">
-      <Card className="group transition-all hover:shadow-md hover:border-primary/20 cursor-pointer h-full flex flex-col">
+      <Card className="group cursor-pointer h-full flex flex-col">
       <CardHeader className="space-y-0 pb-3">
         <div className="flex flex-row items-center justify-between">
           <h3 className="text-xl font-semibold text-foreground dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] dark:bg-clip-text dark:text-transparent leading-tight">{deal.company}</h3>
