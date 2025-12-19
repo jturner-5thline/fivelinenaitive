@@ -243,6 +243,30 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         .filter(m => m.total > 0)
         .map(m => ({ name: m.name, value: Math.round(m.revenuePerHour) }));
     
+    case 'deals-by-referral-source':
+      const referralCounts: Record<string, { count: number; value: number }> = {};
+      filteredDeals.forEach(deal => {
+        const sourceName = deal.referredBy?.name || 'Direct / No Referral';
+        if (!referralCounts[sourceName]) {
+          referralCounts[sourceName] = { count: 0, value: 0 };
+        }
+        referralCounts[sourceName].count++;
+        referralCounts[sourceName].value += deal.value || 0;
+      });
+      return Object.entries(referralCounts)
+        .map(([name, data]) => ({ name, value: data.count, dealValue: data.value }))
+        .sort((a, b) => b.value - a.value);
+    
+    case 'deal-value-by-referral-source':
+      const referralValues: Record<string, number> = {};
+      filteredDeals.forEach(deal => {
+        const sourceName = deal.referredBy?.name || 'Direct / No Referral';
+        referralValues[sourceName] = (referralValues[sourceName] || 0) + (deal.value || 0);
+      });
+      return Object.entries(referralValues)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+    
     default:
       return [
         { name: 'A', value: 10 },
@@ -266,6 +290,8 @@ const DATA_SOURCES = [
   { id: 'revenue-per-hour', label: 'Revenue per Hour ($/hr)' },
   { id: 'avg-hours-per-deal', label: 'Avg Hours per Deal' },
   { id: 'revenue-per-hour-by-manager', label: 'Revenue/Hour by Manager' },
+  { id: 'deals-by-referral-source', label: 'Deals by Referral Source' },
+  { id: 'deal-value-by-referral-source', label: 'Deal Value by Referral Source' },
 ];
 
 const CHART_COLORS = [
