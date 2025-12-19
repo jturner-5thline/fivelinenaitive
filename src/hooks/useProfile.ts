@@ -51,7 +51,7 @@ export function useProfile() {
     fetchProfile();
   }, [fetchProfile]);
 
-  const updateProfile = async (updates: { display_name?: string; avatar_url?: string; onboarding_completed?: boolean }, showToast = true) => {
+  const updateProfile = async (updates: Partial<Omit<Profile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>, showToast = true) => {
     if (!user) return;
 
     try {
