@@ -4,6 +4,8 @@ import { DealCard } from './DealCard';
 import { FileX, ChevronDown, ChevronRight } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
+import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 
 interface DealsListProps {
   deals: Deal[];
@@ -14,6 +16,7 @@ interface DealsListProps {
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
 export function DealsList({ deals, onStatusChange, groupByStatus = true }: DealsListProps) {
+  const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
 
   const toggleGroup = (status: DealStatus) => {
@@ -46,8 +49,24 @@ export function DealsList({ deals, onStatusChange, groupByStatus = true }: Deals
   if (!groupByStatus) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {deals.map((deal) => (
-          <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
+        {deals.map((deal, index) => (
+          index === 0 ? (
+            <HintTooltip
+              key={deal.id}
+              hint="Click any deal card to view details, manage lenders, and track progress."
+              visible={isHintVisible('deal-card')}
+              onDismiss={() => dismissHint('deal-card')}
+              side="right"
+              align="start"
+              showDelay={3500}
+            >
+              <div>
+                <DealCard deal={deal} onStatusChange={onStatusChange} />
+              </div>
+            </HintTooltip>
+          ) : (
+            <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
+          )
         ))}
       </div>
     );
@@ -92,9 +111,32 @@ export function DealsList({ deals, onStatusChange, groupByStatus = true }: Deals
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {statusDeals.map((deal) => (
-                  <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
-                ))}
+                {statusDeals.map((deal, index) => {
+                  // Show hint only on the very first deal card across all groups
+                  const isFirstDealOverall = groupedDeals[0].status === status && index === 0;
+                  
+                  if (isFirstDealOverall) {
+                    return (
+                      <HintTooltip
+                        key={deal.id}
+                        hint="Click any deal card to view details, manage lenders, and track progress."
+                        visible={isHintVisible('deal-card')}
+                        onDismiss={() => dismissHint('deal-card')}
+                        side="right"
+                        align="start"
+                        showDelay={3500}
+                      >
+                        <div>
+                          <DealCard deal={deal} onStatusChange={onStatusChange} />
+                        </div>
+                      </HintTooltip>
+                    );
+                  }
+                  
+                  return (
+                    <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
+                  );
+                })}
               </div>
             </CollapsibleContent>
           </Collapsible>

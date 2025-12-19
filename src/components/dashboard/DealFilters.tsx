@@ -15,6 +15,8 @@ import {
 } from '@/types/deal';
 import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
+import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 
 interface DealFiltersProps {
   filters: FilterType;
@@ -25,6 +27,7 @@ export function DealFilters({
   filters,
   onFilterChange,
 }: DealFiltersProps) {
+  const { isHintVisible, dismissHint } = useFirstTimeHints();
   const activeFiltersCount = [
     filters.stage.length > 0,
     filters.status.length > 0,
@@ -137,13 +140,22 @@ export function DealFilters({
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
-          <MultiSelectFilter
-            label="Stages"
-            options={stageOptions}
-            selected={filters.stage}
-            onChange={(stage) => onFilterChange({ stage: stage as DealStage[] })}
-            className="w-[150px]"
-          />
+          <HintTooltip
+            hint="Use these filters to quickly find deals by stage, status, manager, and more."
+            visible={isHintVisible('filters')}
+            onDismiss={() => dismissHint('filters')}
+            side="bottom"
+            align="start"
+            showDelay={2500}
+          >
+            <MultiSelectFilter
+              label="Stages"
+              options={stageOptions}
+              selected={filters.stage}
+              onChange={(stage) => onFilterChange({ stage: stage as DealStage[] })}
+              className="w-[150px]"
+            />
+          </HintTooltip>
 
           <MultiSelectFilter
             label="Statuses"

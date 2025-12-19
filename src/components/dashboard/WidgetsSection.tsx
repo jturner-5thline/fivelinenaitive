@@ -20,6 +20,8 @@ import { useWidgets, Widget, WidgetMetric } from '@/contexts/WidgetsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { WidgetCard } from './WidgetCard';
 import { WidgetEditor } from './WidgetEditor';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
+import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Deal } from '@/types/deal';
 
 interface WidgetsSectionProps {
@@ -29,6 +31,7 @@ interface WidgetsSectionProps {
 export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets } = useWidgets();
   const { formatCurrencyValue } = usePreferences();
+  const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<Widget | undefined>();
@@ -132,14 +135,23 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
             Add Widget
           </Button>
         )}
-        <Button
-          variant={isEditMode ? 'default' : 'ghost'}
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setIsEditMode(!isEditMode)}
+        <HintTooltip
+          hint="Click the gear icon to customize these widgets. Add, remove, or rearrange metrics to match your workflow."
+          visible={isHintVisible('widgets-section')}
+          onDismiss={() => dismissHint('widgets-section')}
+          side="left"
+          align="center"
+          showDelay={3000}
         >
-          <Settings2 className="h-4 w-4" />
-        </Button>
+          <Button
+            variant={isEditMode ? 'default' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setIsEditMode(!isEditMode)}
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+        </HintTooltip>
       </div>
 
       <WidgetEditor

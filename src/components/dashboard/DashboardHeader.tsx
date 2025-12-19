@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, Plus, Settings, User, SlidersHorizontal, LogOut, FlaskConical } from 'lucide-react';
+import { BarChart3, Plus, Settings, User, SlidersHorizontal, LogOut, FlaskConical, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -27,12 +27,15 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
+import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 
 export function DashboardHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { createDeal } = useDealsContext();
+  const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
@@ -128,17 +131,26 @@ export function DashboardHeader() {
             >
               <Link to="/lenders">Lenders</Link>
             </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={location.pathname === '/analytics' 
-                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
-                : "text-muted-foreground"
-              } 
-              asChild
+            <HintTooltip
+              hint="View charts, metrics, and performance insights for your deals."
+              visible={isHintVisible('analytics-nav')}
+              onDismiss={() => dismissHint('analytics-nav')}
+              side="bottom"
+              align="center"
+              showDelay={1500}
             >
-              <Link to="/analytics">Analytics</Link>
-            </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={location.pathname === '/analytics' 
+                  ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
+                  : "text-muted-foreground"
+                } 
+                asChild
+              >
+                <Link to="/analytics">Analytics</Link>
+              </Button>
+            </HintTooltip>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -153,13 +165,20 @@ export function DashboardHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button variant="gradient" size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Deal
-              </Button>
-            </DialogTrigger>
+          <HintTooltip
+            hint="Start here! Click to create your first deal and begin tracking your pipeline."
+            visible={isHintVisible('new-deal-button')}
+            onDismiss={() => dismissHint('new-deal-button')}
+            side="bottom"
+            align="end"
+          >
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button variant="gradient" size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Deal
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Create New Deal</DialogTitle>
@@ -206,43 +225,65 @@ export function DashboardHeader() {
               </form>
             </DialogContent>
           </Dialog>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>{user?.email || 'Settings'}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/preferences" className="flex items-center gap-2 cursor-pointer">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Preferences
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/account" className="flex items-center gap-2 cursor-pointer">
-                  <User className="h-4 w-4" />
-                  Account
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={handleSignOut}
-                className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          </HintTooltip>
+          <HintTooltip
+            hint="Access settings to customize stages, deal types, and your preferences."
+            visible={isHintVisible('settings-menu')}
+            onDismiss={() => dismissHint('settings-menu')}
+            side="bottom"
+            align="end"
+            showDelay={2000}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Settings className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>{user?.email || 'Settings'}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/preferences" className="flex items-center gap-2 cursor-pointer">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Preferences
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/account" className="flex items-center gap-2 cursor-pointer">
+                    <User className="h-4 w-4" />
+                    Account
+                  </Link>
+                </DropdownMenuItem>
+                {isFirstTimeUser && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={dismissAllHints}
+                      className="flex items-center gap-2 cursor-pointer text-muted-foreground"
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                      Dismiss all hints
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleSignOut}
+                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </HintTooltip>
         </div>
       </div>
     </header>
