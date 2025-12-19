@@ -5,6 +5,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { CompanySettings } from '@/components/settings/CompanySettings';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 
 export default function Account() {
   return (
@@ -34,6 +35,8 @@ export default function Account() {
             <ProfileSettings />
 
             <CompanySettings />
+
+            <NotificationSettings />
           </div>
         </main>
       </div>
