@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle } from 'lucide-react';
-import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -1834,17 +1833,37 @@ export default function DealDetail() {
                         const newName = e.target.value;
                         setDeal(prev => {
                           if (!prev) return prev;
-                          return { 
-                            ...prev, 
-                            referredBy: newName ? { id: prev.referredBy?.id || `ref-${Date.now()}`, name: newName } : undefined,
-                            updatedAt: new Date().toISOString() 
+                          return {
+                            ...prev,
+                            referredBy: newName
+                              ? { id: prev.referredBy?.id || `ref-${Date.now()}`, name: newName }
+                              : undefined,
+                            updatedAt: new Date().toISOString(),
                           };
                         });
                       }}
-                      onBlur={() => {
+                      onBlur={(e) => {
+                        const name = e.currentTarget.value.trim();
+                        const ref = name
+                          ? {
+                              id: deal.referredBy?.id || `ref-${name.toLowerCase().replace(/\s+/g, '-')}`,
+                              name,
+                            }
+                          : undefined;
+
+                        // Normalize trimmed value in local state
+                        setDeal(prev => {
+                          if (!prev) return prev;
+                          return {
+                            ...prev,
+                            referredBy: ref,
+                            updatedAt: new Date().toISOString(),
+                          };
+                        });
+
                         // Persist to database on blur
                         if (deal.id) {
-                          updateDealInDb(deal.id, { referredBy: deal.referredBy?.name || null } as any);
+                          updateDealInDb(deal.id, { referredBy: ref } as any);
                         }
                       }}
                       placeholder="Enter referral source..."

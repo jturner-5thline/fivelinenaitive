@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Deal, DealLender, DealStatus, DealStage, EngagementType } from '@/types/deal';
+import { Deal, DealLender, DealStatus, DealStage, EngagementType, Referrer } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 
 interface DbDeal {
@@ -104,6 +104,14 @@ export function useDealsDatabase() {
             updatedAt: l.updated_at,
           }));
 
+        const toReferrer = (name: string | null): Referrer | undefined => {
+          if (!name) return undefined;
+          return {
+            id: `ref-${name.toLowerCase().replace(/\s+/g, '-')}`,
+            name,
+          };
+        };
+
         return {
           id: dbDeal.id,
           name: dbDeal.company,
@@ -112,6 +120,7 @@ export function useDealsDatabase() {
           status: dbDeal.status as DealStatus,
           engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
           manager: dbDeal.manager || 'Paz',
+          referredBy: toReferrer(dbDeal.referred_by),
           lender: dealLenders[0]?.name || '',
           value: Number(dbDeal.value),
           totalFee: Number(dbDeal.total_fee || 0),
@@ -166,6 +175,14 @@ export function useDealsDatabase() {
 
       if (error) throw error;
 
+      const toReferrer = (name: string | null): Referrer | undefined => {
+        if (!name) return undefined;
+        return {
+          id: `ref-${name.toLowerCase().replace(/\s+/g, '-')}`,
+          name,
+        };
+      };
+
       const newDeal: Deal = {
         id: data.id,
         name: data.company,
@@ -174,6 +191,7 @@ export function useDealsDatabase() {
         status: data.status as DealStatus,
         engagementType: (data.engagement_type || 'guided') as EngagementType,
         manager: data.manager || 'Paz',
+        referredBy: toReferrer(data.referred_by),
         lender: '',
         value: Number(data.value),
         totalFee: Number(data.total_fee || 0),
@@ -223,6 +241,9 @@ export function useDealsDatabase() {
       if (updates.stage !== undefined) dbUpdates.stage = updates.stage;
       if (updates.engagementType !== undefined) dbUpdates.engagement_type = updates.engagementType;
       if (updates.manager !== undefined) dbUpdates.manager = updates.manager;
+      if (Object.prototype.hasOwnProperty.call(updates, 'referredBy')) {
+        dbUpdates.referred_by = updates.referredBy?.name ?? null;
+      }
       if (updates.preSigningHours !== undefined) dbUpdates.pre_signing_hours = updates.preSigningHours;
       if (updates.postSigningHours !== undefined) dbUpdates.post_signing_hours = updates.postSigningHours;
       if (updates.totalFee !== undefined) dbUpdates.total_fee = updates.totalFee;
