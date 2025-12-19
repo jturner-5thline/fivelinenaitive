@@ -21,6 +21,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import DealDetail from "./pages/DealDetail";
 import Settings from "./pages/Settings";
+import Account from "./pages/Account";
 import Lenders from "./pages/Lenders";
 import Preferences from "./pages/Preferences";
 import Analytics from "./pages/Analytics";
@@ -62,6 +63,9 @@ const App = () => (
                           } />
                           <Route path="/settings" element={
                             <ProtectedRoute><Settings /></ProtectedRoute>
+                          } />
+                          <Route path="/account" element={
+                            <ProtectedRoute><Account /></ProtectedRoute>
                           } />
                           <Route path="/lenders" element={
                             <ProtectedRoute><Lenders /></ProtectedRoute>
