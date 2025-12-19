@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState, DragEvent } from 'react';
+import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,95 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Horizontal scroll container with fade indicators
+function HorizontalScrollContainer({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftFade, setShowLeftFade] = useState(false);
+  const [showRightFade, setShowRightFade] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    setShowLeftFade(el.scrollLeft > 0);
+    setShowRightFade(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    checkScroll();
+    el.addEventListener('scroll', checkScroll);
+    
+    // Check on resize
+    const resizeObserver = new ResizeObserver(checkScroll);
+    resizeObserver.observe(el);
+    
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      resizeObserver.disconnect();
+    };
+  }, [checkScroll]);
+
+  const scrollBy = (direction: 'left' | 'right') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = direction === 'left' ? -160 : 160;
+    el.scrollBy({ left: amount, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="relative">
+      {/* Left fade + arrow */}
+      <div 
+        className={cn(
+          "absolute left-0 top-0 bottom-2 w-12 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none transition-opacity duration-200",
+          showLeftFade ? "opacity-100" : "opacity-0"
+        )}
+      />
+      {showLeftFade && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-background/80 shadow-md hover:bg-background"
+          onClick={() => scrollBy('left')}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+      )}
+      
+      {/* Scrollable content */}
+      <div 
+        ref={scrollRef}
+        className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent"
+      >
+        <div className="flex gap-3 px-1" style={{ minWidth: 'min-content' }}>
+          {children}
+        </div>
+      </div>
+      
+      {/* Right fade + arrow */}
+      <div 
+        className={cn(
+          "absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity duration-200",
+          showRightFade ? "opacity-100" : "opacity-0"
+        )}
+      />
+      {showRightFade && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-background/80 shadow-md hover:bg-background"
+          onClick={() => scrollBy('right')}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
 }
 
 export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailDialogProps) {
@@ -460,21 +549,19 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                 Active Deals ({lenderDeals.active.length})
               </h3>
               {lenderDeals.active.length > 0 ? (
-                <div className="overflow-x-auto pb-2 -mx-1">
-                  <div className="flex gap-3 px-1" style={{ minWidth: 'min-content' }}>
-                    {lenderDeals.active.map((deal) => (
-                      <div 
-                        key={deal.dealId} 
-                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
-                        onClick={() => handleNavigateToDeal(deal.dealId)}
-                      >
-                        <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
-                        <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <HorizontalScrollContainer>
+                  {lenderDeals.active.map((deal) => (
+                    <div 
+                      key={deal.dealId} 
+                      className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                      onClick={() => handleNavigateToDeal(deal.dealId)}
+                    >
+                      <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
+                      <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+                    </div>
+                  ))}
+                </HorizontalScrollContainer>
               ) : (
                 <p className="text-muted-foreground text-sm">No active deals with this lender</p>
               )}
@@ -489,21 +576,19 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                 Deals Sent ({lenderDeals.sent.length})
               </h3>
               {lenderDeals.sent.length > 0 ? (
-                <div className="overflow-x-auto pb-2 -mx-1">
-                  <div className="flex gap-3 px-1" style={{ minWidth: 'min-content' }}>
-                    {lenderDeals.sent.map((deal) => (
-                      <div 
-                        key={deal.dealId} 
-                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
-                        onClick={() => handleNavigateToDeal(deal.dealId)}
-                      >
-                        <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
-                        <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <HorizontalScrollContainer>
+                  {lenderDeals.sent.map((deal) => (
+                    <div 
+                      key={deal.dealId} 
+                      className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                      onClick={() => handleNavigateToDeal(deal.dealId)}
+                    >
+                      <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
+                      <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+                    </div>
+                  ))}
+                </HorizontalScrollContainer>
               ) : (
                 <p className="text-muted-foreground text-sm">No deals have been sent to this lender</p>
               )}
@@ -518,20 +603,18 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                 Pass Reasons ({lenderDeals.passReasons.length})
               </h3>
               {lenderDeals.passReasons.length > 0 ? (
-                <div className="overflow-x-auto pb-2 -mx-1">
-                  <div className="flex gap-3 px-1" style={{ minWidth: 'min-content' }}>
-                    {lenderDeals.passReasons.map((item) => (
-                      <div 
-                        key={item.dealId} 
-                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
-                        onClick={() => handleNavigateToDeal(item.dealId)}
-                      >
-                        <p className="font-medium text-sm truncate mb-1">{item.company}</p>
-                        <p className="text-xs text-destructive/80 line-clamp-2">{item.reason}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <HorizontalScrollContainer>
+                  {lenderDeals.passReasons.map((item) => (
+                    <div 
+                      key={item.dealId} 
+                      className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                      onClick={() => handleNavigateToDeal(item.dealId)}
+                    >
+                      <p className="font-medium text-sm truncate mb-1">{item.company}</p>
+                      <p className="text-xs text-destructive/80 line-clamp-2">{item.reason}</p>
+                    </div>
+                  ))}
+                </HorizontalScrollContainer>
               ) : (
                 <p className="text-muted-foreground text-sm">No pass history with this lender</p>
               )}
