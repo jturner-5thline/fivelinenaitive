@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown } from 'lucide-react';
+import { Download, FileText, ChevronDown, X } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DealFilters } from '@/components/dashboard/DealFilters';
 import { DealsList } from '@/components/dashboard/DealsList';
@@ -15,6 +15,7 @@ import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
   const { deals: allDeals, isLoading, refreshDeals } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
+  const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
   
@@ -142,6 +144,20 @@ export default function Dashboard() {
             )}
           </div>
         </main>
+
+        {/* Dismiss all hints floating button */}
+        {isFirstTimeUser && (
+          <button
+            onClick={() => {
+              dismissAllHints();
+              toast({ title: "Hints dismissed", description: "All hints have been hidden." });
+            }}
+            className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-primary/90 px-3 py-1.5 text-xs text-primary-foreground shadow-lg hover:bg-primary transition-colors"
+          >
+            <X className="h-3 w-3" />
+            Dismiss all hints
+          </button>
+        )}
       </div>
     </>
   );
