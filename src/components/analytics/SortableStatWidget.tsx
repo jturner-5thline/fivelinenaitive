@@ -15,6 +15,8 @@ interface HoursData {
   totalMilestone: number;
   avgSuccessFee: number;
   revenuePerHour: number;
+  dealsWithHoursCount: number;
+  avgHoursPerDeal: number;
   byManager: {
     name: string;
     preSigning: number;
@@ -54,6 +56,10 @@ const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData): str
     case 'revenue-per-hour':
       return hoursData.revenuePerHour > 0 
         ? `$${hoursData.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+        : '-';
+    case 'avg-hours-per-deal':
+      return hoursData.avgHoursPerDeal > 0 
+        ? hoursData.avgHoursPerDeal.toFixed(1)
         : '-';
     case 'total-retainer':
       return `$${hoursData.totalRetainer.toLocaleString('en-US')}`;

@@ -16,6 +16,12 @@ interface DbDeal {
   created_at: string;
   updated_at: string;
   user_id: string | null;
+  pre_signing_hours: number | null;
+  post_signing_hours: number | null;
+  total_fee: number | null;
+  retainer_fee: number | null;
+  milestone_fee: number | null;
+  success_fee_percent: number | null;
 }
 
 interface DbDealLender {
@@ -108,7 +114,12 @@ export function useDealsDatabase() {
           manager: dbDeal.manager || 'Paz',
           lender: dealLenders[0]?.name || '',
           value: Number(dbDeal.value),
-          totalFee: Number(dbDeal.value) * 0.025,
+          totalFee: Number(dbDeal.total_fee || 0),
+          retainerFee: Number(dbDeal.retainer_fee || 0),
+          milestoneFee: Number(dbDeal.milestone_fee || 0),
+          successFeePercent: Number(dbDeal.success_fee_percent || 0),
+          preSigningHours: Number(dbDeal.pre_signing_hours || 0),
+          postSigningHours: Number(dbDeal.post_signing_hours || 0),
           contact: '',
           createdAt: dbDeal.created_at,
           updatedAt: dbDeal.updated_at,
@@ -165,7 +176,12 @@ export function useDealsDatabase() {
         manager: data.manager || 'Paz',
         lender: '',
         value: Number(data.value),
-        totalFee: Number(data.value) * 0.025,
+        totalFee: Number(data.total_fee || 0),
+        retainerFee: Number(data.retainer_fee || 0),
+        milestoneFee: Number(data.milestone_fee || 0),
+        successFeePercent: Number(data.success_fee_percent || 0),
+        preSigningHours: Number(data.pre_signing_hours || 0),
+        postSigningHours: Number(data.post_signing_hours || 0),
         contact: '',
         createdAt: data.created_at,
         updatedAt: data.updated_at,
@@ -207,6 +223,12 @@ export function useDealsDatabase() {
       if (updates.stage !== undefined) dbUpdates.stage = updates.stage;
       if (updates.engagementType !== undefined) dbUpdates.engagement_type = updates.engagementType;
       if (updates.manager !== undefined) dbUpdates.manager = updates.manager;
+      if (updates.preSigningHours !== undefined) dbUpdates.pre_signing_hours = updates.preSigningHours;
+      if (updates.postSigningHours !== undefined) dbUpdates.post_signing_hours = updates.postSigningHours;
+      if (updates.totalFee !== undefined) dbUpdates.total_fee = updates.totalFee;
+      if (updates.retainerFee !== undefined) dbUpdates.retainer_fee = updates.retainerFee;
+      if (updates.milestoneFee !== undefined) dbUpdates.milestone_fee = updates.milestoneFee;
+      if (updates.successFeePercent !== undefined) dbUpdates.success_fee_percent = updates.successFeePercent;
 
       const { error } = await supabase
         .from('deals')

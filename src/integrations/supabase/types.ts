@@ -149,9 +149,15 @@ export type Database = {
           engagement_type: string | null
           id: string
           manager: string | null
+          milestone_fee: number | null
+          post_signing_hours: number | null
+          pre_signing_hours: number | null
           referred_by: string | null
+          retainer_fee: number | null
           stage: string
           status: string
+          success_fee_percent: number | null
+          total_fee: number | null
           updated_at: string
           user_id: string | null
           value: number
@@ -163,9 +169,15 @@ export type Database = {
           engagement_type?: string | null
           id?: string
           manager?: string | null
+          milestone_fee?: number | null
+          post_signing_hours?: number | null
+          pre_signing_hours?: number | null
           referred_by?: string | null
+          retainer_fee?: number | null
           stage?: string
           status?: string
+          success_fee_percent?: number | null
+          total_fee?: number | null
           updated_at?: string
           user_id?: string | null
           value?: number
@@ -177,9 +189,15 @@ export type Database = {
           engagement_type?: string | null
           id?: string
           manager?: string | null
+          milestone_fee?: number | null
+          post_signing_hours?: number | null
+          pre_signing_hours?: number | null
           referred_by?: string | null
+          retainer_fee?: number | null
           stage?: string
           status?: string
+          success_fee_percent?: number | null
+          total_fee?: number | null
           updated_at?: string
           user_id?: string | null
           value?: number
