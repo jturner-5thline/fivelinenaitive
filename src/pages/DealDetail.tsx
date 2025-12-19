@@ -1826,8 +1826,8 @@ export default function DealDetail() {
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
-                  <div className="space-y-1.5">
-                    <span className="text-muted-foreground text-sm">Referred by</span>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-muted-foreground shrink-0">Referred by</span>
                     <ReferralSourceInput
                       value={deal.referredBy}
                       onChange={(referrer) => {
@@ -1844,6 +1844,7 @@ export default function DealDetail() {
                           updateDealInDb(deal.id, { referredBy: referrer?.name || null } as any);
                         }
                       }}
+                      className="flex-1 max-w-[180px]"
                     />
                   </div>
                   
