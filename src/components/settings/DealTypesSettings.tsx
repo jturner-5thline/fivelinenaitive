@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tag, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -27,6 +28,7 @@ import { useDealTypes } from '@/contexts/DealTypesContext';
 
 export function DealTypesSettings() {
   const { dealTypes, addDealType, updateDealType, deleteDealType } = useDealTypes();
+  const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState('');
@@ -77,73 +79,82 @@ export function DealTypesSettings() {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Tag className="h-5 w-5" />
-              Deal Types
-            </CardTitle>
-            <CardDescription>Manage the available deal type options</CardDescription>
-          </div>
-          <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
-            <Plus className="h-4 w-4" />
-            Add Type
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {dealTypes.map((dealType) => (
-              <div
-                key={dealType.id}
-                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-              >
-                <span className="font-medium">{dealType.label}</span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => openEditDialog(dealType.id)}
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-left flex-1">
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Tag className="h-5 w-5" />
+                    Deal Types
+                  </CardTitle>
+                  <CardDescription>Manage the available deal type options</CardDescription>
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              Add Type
+            </Button>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="space-y-2">
+                {dealTypes.map((dealType) => (
+                  <div
+                    key={dealType.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                   >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                    <span className="font-medium">{dealType.label}</span>
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8"
+                        onClick={() => openEditDialog(dealType.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete "{dealType.label}"?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will remove the deal type from available options. Deals using this type will retain their current value.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(dealType.id)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete "{dealType.label}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove the deal type from available options. Deals using this type will retain their current value.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(dealType.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                ))}
+                {dealTypes.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    No deal types configured. Add one to get started.
+                  </p>
+                )}
               </div>
-            ))}
-            {dealTypes.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">
-                No deal types configured. Add one to get started.
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>

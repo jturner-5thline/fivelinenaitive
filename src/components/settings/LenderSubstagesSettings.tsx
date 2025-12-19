@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, GripVertical, Flag } from 'lucide-react';
+import { Plus, Pencil, Trash2, GripVertical, Flag, ChevronDown } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -19,6 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -124,6 +125,7 @@ function SortableSubstageItem({ substage, index, onEdit, onDelete }: SortableSub
 
 export function LenderSubstagesSettings() {
   const { substages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages } = useLenderStages();
+  const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSubstage, setEditingSubstage] = useState<SubstageOption | null>(null);
   const [label, setLabel] = useState('');
@@ -189,47 +191,56 @@ export function LenderSubstagesSettings() {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Flag className="h-5 w-5" />
-              Lender Milestones
-            </CardTitle>
-            <CardDescription>Configure milestone options for more detailed lender tracking. Drag to reorder.</CardDescription>
-          </div>
-          <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
-            <Plus className="h-4 w-4" />
-            Add Milestone
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={substages.map(s => s.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {substages.map((substage, index) => (
-                  <SortableSubstageItem
-                    key={substage.id}
-                    substage={substage}
-                    index={index}
-                    onEdit={openEditDialog}
-                    onDelete={handleDelete}
-                  />
-                ))}
-                {substages.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    No milestones configured. Add one to get started.
-                  </p>
-                )}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </CardContent>
-      </Card>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-left flex-1">
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Flag className="h-5 w-5" />
+                    Lender Milestones
+                  </CardTitle>
+                  <CardDescription>Configure milestone options for more detailed lender tracking. Drag to reorder.</CardDescription>
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              Add Milestone
+            </Button>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={substages.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2">
+                    {substages.map((substage, index) => (
+                      <SortableSubstageItem
+                        key={substage.id}
+                        substage={substage}
+                        index={index}
+                        onEdit={openEditDialog}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                    {substages.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        No milestones configured. Add one to get started.
+                      </p>
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>

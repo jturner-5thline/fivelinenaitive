@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, GripVertical, Layers } from 'lucide-react';
+import { Plus, Pencil, Trash2, GripVertical, Layers, ChevronDown } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -19,6 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -153,6 +154,7 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange }: So
 
 export function LenderStagesSettings() {
   const { stages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup } = useLenderStages();
+  const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<StageOption | null>(null);
   const [label, setLabel] = useState('');
@@ -226,59 +228,68 @@ export function LenderStagesSettings() {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Layers className="h-5 w-5" />
-              Lender Stages
-            </CardTitle>
-            <CardDescription>Configure stages and assign them to groups. Drag to reorder.</CardDescription>
-          </div>
-          <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
-            <Plus className="h-4 w-4" />
-            Add Stage
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {STAGE_GROUPS.map((group) => {
-              const count = getStagesByGroup(group.id).length;
-              return (
-                <Badge key={group.id} variant="secondary" className="gap-1.5">
-                  <span className={`h-2 w-2 rounded-full ${group.color}`} />
-                  {group.label}: {count}
-                </Badge>
-              );
-            })}
-          </div>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={stages.map(s => s.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {stages.map((stage, index) => (
-                  <SortableStageItem
-                    key={stage.id}
-                    stage={stage}
-                    index={index}
-                    onEdit={openEditDialog}
-                    onDelete={handleDelete}
-                    onGroupChange={handleGroupChange}
-                  />
-                ))}
-                {stages.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">
-                    No stages configured. Add one to get started.
-                  </p>
-                )}
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-left flex-1">
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Layers className="h-5 w-5" />
+                    Lender Stages
+                  </CardTitle>
+                  <CardDescription>Configure stages and assign them to groups. Drag to reorder.</CardDescription>
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              Add Stage
+            </Button>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {STAGE_GROUPS.map((group) => {
+                  const count = getStagesByGroup(group.id).length;
+                  return (
+                    <Badge key={group.id} variant="secondary" className="gap-1.5">
+                      <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                      {group.label}: {count}
+                    </Badge>
+                  );
+                })}
               </div>
-            </SortableContext>
-          </DndContext>
-        </CardContent>
-      </Card>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={stages.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2">
+                    {stages.map((stage, index) => (
+                      <SortableStageItem
+                        key={stage.id}
+                        stage={stage}
+                        index={index}
+                        onEdit={openEditDialog}
+                        onDelete={handleDelete}
+                        onGroupChange={handleGroupChange}
+                      />
+                    ))}
+                    {stages.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">
+                        No stages configured. Add one to get started.
+                      </p>
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
