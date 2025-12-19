@@ -118,7 +118,7 @@ export function DashboardHeader() {
               } 
               asChild
             >
-              <Link to="/dashboard">Pipeline</Link>
+              <Link to="/dashboard">Deals</Link>
             </Button>
             <Button 
               variant="ghost" 
