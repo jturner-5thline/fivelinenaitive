@@ -2207,29 +2207,29 @@ export default function DealDetail() {
           setSelectedPassReason(null);
         }
       }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Why is this lender being passed?</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 py-4">
-            {passReasons.map((reason) => (
-              <button
-                key={reason.id}
-                onClick={() => setSelectedPassReason(reason.id)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                  selectedPassReason === reason.id
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:bg-muted'
-                }`}
-              >
-                {reason.label}
-              </button>
-            ))}
-            {passReasons.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No pass reasons configured. Add them in Settings.
-              </p>
-            )}
+          <div className="py-2">
+            <div className="grid grid-cols-3 gap-2 max-h-[50vh] overflow-auto pr-1">
+              {passReasons.map((reason) => (
+                <Button
+                  key={reason.id}
+                  type="button"
+                  variant={selectedPassReason === reason.id ? "default" : "outline"}
+                  className="h-auto py-2 px-3 whitespace-normal text-left justify-start"
+                  onClick={() => setSelectedPassReason(reason.id)}
+                >
+                  {reason.label}
+                </Button>
+              ))}
+              {passReasons.length === 0 && (
+                <p className="col-span-3 text-sm text-muted-foreground text-center py-4">
+                  No pass reasons configured. Add them in Settings.
+                </p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
