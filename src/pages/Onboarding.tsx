@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Helmet } from 'react-helmet-async';
-import { Building2, Mail, Phone, User, Globe, Users, Briefcase, Loader2 } from 'lucide-react';
+import { Building2, Mail, Phone, User, Globe, Users, Briefcase, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import {
   Form,
   FormControl,
@@ -65,6 +66,10 @@ const companyRoles = [
   { value: 'other', label: 'Other' },
 ];
 
+// Required fields for progress calculation
+const requiredFields = ['display_name', 'company_name', 'company_size', 'company_role'] as const;
+const optionalFields = ['phone', 'backup_email', 'company_url'] as const;
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -82,7 +87,30 @@ export default function Onboarding() {
       company_size: '',
       company_role: '',
     },
+    mode: 'onChange',
   });
+
+  const watchedValues = form.watch();
+
+  const { completedCount, totalCount, progress, fieldStatus } = useMemo(() => {
+    const allFields = [...requiredFields, ...optionalFields];
+    const status: Record<string, boolean> = {};
+    
+    let completed = 0;
+    allFields.forEach(field => {
+      const value = watchedValues[field];
+      const isCompleted = Boolean(value && value.trim().length > 0);
+      status[field] = isCompleted;
+      if (isCompleted) completed++;
+    });
+
+    return {
+      completedCount: completed,
+      totalCount: allFields.length,
+      progress: Math.round((completed / allFields.length) * 100),
+      fieldStatus: status,
+    };
+  }, [watchedValues]);
 
   const onSubmit = async (data: OnboardingForm) => {
     if (!user) return;
@@ -130,11 +158,44 @@ export default function Onboarding() {
       </Helmet>
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl">
-          <CardHeader className="text-center">
+          <CardHeader className="text-center space-y-4">
             <CardTitle className="text-2xl">Welcome! Let's set up your account</CardTitle>
             <CardDescription>
               Tell us a bit about yourself and your company to get started.
             </CardDescription>
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Profile completion</span>
+                <span className="font-medium">{completedCount} of {totalCount} fields</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+              <div className="flex flex-wrap gap-2 justify-center pt-2">
+                {[
+                  { key: 'display_name', label: 'Name', required: true },
+                  { key: 'company_name', label: 'Company', required: true },
+                  { key: 'company_size', label: 'Size', required: true },
+                  { key: 'company_role', label: 'Role', required: true },
+                  { key: 'phone', label: 'Phone', required: false },
+                  { key: 'backup_email', label: 'Email', required: false },
+                  { key: 'company_url', label: 'Website', required: false },
+                ].map(({ key, label, required }) => (
+                  <div
+                    key={key}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
+                      fieldStatus[key]
+                        ? 'bg-primary/10 text-primary'
+                        : required
+                        ? 'bg-muted text-muted-foreground'
+                        : 'bg-muted/50 text-muted-foreground/70'
+                    }`}
+                  >
+                    {fieldStatus[key] && <Check className="h-3 w-3" />}
+                    {label}
+                    {required && !fieldStatus[key] && <span className="text-destructive">*</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Form {...form}>
