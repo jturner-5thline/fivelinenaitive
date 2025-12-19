@@ -109,14 +109,41 @@ export function useLenderAttachments(lenderName: string | null) {
 
       if (dbError) throw dbError;
 
-      toast.success('Attachment uploaded');
-      await fetchAttachments();
       return data;
     } catch (error) {
       console.error('Error uploading attachment:', error);
-      toast.error('Failed to upload attachment');
-      return null;
+      throw error;
     }
+  };
+
+  const uploadMultipleAttachments = async (files: File[], category: LenderAttachmentCategory = 'general') => {
+    if (!user || !lenderName) {
+      toast.error('Please log in to upload attachments');
+      return [];
+    }
+
+    const results: any[] = [];
+    const errors: string[] = [];
+
+    for (const file of files) {
+      try {
+        const result = await uploadAttachment(file, category);
+        if (result) results.push(result);
+      } catch (error) {
+        errors.push(file.name);
+      }
+    }
+
+    if (errors.length > 0) {
+      toast.error(`Failed to upload: ${errors.join(', ')}`);
+    }
+    
+    if (results.length > 0) {
+      toast.success(`${results.length} attachment${results.length > 1 ? 's' : ''} uploaded`);
+      await fetchAttachments();
+    }
+
+    return results;
   };
 
   const deleteAttachment = async (attachment: LenderAttachment) => {
@@ -152,6 +179,7 @@ export function useLenderAttachments(lenderName: string | null) {
     attachments,
     isLoading,
     uploadAttachment,
+    uploadMultipleAttachments,
     deleteAttachment,
     refetch: fetchAttachments,
   };

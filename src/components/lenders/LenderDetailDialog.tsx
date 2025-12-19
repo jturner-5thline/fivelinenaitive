@@ -150,9 +150,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<LenderAttachmentCategory>('general');
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   
-  const { attachments, isLoading: isLoadingAttachments, uploadAttachment, deleteAttachment } = useLenderAttachments(
+  const { attachments, isLoading: isLoadingAttachments, uploadMultipleAttachments, deleteAttachment } = useLenderAttachments(
     open ? lender?.name ?? null : null
   );
 
@@ -161,18 +161,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
     navigate(`/deal/${dealId}`);
   };
 
-  const handleUpload = async (file: File, category: LenderAttachmentCategory) => {
-    setIsUploading(true);
-    await uploadAttachment(file, category);
-    setIsUploading(false);
-    setPendingFile(null);
-    setSelectedCategory('general');
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPendingFile(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setPendingFiles(Array.from(files));
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -180,14 +172,22 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
   };
 
   const handleConfirmUpload = async () => {
-    if (pendingFile) {
-      await handleUpload(pendingFile, selectedCategory);
+    if (pendingFiles.length > 0) {
+      setIsUploading(true);
+      await uploadMultipleAttachments(pendingFiles, selectedCategory);
+      setIsUploading(false);
+      setPendingFiles([]);
+      setSelectedCategory('general');
     }
   };
 
   const handleCancelUpload = () => {
-    setPendingFile(null);
+    setPendingFiles([]);
     setSelectedCategory('general');
+  };
+
+  const handleRemovePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -209,7 +209,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      setPendingFile(files[0]);
+      setPendingFiles(Array.from(files));
     }
   };
 
@@ -434,16 +434,31 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                     </h3>
                   </div>
                   
-                  {/* Pending File - Category Selection */}
-                  {pendingFile ? (
+                  {/* Pending Files - Category Selection */}
+                  {pendingFiles.length > 0 ? (
                     <div className="border rounded-lg p-4 mb-3 bg-muted/30">
-                      <div className="flex items-center gap-3 mb-3">
-                        <FileText className="h-5 w-5 text-primary" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{pendingFile.name}</p>
-                          <p className="text-xs text-muted-foreground">{formatFileSize(pendingFile.size)}</p>
-                        </div>
+                      <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
+                        {pendingFiles.map((file, index) => (
+                          <div key={index} className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{file.name}</p>
+                              <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRemovePendingFile(index)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
                       </div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {pendingFiles.length} file{pendingFiles.length > 1 ? 's' : ''} selected
+                      </p>
                       <div className="flex items-center gap-2 mb-3">
                         <FolderOpen className="h-4 w-4 text-muted-foreground" />
                         <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as LenderAttachmentCategory)}>
@@ -474,7 +489,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                           ) : (
                             <>
                               <Upload className="h-4 w-4 mr-2" />
-                              Upload
+                              Upload {pendingFiles.length > 1 ? `${pendingFiles.length} Files` : ''}
                             </>
                           )}
                         </Button>
@@ -504,6 +519,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                     >
                       <input
                         type="file"
+                        multiple
                         ref={fileInputRef}
                         onChange={handleFileChange}
                         className="hidden"
@@ -514,7 +530,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                           isDragging ? "text-primary" : "text-muted-foreground"
                         )} />
                         <p className="text-sm text-muted-foreground">
-                          {isDragging ? "Drop file here" : "Drag & drop or click to upload"}
+                          {isDragging ? "Drop files here" : "Drag & drop or click to upload (multiple files supported)"}
                         </p>
                       </div>
                     </div>
