@@ -48,7 +48,7 @@ export function MultiSelectFilter({
         <Button
           variant="outline"
           className={cn(
-            'justify-between gap-2 font-normal',
+            'justify-between gap-2 font-normal transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 hover:border-[1.5px]',
             selected.length > 0 && 'border-primary/50 bg-primary/5',
             className
           )}

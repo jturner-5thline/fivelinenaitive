@@ -131,7 +131,7 @@ export function DealFilters({
             placeholder="Search..."
             value={filters.search}
             onChange={(e) => onFilterChange({ search: e.target.value })}
-            className="pl-9"
+            className="pl-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 hover:border-[1.5px] focus:border-[hsl(292,46%,72%)]/60"
           />
         </div>
 
