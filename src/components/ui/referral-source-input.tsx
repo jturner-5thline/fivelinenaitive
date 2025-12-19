@@ -17,6 +17,7 @@ export function ReferralSourceInput({ value, onChange, className }: ReferralSour
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [showAddPrompt, setShowAddPrompt] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -29,10 +30,12 @@ export function ReferralSourceInput({ value, onChange, className }: ReferralSour
   const isNewSource = inputValue.trim() !== '' && 
     !referralSources.some(s => s.name.toLowerCase() === inputValue.toLowerCase().trim());
 
-  // Update input when value prop changes
+  // Only update input from prop when NOT actively editing
   useEffect(() => {
-    setInputValue(value?.name || '');
-  }, [value]);
+    if (!isEditing && !isOpen) {
+      setInputValue(value?.name || '');
+    }
+  }, [value, isEditing, isOpen]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -44,6 +47,7 @@ export function ReferralSourceInput({ value, onChange, className }: ReferralSour
         !inputRef.current.contains(e.target as Node)
       ) {
         setIsOpen(false);
+        setIsEditing(false);
         setShowAddPrompt(false);
         // If no match found, reset to original value
         if (isNewSource && !showAddPrompt) {
@@ -58,6 +62,7 @@ export function ReferralSourceInput({ value, onChange, className }: ReferralSour
 
   const handleSelect = useCallback((source: ReferralSource) => {
     setInputValue(source.name);
+    setIsEditing(false);
     onChange(source);
     setIsOpen(false);
     setShowAddPrompt(false);
@@ -78,6 +83,7 @@ export function ReferralSourceInput({ value, onChange, className }: ReferralSour
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
+    setIsEditing(true);
     setIsOpen(true);
     
     // Show add prompt if this is a new name
@@ -89,6 +95,7 @@ export function ReferralSourceInput({ value, onChange, className }: ReferralSour
 
   const handleClear = () => {
     setInputValue('');
+    setIsEditing(false);
     onChange(null);
     setShowAddPrompt(false);
     inputRef.current?.focus();
@@ -104,9 +111,15 @@ export function ReferralSourceInput({ value, onChange, className }: ReferralSour
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
+      setIsEditing(false);
       setShowAddPrompt(false);
       setInputValue(value?.name || '');
     }
+  };
+
+  const handleFocus = () => {
+    setIsOpen(true);
+    setIsEditing(true);
   };
 
   return (
@@ -116,7 +129,7 @@ export function ReferralSourceInput({ value, onChange, className }: ReferralSour
           ref={inputRef}
           value={inputValue}
           onChange={handleInputChange}
-          onFocus={() => setIsOpen(true)}
+          onFocus={handleFocus}
           onKeyDown={handleKeyDown}
           placeholder="Search or add referral source..."
           className="pr-8"
