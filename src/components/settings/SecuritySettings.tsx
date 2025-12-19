@@ -259,15 +259,21 @@ export function SecuritySettings() {
   const deviceInfo = currentSession ? getDeviceInfo(currentSession.userAgent) : null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          Security
-        </CardTitle>
-        <CardDescription>Manage your account security settings</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Card className="overflow-hidden border-2">
+      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border-b">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20">
+            <Shield className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Security</h2>
+            <p className="text-sm text-muted-foreground">
+              Manage your password, sessions, and login activity
+            </p>
+          </div>
+        </div>
+      </div>
+      <CardContent className="space-y-6 pt-6">
         {/* Password Section */}
         {!isChangingPassword ? (
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
