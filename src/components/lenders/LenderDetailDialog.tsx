@@ -387,6 +387,42 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
 
             <Separator />
 
+            {/* Active Deals */}
+            <section>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Active Deals ({lenderDeals.active.length})
+              </h3>
+              {lenderDeals.active.length > 0 ? (
+                <HorizontalScrollContainer>
+                  {lenderDeals.active.map((deal) => (
+                    <Tooltip key={deal.dealId}>
+                      <TooltipTrigger asChild>
+                        <div 
+                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
+                          onClick={() => handleNavigateToDeal(deal.dealId)}
+                        >
+                          <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
+                          <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
+                          <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[200px]">
+                        <p className="font-medium">{deal.company}</p>
+                        <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+                        {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </HorizontalScrollContainer>
+              ) : (
+                <p className="text-muted-foreground text-sm">No active deals with this lender</p>
+              )}
+            </section>
+
+            <Separator />
+
             {/* Attachments Section */}
             {user && (
               <>
@@ -541,42 +577,6 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                 <Separator />
               </>
             )}
-
-            {/* Active Deals */}
-            <section>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                Active Deals ({lenderDeals.active.length})
-              </h3>
-              {lenderDeals.active.length > 0 ? (
-                <HorizontalScrollContainer>
-                  {lenderDeals.active.map((deal) => (
-                    <Tooltip key={deal.dealId}>
-                      <TooltipTrigger asChild>
-                        <div 
-                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
-                          onClick={() => handleNavigateToDeal(deal.dealId)}
-                        >
-                          <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
-                          <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
-                          <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-[200px]">
-                        <p className="font-medium">{deal.company}</p>
-                        <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
-                        {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </HorizontalScrollContainer>
-              ) : (
-                <p className="text-muted-foreground text-sm">No active deals with this lender</p>
-              )}
-            </section>
-
-            <Separator />
 
             {/* Deals Sent */}
             <section>
