@@ -1037,7 +1037,17 @@ export default function Analytics() {
               <Label htmlFor="chartDataSource">Data Source</Label>
               <Select
                 value={chartFormData.dataSource}
-                onValueChange={(value) => setChartFormData(prev => ({ ...prev, dataSource: value }))}
+                onValueChange={(value) => {
+                  const source = DATA_SOURCES.find(s => s.id === value);
+                  setChartFormData(prev => ({ 
+                    ...prev, 
+                    dataSource: value,
+                    // Auto-fill title with data source label if title is empty or matches a previous data source label
+                    title: !prev.title || DATA_SOURCES.some(s => s.label === prev.title) 
+                      ? (source?.label || prev.title) 
+                      : prev.title
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select data source" />
