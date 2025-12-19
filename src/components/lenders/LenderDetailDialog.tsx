@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState, DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2 } from 'lucide-react';
 import {
@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachments, LenderAttachment } from '@/hooks/useLenderAttachments';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 
 interface LenderInfo {
   name: string;
@@ -44,6 +45,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
   const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   const { attachments, isLoading: isLoadingAttachments, uploadAttachment, deleteAttachment } = useLenderAttachments(
     open ? lender?.name ?? null : null
@@ -54,13 +57,42 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
     navigate(`/deals/${dealId}`);
   };
 
+  const handleUpload = async (file: File) => {
+    setIsUploading(true);
+    await uploadAttachment(file);
+    setIsUploading(false);
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      await uploadAttachment(file);
+      await handleUpload(file);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      await handleUpload(files[0]);
     }
   };
 
@@ -217,22 +249,43 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                       <Paperclip className="h-4 w-4" />
                       Attachments ({attachments.length})
                     </h3>
-                    <div>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload
-                      </Button>
-                    </div>
+                  </div>
+                  
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={cn(
+                      "border-2 border-dashed rounded-lg p-4 mb-3 text-center cursor-pointer transition-colors",
+                      isDragging 
+                        ? "border-primary bg-primary/5" 
+                        : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+                    )}
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    {isUploading ? (
+                      <div className="flex items-center justify-center gap-2 py-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <span className="text-sm text-muted-foreground">Uploading...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 py-2">
+                        <Upload className={cn(
+                          "h-6 w-6 transition-colors",
+                          isDragging ? "text-primary" : "text-muted-foreground"
+                        )} />
+                        <p className="text-sm text-muted-foreground">
+                          {isDragging ? "Drop file here" : "Drag & drop or click to upload"}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   {isLoadingAttachments ? (
