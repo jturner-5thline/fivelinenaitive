@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -33,9 +34,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 
@@ -77,6 +84,7 @@ const emptyForm: LenderForm = {
 export default function Lenders() {
   const { lenders, addLender, updateLender, deleteLender } = useLenders();
   const { deals } = useDealsContext();
+  const { getLenderSummary } = useLenderAttachmentsSummary();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLender, setEditingLender] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
@@ -437,6 +445,43 @@ export default function Lenders() {
                         <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-2xl">{lender.name}</p>
+                            {(() => {
+                              const summary = getLenderSummary(lender.name);
+                              return (
+                                <>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center">
+                                        <Checkbox
+                                          checked={summary.hasNda}
+                                          disabled
+                                          className="h-4 w-4 data-[state=checked]:bg-success data-[state=checked]:border-success"
+                                        />
+                                        <span className="ml-1 text-xs text-muted-foreground">NDA</span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {summary.hasNda ? 'NDA on file' : 'No NDA attached'}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center">
+                                        <Checkbox
+                                          checked={summary.hasMarketingMaterials}
+                                          disabled
+                                          className="h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                        />
+                                        <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials attached'}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </>
+                              );
+                            })()}
                             {activeDealCounts[lender.name] > 0 && (
                               <Badge variant="default" className="text-xs">
                                 {activeDealCounts[lender.name]} active
@@ -549,6 +594,45 @@ export default function Lenders() {
                         </div>
                         <div className="flex-1 flex flex-col justify-center items-center text-center">
                           <p className="font-medium text-xl line-clamp-2">{lender.name}</p>
+                          <div className="flex items-center gap-3 mt-2">
+                            {(() => {
+                              const summary = getLenderSummary(lender.name);
+                              return (
+                                <>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center">
+                                        <Checkbox
+                                          checked={summary.hasNda}
+                                          disabled
+                                          className="h-3.5 w-3.5 data-[state=checked]:bg-success data-[state=checked]:border-success"
+                                        />
+                                        <span className="ml-1 text-xs text-muted-foreground">NDA</span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {summary.hasNda ? 'NDA on file' : 'No NDA attached'}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center">
+                                        <Checkbox
+                                          checked={summary.hasMarketingMaterials}
+                                          disabled
+                                          className="h-3.5 w-3.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                        />
+                                        <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials attached'}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </>
+                              );
+                            })()}
+                          </div>
                           {activeDealCounts[lender.name] > 0 && (
                             <Badge variant="default" className="text-xs mt-1">
                               {activeDealCounts[lender.name]} active
