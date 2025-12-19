@@ -649,11 +649,11 @@ export default function Lenders() {
 
                 {/* Grid View */}
                 {viewMode === 'grid' && (
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {sortedLenders.map((lender) => (
                       <div
                         key={lender.name}
-                        className="aspect-square bg-muted/50 rounded-lg p-4 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer"
+                        className="aspect-square bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer"
                         onClick={() => openLenderDetail(lender)}
                       >
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
