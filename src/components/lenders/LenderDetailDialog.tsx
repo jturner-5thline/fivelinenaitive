@@ -238,7 +238,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
     deals.forEach(deal => {
       const dealLender = deal.lenders?.find(l => l.name === lender.name);
       if (dealLender) {
-        // Check if passed
+        // Check if passed (has pass reason)
         if (dealLender.trackingStatus === 'passed' && dealLender.passReason) {
           passReasons.push({
             dealId: deal.id,
@@ -247,7 +247,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
             reason: dealLender.passReason,
           });
           activeAndPassedDealIds.add(deal.id);
-        } else if (dealLender.trackingStatus === 'active') {
+        } else if (dealLender.trackingStatus === 'active' && dealLender.stage !== 'Passed') {
+          // Only add to active if stage is NOT "Passed"
           active.push({
             dealId: deal.id,
             dealName: deal.name,
