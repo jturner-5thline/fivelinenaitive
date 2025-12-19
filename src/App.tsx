@@ -26,6 +26,7 @@ import Lenders from "./pages/Lenders";
 import Preferences from "./pages/Preferences";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
+import Database from "./pages/Database";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,9 @@ const App = () => (
                           } />
                           <Route path="/preferences" element={
                             <ProtectedRoute><Preferences /></ProtectedRoute>
+                          } />
+                          <Route path="/database" element={
+                            <ProtectedRoute><Database /></ProtectedRoute>
                           } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />

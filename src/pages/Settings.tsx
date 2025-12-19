@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, SlidersHorizontal, ChevronRight, User, Search, X } from 'lucide-react';
+import { ArrowLeft, SlidersHorizontal, ChevronRight, User, Search, X, Database } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'account',
     keywords: ['account', 'profile', 'company', 'personal', 'info', 'details', 'email', 'name', 'avatar'],
+  },
+  {
+    id: 'database',
+    keywords: ['database', 'lenders', 'directory', 'data', 'directories'],
   },
   {
     id: 'lender-stages',
@@ -134,6 +138,32 @@ export default function Settings() {
                       <p className="font-medium">Profile & Company</p>
                       <p className="text-sm text-muted-foreground">
                         Your personal info and company details
+                      </p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {isVisible('database') && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Database className="h-5 w-5" />
+                    Database
+                  </CardTitle>
+                  <CardDescription>Manage your directories and data</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    to="/database"
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium">Lenders & Directories</p>
+                      <p className="text-sm text-muted-foreground">
+                        View and manage your lender directory
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
