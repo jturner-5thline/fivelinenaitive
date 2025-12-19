@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { z } from 'zod';
-import { Shield, Eye, EyeOff, Loader2, Monitor, LogOut, Smartphone } from 'lucide-react';
+import { Shield, Eye, EyeOff, Loader2, Monitor, LogOut, Smartphone, History, Globe, MapPin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,16 @@ interface SessionInfo {
   isCurrent: boolean;
 }
 
+interface LoginHistoryEntry {
+  id: string;
+  browser: string | null;
+  os: string | null;
+  device_type: string | null;
+  city: string | null;
+  country: string | null;
+  created_at: string;
+}
+
 export function SecuritySettings() {
   const { user } = useAuth();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -51,6 +62,8 @@ export function SecuritySettings() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [currentSession, setCurrentSession] = useState<SessionInfo | null>(null);
+  const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -59,7 +72,7 @@ export function SecuritySettings() {
   });
 
   useEffect(() => {
-    const fetchSession = async () => {
+    const fetchSessionAndHistory = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setCurrentSession({
@@ -67,10 +80,50 @@ export function SecuritySettings() {
           userAgent: navigator.userAgent,
           isCurrent: true,
         });
+
+        // Fetch login history
+        setIsLoadingHistory(true);
+        const { data: history, error } = await supabase
+          .from('login_history')
+          .select('id, browser, os, device_type, city, country, created_at')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (!error && history) {
+          setLoginHistory(history);
+        }
+        setIsLoadingHistory(false);
       }
     };
-    fetchSession();
+    fetchSessionAndHistory();
   }, [user]);
+
+  // Log current login on mount (only once per session)
+  useEffect(() => {
+    const logLogin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Check if we already logged this session
+      const sessionKey = `login_logged_${session.access_token.slice(-10)}`;
+      if (sessionStorage.getItem(sessionKey)) return;
+
+      const userAgent = navigator.userAgent;
+      const deviceInfo = getDeviceInfo(userAgent);
+
+      await supabase.from('login_history').insert({
+        user_id: session.user.id,
+        user_agent: userAgent,
+        browser: deviceInfo.browser,
+        os: deviceInfo.os,
+        device_type: deviceInfo.isMobile ? 'mobile' : 'desktop',
+      });
+
+      sessionStorage.setItem(sessionKey, 'true');
+    };
+    logLogin();
+  }, []);
 
   const getDeviceInfo = (userAgent: string) => {
     const isMobile = /Mobile|Android|iPhone|iPad/i.test(userAgent);
@@ -398,6 +451,76 @@ export function SecuritySettings() {
               </AlertDialogContent>
             </AlertDialog>
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Login History Section */}
+        <div className="space-y-4">
+          <div>
+            <h3 className="font-medium flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Login History
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Recent sign-in activity on your account
+            </p>
+          </div>
+
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : loginHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No login history available</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[300px] pr-4">
+              <div className="space-y-3">
+                {loginHistory.map((entry, index) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg"
+                  >
+                    {entry.device_type === 'mobile' ? (
+                      <Smartphone className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                    ) : (
+                      <Monitor className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium">
+                          {entry.browser || 'Unknown Browser'} on {entry.os || 'Unknown OS'}
+                        </p>
+                        {index === 0 && (
+                          <Badge variant="secondary" className="text-xs">Latest</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <span>
+                          {new Date(entry.created_at).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        {(entry.city || entry.country) && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {[entry.city, entry.country].filter(Boolean).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
         </div>
       </CardContent>
     </Card>
