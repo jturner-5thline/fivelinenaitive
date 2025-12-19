@@ -4,6 +4,7 @@ import { GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { WidgetConfig, WidgetDataSource } from '@/contexts/AnalyticsWidgetsContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { cn } from '@/lib/utils';
 
 interface HoursData {
@@ -43,7 +44,7 @@ interface SortableStatWidgetProps {
   compact?: boolean;
 }
 
-const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData): string => {
+const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData, formatCurrency: (value: number) => string): string => {
   switch (dataSource) {
     case 'pre-signing-hours':
       return hoursData.totalPreSigning.toFixed(1);
@@ -52,19 +53,19 @@ const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData): str
     case 'total-hours':
       return hoursData.totalHours.toFixed(1);
     case 'total-fees':
-      return `$${hoursData.totalFees.toLocaleString()}`;
+      return formatCurrency(hoursData.totalFees);
     case 'revenue-per-hour':
       return hoursData.revenuePerHour > 0 
-        ? `$${hoursData.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+        ? `$${hoursData.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr`
         : '-';
     case 'avg-hours-per-deal':
       return hoursData.avgHoursPerDeal > 0 
         ? hoursData.avgHoursPerDeal.toFixed(1)
         : '-';
     case 'total-retainer':
-      return `$${hoursData.totalRetainer.toLocaleString('en-US')}`;
+      return formatCurrency(hoursData.totalRetainer);
     case 'total-milestone':
-      return `$${hoursData.totalMilestone.toLocaleString('en-US')}`;
+      return formatCurrency(hoursData.totalMilestone);
     case 'avg-success-fee':
       return hoursData.avgSuccessFee > 0 ? `${hoursData.avgSuccessFee.toFixed(1)}%` : '-';
     default:
@@ -73,6 +74,7 @@ const getWidgetValue = (dataSource: WidgetDataSource, hoursData: HoursData): str
 };
 
 export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compact = false }: SortableStatWidgetProps) {
+  const { formatCurrencyValue } = usePreferences();
   const {
     attributes,
     listeners,
@@ -88,7 +90,7 @@ export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compac
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const value = getWidgetValue(widget.dataSource, hoursData);
+  const value = getWidgetValue(widget.dataSource, hoursData, formatCurrencyValue);
 
   return (
     <Card 
