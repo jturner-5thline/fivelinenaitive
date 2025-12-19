@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, XCircle } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, XCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -119,6 +120,7 @@ function SortableReasonItem({ reason, onEdit, onDelete }: SortableReasonItemProp
 
 export function PassReasonsSettings() {
   const { passReasons, addPassReason, updatePassReason, deletePassReason, reorderPassReasons } = useLenderStages();
+  const [isOpen, setIsOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingReason, setEditingReason] = useState<PassReasonOption | null>(null);
   const [newReasonLabel, setNewReasonLabel] = useState('');
@@ -166,51 +168,60 @@ export function PassReasonsSettings() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-red-500" />
-            <CardTitle>Pass Reasons</CardTitle>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 text-left flex-1">
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  <CardTitle>Pass Reasons</CardTitle>
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setIsAddDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Reason
+            </Button>
           </div>
-          <Button variant="gradient" size="sm" onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Reason
-          </Button>
-        </div>
-        <CardDescription>
-          Configure the reasons shown when marking a lender as passed
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={passReasons.map(r => r.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-2">
-              {passReasons.map((reason) => (
-                <SortableReasonItem
-                  key={reason.id}
-                  reason={reason}
-                  onEdit={openEditDialog}
-                  onDelete={handleDeleteReason}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+          <CardDescription className="pl-6">
+            Configure the reasons shown when marking a lender as passed
+          </CardDescription>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={passReasons.map(r => r.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {passReasons.map((reason) => (
+                    <SortableReasonItem
+                      key={reason.id}
+                      reason={reason}
+                      onEdit={openEditDialog}
+                      onDelete={handleDeleteReason}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
 
-        {passReasons.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No pass reasons configured. Add one to get started.
-          </p>
-        )}
-      </CardContent>
+            {passReasons.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No pass reasons configured. Add one to get started.
+              </p>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
 
       {/* Add Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -269,6 +280,6 @@ export function PassReasonsSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </Collapsible>
   );
 }
