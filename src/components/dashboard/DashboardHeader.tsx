@@ -3,7 +3,7 @@ import { BarChart3, Plus, Settings, CreditCard, SlidersHorizontal, LogOut, Flask
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +30,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 
 export function DashboardHeader() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signOut, user } = useAuth();
   const { createDeal } = useDealsContext();
   const [open, setOpen] = useState(false);
@@ -105,13 +106,37 @@ export function DashboardHeader() {
             </TooltipProvider>
           )}
           <nav className="hidden items-center gap-1 md:flex">
-            <Button variant="ghost" size="sm" className="text-foreground" asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={location.pathname === '/dashboard' 
+                ? "bg-brand-gradient/15 text-foreground" 
+                : "text-muted-foreground"
+              } 
+              asChild
+            >
               <Link to="/dashboard">Pipeline</Link>
             </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={location.pathname === '/lenders' 
+                ? "bg-brand-gradient/15 text-foreground" 
+                : "text-muted-foreground"
+              } 
+              asChild
+            >
               <Link to="/lenders">Lenders</Link>
             </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={location.pathname === '/analytics' 
+                ? "bg-brand-gradient/15 text-foreground" 
+                : "text-muted-foreground"
+              } 
+              asChild
+            >
               <Link to="/analytics">Analytics</Link>
             </Button>
             <Button variant="ghost" size="sm" className="text-muted-foreground">
