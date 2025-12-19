@@ -141,8 +141,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
   const lenderDeals = useMemo(() => {
     if (!lender) return { active: [], sent: [], passReasons: [] };
 
-    const active: { dealId: string; dealName: string; company: string; stage: string; status: string }[] = [];
-    const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string }[] = [];
+    const active: { dealId: string; dealName: string; company: string; stage: string; status: string; value: number; manager: string }[] = [];
+    const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string; value: number; manager: string }[] = [];
     const passReasons: { dealId: string; dealName: string; company: string; reason: string }[] = [];
     const activeAndPassedDealIds = new Set<string>();
 
@@ -165,6 +165,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
             company: deal.company,
             stage: dealLender.stage,
             status: dealLender.trackingStatus,
+            value: deal.value,
+            manager: deal.manager,
           });
           activeAndPassedDealIds.add(deal.id);
         }
@@ -181,12 +183,23 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
           company: deal.company,
           stage: dealLender.stage,
           dateSent: dealLender.updatedAt || deal.createdAt,
+          value: deal.value,
+          manager: deal.manager,
         });
       }
     });
 
     return { active, sent, passReasons };
   }, [lender, deals]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
 
   if (!lender) return null;
 
@@ -447,23 +460,20 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                 Active Deals ({lenderDeals.active.length})
               </h3>
               {lenderDeals.active.length > 0 ? (
-                <div className="space-y-2">
-                  {lenderDeals.active.map((deal) => (
-                    <div 
-                      key={deal.dealId} 
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group"
-                      onClick={() => handleNavigateToDeal(deal.dealId)}
-                    >
-                      <div>
-                        <p className="font-medium">{deal.company}</p>
-                        <p className="text-sm text-muted-foreground">{deal.dealName}</p>
+                <div className="overflow-x-auto pb-2 -mx-1">
+                  <div className="flex gap-3 px-1" style={{ minWidth: 'min-content' }}>
+                    {lenderDeals.active.map((deal) => (
+                      <div 
+                        key={deal.dealId} 
+                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                        onClick={() => handleNavigateToDeal(deal.dealId)}
+                      >
+                        <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
+                        <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{deal.stage}</Badge>
-                        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">No active deals with this lender</p>
@@ -479,23 +489,20 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                 Deals Sent ({lenderDeals.sent.length})
               </h3>
               {lenderDeals.sent.length > 0 ? (
-                <div className="space-y-2">
-                  {lenderDeals.sent.map((deal) => (
-                    <div 
-                      key={deal.dealId} 
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group"
-                      onClick={() => handleNavigateToDeal(deal.dealId)}
-                    >
-                      <div>
-                        <p className="font-medium">{deal.company}</p>
-                        <p className="text-sm text-muted-foreground">{deal.dealName}</p>
+                <div className="overflow-x-auto pb-2 -mx-1">
+                  <div className="flex gap-3 px-1" style={{ minWidth: 'min-content' }}>
+                    {lenderDeals.sent.map((deal) => (
+                      <div 
+                        key={deal.dealId} 
+                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                        onClick={() => handleNavigateToDeal(deal.dealId)}
+                      >
+                        <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
+                        <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{deal.stage}</Badge>
-                        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">No deals have been sent to this lender</p>
