@@ -1828,23 +1828,27 @@ export default function DealDetail() {
                   </Collapsible>
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-muted-foreground shrink-0">Referred by</span>
-                    <ReferralSourceInput
-                      value={deal.referredBy}
-                      onChange={(referrer) => {
+                    <Input
+                      value={deal.referredBy?.name || ''}
+                      onChange={(e) => {
+                        const newName = e.target.value;
                         setDeal(prev => {
                           if (!prev) return prev;
                           return { 
                             ...prev, 
-                            referredBy: referrer || undefined,
+                            referredBy: newName ? { id: prev.referredBy?.id || `ref-${Date.now()}`, name: newName } : undefined,
                             updatedAt: new Date().toISOString() 
                           };
                         });
-                        // Persist to database
+                      }}
+                      onBlur={() => {
+                        // Persist to database on blur
                         if (deal.id) {
-                          updateDealInDb(deal.id, { referredBy: referrer?.name || null } as any);
+                          updateDealInDb(deal.id, { referredBy: deal.referredBy?.name || null } as any);
                         }
                       }}
-                      className="flex-1 max-w-[180px]"
+                      placeholder="Enter referral source..."
+                      className="flex-1 max-w-[180px] h-8 text-right"
                     />
                   </div>
                   
