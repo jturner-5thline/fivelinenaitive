@@ -161,9 +161,9 @@ export default function Settings() {
                     className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
                   >
                     <div>
-                      <p className="font-medium">Lenders & Directories</p>
+                      <p className="font-medium">Referral Sources</p>
                       <p className="text-sm text-muted-foreground">
-                        View and manage your lender directory
+                        View and manage your referral sources
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
