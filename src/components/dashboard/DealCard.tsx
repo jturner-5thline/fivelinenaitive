@@ -75,9 +75,9 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
       <Card className="group transition-all hover:shadow-md hover:border-primary/20 cursor-pointer h-full flex flex-col">
       <CardHeader className="space-y-0 pb-3">
         <div className="flex flex-row items-center justify-between">
-          <h3 className="text-xl font-semibold text-foreground dark:bg-gradient-to-r dark:from-white dark:to-[hsl(292,46%,65%)] dark:bg-clip-text dark:text-transparent leading-tight">{deal.company}</h3>
+          <h3 className="text-xl font-semibold text-foreground dark:bg-gradient-to-r dark:from-[hsl(292,46%,65%)] dark:to-white dark:bg-clip-text dark:text-transparent leading-tight">{deal.company}</h3>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xl font-semibold text-foreground dark:bg-gradient-to-r dark:from-white dark:to-[hsl(292,46%,65%)] dark:bg-clip-text dark:text-transparent">{formatCurrencyValue(deal.value)}</span>
+            <span className="text-xl font-semibold text-foreground dark:bg-gradient-to-r dark:from-[hsl(292,46%,65%)] dark:to-white dark:bg-clip-text dark:text-transparent">{formatCurrencyValue(deal.value)}</span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
