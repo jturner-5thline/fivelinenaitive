@@ -139,8 +139,16 @@ export function DashboardHeader() {
             >
               <Link to="/analytics">Analytics</Link>
             </Button>
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              Reports
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={location.pathname === '/reports' 
+                ? "bg-brand-gradient/15 text-foreground border-b-2 border-[hsl(292,46%,15%)] rounded-b-none" 
+                : "text-muted-foreground"
+              } 
+              asChild
+            >
+              <Link to="/reports">Reports</Link>
             </Button>
           </nav>
         </div>
