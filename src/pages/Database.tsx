@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Database as DatabaseIcon, Building2, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Database as DatabaseIcon, Users, ChevronRight } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -36,20 +36,21 @@ export default function Database() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
+                  <Users className="h-5 w-5" />
                   Directories
                 </CardTitle>
-                <CardDescription>Manage your lender and contact directories</CardDescription>
+                <CardDescription>Manage your contact directories</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Link
-                  to="/lenders"
+                  to="/settings"
+                  state={{ scrollTo: 'referral-sources' }}
                   className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
                 >
                   <div>
-                    <p className="font-medium">Lenders</p>
+                    <p className="font-medium">Referral Sources</p>
                     <p className="text-sm text-muted-foreground">
-                      View and manage your lender directory
+                      View and manage your referral sources
                     </p>
                   </div>
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
