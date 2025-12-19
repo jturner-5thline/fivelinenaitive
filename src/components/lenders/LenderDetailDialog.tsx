@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -560,10 +560,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                     <Tooltip key={deal.dealId}>
                       <TooltipTrigger asChild>
                         <div 
-                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
                           onClick={() => handleNavigateToDeal(deal.dealId)}
                         >
-                          <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
+                          <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
                           <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
                           <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
                         </div>
@@ -595,10 +596,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                     <Tooltip key={deal.dealId}>
                       <TooltipTrigger asChild>
                         <div 
-                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
                           onClick={() => handleNavigateToDeal(deal.dealId)}
                         >
-                          <p className="font-medium text-sm truncate mb-1">{deal.company}</p>
+                          <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
                           <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
                           <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
                         </div>
@@ -630,10 +632,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                     <Tooltip key={item.dealId}>
                       <TooltipTrigger asChild>
                         <div 
-                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
                           onClick={() => handleNavigateToDeal(item.dealId)}
                         >
-                          <p className="font-medium text-sm truncate mb-1">{item.company}</p>
+                          <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <p className="font-medium text-sm truncate mb-1 pr-4">{item.company}</p>
                           <p className="text-xs text-destructive/80 line-clamp-2">{item.reason}</p>
                         </div>
                       </TooltipTrigger>
