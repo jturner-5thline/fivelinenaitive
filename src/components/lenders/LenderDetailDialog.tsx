@@ -26,6 +26,7 @@ import {
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { cn } from '@/lib/utils';
 
 interface LenderInfo {
@@ -287,14 +288,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
     return { active, sent, passReasons };
   }, [lender, deals]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  const { formatCurrencyValue } = usePreferences();
 
   if (!lender) return null;
 
@@ -565,7 +559,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                         >
                           <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                           <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
-                          <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+                          <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
                           <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
                         </div>
                       </TooltipTrigger>
@@ -601,7 +595,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                         >
                           <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                           <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
-                          <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+                          <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
                           <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
                         </div>
                       </TooltipTrigger>
