@@ -29,11 +29,15 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 const onboardingSchema = z.object({
-  display_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  phone: z.string().optional(),
-  company_name: z.string().min(1, 'Company name is required').max(100),
-  backup_email: z.string().email('Invalid email').optional().or(z.literal('')),
-  company_url: z.string().url('Invalid URL').optional().or(z.literal('')),
+  display_name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must be less than 100 characters'),
+  phone: z.string()
+    .refine(val => !val || /^[\d\s\-+()]*$/.test(val), { message: 'Invalid phone number format' })
+    .refine(val => !val || val.length <= 20, { message: 'Phone number is too long' }),
+  company_name: z.string().min(1, 'Company name is required').max(100, 'Company name must be less than 100 characters'),
+  backup_email: z.string()
+    .refine(val => !val || z.string().email().safeParse(val).success, { message: 'Invalid email format' }),
+  company_url: z.string()
+    .refine(val => !val || /^https?:\/\/.+\..+/.test(val), { message: 'Invalid URL format (must start with http:// or https://)' }),
   company_size: z.string().min(1, 'Please select company size'),
   company_role: z.string().min(1, 'Please select your role'),
 });
