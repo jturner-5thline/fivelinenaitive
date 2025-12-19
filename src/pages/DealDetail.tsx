@@ -1874,12 +1874,6 @@ export default function DealDetail() {
                           className="w-20 h-8 text-right"
                         />
                       </div>
-                      <div className="flex items-center justify-between pt-1 border-t border-border/30">
-                        <span className="text-muted-foreground text-sm font-medium">Total Hours</span>
-                        <span className="font-medium bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
-                          {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}
-                        </span>
-                      </div>
                     </CollapsibleContent>
                   </Collapsible>
                 </CardContent>
