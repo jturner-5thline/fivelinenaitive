@@ -28,8 +28,16 @@ import { useDealTypes } from '@/contexts/DealTypesContext';
 
 export function DealTypesSettings() {
   const { dealTypes, addDealType, updateDealType, deleteDealType } = useDealTypes();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('settings-deal-types-open');
+    return saved !== null ? saved === 'true' : false;
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    localStorage.setItem('settings-deal-types-open', String(open));
+  };
   const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState('');
 
@@ -79,7 +87,7 @@ export function DealTypesSettings() {
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CollapsibleTrigger asChild>

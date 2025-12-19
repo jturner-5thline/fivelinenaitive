@@ -125,8 +125,16 @@ function SortableSubstageItem({ substage, index, onEdit, onDelete }: SortableSub
 
 export function LenderSubstagesSettings() {
   const { substages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages } = useLenderStages();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('settings-lender-milestones-open');
+    return saved !== null ? saved === 'true' : false;
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    localStorage.setItem('settings-lender-milestones-open', String(open));
+  };
   const [editingSubstage, setEditingSubstage] = useState<SubstageOption | null>(null);
   const [label, setLabel] = useState('');
 
@@ -191,7 +199,7 @@ export function LenderSubstagesSettings() {
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CollapsibleTrigger asChild>

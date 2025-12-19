@@ -154,8 +154,16 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange }: So
 
 export function LenderStagesSettings() {
   const { stages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup } = useLenderStages();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('settings-lender-stages-open');
+    return saved !== null ? saved === 'true' : false;
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    localStorage.setItem('settings-lender-stages-open', String(open));
+  };
   const [editingStage, setEditingStage] = useState<StageOption | null>(null);
   const [label, setLabel] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<StageGroup>('active');
@@ -228,7 +236,7 @@ export function LenderStagesSettings() {
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CollapsibleTrigger asChild>

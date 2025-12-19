@@ -120,8 +120,16 @@ function SortableReasonItem({ reason, onEdit, onDelete }: SortableReasonItemProp
 
 export function PassReasonsSettings() {
   const { passReasons, addPassReason, updatePassReason, deletePassReason, reorderPassReasons } = useLenderStages();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('settings-pass-reasons-open');
+    return saved !== null ? saved === 'true' : false;
+  });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    localStorage.setItem('settings-pass-reasons-open', String(open));
+  };
   const [editingReason, setEditingReason] = useState<PassReasonOption | null>(null);
   const [newReasonLabel, setNewReasonLabel] = useState('');
 
@@ -168,7 +176,7 @@ export function PassReasonsSettings() {
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
