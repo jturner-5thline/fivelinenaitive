@@ -47,23 +47,31 @@ const tourSteps: TourStep[] = [
 ];
 
 export function DemoTour() {
-  const [isDemoUser, setIsDemoUser] = useState(false);
+  const [shouldShowTour, setShouldShowTour] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    const checkDemoUser = async () => {
+    const checkTourEligibility = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email === 'demo@example.com') {
-        setIsDemoUser(true);
-        const tourCompleted = localStorage.getItem('demo-tour-completed');
+      if (!user) return;
+
+      // Check if user just completed onboarding
+      const justCompletedOnboarding = sessionStorage.getItem('just-completed-onboarding');
+      const isDemoUser = user.email === 'demo@example.com';
+      
+      if (justCompletedOnboarding || isDemoUser) {
+        setShouldShowTour(true);
+        const tourCompleted = localStorage.getItem('tour-completed');
         if (!tourCompleted) {
           // Small delay to let the page render first
           setTimeout(() => setShowTour(true), 500);
         }
+        // Clear the onboarding flag after checking
+        sessionStorage.removeItem('just-completed-onboarding');
       }
     };
-    checkDemoUser();
+    checkTourEligibility();
 
     // Listen for restart tour event
     const handleRestartTour = () => {
@@ -89,7 +97,7 @@ export function DemoTour() {
   };
 
   const completeTour = () => {
-    localStorage.setItem('demo-tour-completed', 'true');
+    localStorage.setItem('tour-completed', 'true');
     setShowTour(false);
   };
 
@@ -97,7 +105,7 @@ export function DemoTour() {
     completeTour();
   };
 
-  if (!isDemoUser) {
+  if (!shouldShowTour) {
     return null;
   }
 

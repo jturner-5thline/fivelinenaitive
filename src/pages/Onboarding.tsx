@@ -164,6 +164,9 @@ export default function Onboarding() {
 
       await refreshProfile();
       
+      // Set flag so tour shows on dashboard
+      sessionStorage.setItem('just-completed-onboarding', 'true');
+      
       // Fire confetti celebration
       fireConfetti();
       
