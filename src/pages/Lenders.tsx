@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,6 +81,7 @@ export default function Lenders() {
   const [editingLender, setEditingLender] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showActiveDealsOnly, setShowActiveDealsOnly] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('lenders-view-mode');
@@ -148,8 +149,13 @@ export default function Lenders() {
     setIsDetailOpen(true);
   };
 
-  // Filter lenders based on search query
+  // Filter lenders based on search query and active deals filter
   const filteredLenders = lenders.filter(lender => {
+    // Filter by active deals if enabled
+    if (showActiveDealsOnly && !activeDealCounts[lender.name]) {
+      return false;
+    }
+    
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -368,6 +374,18 @@ export default function Lenders() {
                       </Button>
                     )}
                   </div>
+                  <Button
+                    variant={showActiveDealsOnly ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-2 whitespace-nowrap"
+                    onClick={() => setShowActiveDealsOnly(!showActiveDealsOnly)}
+                  >
+                    <Zap className="h-4 w-4" />
+                    Active Deals
+                    {showActiveDealsOnly && (
+                      <X className="h-3 w-3 ml-1" />
+                    )}
+                  </Button>
                   <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <ArrowUpDown className="h-4 w-4 mr-2" />
