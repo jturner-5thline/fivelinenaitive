@@ -46,6 +46,14 @@ const defaultCharts: ChartConfig[] = [
     color: '#10b981',
     createdAt: new Date().toISOString(),
   },
+  {
+    id: 'chart-4',
+    title: 'Revenue per Hour by Manager',
+    type: 'bar',
+    dataSource: 'revenue-per-hour-by-manager',
+    color: '#f59e0b',
+    createdAt: new Date().toISOString(),
+  },
 ];
 
 export function ChartsProvider({ children }: { children: ReactNode }) {
