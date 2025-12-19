@@ -4,6 +4,7 @@ import { GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { WidgetConfig, WidgetDataSource } from '@/contexts/AnalyticsWidgetsContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { cn } from '@/lib/utils';
 
 interface HoursData {
@@ -42,6 +43,7 @@ interface SortableListWidgetProps {
 }
 
 export function SortableListWidget({ widget, hoursData, onEdit, onDelete, compact = false }: SortableListWidgetProps) {
+  const { formatCurrencyValue } = usePreferences();
   const {
     attributes,
     listeners,
@@ -115,7 +117,7 @@ export function SortableListWidget({ widget, hoursData, onEdit, onDelete, compac
                 </span>
                 <div className={cn("flex gap-4", compact ? "gap-2 text-xs" : "text-sm")}>
                   <span className="text-muted-foreground">{item.total.toFixed(1)}h</span>
-                  <span className="text-muted-foreground">${item.fees.toLocaleString()}</span>
+                  <span className="text-muted-foreground">{formatCurrencyValue(item.fees)}</span>
                   <span className="font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
                     {item.revenuePerHour > 0 ? `$${item.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr` : '-'}
                   </span>
