@@ -2231,7 +2231,7 @@ export default function DealDetail() {
                   key={reason.id}
                   type="button"
                   variant={selectedPassReason === reason.id ? "default" : "outline"}
-                  className="h-auto py-2 px-3 whitespace-normal text-left justify-start"
+                  className="h-auto min-h-[2.5rem] py-2 px-3 text-xs leading-tight whitespace-normal text-left justify-start break-words"
                   onClick={() => setSelectedPassReason(reason.id)}
                 >
                   {reason.label}
