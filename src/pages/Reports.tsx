@@ -25,6 +25,7 @@ import { toast } from '@/hooks/use-toast';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { reportGenerators } from '@/utils/reportGenerator';
+import { CustomReportBuilder } from '@/components/reports/CustomReportBuilder';
 
 interface ReportType {
   id: string;
@@ -349,25 +350,10 @@ export default function Reports() {
             ))}
           </div>
 
-          {/* Quick Stats */}
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="text-base">Quick Export</CardTitle>
-              <CardDescription>Download all reports in a single package</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="outline" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Export All as PDF Bundle
-                </Button>
-                <Button variant="outline" className="gap-2">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Export All as Excel Workbook
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Custom Report Builder */}
+          <div className="mt-8">
+            <CustomReportBuilder deals={deals} />
+          </div>
         </main>
       </div>
     </>
