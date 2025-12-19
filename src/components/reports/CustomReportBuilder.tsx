@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { 
   FileSpreadsheet, 
   FileType, 
@@ -109,6 +110,7 @@ interface CustomReportBuilderProps {
 }
 
 export function CustomReportBuilder({ deals }: CustomReportBuilderProps) {
+  const { formatCurrencyValue } = usePreferences();
   const [selectedFields, setSelectedFields] = useState<string[]>(['company', 'stage', 'status', 'manager', 'value']);
   const [filters, setFilters] = useState<FilterConfig[]>([]);
   const [reportName, setReportName] = useState('Custom Report');
@@ -246,7 +248,7 @@ export function CustomReportBuilder({ deals }: CustomReportBuilderProps) {
         const field = availableFields.find(f => f.id === fieldId);
         const value = field?.getValue(deal);
         if (typeof value === 'number' && (fieldId === 'value' || fieldId.includes('Fee'))) {
-          return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+          return formatCurrencyValue(value);
         }
         return String(value ?? '');
       })
@@ -501,7 +503,7 @@ export function CustomReportBuilder({ deals }: CustomReportBuilderProps) {
                           return (
                             <TableCell key={cellIdx} className="whitespace-nowrap">
                               {isMoneyField && typeof value === 'number'
-                                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
+                                ? formatCurrencyValue(value)
                                 : String(value ?? '')}
                             </TableCell>
                           );

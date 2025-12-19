@@ -1,5 +1,6 @@
 import { TrendingUp, Briefcase, FileSearch, DollarSign } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface StatsCardsProps {
   stats: {
@@ -12,12 +13,7 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
-  const formatValue = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    return `$${(value / 1000).toFixed(0)}K`;
-  };
+  const { formatCurrencyValue } = usePreferences();
 
   const statItems = [
     {
@@ -29,7 +25,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       label: 'Active Deal Volume',
-      value: formatValue(stats.activeDealValue),
+      value: formatCurrencyValue(stats.activeDealValue),
       icon: TrendingUp,
       color: 'text-accent',
       bgColor: 'bg-accent/10',
@@ -43,7 +39,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       label: 'Dollars in Diligence',
-      value: formatValue(stats.dollarsInDiligence),
+      value: formatCurrencyValue(stats.dollarsInDiligence),
       icon: DollarSign,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
