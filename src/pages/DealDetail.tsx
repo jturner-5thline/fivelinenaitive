@@ -959,7 +959,7 @@ export default function DealDetail() {
                           ) : (
                             <ChevronRight className="h-4 w-4 text-muted-foreground" />
                           )}
-                          <CardTitle className="text-lg bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+                          <CardTitle className="text-lg">
                             Lenders
                           </CardTitle>
                           {deal.lenders && deal.lenders.length > 0 && (
@@ -1625,7 +1625,7 @@ export default function DealDetail() {
             <div className="lg:col-span-1 flex flex-col gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">Deal Information</CardTitle>
+                  <CardTitle className="text-lg">Deal Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
@@ -1888,7 +1888,7 @@ export default function DealDetail() {
               {/* Company Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+                  <CardTitle className="text-lg">
                     Company
                   </CardTitle>
                 </CardHeader>
@@ -1925,7 +1925,7 @@ export default function DealDetail() {
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+                    <CardTitle className="text-lg">
                       Attachments
                     </CardTitle>
                     <Button
@@ -2010,7 +2010,7 @@ export default function DealDetail() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+                  <CardTitle className="text-lg">
                     Activity
                   </CardTitle>
                 </CardHeader>
