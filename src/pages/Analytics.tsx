@@ -690,7 +690,7 @@ export default function Analytics() {
         <main className="container mx-auto px-6 py-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold">Analytics</h1>
+              <h1 className="text-3xl font-bold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">Analytics</h1>
               <p className="text-muted-foreground mt-1">
                 View insights and manage your custom widgets and charts. Drag to reorder.
               </p>
