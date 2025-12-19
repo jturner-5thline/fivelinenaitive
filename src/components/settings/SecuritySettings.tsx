@@ -112,12 +112,33 @@ export function SecuritySettings() {
       const userAgent = navigator.userAgent;
       const deviceInfo = getDeviceInfo(userAgent);
 
+      // Fetch IP geolocation
+      let city: string | null = null;
+      let country: string | null = null;
+      let ipAddress: string | null = null;
+
+      try {
+        const geoResponse = await fetch('https://ipapi.co/json/');
+        if (geoResponse.ok) {
+          const geoData = await geoResponse.json();
+          city = geoData.city || null;
+          country = geoData.country_name || null;
+          ipAddress = geoData.ip || null;
+        }
+      } catch (error) {
+        // Geolocation fetch failed, continue without it
+        console.log('Geolocation fetch failed:', error);
+      }
+
       await supabase.from('login_history').insert({
         user_id: session.user.id,
         user_agent: userAgent,
         browser: deviceInfo.browser,
         os: deviceInfo.os,
         device_type: deviceInfo.isMobile ? 'mobile' : 'desktop',
+        city,
+        country,
+        ip_address: ipAddress,
       });
 
       sessionStorage.setItem(sessionKey, 'true');
