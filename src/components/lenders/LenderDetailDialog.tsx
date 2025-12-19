@@ -144,6 +144,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
     const active: { dealId: string; dealName: string; company: string; stage: string; status: string }[] = [];
     const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string }[] = [];
     const passReasons: { dealId: string; dealName: string; company: string; reason: string }[] = [];
+    const activeAndPassedDealIds = new Set<string>();
 
     deals.forEach(deal => {
       const dealLender = deal.lenders?.find(l => l.name === lender.name);
@@ -156,6 +157,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
             company: deal.company,
             reason: dealLender.passReason,
           });
+          activeAndPassedDealIds.add(deal.id);
         } else if (dealLender.trackingStatus === 'active') {
           active.push({
             dealId: deal.id,
@@ -164,16 +166,22 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
             stage: dealLender.stage,
             status: dealLender.trackingStatus,
           });
-        } else {
-          // All other deals sent to this lender
-          sent.push({
-            dealId: deal.id,
-            dealName: deal.name,
-            company: deal.company,
-            stage: dealLender.stage,
-            dateSent: dealLender.updatedAt || deal.createdAt,
-          });
+          activeAndPassedDealIds.add(deal.id);
         }
+      }
+    });
+
+    // Second pass: add to "sent" only if not already in active or passReasons
+    deals.forEach(deal => {
+      const dealLender = deal.lenders?.find(l => l.name === lender.name);
+      if (dealLender && !activeAndPassedDealIds.has(deal.id)) {
+        sent.push({
+          dealId: deal.id,
+          dealName: deal.name,
+          company: deal.company,
+          stage: dealLender.stage,
+          dateSent: dealLender.updatedAt || deal.createdAt,
+        });
       }
     });
 
