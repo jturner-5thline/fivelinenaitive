@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 
 export const LENDER_ATTACHMENT_CATEGORIES = [
   { value: 'general', label: 'General' },
+  { value: 'nda', label: 'NDA' },
+  { value: 'marketing_materials', label: 'Marketing Materials' },
   { value: 'contracts', label: 'Contracts' },
   { value: 'presentations', label: 'Presentations' },
   { value: 'due_diligence', label: 'Due Diligence' },
