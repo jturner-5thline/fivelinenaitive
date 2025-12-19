@@ -1,12 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
-import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Shield, Eye, EyeOff, Loader2, Monitor, LogOut, Smartphone } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
@@ -21,19 +35,56 @@ const passwordSchema = z.object({
   path: ['confirmPassword'],
 });
 
+interface SessionInfo {
+  lastSignIn: string;
+  userAgent: string;
+  isCurrent: boolean;
+}
+
 export function SecuritySettings() {
+  const { user } = useAuth();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [currentSession, setCurrentSession] = useState<SessionInfo | null>(null);
   
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setCurrentSession({
+          lastSignIn: user?.last_sign_in_at || new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          isCurrent: true,
+        });
+      }
+    };
+    fetchSession();
+  }, [user]);
+
+  const getDeviceInfo = (userAgent: string) => {
+    const isMobile = /Mobile|Android|iPhone|iPad/i.test(userAgent);
+    const browser = userAgent.includes('Chrome') ? 'Chrome' :
+                    userAgent.includes('Firefox') ? 'Firefox' :
+                    userAgent.includes('Safari') ? 'Safari' :
+                    userAgent.includes('Edge') ? 'Edge' : 'Browser';
+    const os = userAgent.includes('Windows') ? 'Windows' :
+               userAgent.includes('Mac') ? 'macOS' :
+               userAgent.includes('Linux') ? 'Linux' :
+               userAgent.includes('Android') ? 'Android' :
+               userAgent.includes('iPhone') || userAgent.includes('iPad') ? 'iOS' : 'Unknown';
+    return { isMobile, browser, os };
+  };
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -83,11 +134,55 @@ export function SecuritySettings() {
     }
   };
 
+  const handleSignOutOtherDevices = async () => {
+    setIsSigningOut(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'others' });
+      if (error) throw error;
+      
+      toast({
+        title: 'Signed out',
+        description: 'All other devices have been signed out.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to sign out other devices.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  const handleSignOutEverywhere = async () => {
+    setIsSigningOut(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      if (error) throw error;
+      
+      toast({
+        title: 'Signed out everywhere',
+        description: 'You have been signed out from all devices.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to sign out.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
   const handleCancel = () => {
     setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     setErrors({});
     setIsChangingPassword(false);
   };
+
+  const deviceInfo = currentSession ? getDeviceInfo(currentSession.userAgent) : null;
 
   return (
     <Card>
@@ -99,6 +194,7 @@ export function SecuritySettings() {
         <CardDescription>Manage your account security settings</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Password Section */}
         {!isChangingPassword ? (
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
@@ -214,6 +310,95 @@ export function SecuritySettings() {
             </div>
           </div>
         )}
+
+        <Separator />
+
+        {/* Active Sessions Section */}
+        <div className="space-y-4">
+          <div>
+            <h3 className="font-medium">Active Sessions</h3>
+            <p className="text-sm text-muted-foreground">
+              Manage your active sessions across devices
+            </p>
+          </div>
+
+          {/* Current Session */}
+          {currentSession && deviceInfo && (
+            <div className="flex items-start justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-start gap-3">
+                {deviceInfo.isMobile ? (
+                  <Smartphone className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                ) : (
+                  <Monitor className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                )}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{deviceInfo.browser} on {deviceInfo.os}</p>
+                    <Badge variant="secondary" className="text-xs">Current</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Last active: {new Date(currentSession.lastSignIn).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Session Actions */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2" disabled={isSigningOut}>
+                  <LogOut className="h-4 w-4" />
+                  Sign out other devices
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sign out other devices?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will sign you out from all other devices except this one. You'll stay signed in here.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSignOutOtherDevices}>
+                    Sign Out Others
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" disabled={isSigningOut}>
+                  <LogOut className="h-4 w-4" />
+                  Sign out everywhere
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sign out everywhere?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will sign you out from all devices, including this one. You'll need to sign in again.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSignOutEverywhere} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Sign Out Everywhere
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
