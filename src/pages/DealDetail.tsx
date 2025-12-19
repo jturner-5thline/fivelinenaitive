@@ -2008,16 +2008,23 @@ export default function DealDetail() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ActivityTimeline activities={activities} />
-                </CardContent>
-              </Card>
+              <Collapsible defaultOpen>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                      <CardTitle className="text-lg">
+                        Activity
+                      </CardTitle>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                  </CardHeader>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <ActivityTimeline activities={activities} />
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
             </div>
           </div>
         </main>
