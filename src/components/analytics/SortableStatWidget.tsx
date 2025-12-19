@@ -125,7 +125,7 @@ export function SortableStatWidget({ widget, hoursData, onEdit, onDelete, compac
             compact ? "text-xs" : "text-sm"
           )}>{widget.title}</p>
           <p className={cn(
-            "font-bold bg-brand-gradient bg-clip-text text-transparent",
+            "font-bold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]",
             compact ? "text-xl" : (widget.size === 'small' ? "text-3xl" : "text-2xl")
           )}>
             {value}
