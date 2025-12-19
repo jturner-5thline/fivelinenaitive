@@ -518,21 +518,19 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
                 Pass Reasons ({lenderDeals.passReasons.length})
               </h3>
               {lenderDeals.passReasons.length > 0 ? (
-                <div className="space-y-2">
-                  {lenderDeals.passReasons.map((item) => (
-                    <div 
-                      key={item.dealId} 
-                      className="p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group"
-                      onClick={() => handleNavigateToDeal(item.dealId)}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium">{item.company}</p>
-                        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="overflow-x-auto pb-2 -mx-1">
+                  <div className="flex gap-3 px-1" style={{ minWidth: 'min-content' }}>
+                    {lenderDeals.passReasons.map((item) => (
+                      <div 
+                        key={item.dealId} 
+                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border"
+                        onClick={() => handleNavigateToDeal(item.dealId)}
+                      >
+                        <p className="font-medium text-sm truncate mb-1">{item.company}</p>
+                        <p className="text-xs text-destructive/80 line-clamp-2">{item.reason}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground">{item.dealName}</p>
-                      <p className="text-sm mt-2 text-destructive/80">Reason: {item.reason}</p>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">No pass history with this lender</p>
