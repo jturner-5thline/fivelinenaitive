@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { GripVertical, Clock, MessageSquare } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { GripVertical, Clock, MessageSquare, Search } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
 import { STAGE_GROUPS, StageGroup, PassReasonOption } from '@/contexts/LenderStagesContext';
@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface LendersKanbanProps {
   lenders: DealLender[];
@@ -149,6 +150,14 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
   const [pendingPassChange, setPendingPassChange] = useState<{ lenderId: string } | null>(null);
   const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
+  const [passReasonSearch, setPassReasonSearch] = useState('');
+
+  const filteredPassReasons = useMemo(() => {
+    if (!passReasonSearch.trim()) return passReasons;
+    return passReasons.filter(reason => 
+      reason.label.toLowerCase().includes(passReasonSearch.toLowerCase())
+    );
+  }, [passReasons, passReasonSearch]);
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -198,6 +207,7 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
     setPassReasonDialogOpen(false);
     setPendingPassChange(null);
     setSelectedPassReason(null);
+    setPassReasonSearch('');
   };
 
   const getLendersByGroup = (groupId: StageGroup) => {
@@ -250,9 +260,18 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
           <DialogHeader>
             <DialogTitle>Select Pass Reason for {pendingLenderName}</DialogTitle>
           </DialogHeader>
-          <div className="py-2">
+          <div className="py-2 space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search pass reasons..."
+                value={passReasonSearch}
+                onChange={(e) => setPassReasonSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <div className="grid grid-cols-3 gap-2">
-              {passReasons.map((reason) => (
+              {filteredPassReasons.map((reason) => (
                 <Button
                   key={reason.id}
                   variant={selectedPassReason === reason.label ? "default" : "outline"}
@@ -262,6 +281,11 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
                   {reason.label}
                 </Button>
               ))}
+              {filteredPassReasons.length === 0 && (
+                <p className="col-span-3 text-sm text-muted-foreground text-center py-4">
+                  No pass reasons match your search
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
