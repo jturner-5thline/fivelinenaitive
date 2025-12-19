@@ -9,6 +9,7 @@ export type WidgetDataSource =
   | 'total-hours'
   | 'total-fees'
   | 'revenue-per-hour'
+  | 'avg-hours-per-deal'
   | 'total-retainer'
   | 'total-milestone'
   | 'avg-success-fee'
@@ -238,6 +239,7 @@ export const WIDGET_DATA_SOURCES: { id: WidgetDataSource; label: string; type: W
   { id: 'total-hours', label: 'Total Hours', type: 'stat' },
   { id: 'total-fees', label: 'Total Fees', type: 'stat' },
   { id: 'revenue-per-hour', label: 'Revenue per Hour', type: 'stat' },
+  { id: 'avg-hours-per-deal', label: 'Avg Hours per Deal', type: 'stat' },
   { id: 'total-retainer', label: 'Total Retainer', type: 'stat' },
   { id: 'total-milestone', label: 'Total Milestone', type: 'stat' },
   { id: 'avg-success-fee', label: 'Avg Success Fee', type: 'stat' },

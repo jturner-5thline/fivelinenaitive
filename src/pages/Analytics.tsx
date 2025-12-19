@@ -81,6 +81,11 @@ const getHoursData = (deals: Deal[]) => {
     : 0;
   const revenuePerHour = totalHours > 0 ? totalFees / totalHours : 0;
   
+  // Calculate average hours per deal
+  const dealsWithHours = deals.filter(d => (d.preSigningHours ?? 0) + (d.postSigningHours ?? 0) > 0);
+  const dealsWithHoursCount = dealsWithHours.length;
+  const avgHoursPerDeal = dealsWithHoursCount > 0 ? totalHours / dealsWithHoursCount : 0;
+  
   const hoursByManager: Record<string, { preSigning: number; postSigning: number; fees: number }> = {};
   deals.forEach(deal => {
     if (!hoursByManager[deal.manager]) {
@@ -103,6 +108,7 @@ const getHoursData = (deals: Deal[]) => {
   
   return {
     totalPreSigning, totalPostSigning, totalHours, totalFees, totalRetainer, totalMilestone, avgSuccessFee, revenuePerHour,
+    dealsWithHoursCount, avgHoursPerDeal,
     byManager: Object.entries(hoursByManager).map(([name, data]) => ({
       name, preSigning: data.preSigning, postSigning: data.postSigning, total: data.preSigning + data.postSigning,
       fees: data.fees, revenuePerHour: (data.preSigning + data.postSigning) > 0 ? data.fees / (data.preSigning + data.postSigning) : 0,
@@ -211,6 +217,32 @@ const getChartData = (dataSource: string, allDeals: Deal[], dateRange?: DateRang
         { name: 'Success Fee', value: totalSuccessFee },
       ].filter(item => item.value > 0);
     
+    case 'revenue-per-hour':
+      const revenueHoursData = getHoursData(filteredDeals);
+      return [
+        { name: 'Revenue/Hour', value: Math.round(revenueHoursData.revenuePerHour) },
+      ];
+    
+    case 'avg-hours-per-deal':
+      const dealsWithHours = filteredDeals.filter(d => (d.preSigningHours ?? 0) + (d.postSigningHours ?? 0) > 0);
+      const avgPreSigning = dealsWithHours.length > 0
+        ? dealsWithHours.reduce((sum, d) => sum + (d.preSigningHours ?? 0), 0) / dealsWithHours.length
+        : 0;
+      const avgPostSigning = dealsWithHours.length > 0
+        ? dealsWithHours.reduce((sum, d) => sum + (d.postSigningHours ?? 0), 0) / dealsWithHours.length
+        : 0;
+      return [
+        { name: 'Pre-Signing', value: Math.round(avgPreSigning * 10) / 10 },
+        { name: 'Post-Signing', value: Math.round(avgPostSigning * 10) / 10 },
+        { name: 'Total', value: Math.round((avgPreSigning + avgPostSigning) * 10) / 10 },
+      ];
+    
+    case 'revenue-per-hour-by-manager':
+      const managerRevenueData = getHoursData(filteredDeals);
+      return managerRevenueData.byManager
+        .filter(m => m.total > 0)
+        .map(m => ({ name: m.name, value: Math.round(m.revenuePerHour) }));
+    
     default:
       return [
         { name: 'A', value: 10 },
@@ -231,6 +263,9 @@ const DATA_SOURCES = [
   { id: 'hours-by-manager', label: 'Hours by Manager' },
   { id: 'hours-by-stage', label: 'Hours by Stage' },
   { id: 'fee-breakdown', label: 'Fee Breakdown ($K)' },
+  { id: 'revenue-per-hour', label: 'Revenue per Hour ($/hr)' },
+  { id: 'avg-hours-per-deal', label: 'Avg Hours per Deal' },
+  { id: 'revenue-per-hour-by-manager', label: 'Revenue/Hour by Manager' },
 ];
 
 const CHART_COLORS = [
