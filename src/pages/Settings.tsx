@@ -1,11 +1,9 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, SlidersHorizontal, ChevronRight } from 'lucide-react';
+import { ArrowLeft, SlidersHorizontal, ChevronRight, User } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ProfileSettings } from '@/components/settings/ProfileSettings';
-import { CompanySettings } from '@/components/settings/CompanySettings';
 import { LenderStagesSettings } from '@/components/settings/LenderStagesSettings';
 import { LenderSubstagesSettings } from '@/components/settings/LenderSubstagesSettings';
 import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
@@ -36,9 +34,29 @@ export default function Settings() {
               <p className="text-muted-foreground">Manage your application settings</p>
             </div>
 
-            <ProfileSettings />
-
-            <CompanySettings />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Account
+                </CardTitle>
+                <CardDescription>Manage your profile and company information</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  to="/account"
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <div>
+                    <p className="font-medium">Profile & Company</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your personal info and company details
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </Link>
+              </CardContent>
+            </Card>
 
             <LenderStagesSettings />
 
