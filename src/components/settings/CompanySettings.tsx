@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Building2, Loader2 } from 'lucide-react';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,9 +29,25 @@ const companyRoleOptions = [
   { value: 'other', label: 'Other' },
 ];
 
+const companySettingsSchema = z.object({
+  phone: z.string()
+    .refine(val => !val || /^[\d\s\-+()]*$/.test(val), { message: 'Invalid phone number format' })
+    .refine(val => !val || val.length <= 20, { message: 'Phone number is too long' }),
+  backup_email: z.string()
+    .refine(val => !val || z.string().email().safeParse(val).success, { message: 'Invalid email format' }),
+  company_name: z.string().max(100, { message: 'Company name must be less than 100 characters' }),
+  company_url: z.string()
+    .refine(val => !val || /^https?:\/\/.+\..+/.test(val), { message: 'Invalid URL format (must start with http:// or https://)' }),
+  company_size: z.string(),
+  company_role: z.string(),
+});
+
+type FormErrors = Partial<Record<keyof z.infer<typeof companySettingsSchema>, string>>;
+
 export function CompanySettings() {
   const { profile, isLoading, updateProfile } = useProfile();
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [formData, setFormData] = useState({
     phone: '',
     company_name: '',
@@ -53,7 +70,33 @@ export function CompanySettings() {
     }
   }, [profile]);
 
+  const validateForm = (): boolean => {
+    const result = companySettingsSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: FormErrors = {};
+      result.error.errors.forEach(err => {
+        const field = err.path[0] as keyof FormErrors;
+        if (!fieldErrors[field]) {
+          fieldErrors[field] = err.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return false;
+    }
+    setErrors({});
+    return true;
+  };
+
   const handleSave = async () => {
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
       await updateProfile({
@@ -76,6 +119,14 @@ export function CompanySettings() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
     }
   };
 
@@ -108,9 +159,13 @@ export function CompanySettings() {
               id="phone"
               type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+              onChange={(e) => handleFieldChange('phone', e.target.value)}
               placeholder="Enter phone number"
+              className={errors.phone ? 'border-destructive' : ''}
             />
+            {errors.phone && (
+              <p className="text-sm text-destructive">{errors.phone}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -119,9 +174,13 @@ export function CompanySettings() {
               id="backup_email"
               type="email"
               value={formData.backup_email}
-              onChange={(e) => setFormData(prev => ({ ...prev, backup_email: e.target.value }))}
+              onChange={(e) => handleFieldChange('backup_email', e.target.value)}
               placeholder="Enter backup email"
+              className={errors.backup_email ? 'border-destructive' : ''}
             />
+            {errors.backup_email && (
+              <p className="text-sm text-destructive">{errors.backup_email}</p>
+            )}
           </div>
         </div>
 
@@ -130,9 +189,13 @@ export function CompanySettings() {
           <Input
             id="company_name"
             value={formData.company_name}
-            onChange={(e) => setFormData(prev => ({ ...prev, company_name: e.target.value }))}
+            onChange={(e) => handleFieldChange('company_name', e.target.value)}
             placeholder="Enter company name"
+            className={errors.company_name ? 'border-destructive' : ''}
           />
+          {errors.company_name && (
+            <p className="text-sm text-destructive">{errors.company_name}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -141,9 +204,13 @@ export function CompanySettings() {
             id="company_url"
             type="url"
             value={formData.company_url}
-            onChange={(e) => setFormData(prev => ({ ...prev, company_url: e.target.value }))}
+            onChange={(e) => handleFieldChange('company_url', e.target.value)}
             placeholder="https://example.com"
+            className={errors.company_url ? 'border-destructive' : ''}
           />
+          {errors.company_url && (
+            <p className="text-sm text-destructive">{errors.company_url}</p>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -151,7 +218,7 @@ export function CompanySettings() {
             <Label htmlFor="company_size">Company Size</Label>
             <Select
               value={formData.company_size}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, company_size: value }))}
+              onValueChange={(value) => handleFieldChange('company_size', value)}
             >
               <SelectTrigger id="company_size">
                 <SelectValue placeholder="Select company size" />
@@ -170,7 +237,7 @@ export function CompanySettings() {
             <Label htmlFor="company_role">Your Role</Label>
             <Select
               value={formData.company_role}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, company_role: value }))}
+              onValueChange={(value) => handleFieldChange('company_role', value)}
             >
               <SelectTrigger id="company_role">
                 <SelectValue placeholder="Select your role" />
