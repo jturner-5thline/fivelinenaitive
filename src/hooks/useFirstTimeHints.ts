@@ -10,6 +10,16 @@ export type HintId =
   | 'deal-card'
   | 'widgets-section';
 
+// Priority order for hints - only the first non-dismissed hint will be shown
+const HINT_PRIORITY: HintId[] = [
+  'new-deal-button',
+  'deal-card',
+  'filters',
+  'widgets-section',
+  'analytics-nav',
+  'settings-menu',
+];
+
 interface UseFirstTimeHintsReturn {
   isHintVisible: (id: HintId) => boolean;
   dismissHint: (id: HintId) => void;
@@ -42,9 +52,16 @@ export function useFirstTimeHints(): UseFirstTimeHintsReturn {
     }
   }, []);
 
-  const isHintVisible = useCallback((id: HintId): boolean => {
-    return isFirstTimeUser && !dismissedHints.has(id);
+  // Find the first hint in priority order that hasn't been dismissed
+  const getActiveHint = useCallback((): HintId | null => {
+    if (!isFirstTimeUser) return null;
+    return HINT_PRIORITY.find(id => !dismissedHints.has(id)) || null;
   }, [isFirstTimeUser, dismissedHints]);
+
+  const isHintVisible = useCallback((id: HintId): boolean => {
+    // Only show this hint if it's the active (highest priority non-dismissed) hint
+    return getActiveHint() === id;
+  }, [getActiveHint]);
 
   const dismissHint = useCallback((id: HintId) => {
     setDismissedHints(prev => {
