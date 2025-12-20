@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format, subDays, startOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -209,6 +211,41 @@ export default function Workflows() {
     return { total, completed, partial, failed, successRate, activeWorkflows };
   }, [runs, workflows]);
 
+  // Chart data for runs over time (last 7 days)
+  const chartData = useMemo(() => {
+    const days = 7;
+    const data = [];
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = startOfDay(subDays(new Date(), i));
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const dayRuns = runs.filter(run => {
+        const runDate = format(startOfDay(parseISO(run.started_at)), 'yyyy-MM-dd');
+        return runDate === dateStr;
+      });
+      
+      data.push({
+        date: format(date, 'MMM d'),
+        total: dayRuns.length,
+        successful: dayRuns.filter(r => r.status === 'completed').length,
+        failed: dayRuns.filter(r => r.status === 'failed' || r.status === 'partial').length,
+      });
+    }
+    
+    return data;
+  }, [runs]);
+
+  const chartConfig = {
+    successful: {
+      label: "Successful",
+      color: "hsl(var(--chart-2))",
+    },
+    failed: {
+      label: "Failed",
+      color: "hsl(var(--destructive))",
+    },
+  };
+
   const handleCreateNew = () => {
     setEditingWorkflow(null);
     setTemplateData(null);
@@ -400,6 +437,70 @@ export default function Workflows() {
                 </div>
               </Card>
             </div>
+
+            {/* Runs Over Time Chart */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Runs Over Time
+                </CardTitle>
+                <CardDescription>
+                  Workflow executions in the last 7 days
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {runs.length === 0 ? (
+                  <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
+                    No run data available yet
+                  </div>
+                ) : (
+                  <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="fillSuccessful" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.1} />
+                        </linearGradient>
+                        <linearGradient id="fillFailed" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis 
+                        dataKey="date" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tick={{ fontSize: 12 }}
+                        tickMargin={8}
+                      />
+                      <YAxis 
+                        tickLine={false} 
+                        axisLine={false} 
+                        tick={{ fontSize: 12 }}
+                        tickMargin={8}
+                        allowDecimals={false}
+                      />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area
+                        type="monotone"
+                        dataKey="successful"
+                        stackId="1"
+                        stroke="hsl(var(--chart-2))"
+                        fill="url(#fillSuccessful)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="failed"
+                        stackId="1"
+                        stroke="hsl(var(--destructive))"
+                        fill="url(#fillFailed)"
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
