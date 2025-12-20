@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 const HINTS_STORAGE_KEY = 'dismissed-hints';
 
@@ -53,15 +53,15 @@ export function useFirstTimeHints(): UseFirstTimeHintsReturn {
   }, []);
 
   // Find the first hint in priority order that hasn't been dismissed
-  const getActiveHint = useCallback((): HintId | null => {
+  const activeHint = useMemo((): HintId | null => {
     if (!isFirstTimeUser) return null;
     return HINT_PRIORITY.find(id => !dismissedHints.has(id)) || null;
   }, [isFirstTimeUser, dismissedHints]);
 
   const isHintVisible = useCallback((id: HintId): boolean => {
     // Only show this hint if it's the active (highest priority non-dismissed) hint
-    return getActiveHint() === id;
-  }, [getActiveHint]);
+    return activeHint === id;
+  }, [activeHint]);
 
   const dismissHint = useCallback((id: HintId) => {
     setDismissedHints(prev => {
