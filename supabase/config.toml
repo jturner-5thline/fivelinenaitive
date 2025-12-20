@@ -2,3 +2,6 @@ project_id = "tgkksvazruzbghssnxde"
 
 [functions.lender-summary]
 verify_jwt = false
+
+[functions.execute-workflow]
+verify_jwt = true

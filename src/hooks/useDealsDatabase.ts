@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Deal, DealLender, DealStatus, DealStage, EngagementType, Referrer } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
+import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 
 interface DbDeal {
   id: string;
@@ -39,11 +40,60 @@ interface DbDealLender {
   updated_at: string;
 }
 
+// Helper function to trigger workflows
+async function triggerWorkflow(
+  triggerType: TriggerType,
+  triggerData: Record<string, any>
+) {
+  try {
+    // Fetch active workflows matching this trigger type
+    const { data: workflows, error } = await supabase
+      .from('workflows')
+      .select('*')
+      .eq('trigger_type', triggerType)
+      .eq('is_active', true);
+
+    if (error || !workflows || workflows.length === 0) return;
+
+    // Filter and execute matching workflows
+    for (const workflow of workflows) {
+      const config = workflow.trigger_config as Record<string, any>;
+      
+      // Check stage-based triggers
+      if (triggerType === 'deal_stage_change' || triggerType === 'lender_stage_change') {
+        if (config.fromStage && config.fromStage !== triggerData.fromStage) continue;
+        if (config.toStage && config.toStage !== triggerData.toStage) continue;
+      }
+
+      // Execute the workflow
+      supabase.functions.invoke('execute-workflow', {
+        body: {
+          workflowId: workflow.id,
+          triggerType,
+          triggerData,
+          actions: workflow.actions as unknown as WorkflowAction[],
+        },
+      }).then(({ error: execError }) => {
+        if (execError) {
+          console.error(`Error executing workflow ${workflow.name}:`, execError);
+        } else {
+          console.log(`Workflow ${workflow.name} triggered`);
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Error triggering workflows:', err);
+  }
+}
+
 export function useDealsDatabase() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // Keep a ref to track previous deal states for detecting stage changes
+  const previousDealsRef = useRef<Map<string, Deal>>(new Map());
 
   // Get current user
   useEffect(() => {
@@ -207,6 +257,13 @@ export function useDealsDatabase() {
       };
 
       setDeals(prev => [newDeal, ...prev]);
+      
+      // Trigger new_deal workflow
+      triggerWorkflow('new_deal', {
+        dealId: newDeal.id,
+        dealName: newDeal.company,
+      });
+      
       return newDeal;
     } catch (err) {
       console.error('Error creating deal:', err);
@@ -223,6 +280,7 @@ export function useDealsDatabase() {
   const updateDeal = useCallback(async (dealId: string, updates: Partial<Deal>) => {
     // Store previous state for rollback
     const previousDeals = deals;
+    const previousDeal = deals.find(d => d.id === dealId);
     
     // Optimistically update UI immediately
     setDeals(prev =>
@@ -257,6 +315,25 @@ export function useDealsDatabase() {
         .eq('id', dealId);
 
       if (error) throw error;
+      
+      // Trigger workflows for stage changes
+      if (updates.stage && previousDeal && previousDeal.stage !== updates.stage) {
+        triggerWorkflow('deal_stage_change', {
+          dealId,
+          dealName: previousDeal.company,
+          fromStage: previousDeal.stage,
+          toStage: updates.stage,
+        });
+        
+        // Check for deal closed trigger (stage is 'closed')
+        if (updates.stage === 'closed') {
+          triggerWorkflow('deal_closed', {
+            dealId,
+            dealName: previousDeal.company,
+            status: 'closed',
+          });
+        }
+      }
     } catch (err) {
       // Rollback on error
       setDeals(previousDeals);
@@ -327,6 +404,20 @@ export function useDealsDatabase() {
     // Store previous state for rollback
     const previousDeals = deals;
     
+    // Find the lender and its deal for workflow triggering
+    let previousLender: DealLender | undefined;
+    let dealId: string | undefined;
+    let dealName: string | undefined;
+    for (const deal of deals) {
+      const lender = deal.lenders?.find(l => l.id === lenderId);
+      if (lender) {
+        previousLender = lender;
+        dealId = deal.id;
+        dealName = deal.company;
+        break;
+      }
+    }
+    
     // Optimistically update UI immediately
     setDeals(prev =>
       prev.map(deal => ({
@@ -351,6 +442,18 @@ export function useDealsDatabase() {
         .eq('id', lenderId);
 
       if (error) throw error;
+      
+      // Trigger workflow for lender stage changes
+      if (updates.stage && previousLender && previousLender.stage !== updates.stage && dealId) {
+        triggerWorkflow('lender_stage_change', {
+          dealId,
+          dealName,
+          lenderId,
+          lenderName: previousLender.name,
+          fromStage: previousLender.stage,
+          toStage: updates.stage,
+        });
+      }
     } catch (err) {
       // Rollback on error
       setDeals(previousDeals);
