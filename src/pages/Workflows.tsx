@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,11 +11,15 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -39,7 +44,8 @@ import {
 } from '@/components/ui/collapsible';
 import { WorkflowBuilder, WorkflowData, TriggerType, ActionType } from '@/components/workflows/WorkflowBuilder';
 import { useWorkflows, Workflow as WorkflowType } from '@/hooks/useWorkflows';
-import { useWorkflowRuns, WorkflowRun } from '@/hooks/useWorkflowRuns';
+import { useWorkflowRuns } from '@/hooks/useWorkflowRuns';
+import { supabase } from '@/integrations/supabase/client';
 
 const TRIGGER_LABELS: Record<TriggerType, string> = {
   deal_stage_change: 'Deal Stage Change',
@@ -72,6 +78,11 @@ export default function Workflows() {
   const [deletingWorkflow, setDeletingWorkflow] = useState<WorkflowType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
+  
+  // Test trigger state
+  const [testingWorkflow, setTestingWorkflow] = useState<WorkflowType | null>(null);
+  const [testDealName, setTestDealName] = useState('Test Deal');
+  const [isRunningTest, setIsRunningTest] = useState(false);
 
   const handleCreateNew = () => {
     setEditingWorkflow(null);
@@ -106,6 +117,43 @@ export default function Workflows() {
 
   const handleToggle = async (workflow: WorkflowType) => {
     await toggleWorkflow(workflow.id, !workflow.is_active);
+  };
+
+  const handleTestWorkflow = async () => {
+    if (!testingWorkflow) return;
+    
+    setIsRunningTest(true);
+    try {
+      const triggerData = {
+        dealId: 'test-deal-id',
+        dealName: testDealName,
+        dealStage: 'Test Stage',
+        previousStage: 'Previous Stage',
+        lenderName: 'Test Lender',
+        lenderStage: 'Test Lender Stage',
+        isManualTest: true,
+      };
+
+      const { error } = await supabase.functions.invoke('execute-workflow', {
+        body: {
+          workflowId: testingWorkflow.id,
+          triggerType: testingWorkflow.trigger_type,
+          triggerData,
+          actions: testingWorkflow.actions,
+        },
+      });
+
+      if (error) throw error;
+      
+      toast.success('Workflow test executed successfully');
+      setTestingWorkflow(null);
+      setTestDealName('Test Deal');
+    } catch (error) {
+      console.error('Error testing workflow:', error);
+      toast.error('Failed to test workflow');
+    } finally {
+      setIsRunningTest(false);
+    }
   };
 
   return (
@@ -226,6 +274,10 @@ export default function Workflows() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setTestingWorkflow(workflow)}>
+                                <Play className="h-4 w-4 mr-2" />
+                                Test
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEdit(workflow)}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
@@ -389,6 +441,56 @@ export default function Workflows() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Test Workflow Dialog */}
+      <Dialog open={!!testingWorkflow} onOpenChange={() => setTestingWorkflow(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Test Workflow</DialogTitle>
+            <DialogDescription>
+              Run "{testingWorkflow?.name}" with sample trigger data to test its actions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="testDealName">Test Deal Name</Label>
+              <Input
+                id="testDealName"
+                value={testDealName}
+                onChange={(e) => setTestDealName(e.target.value)}
+                placeholder="Enter a test deal name"
+              />
+              <p className="text-xs text-muted-foreground">
+                This will be used as sample data for the workflow trigger.
+              </p>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+              <p className="text-sm font-medium">Trigger: {testingWorkflow && TRIGGER_LABELS[testingWorkflow.trigger_type]}</p>
+              <p className="text-xs text-muted-foreground">
+                Actions: {testingWorkflow?.actions.length || 0} action(s) will be executed
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestingWorkflow(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTestWorkflow} disabled={isRunningTest} className="gap-2">
+              {isRunningTest ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  Run Test
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
