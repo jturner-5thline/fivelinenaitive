@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,8 @@ interface LenderDetailDialogProps {
   lender: LenderInfo | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (lenderName: string) => void;
+  onDelete?: (lenderName: string) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -142,7 +144,7 @@ function HorizontalScrollContainer({ children }: { children: React.ReactNode }) 
   );
 }
 
-export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailDialogProps) {
+export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete }: LenderDetailDialogProps) {
   const { deals } = useDealsContext();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -295,11 +297,49 @@ export function LenderDetailDialog({ lender, open, onOpenChange }: LenderDetailD
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh]">
-        <DialogHeader>
+        <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Building2 className="h-6 w-6" />
             {lender.name}
           </DialogTitle>
+          <div className="flex items-center gap-1">
+            {onEdit && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onEdit(lender.name);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit lender</TooltipContent>
+              </Tooltip>
+            )}
+            {onDelete && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onDelete(lender.name);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete lender</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(85vh-100px)] pr-4">
