@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play } from 'lucide-react';
+import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -25,6 +25,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -42,7 +43,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { WorkflowBuilder, WorkflowData, TriggerType, ActionType } from '@/components/workflows/WorkflowBuilder';
+import { WorkflowBuilder, WorkflowData, TriggerType, ActionType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { useWorkflows, Workflow as WorkflowType } from '@/hooks/useWorkflows';
 import { useWorkflowRuns } from '@/hooks/useWorkflowRuns';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,6 +71,116 @@ const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; clas
   pending: { icon: <Clock className="h-4 w-4" />, label: 'Pending', className: 'text-muted-foreground' },
 };
 
+interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  triggerType: TriggerType;
+  triggerConfig: Record<string, any>;
+  actions: WorkflowAction[];
+}
+
+const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  {
+    id: 'new-deal-notification',
+    name: 'New Deal Alert',
+    description: 'Get notified when a new deal is created',
+    icon: <Bell className="h-5 w-5" />,
+    triggerType: 'new_deal',
+    triggerConfig: {},
+    actions: [
+      {
+        id: 'action-1',
+        type: 'send_notification',
+        config: {
+          title: 'New Deal Created',
+          message: 'A new deal has been added to your pipeline',
+        },
+      },
+    ],
+  },
+  {
+    id: 'deal-closed-webhook',
+    name: 'Deal Closed Webhook',
+    description: 'Send data to external system when a deal closes',
+    icon: <Zap className="h-5 w-5" />,
+    triggerType: 'deal_closed',
+    triggerConfig: {},
+    actions: [
+      {
+        id: 'action-1',
+        type: 'webhook',
+        config: {
+          url: 'https://your-webhook-url.com/deal-closed',
+        },
+      },
+    ],
+  },
+  {
+    id: 'stage-change-email',
+    name: 'Stage Change Email',
+    description: 'Email notification when deal moves to a new stage',
+    icon: <Mail className="h-5 w-5" />,
+    triggerType: 'deal_stage_change',
+    triggerConfig: { fromStage: '', toStage: '' },
+    actions: [
+      {
+        id: 'action-1',
+        type: 'send_email',
+        config: {
+          subject: 'Deal Stage Updated',
+          body: 'A deal has moved to a new stage in your pipeline.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'lender-update-notify',
+    name: 'Lender Status Update',
+    description: 'Notify when a lender changes stage',
+    icon: <Bell className="h-5 w-5" />,
+    triggerType: 'lender_stage_change',
+    triggerConfig: { fromStage: '', toStage: '' },
+    actions: [
+      {
+        id: 'action-1',
+        type: 'send_notification',
+        config: {
+          title: 'Lender Stage Changed',
+          message: 'A lender has been updated to a new stage',
+        },
+      },
+    ],
+  },
+  {
+    id: 'deal-closed-celebration',
+    name: 'Deal Won Celebration',
+    description: 'Multiple notifications when a deal is closed won',
+    icon: <CheckCircle2 className="h-5 w-5" />,
+    triggerType: 'deal_closed',
+    triggerConfig: { closedStatus: 'won' },
+    actions: [
+      {
+        id: 'action-1',
+        type: 'send_notification',
+        config: {
+          title: 'Deal Closed Won! 🎉',
+          message: 'Congratulations on closing a deal!',
+        },
+      },
+      {
+        id: 'action-2',
+        type: 'send_email',
+        config: {
+          subject: 'Deal Closed Successfully',
+          body: 'Great news! A deal has been closed won.',
+        },
+      },
+    ],
+  },
+];
+
 export default function Workflows() {
   const { workflows, isLoading, createWorkflow, updateWorkflow, deleteWorkflow, toggleWorkflow } = useWorkflows();
   const { runs, isLoading: isLoadingRuns } = useWorkflowRuns();
@@ -78,6 +189,8 @@ export default function Workflows() {
   const [deletingWorkflow, setDeletingWorkflow] = useState<WorkflowType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
+  const [templateData, setTemplateData] = useState<WorkflowData | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
   
   // Test trigger state
   const [testingWorkflow, setTestingWorkflow] = useState<WorkflowType | null>(null);
@@ -86,6 +199,21 @@ export default function Workflows() {
 
   const handleCreateNew = () => {
     setEditingWorkflow(null);
+    setTemplateData(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleUseTemplate = (template: WorkflowTemplate) => {
+    setTemplateData({
+      name: template.name,
+      description: template.description,
+      isActive: true,
+      triggerType: template.triggerType,
+      triggerConfig: template.triggerConfig,
+      actions: template.actions,
+    });
+    setEditingWorkflow(null);
+    setShowTemplates(false);
     setIsDialogOpen(true);
   };
 
@@ -182,10 +310,16 @@ export default function Workflows() {
                 </h1>
                 <p className="text-muted-foreground">Automate your deal and lender processes</p>
               </div>
-              <Button className="gap-2" onClick={handleCreateNew}>
-                <Plus className="h-4 w-4" />
-                New Workflow
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => setShowTemplates(true)}>
+                  <FileText className="h-4 w-4" />
+                  Templates
+                </Button>
+                <Button className="gap-2" onClick={handleCreateNew}>
+                  <Plus className="h-4 w-4" />
+                  New Workflow
+                </Button>
+              </div>
             </div>
 
             <Card>
@@ -416,9 +550,12 @@ export default function Workflows() {
               triggerType: editingWorkflow.trigger_type,
               triggerConfig: editingWorkflow.trigger_config,
               actions: editingWorkflow.actions,
-            } : undefined}
+            } : templateData || undefined}
             onSave={handleSave}
-            onCancel={() => setIsDialogOpen(false)}
+            onCancel={() => {
+              setIsDialogOpen(false);
+              setTemplateData(null);
+            }}
             isSaving={isSaving}
           />
         </DialogContent>
@@ -487,6 +624,65 @@ export default function Workflows() {
                   Run Test
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Templates Dialog */}
+      <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Workflow Templates</DialogTitle>
+            <DialogDescription>
+              Choose a pre-built template to quickly create a new workflow
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            <div className="grid gap-3 py-4">
+              {WORKFLOW_TEMPLATES.map((template) => (
+                <div
+                  key={template.id}
+                  className="flex items-start gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                  onClick={() => handleUseTemplate(template)}
+                >
+                  <div className="flex-shrink-0 p-2 bg-primary/10 rounded-lg text-primary">
+                    {template.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium">{template.name}</h3>
+                      <Badge variant="outline" className="text-xs">
+                        {TRIGGER_LABELS[template.triggerType]}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {template.description}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      {template.actions.map((action, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs gap-1">
+                          {ACTION_ICONS[action.type]}
+                          <span className="capitalize">{action.type.replace('_', ' ')}</span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+                    <Copy className="h-4 w-4" />
+                    Use
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTemplates(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateNew}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create from Scratch
             </Button>
           </DialogFooter>
         </DialogContent>
