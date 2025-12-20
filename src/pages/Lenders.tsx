@@ -919,6 +919,8 @@ export default function Lenders() {
         lender={selectedLender}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
+        onEdit={openEditDialog}
+        onDelete={handleDelete}
       />
     </>
   );
