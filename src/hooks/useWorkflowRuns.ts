@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -25,9 +25,18 @@ export function useWorkflowRuns(workflowId?: string) {
   const { user } = useAuth();
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Use refs to avoid stale closures in realtime callback
+  const userRef = useRef(user);
+  const workflowIdRef = useRef(workflowId);
+  
+  useEffect(() => {
+    userRef.current = user;
+    workflowIdRef.current = workflowId;
+  }, [user, workflowId]);
 
   const fetchRuns = useCallback(async () => {
-    if (!user) {
+    if (!userRef.current) {
       setRuns([]);
       setIsLoading(false);
       return;
@@ -43,8 +52,8 @@ export function useWorkflowRuns(workflowId?: string) {
         .order('started_at', { ascending: false })
         .limit(50);
 
-      if (workflowId) {
-        query = query.eq('workflow_id', workflowId);
+      if (workflowIdRef.current) {
+        query = query.eq('workflow_id', workflowIdRef.current);
       }
 
       const { data, error } = await query;
@@ -69,11 +78,12 @@ export function useWorkflowRuns(workflowId?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, workflowId]);
+  }, []);
 
+  // Initial fetch
   useEffect(() => {
     fetchRuns();
-  }, [fetchRuns]);
+  }, [fetchRuns, user, workflowId]);
 
   // Real-time subscription for workflow runs
   useEffect(() => {
