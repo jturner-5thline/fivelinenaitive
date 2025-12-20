@@ -75,6 +75,31 @@ export function useWorkflowRuns(workflowId?: string) {
     fetchRuns();
   }, [fetchRuns]);
 
+  // Real-time subscription for workflow runs
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('workflow-runs-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'workflow_runs',
+        },
+        () => {
+          // Refetch on any change to get updated data with workflow names
+          fetchRuns();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchRuns]);
+
   return {
     runs,
     isLoading,
