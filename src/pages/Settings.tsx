@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, SlidersHorizontal, ChevronRight, User, Search, X, Database } from 'lucide-react';
+import { ArrowLeft, SlidersHorizontal, ChevronRight, User, Search, X, Database, Workflow } from 'lucide-react';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'database',
     keywords: ['database', 'lenders', 'directory', 'data', 'directories'],
+  },
+  {
+    id: 'workflows',
+    keywords: ['workflows', 'workflow', 'automation', 'automate', 'triggers', 'actions'],
   },
   {
     id: 'lender-stages',
@@ -164,6 +168,32 @@ export default function Settings() {
                       <p className="font-medium">Referral Sources</p>
                       <p className="text-sm text-muted-foreground">
                         View and manage your referral sources
+                      </p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </Link>
+                </CardContent>
+            </Card>
+            )}
+
+            {isVisible('workflows') && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Workflow className="h-5 w-5" />
+                    Workflows
+                  </CardTitle>
+                  <CardDescription>Automate your deal and lender processes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    to="/workflows"
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium">Manage Workflows</p>
+                      <p className="text-sm text-muted-foreground">
+                        Create and manage automated workflows
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />

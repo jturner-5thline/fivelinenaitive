@@ -27,6 +27,7 @@ import Preferences from "./pages/Preferences";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
 import Database from "./pages/Database";
+import Workflows from "./pages/Workflows";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,9 @@ const App = () => (
                           } />
                           <Route path="/database" element={
                             <ProtectedRoute><Database /></ProtectedRoute>
+                          } />
+                          <Route path="/workflows" element={
+                            <ProtectedRoute><Workflows /></ProtectedRoute>
                           } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
