@@ -653,9 +653,15 @@ export default function Lenders() {
                     {sortedLenders.map((lender) => (
                       <div
                         key={lender.name}
-                        className="aspect-square bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer"
+                        className="relative aspect-square bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer"
                         onClick={() => openLenderDetail(lender)}
                       >
+                        {/* Active deal count - top left corner */}
+                        {activeDealCounts[lender.name] > 0 && (
+                          <Badge variant="default" className="absolute top-0 left-0 text-xs rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none">
+                            {activeDealCounts[lender.name]} active
+                          </Badge>
+                        )}
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -758,11 +764,6 @@ export default function Lenders() {
                               );
                             })()}
                           </div>
-                          {activeDealCounts[lender.name] > 0 && (
-                            <Badge variant="default" className="text-xs mt-1">
-                              {activeDealCounts[lender.name]} active
-                            </Badge>
-                          )}
                           {lender.contact.name && (
                             <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
                               {lender.contact.name}
