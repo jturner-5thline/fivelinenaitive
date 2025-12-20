@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy } from 'lucide-react';
+import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -197,6 +197,18 @@ export default function Workflows() {
   const [testDealName, setTestDealName] = useState('Test Deal');
   const [isRunningTest, setIsRunningTest] = useState(false);
 
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const total = runs.length;
+    const completed = runs.filter(r => r.status === 'completed').length;
+    const partial = runs.filter(r => r.status === 'partial').length;
+    const failed = runs.filter(r => r.status === 'failed').length;
+    const successRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const activeWorkflows = workflows.filter(w => w.is_active).length;
+    
+    return { total, completed, partial, failed, successRate, activeWorkflows };
+  }, [runs, workflows]);
+
   const handleCreateNew = () => {
     setEditingWorkflow(null);
     setTemplateData(null);
@@ -339,6 +351,54 @@ export default function Workflows() {
                   New Workflow
                 </Button>
               </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Activity className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold">{stats.total}</p>
+                    <p className="text-xs text-muted-foreground">Total Runs</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold">{stats.successRate}%</p>
+                    <p className="text-xs text-muted-foreground">Success Rate</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold">{stats.completed}</p>
+                    <p className="text-xs text-muted-foreground">Successful</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-destructive/10 rounded-lg">
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold">{stats.failed + stats.partial}</p>
+                    <p className="text-xs text-muted-foreground">Failed/Partial</p>
+                  </div>
+                </div>
+              </Card>
             </div>
 
             <Card>
