@@ -247,6 +247,25 @@ export default function Workflows() {
     await toggleWorkflow(workflow.id, !workflow.is_active);
   };
 
+  const handleDuplicate = async (workflow: WorkflowType) => {
+    const duplicatedData: WorkflowData = {
+      name: `${workflow.name} (Copy)`,
+      description: workflow.description || '',
+      isActive: false,
+      triggerType: workflow.trigger_type,
+      triggerConfig: workflow.trigger_config,
+      actions: workflow.actions.map(action => ({
+        ...action,
+        id: `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      })),
+    };
+    
+    const result = await createWorkflow(duplicatedData);
+    if (result) {
+      toast.success(`Workflow "${workflow.name}" duplicated`);
+    }
+  };
+
   const handleTestWorkflow = async () => {
     if (!testingWorkflow) return;
     
@@ -416,6 +435,11 @@ export default function Workflows() {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicate(workflow)}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => setDeletingWorkflow(workflow)}
