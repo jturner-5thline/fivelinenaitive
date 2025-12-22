@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
@@ -28,6 +29,7 @@ const Auth = () => {
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -238,6 +240,22 @@ const Auth = () => {
                         >
                           Forgot password?
                         </button>
+                      )}
+                      {mode === "login" && (
+                        <div className="flex items-center space-x-2 mt-3">
+                          <Checkbox
+                            id="rememberMe"
+                            checked={rememberMe}
+                            onCheckedChange={(checked) => setRememberMe(checked === true)}
+                            className="border-white/30 data-[state=checked]:bg-white/20 data-[state=checked]:border-white/40"
+                          />
+                          <Label
+                            htmlFor="rememberMe"
+                            className="text-sm text-white/60 font-light cursor-pointer"
+                          >
+                            Remember me
+                          </Label>
+                        </div>
                       )}
                     </div>
                   )}
