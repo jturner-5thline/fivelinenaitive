@@ -1242,6 +1242,16 @@ export default function DealDetail() {
                                       )}
                                     </button>
                                   </div>
+                                  {/* Show previous note when typing */}
+                                  {lender.savedNotes && lender.notes !== lender.savedNotes && (
+                                    <div className="ml-5 mt-1 p-2 bg-muted/30 rounded border-l-2 border-muted">
+                                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
+                                        <History className="h-3 w-3" />
+                                        <span>Previous note • {lender.notesUpdatedAt ? format(new Date(lender.notesUpdatedAt), 'MMM d, yyyy') : ''}</span>
+                                      </div>
+                                      <p className="text-xs text-foreground/70">{lender.savedNotes}</p>
+                                    </div>
+                                  )}
                                   {/* Notes History */}
                                   {lender.notesHistory && lender.notesHistory.length > 0 && (
                                     <div className="ml-5">
@@ -1502,6 +1512,16 @@ export default function DealDetail() {
                                               )}
                                             </button>
                                           </div>
+                                          {/* Show previous note when typing */}
+                                          {lender.savedNotes && lender.notes !== lender.savedNotes && (
+                                            <div className="ml-5 mt-1 p-2 bg-muted/30 rounded border-l-2 border-muted">
+                                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
+                                                <History className="h-3 w-3" />
+                                                <span>Previous note • {lender.notesUpdatedAt ? format(new Date(lender.notesUpdatedAt), 'MMM d, yyyy') : ''}</span>
+                                              </div>
+                                              <p className="text-xs text-foreground/70">{lender.savedNotes}</p>
+                                            </div>
+                                          )}
                                           {/* Notes History */}
                                           {lender.notesHistory && lender.notesHistory.length > 0 && (
                                             <div className="ml-5">
