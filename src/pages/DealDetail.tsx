@@ -1839,7 +1839,7 @@ export default function DealDetail() {
                             value={deal.successFeePercent ?? ''}
                             onChange={(e) => updateDeal('successFeePercent', e.target.value ? parseFloat(e.target.value) : undefined)}
                             placeholder="0"
-                            className="w-16 h-7 text-right text-sm"
+                            className="w-16 h-7 text-right text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           <span className="text-xs text-muted-foreground">%</span>
                         </div>
