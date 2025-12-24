@@ -345,9 +345,24 @@ export default function DealDetail() {
   const updateLenderNotes = useCallback((lenderId: string, notes: string) => {
     setDeal(prev => {
       if (!prev) return prev;
-      const updatedLenders = prev.lenders?.map(l =>
-        l.id === lenderId ? { ...l, notes } : l
-      );
+      const updatedLenders = prev.lenders?.map(l => {
+        if (l.id !== lenderId) return l;
+        
+        const savedNote = l.savedNotes?.trim() || '';
+        const currentNote = l.notes?.trim() || '';
+        
+        // If there's a saved note and user starts typing something different, log the saved note to history
+        if (savedNote && notes.trim() !== savedNote && currentNote === savedNote) {
+          const newHistory = [...(l.notesHistory || [])];
+          newHistory.unshift({
+            text: savedNote,
+            updatedAt: l.notesUpdatedAt || new Date().toISOString(),
+          });
+          return { ...l, notes, notesHistory: newHistory, savedNotes: undefined };
+        }
+        
+        return { ...l, notes };
+      });
       return { ...prev, lenders: updatedLenders };
     });
   }, []);
@@ -363,37 +378,21 @@ export default function DealDetail() {
         // Don't save empty notes
         if (!currentNote) return l;
         
-        // Add current note to history
-        const newHistory = [...(l.notesHistory || [])];
-        newHistory.unshift({
-          text: currentNote,
-          updatedAt: new Date().toISOString(),
-        });
-        
         return {
           ...l,
-          notes: '', // Clear the input after saving
           savedNotes: currentNote,
           notesUpdatedAt: new Date().toISOString(),
-          notesHistory: newHistory,
           updatedAt: new Date().toISOString(),
         };
       });
       
-      // Persist to database - save empty notes since we're clearing the input
+      // Persist to database
       const lender = updatedLenders?.find(l => l.id === lenderId);
       if (lender) {
-        updateLenderInDb(lenderId, { notes: '' });
+        updateLenderInDb(lenderId, { notes: lender.notes });
       }
       
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
-    });
-    
-    // Auto-expand history when a note is added
-    setExpandedLenderHistory(prev => {
-      const next = new Set(prev);
-      next.add(lenderId);
-      return next;
     });
   }, [updateLenderInDb]);
 
