@@ -359,19 +359,20 @@ export default function DealDetail() {
         if (l.id !== lenderId) return l;
         
         const currentNote = l.notes?.trim() || '';
-        const previousSavedNote = l.savedNotes?.trim() || '';
         
-        // Only save to history if there was a previous saved note AND it differs from current
+        // Don't save empty notes
+        if (!currentNote) return l;
+        
+        // Add current note to history
         const newHistory = [...(l.notesHistory || [])];
-        if (previousSavedNote && previousSavedNote !== currentNote) {
-          newHistory.unshift({
-            text: previousSavedNote,
-            updatedAt: l.notesUpdatedAt || new Date().toISOString(),
-          });
-        }
+        newHistory.unshift({
+          text: currentNote,
+          updatedAt: new Date().toISOString(),
+        });
         
         return {
           ...l,
+          notes: '', // Clear the input after saving
           savedNotes: currentNote,
           notesUpdatedAt: new Date().toISOString(),
           notesHistory: newHistory,
@@ -379,13 +380,20 @@ export default function DealDetail() {
         };
       });
       
-      // Persist to database
+      // Persist to database - save empty notes since we're clearing the input
       const lender = updatedLenders?.find(l => l.id === lenderId);
       if (lender) {
-        updateLenderInDb(lenderId, { notes: lender.notes });
+        updateLenderInDb(lenderId, { notes: '' });
       }
       
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    });
+    
+    // Auto-expand history when a note is added
+    setExpandedLenderHistory(prev => {
+      const next = new Set(prev);
+      next.add(lenderId);
+      return next;
     });
   }, [updateLenderInDb]);
 
