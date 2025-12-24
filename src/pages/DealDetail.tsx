@@ -1769,20 +1769,9 @@ export default function DealDetail() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total Fee</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm text-muted-foreground">$</span>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={formatWithCommas(deal.totalFee)}
-                        onChange={(e) => {
-                          const value = parseCurrencyInput(e.target.value);
-                          updateDeal('totalFee', value ?? 0);
-                        }}
-                        placeholder="0"
-                        className="w-28 h-8 text-right font-medium text-purple-600"
-                      />
-                    </div>
+                    <span className="font-medium text-purple-600">
+                      ${formatWithCommas(deal.totalFee)}
+                    </span>
                   </div>
                   
                   {/* Fee Breakdown Section */}
