@@ -368,6 +368,8 @@ export default function DealDetail() {
   }, []);
 
   const commitLenderNotes = useCallback((lenderId: string) => {
+    let noteSaved = false;
+    
     setDeal(prev => {
       if (!prev) return prev;
       const updatedLenders = prev.lenders?.map(l => {
@@ -377,6 +379,8 @@ export default function DealDetail() {
         
         // Don't save empty notes
         if (!currentNote) return l;
+        
+        noteSaved = true;
         
         return {
           ...l,
@@ -394,6 +398,16 @@ export default function DealDetail() {
       
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
+    
+    // Show toast after state update
+    setTimeout(() => {
+      if (noteSaved) {
+        toast({
+          title: "Note saved",
+          description: "Your note has been saved successfully.",
+        });
+      }
+    }, 0);
   }, [updateLenderInDb]);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
