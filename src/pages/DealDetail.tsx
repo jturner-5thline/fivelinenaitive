@@ -1250,43 +1250,17 @@ export default function DealDetail() {
                                       )}
                                     </button>
                                   </div>
-                                  {/* Notes History */}
+                                  {/* Notes History - Always visible below input */}
                                   {lender.notesHistory && lender.notesHistory.length > 0 && (
-                                    <div className="ml-5">
-                                      <button
-                                        onClick={() => {
-                                          setExpandedLenderHistory(prev => {
-                                            const next = new Set(prev);
-                                            if (next.has(lender.id)) {
-                                              next.delete(lender.id);
-                                            } else {
-                                              next.add(lender.id);
-                                            }
-                                            return next;
-                                          });
-                                        }}
-                                        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-                                      >
-                                        <History className="h-3 w-3" />
-                                        <span>{lender.notesHistory.length} previous note{lender.notesHistory.length > 1 ? 's' : ''}</span>
-                                        {expandedLenderHistory.has(lender.id) ? (
-                                          <ChevronUp className="h-3 w-3" />
-                                        ) : (
-                                          <ChevronDown className="h-3 w-3" />
-                                        )}
-                                      </button>
-                                      {expandedLenderHistory.has(lender.id) && (
-                                        <div className="mt-1 space-y-1 border-l-2 border-muted pl-2">
-                                          {lender.notesHistory.map((historyItem, idx) => (
-                                            <div key={idx} className="text-xs">
-                                              <span className="text-[10px] text-muted-foreground">
-                                                {format(new Date(historyItem.updatedAt), 'MM-dd')}
-                                              </span>
-                                              <p className="text-foreground/80 mt-0.5">{historyItem.text}</p>
-                                            </div>
-                                          ))}
+                                    <div className="ml-5 mt-1 space-y-1.5">
+                                      {lender.notesHistory.map((historyItem, idx) => (
+                                        <div key={idx} className="flex items-start gap-2 text-xs bg-muted/30 rounded px-2 py-1.5">
+                                          <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-0.5">
+                                            {format(new Date(historyItem.updatedAt), "MM-dd HH:mm")}
+                                          </span>
+                                          <p className="text-foreground/80">{historyItem.text}</p>
                                         </div>
-                                      )}
+                                      ))}
                                     </div>
                                   )}
                                 </div>
