@@ -139,10 +139,23 @@ export default function DealDetail() {
   const contextDeal = getDealById(id || '');
   const [deal, setDeal] = useState<Deal | undefined>(contextDeal);
   
-  // Update local deal state when context deal changes
+  // Update local deal state when context deal changes, but preserve local edits
   useEffect(() => {
     if (contextDeal) {
-      setDeal(contextDeal);
+      setDeal(prev => {
+        if (!prev) return contextDeal;
+        // Merge context changes with local state, preserving local edits for fee fields
+        return {
+          ...contextDeal,
+          // Preserve local fee values that may not have been saved yet
+          retainerFee: prev.retainerFee,
+          milestoneFee: prev.milestoneFee,
+          successFeePercent: prev.successFeePercent,
+          totalFee: prev.totalFee,
+          preSigningHours: prev.preSigningHours,
+          postSigningHours: prev.postSigningHours,
+        };
+      });
     }
   }, [contextDeal]);
   
