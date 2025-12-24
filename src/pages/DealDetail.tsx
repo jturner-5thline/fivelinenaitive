@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Pencil, Check } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -157,6 +157,7 @@ export default function DealDetail() {
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
+  const [editingHistoryNote, setEditingHistoryNote] = useState<{ lenderId: string; noteIndex: number; text: string } | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
 
   // Drag and drop sensors
@@ -388,6 +389,43 @@ export default function DealDetail() {
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
   }, [updateLenderInDb]);
+
+  const deleteHistoryNote = useCallback((lenderId: string, noteIndex: number) => {
+    setDeal(prev => {
+      if (!prev) return prev;
+      const updatedLenders = prev.lenders?.map(l => {
+        if (l.id !== lenderId) return l;
+        const newHistory = [...(l.notesHistory || [])];
+        newHistory.splice(noteIndex, 1);
+        return { ...l, notesHistory: newHistory };
+      });
+      return { ...prev, lenders: updatedLenders };
+    });
+    toast({
+      title: "Note deleted",
+      description: "The history note has been removed.",
+    });
+  }, []);
+
+  const saveHistoryNoteEdit = useCallback((lenderId: string, noteIndex: number, newText: string) => {
+    setDeal(prev => {
+      if (!prev) return prev;
+      const updatedLenders = prev.lenders?.map(l => {
+        if (l.id !== lenderId) return l;
+        const newHistory = [...(l.notesHistory || [])];
+        if (newHistory[noteIndex]) {
+          newHistory[noteIndex] = { ...newHistory[noteIndex], text: newText };
+        }
+        return { ...l, notesHistory: newHistory };
+      });
+      return { ...prev, lenders: updatedLenders };
+    });
+    setEditingHistoryNote(null);
+    toast({
+      title: "Note updated",
+      description: "The history note has been saved.",
+    });
+  }, []);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
     // Find the first stage in the target group
@@ -1280,11 +1318,63 @@ export default function DealDetail() {
                                       {expandedLenderHistory.has(lender.id) && (
                                         <div className="mt-1 space-y-1 border-l-2 border-muted pl-2">
                                           {lender.notesHistory.map((historyItem, idx) => (
-                                            <div key={idx} className="text-xs">
-                                              <span className="text-[10px] text-muted-foreground">
-                                                {format(new Date(historyItem.updatedAt), 'MM-dd')}
-                                              </span>
-                                              <p className="text-foreground/80 mt-0.5">{historyItem.text}</p>
+                                            <div key={idx} className="text-xs group/note">
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-[10px] text-muted-foreground">
+                                                  {format(new Date(historyItem.updatedAt), 'MM-dd')}
+                                                </span>
+                                                <div className="flex gap-1 opacity-0 group-hover/note:opacity-100 transition-opacity">
+                                                  <button
+                                                    onClick={() => setEditingHistoryNote({ lenderId: lender.id, noteIndex: idx, text: historyItem.text })}
+                                                    className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                                                    title="Edit note"
+                                                  >
+                                                    <Pencil className="h-3 w-3" />
+                                                  </button>
+                                                  <button
+                                                    onClick={() => deleteHistoryNote(lender.id, idx)}
+                                                    className="p-0.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive"
+                                                    title="Delete note"
+                                                  >
+                                                    <Trash2 className="h-3 w-3" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                              {editingHistoryNote?.lenderId === lender.id && editingHistoryNote?.noteIndex === idx ? (
+                                                <div className="flex gap-1 mt-0.5">
+                                                  <Input
+                                                    value={editingHistoryNote.text}
+                                                    onChange={(e) => setEditingHistoryNote(prev => prev ? { ...prev, text: e.target.value } : null)}
+                                                    className="h-6 text-xs flex-1"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                      if (e.key === 'Enter') {
+                                                        saveHistoryNoteEdit(lender.id, idx, editingHistoryNote.text);
+                                                      } else if (e.key === 'Escape') {
+                                                        setEditingHistoryNote(null);
+                                                      }
+                                                    }}
+                                                  />
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6 text-success hover:text-success"
+                                                    onClick={() => saveHistoryNoteEdit(lender.id, idx, editingHistoryNote.text)}
+                                                  >
+                                                    <Check className="h-3 w-3" />
+                                                  </Button>
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6 text-muted-foreground"
+                                                    onClick={() => setEditingHistoryNote(null)}
+                                                  >
+                                                    <X className="h-3 w-3" />
+                                                  </Button>
+                                                </div>
+                                              ) : (
+                                                <p className="text-foreground/80 mt-0.5">{historyItem.text}</p>
+                                              )}
                                             </div>
                                           ))}
                                         </div>
@@ -1550,11 +1640,63 @@ export default function DealDetail() {
                                               {expandedLenderHistory.has(lender.id) && (
                                                 <div className="mt-1 space-y-1 border-l-2 border-muted pl-2">
                                                   {lender.notesHistory.map((historyItem, idx) => (
-                                                    <div key={idx} className="text-xs">
-                                                      <span className="text-[10px] text-muted-foreground">
-                                                        {format(new Date(historyItem.updatedAt), 'MM-dd')}
-                                                      </span>
-                                                      <p className="text-foreground/80 mt-0.5">{historyItem.text}</p>
+                                                    <div key={idx} className="text-xs group/note">
+                                                      <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                          {format(new Date(historyItem.updatedAt), 'MM-dd')}
+                                                        </span>
+                                                        <div className="flex gap-1 opacity-0 group-hover/note:opacity-100 transition-opacity">
+                                                          <button
+                                                            onClick={() => setEditingHistoryNote({ lenderId: lender.id, noteIndex: idx, text: historyItem.text })}
+                                                            className="p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                                                            title="Edit note"
+                                                          >
+                                                            <Pencil className="h-3 w-3" />
+                                                          </button>
+                                                          <button
+                                                            onClick={() => deleteHistoryNote(lender.id, idx)}
+                                                            className="p-0.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive"
+                                                            title="Delete note"
+                                                          >
+                                                            <Trash2 className="h-3 w-3" />
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                      {editingHistoryNote?.lenderId === lender.id && editingHistoryNote?.noteIndex === idx ? (
+                                                        <div className="flex gap-1 mt-0.5">
+                                                          <Input
+                                                            value={editingHistoryNote.text}
+                                                            onChange={(e) => setEditingHistoryNote(prev => prev ? { ...prev, text: e.target.value } : null)}
+                                                            className="h-6 text-xs flex-1"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                              if (e.key === 'Enter') {
+                                                                saveHistoryNoteEdit(lender.id, idx, editingHistoryNote.text);
+                                                              } else if (e.key === 'Escape') {
+                                                                setEditingHistoryNote(null);
+                                                              }
+                                                            }}
+                                                          />
+                                                          <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-6 w-6 text-success hover:text-success"
+                                                            onClick={() => saveHistoryNoteEdit(lender.id, idx, editingHistoryNote.text)}
+                                                          >
+                                                            <Check className="h-3 w-3" />
+                                                          </Button>
+                                                          <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-6 w-6 text-muted-foreground"
+                                                            onClick={() => setEditingHistoryNote(null)}
+                                                          >
+                                                            <X className="h-3 w-3" />
+                                                          </Button>
+                                                        </div>
+                                                      ) : (
+                                                        <p className="text-foreground/80 mt-0.5">{historyItem.text}</p>
+                                                      )}
                                                     </div>
                                                   ))}
                                                 </div>
