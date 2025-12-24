@@ -1263,18 +1263,43 @@ export default function DealDetail() {
                                       )}
                                     </button>
                                   </div>
-                                  {/* Notes History - Always visible below input */}
+                                  {/* Notes History - Collapsible list */}
                                   {lender.notesHistory && lender.notesHistory.length > 0 && (
-                                    <div className="ml-5 mt-1 space-y-1.5">
-                                      {lender.notesHistory.map((historyItem, idx) => (
-                                        <div key={idx} className="flex items-start gap-2 text-xs bg-muted/30 rounded px-2 py-1.5">
-                                          <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-0.5">
-                                            {format(new Date(historyItem.updatedAt), "MM-dd HH:mm")}
-                                          </span>
-                                          <p className="text-foreground/80">{historyItem.text}</p>
-                                        </div>
-                                      ))}
-                                    </div>
+                                    <Collapsible 
+                                      open={expandedLenderHistory.has(lender.id)}
+                                      onOpenChange={(open) => {
+                                        setExpandedLenderHistory(prev => {
+                                          const next = new Set(prev);
+                                          if (open) {
+                                            next.add(lender.id);
+                                          } else {
+                                            next.delete(lender.id);
+                                          }
+                                          return next;
+                                        });
+                                      }}
+                                      className="ml-5"
+                                    >
+                                      <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground">
+                                        <History className="h-3 w-3" />
+                                        <span>{lender.notesHistory.length} previous note{lender.notesHistory.length > 1 ? "s" : ""}</span>
+                                        {expandedLenderHistory.has(lender.id) ? (
+                                          <ChevronUp className="h-3 w-3" />
+                                        ) : (
+                                          <ChevronDown className="h-3 w-3" />
+                                        )}
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent className="mt-1 space-y-1.5">
+                                        {lender.notesHistory.map((historyItem, idx) => (
+                                          <div key={idx} className="flex items-start gap-2 text-xs bg-muted/30 rounded px-2 py-1.5">
+                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-0.5">
+                                              {format(new Date(historyItem.updatedAt), "MM-dd HH:mm")}
+                                            </span>
+                                            <p className="text-foreground/80">{historyItem.text}</p>
+                                          </div>
+                                        ))}
+                                      </CollapsibleContent>
+                                    </Collapsible>
                                   )}
                                 </div>
                                     </div>
