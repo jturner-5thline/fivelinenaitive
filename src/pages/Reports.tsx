@@ -15,7 +15,7 @@ import {
   Loader2,
   CheckCircle
 } from 'lucide-react';
-import { DealsHeader } from '@/components/dashboard/DealsHeader';
+import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
