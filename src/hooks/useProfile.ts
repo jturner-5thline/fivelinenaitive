@@ -46,6 +46,25 @@ export function useProfile() {
         .maybeSingle();
 
       if (error) throw error;
+      
+      // Generate signed URL for avatar if it exists
+      if (data?.avatar_url) {
+        // Use stored file path directly (or extract from legacy URL format)
+        const filePath = data.avatar_url.includes('://') 
+          ? data.avatar_url.split('/avatars/')[1]?.split('?')[0]
+          : data.avatar_url;
+        
+        if (filePath) {
+          const { data: signedData } = await supabase.storage
+            .from('avatars')
+            .createSignedUrl(filePath, 3600); // 1 hour expiry
+          
+          if (signedData?.signedUrl) {
+            data.avatar_url = signedData.signedUrl;
+          }
+        }
+      }
+      
       setProfile(data);
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -107,13 +126,15 @@ export function useProfile() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      // Get signed URL for immediate use
+      const { data: signedData } = await supabase.storage
+        .from('avatars')
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
       
-      // Update profile with new avatar URL
-      await updateProfile({ avatar_url: data.publicUrl });
+      // Store the file path reference in the profile (we'll generate signed URLs on fetch)
+      await updateProfile({ avatar_url: filePath });
       
-      return data.publicUrl;
+      return signedData?.signedUrl || null;
     } catch (err) {
       console.error('Error uploading avatar:', err);
       toast({
