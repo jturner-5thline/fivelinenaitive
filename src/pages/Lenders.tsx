@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone } from 'lucide-react';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DealsHeader } from '@/components/dashboard/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -395,7 +395,7 @@ export default function Lenders() {
       />
 
       <div className="min-h-screen bg-background">
-        <DashboardHeader />
+        <DealsHeader />
 
         <main className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="space-y-6">

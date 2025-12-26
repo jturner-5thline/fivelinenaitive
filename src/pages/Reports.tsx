@@ -15,7 +15,7 @@ import {
   Loader2,
   CheckCircle
 } from 'lucide-react';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DealsHeader } from '@/components/dashboard/DealsHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -226,7 +226,7 @@ export default function Reports() {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <DashboardHeader />
+        <DealsHeader />
 
         <main className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
           {/* Page Header */}

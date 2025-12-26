@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Download, FileText, ChevronDown, X } from 'lucide-react';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DealsHeader } from '@/components/dashboard/DealsHeader';
 import { DealFilters } from '@/components/dashboard/DealFilters';
 import { DealsList } from '@/components/dashboard/DealsList';
 import { DealsListSkeleton } from '@/components/dashboard/DealsListSkeleton';
@@ -57,7 +57,7 @@ export default function Dashboard() {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <DashboardHeader />
+        <DealsHeader />
 
         <main className="container mx-auto max-w-7xl px-4 pt-4 pb-3 sm:px-6 lg:px-8">
           <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
