@@ -18,7 +18,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
-import Dashboard from "./pages/Dashboard";
+import Deals from "./pages/Deals";
 import DealDetail from "./pages/DealDetail";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
@@ -56,7 +56,7 @@ const App = () => (
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
                           <Route path="/deals" element={
-                            <ProtectedRoute><Dashboard /></ProtectedRoute>
+                            <ProtectedRoute><Deals /></ProtectedRoute>
                           } />
                           <Route path="/analytics" element={
                             <ProtectedRoute><Analytics /></ProtectedRoute>
