@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCompany, Company } from '@/hooks/useCompany';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Building2, Globe, Users, MapPin, Briefcase } from 'lucide-react';
+import { Loader2, Building2, Globe, MapPin, Briefcase, Upload, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from 'sonner';
 
 const employeeSizeOptions = [
   { value: '1-10', label: '1-10 employees' },
@@ -33,9 +35,11 @@ const industryOptions = [
 ];
 
 export function CompanyProfileSettings() {
-  const { company, updateCompany, isAdmin, isSaving } = useCompany();
+  const { company, updateCompany, isAdmin, isSaving, refetch } = useCompany();
   const [formData, setFormData] = useState<Partial<Company>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (company) {
@@ -63,6 +67,84 @@ export function CompanyProfileSettings() {
     setHasChanges(false);
   };
 
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !company) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be less than 2MB');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${company.id}/logo.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(filePath);
+
+      // Update company with logo URL (add cache buster)
+      const logoUrlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
+      await updateCompany({ logo_url: logoUrlWithCacheBuster });
+      await refetch();
+
+      toast.success('Logo uploaded successfully');
+    } catch (error: any) {
+      console.error('Error uploading logo:', error);
+      toast.error(error.message || 'Failed to upload logo');
+    } finally {
+      setIsUploadingLogo(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!company) return;
+
+    setIsUploadingLogo(true);
+    try {
+      // List files in company folder
+      const { data: files } = await supabase.storage
+        .from('company-logos')
+        .list(company.id);
+
+      if (files && files.length > 0) {
+        const filesToDelete = files.map(f => `${company.id}/${f.name}`);
+        await supabase.storage.from('company-logos').remove(filesToDelete);
+      }
+
+      // Update company to remove logo URL
+      await updateCompany({ logo_url: null });
+      await refetch();
+
+      toast.success('Logo removed');
+    } catch (error: any) {
+      console.error('Error removing logo:', error);
+      toast.error(error.message || 'Failed to remove logo');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
   if (!company) return null;
 
   return (
@@ -84,10 +166,46 @@ export function CompanyProfileSettings() {
                 {company.name?.charAt(0) || 'C'}
               </AvatarFallback>
             </Avatar>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="text-sm font-medium">Company Logo</p>
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingLogo}
+                  >
+                    {isUploadingLogo ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-2" />
+                    )}
+                    {company.logo_url ? 'Change' : 'Upload'}
+                  </Button>
+                  {company.logo_url && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveLogo}
+                      disabled={isUploadingLogo}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
-                Logo upload coming soon
+                Max 2MB, JPG or PNG recommended
               </p>
             </div>
           </div>
