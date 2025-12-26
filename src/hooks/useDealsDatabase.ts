@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Deal, DealLender, DealStatus, DealStage, EngagementType, Referrer } from '@/types/deal';
+import { Deal, DealLender, DealStatus, DealStage, EngagementType, Referrer, LenderNoteHistory } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 
@@ -138,6 +138,29 @@ export function useDealsDatabase() {
 
       if (lendersError) throw lendersError;
 
+      // Fetch notes history for all lenders
+      const lenderIds = (dbLenders || []).map((l: DbDealLender) => l.id);
+      let notesHistoryMap: Record<string, LenderNoteHistory[]> = {};
+      
+      if (lenderIds.length > 0) {
+        const { data: notesHistory } = await supabase
+          .from('lender_notes_history')
+          .select('*')
+          .in('deal_lender_id', lenderIds)
+          .order('created_at', { ascending: false });
+        
+        // Group by lender id
+        (notesHistory || []).forEach((nh: any) => {
+          if (!notesHistoryMap[nh.deal_lender_id]) {
+            notesHistoryMap[nh.deal_lender_id] = [];
+          }
+          notesHistoryMap[nh.deal_lender_id].push({
+            text: nh.text,
+            updatedAt: nh.created_at,
+          });
+        });
+      }
+
       // Map database deals to Deal type
       const mappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) => {
         const dealLenders = (dbLenders || [])
@@ -152,6 +175,7 @@ export function useDealsDatabase() {
             notes: l.notes || undefined,
             passReason: l.pass_reason || undefined,
             updatedAt: l.updated_at,
+            notesHistory: notesHistoryMap[l.id] || [],
           }));
 
         const toReferrer = (name: string | null): Referrer | undefined => {
@@ -422,13 +446,36 @@ export function useDealsDatabase() {
     setDeals(prev =>
       prev.map(deal => ({
         ...deal,
-        lenders: deal.lenders?.map(l =>
-          l.id === lenderId ? { ...l, ...updates, updatedAt: new Date().toISOString() } : l
-        ),
+        lenders: deal.lenders?.map(l => {
+          if (l.id !== lenderId) return l;
+          
+          // If notes are being updated and there was a previous note, add to history
+          let updatedHistory = l.notesHistory || [];
+          if (updates.notes !== undefined && l.notes && l.notes.trim() !== '' && updates.notes !== l.notes) {
+            updatedHistory = [{ text: l.notes, updatedAt: new Date().toISOString() }, ...updatedHistory];
+          }
+          
+          return { 
+            ...l, 
+            ...updates, 
+            notesHistory: updatedHistory,
+            updatedAt: new Date().toISOString() 
+          };
+        }),
       }))
     );
 
     try {
+      // If notes are being updated and there was a previous note, save to history
+      if (updates.notes !== undefined && previousLender?.notes && previousLender.notes.trim() !== '' && updates.notes !== previousLender.notes) {
+        await supabase
+          .from('lender_notes_history')
+          .insert({
+            deal_lender_id: lenderId,
+            text: previousLender.notes,
+          });
+      }
+      
       const dbUpdates: Record<string, any> = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;
       if (updates.stage !== undefined) dbUpdates.stage = updates.stage;

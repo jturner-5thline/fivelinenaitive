@@ -240,6 +240,38 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_notes_history: {
+        Row: {
+          created_at: string
+          deal_lender_id: string
+          id: string
+          text: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_lender_id: string
+          id?: string
+          text: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_lender_id?: string
+          id?: string
+          text?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_notes_history_deal_lender_id_fkey"
+            columns: ["deal_lender_id"]
+            isOneToOne: false
+            referencedRelation: "deal_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_history: {
         Row: {
           browser: string | null
