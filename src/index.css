@@ -63,8 +63,8 @@
     --sidebar-border: 216 37% 40%;
     --sidebar-ring: 216 37% 55%;
 
-    /* Brand color - complementary indigo-blue */
-    --brand: 230 35% 45%;
+    /* Brand color - #341539 */
+    --brand: 292 46% 15%;
 
     /* Chart colors */
     --chart-1: 216 37% 55%;
@@ -136,7 +136,7 @@
     --sidebar-ring: 216 37% 60%;
 
     /* Brand color - lighter for dark mode */
-    --brand: 230 35% 60%;
+    --brand: 292 46% 50%;
 
     --chart-1: 216 37% 60%;
     --chart-2: 160 84% 45%;
