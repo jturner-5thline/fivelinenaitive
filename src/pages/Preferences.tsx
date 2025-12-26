@@ -17,6 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/contexts/PreferencesContext';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 
 export default function Preferences() {
   const { theme, setTheme } = useTheme();
@@ -86,37 +87,7 @@ export default function Preferences() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Notifications
-                </CardTitle>
-                <CardDescription>Configure notification settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Email Notifications</Label>
-                    <p className="text-sm text-muted-foreground">Receive updates via email</p>
-                  </div>
-                  <Switch
-                    checked={preferences.emailNotifications}
-                    onCheckedChange={(checked) => updatePreference('emailNotifications', checked)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Deal Status Alerts</Label>
-                    <p className="text-sm text-muted-foreground">Get notified when deal status changes</p>
-                  </div>
-                  <Switch
-                    checked={preferences.dealStatusAlerts}
-                    onCheckedChange={(checked) => updatePreference('dealStatusAlerts', checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <NotificationSettings />
 
             <Card>
               <CardHeader>
