@@ -49,7 +49,7 @@ export default function Dashboard() {
   return (
     <>
       <Helmet>
-        <title>Deal Pipeline - nAItive</title>
+        <title>Deals - nAItive</title>
         <meta
           name="description"
           content="Manage your deal pipeline with advanced filtering, sorting, and status tracking."
