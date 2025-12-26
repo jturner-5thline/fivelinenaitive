@@ -30,7 +30,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 
-export function DashboardHeader() {
+export function DealsHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut, user } = useAuth();

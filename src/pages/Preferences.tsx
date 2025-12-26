@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DealsHeader } from '@/components/dashboard/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -30,7 +30,7 @@ export default function Preferences() {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <DashboardHeader />
+        <DealsHeader />
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>

@@ -7,7 +7,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/dashboard/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DealsHeader } from '@/components/dashboard/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -623,7 +623,7 @@ export default function DealDetail() {
   if (!deal) {
     return (
       <div className="min-h-screen bg-background">
-        <DashboardHeader />
+        <DealsHeader />
         <main className="container mx-auto max-w-5xl px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-semibold text-foreground mb-4">Deal Not Found</h1>
@@ -736,7 +736,7 @@ export default function DealDetail() {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        <DashboardHeader />
+        <DealsHeader />
 
         <main className="container mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
           {/* Back button and Undo */}
