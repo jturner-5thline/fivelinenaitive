@@ -489,6 +489,12 @@ export type Database = {
           in_app_notifications: boolean
           lender_updates_app: boolean
           lender_updates_email: boolean
+          notify_activity_deal_created: boolean
+          notify_activity_lender_added: boolean
+          notify_activity_lender_updated: boolean
+          notify_activity_stage_changed: boolean
+          notify_activity_status_changed: boolean
+          notify_stale_alerts: boolean
           onboarding_completed: boolean
           phone: string | null
           updated_at: string
@@ -511,6 +517,12 @@ export type Database = {
           in_app_notifications?: boolean
           lender_updates_app?: boolean
           lender_updates_email?: boolean
+          notify_activity_deal_created?: boolean
+          notify_activity_lender_added?: boolean
+          notify_activity_lender_updated?: boolean
+          notify_activity_stage_changed?: boolean
+          notify_activity_status_changed?: boolean
+          notify_stale_alerts?: boolean
           onboarding_completed?: boolean
           phone?: string | null
           updated_at?: string
@@ -533,6 +545,12 @@ export type Database = {
           in_app_notifications?: boolean
           lender_updates_app?: boolean
           lender_updates_email?: boolean
+          notify_activity_deal_created?: boolean
+          notify_activity_lender_added?: boolean
+          notify_activity_lender_updated?: boolean
+          notify_activity_stage_changed?: boolean
+          notify_activity_status_changed?: boolean
+          notify_stale_alerts?: boolean
           onboarding_completed?: boolean
           phone?: string | null
           updated_at?: string
