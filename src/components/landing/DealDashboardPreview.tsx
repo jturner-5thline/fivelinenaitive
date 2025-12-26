@@ -60,7 +60,7 @@ export const DealDashboardPreview = () => {
       <div className="container mx-auto px-6">
         {/* Section header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-heading md:text-4xl text-foreground mb-4">
+          <h2 className="text-heading md:text-4xl bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] mb-4">
             Your Command Center for Deal Flow
           </h2>
           <p className="text-muted-foreground text-lg">
