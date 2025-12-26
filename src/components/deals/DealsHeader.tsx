@@ -7,6 +7,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useCompany } from '@/hooks/useCompany';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 
@@ -35,6 +37,7 @@ export function DealsHeader() {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { createDeal } = useDealsContext();
+  const { company } = useCompany();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
@@ -88,9 +91,18 @@ export function DealsHeader() {
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <BarChart3 className="h-5 w-5 text-primary-foreground" />
-            </div>
+            {company?.logo_url ? (
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={company.logo_url} alt={company.name} />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {company.name?.charAt(0) || 'C'}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                <BarChart3 className="h-5 w-5 text-primary-foreground" />
+              </div>
+            )}
             <Logo />
           </Link>
           {isDemoUser && (
