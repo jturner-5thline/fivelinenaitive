@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck } from 'lucide-react';
+import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Popover,
   PopoverContent,
@@ -144,7 +145,7 @@ export function NotificationsDropdown() {
       <PopoverContent align="end" className="w-96 p-0">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h3 className="font-semibold">Notifications</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {unreadCount > 0 && (
               <Button 
                 variant="ghost" 
@@ -162,6 +163,26 @@ export function NotificationsDropdown() {
                 {unreadCount} unread
               </Badge>
             )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7"
+                    asChild
+                    onClick={() => setOpen(false)}
+                  >
+                    <Link to="/settings?tab=notifications">
+                      <Settings className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Notification settings</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
         
