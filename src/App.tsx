@@ -29,6 +29,7 @@ import Reports from "./pages/Reports";
 import Database from "./pages/Database";
 import Workflows from "./pages/Workflows";
 import Company from "./pages/Company";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -89,6 +90,9 @@ const App = () => (
                           } />
                           <Route path="/company" element={
                             <ProtectedRoute><Company /></ProtectedRoute>
+                          } />
+                          <Route path="/notifications" element={
+                            <ProtectedRoute><Notifications /></ProtectedRoute>
                           } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />

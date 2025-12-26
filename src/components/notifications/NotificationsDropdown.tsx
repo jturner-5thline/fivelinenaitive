@@ -312,6 +312,22 @@ export function NotificationsDropdown() {
             </div>
           )}
         </ScrollArea>
+        
+        {/* View All Link */}
+        <div className="border-t px-4 py-3">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="w-full justify-center text-muted-foreground hover:text-foreground"
+            asChild
+            onClick={() => setOpen(false)}
+          >
+            <Link to="/notifications">
+              View all notifications
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Link>
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
