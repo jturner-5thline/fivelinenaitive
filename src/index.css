@@ -18,9 +18,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 28% 17%;
 
-    /* Primary: Deep teal/slate - trust & stability */
-    --primary: 190 64% 17%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary: Light teal #B8E3E9 */
+    --primary: 187 53% 82%;
+    --primary-foreground: 215 28% 17%;
 
     /* Secondary: Light slate */
     --secondary: 210 20% 96%;
@@ -30,9 +30,9 @@
     --muted: 210 20% 96%;
     --muted-foreground: 215 16% 47%;
 
-    /* Accent: Bright teal/cyan - action & progress */
-    --accent: 183 56% 44%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent: Light teal #B8E3E9 */
+    --accent: 187 53% 82%;
+    --accent-foreground: 215 28% 17%;
 
     /* Success: Emerald green */
     --success: 160 84% 39%;
@@ -49,28 +49,28 @@
     /* Borders & inputs */
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 183 56% 44%;
+    --ring: 187 53% 82%;
 
     --radius: 0.5rem;
 
     /* Sidebar */
-    --sidebar-background: 190 64% 17%;
-    --sidebar-foreground: 210 20% 96%;
-    --sidebar-primary: 183 56% 44%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 190 50% 25%;
-    --sidebar-accent-foreground: 210 20% 96%;
-    --sidebar-border: 190 50% 25%;
-    --sidebar-ring: 183 56% 44%;
+    --sidebar-background: 187 53% 75%;
+    --sidebar-foreground: 215 28% 17%;
+    --sidebar-primary: 187 53% 82%;
+    --sidebar-primary-foreground: 215 28% 17%;
+    --sidebar-accent: 187 53% 88%;
+    --sidebar-accent-foreground: 215 28% 17%;
+    --sidebar-border: 187 53% 70%;
+    --sidebar-ring: 187 53% 82%;
 
     /* Brand color - #341539 */
     --brand: 292 46% 15%;
 
     /* Chart colors */
-    --chart-1: 183 56% 44%;
+    --chart-1: 187 53% 82%;
     --chart-2: 160 84% 39%;
     --chart-3: 38 92% 50%;
-    --chart-4: 190 64% 17%;
+    --chart-4: 187 53% 70%;
     --chart-5: 215 16% 47%;
 
     /* Shadows */
@@ -84,8 +84,8 @@
     --shadow-2xl: 0 25px 50px -12px hsl(215 28% 17% / 0.25);
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(190 64% 17%), hsl(190 50% 25%));
-    --gradient-accent: linear-gradient(135deg, hsl(183 56% 44%), hsl(183 56% 50%));
+    --gradient-primary: linear-gradient(135deg, hsl(187 53% 82%), hsl(187 53% 75%));
+    --gradient-accent: linear-gradient(135deg, hsl(187 53% 82%), hsl(187 53% 88%));
     --gradient-hero: linear-gradient(180deg, hsl(210 20% 99%) 0%, hsl(210 30% 96%) 100%);
 
     --spacing: 0.25rem;
@@ -101,7 +101,7 @@
     --popover: 215 28% 14%;
     --popover-foreground: 210 20% 96%;
 
-    --primary: 183 56% 50%;
+    --primary: 187 53% 75%;
     --primary-foreground: 215 28% 10%;
 
     --secondary: 215 28% 20%;
@@ -110,7 +110,7 @@
     --muted: 215 28% 20%;
     --muted-foreground: 215 16% 60%;
 
-    --accent: 183 56% 50%;
+    --accent: 187 53% 75%;
     --accent-foreground: 215 28% 10%;
 
     --success: 160 84% 45%;
@@ -124,28 +124,28 @@
 
     --border: 215 28% 22%;
     --input: 215 28% 22%;
-    --ring: 183 56% 50%;
+    --ring: 187 53% 75%;
 
     --sidebar-background: 215 28% 10%;
     --sidebar-foreground: 210 20% 96%;
-    --sidebar-primary: 183 56% 50%;
+    --sidebar-primary: 187 53% 75%;
     --sidebar-primary-foreground: 215 28% 10%;
     --sidebar-accent: 215 28% 18%;
     --sidebar-accent-foreground: 210 20% 96%;
     --sidebar-border: 215 28% 22%;
-    --sidebar-ring: 183 56% 50%;
+    --sidebar-ring: 187 53% 75%;
 
     /* Brand color - lighter for dark mode */
     --brand: 292 46% 50%;
 
-    --chart-1: 183 56% 50%;
+    --chart-1: 187 53% 75%;
     --chart-2: 160 84% 45%;
     --chart-3: 38 92% 55%;
-    --chart-4: 190 64% 40%;
+    --chart-4: 187 53% 60%;
     --chart-5: 215 16% 60%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(183 56% 50%), hsl(183 56% 40%));
-    --gradient-accent: linear-gradient(135deg, hsl(183 56% 55%), hsl(183 56% 45%));
+    --gradient-primary: linear-gradient(135deg, hsl(187 53% 75%), hsl(187 53% 65%));
+    --gradient-accent: linear-gradient(135deg, hsl(187 53% 80%), hsl(187 53% 70%));
     --gradient-hero: linear-gradient(180deg, hsl(215 28% 10%) 0%, hsl(215 28% 8%) 100%);
   }
 }
