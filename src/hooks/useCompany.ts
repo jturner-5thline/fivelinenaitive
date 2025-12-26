@@ -103,37 +103,51 @@ export function useCompany() {
 
     setIsSaving(true);
     try {
-      // Create company
-      const { data: newCompany, error: companyError } = await supabase
+      // Important: we cannot rely on `insert(...).select()` here because RLS SELECT
+      // policies for `companies` require membership, which doesn't exist until
+      // after we insert into `company_members`.
+      const companyId = crypto.randomUUID();
+
+      // 1) Create company (no returning/representation needed)
+      const { error: companyError } = await supabase
         .from('companies')
-        .insert({ name })
-        .select()
-        .single();
+        .insert({ id: companyId, name });
 
       if (companyError) throw companyError;
 
-      // Add user as owner
+      // 2) Add user as owner
       const { error: memberError } = await supabase
         .from('company_members')
         .insert({
-          company_id: newCompany.id,
+          company_id: companyId,
           user_id: user.id,
           role: 'owner'
         });
 
       if (memberError) throw memberError;
 
+      // 3) Now that membership exists, fetch company details
+      const { data: newCompany, error: fetchError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', companyId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
       setCompany(newCompany);
       setUserRole('owner');
-      setMembers([{ 
-        id: '', 
-        company_id: newCompany.id, 
-        user_id: user.id, 
-        role: 'owner',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }]);
-      
+      setMembers([
+        {
+          id: '',
+          company_id: companyId,
+          user_id: user.id,
+          role: 'owner',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ]);
+
       toast.success('Company created successfully');
       return { error: null };
     } catch (error: any) {
