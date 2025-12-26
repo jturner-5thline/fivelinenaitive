@@ -50,17 +50,20 @@ export function useLenderAttachments(lenderName: string | null) {
 
       if (error) throw error;
 
-      // Get public URLs for each attachment
-      const attachmentsWithUrls = (data || []).map((att) => {
-        const { data: urlData } = supabase.storage
-          .from('lender-attachments')
-          .getPublicUrl(att.file_path);
-        return { 
-          ...att, 
-          url: urlData.publicUrl,
-          category: att.category as LenderAttachmentCategory 
-        };
-      });
+      // Get signed URLs for each attachment (1 hour expiry)
+      const attachmentsWithUrls = await Promise.all(
+        (data || []).map(async (att) => {
+          const { data: urlData, error: urlError } = await supabase.storage
+            .from('lender-attachments')
+            .createSignedUrl(att.file_path, 3600); // 1 hour expiry
+          
+          return { 
+            ...att, 
+            url: urlError ? undefined : urlData?.signedUrl,
+            category: att.category as LenderAttachmentCategory 
+          };
+        })
+      );
 
       setAttachments(attachmentsWithUrls);
     } catch (error) {
