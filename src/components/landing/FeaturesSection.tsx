@@ -52,7 +52,7 @@ export const FeaturesSection = () => {
             <Zap className="w-4 h-4" />
             Features
           </div>
-          <h2 className="text-heading md:text-4xl text-foreground mb-4">
+          <h2 className="text-heading md:text-4xl bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] mb-4">
             Everything You Need to Close Deals Faster
           </h2>
           <p className="text-muted-foreground text-lg">
@@ -71,7 +71,7 @@ export const FeaturesSection = () => {
               <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
                 <feature.icon className="w-6 h-6 text-accent" />
               </div>
-              <h3 className="text-subheading text-foreground mb-2">{feature.title}</h3>
+              <h3 className="text-subheading bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] mb-2">{feature.title}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {feature.description}
               </p>

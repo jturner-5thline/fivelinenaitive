@@ -653,7 +653,7 @@ export default function DealDetail() {
         <DealsHeader />
         <main className="container mx-auto max-w-5xl px-4 py-8">
           <div className="text-center">
-            <h1 className="text-2xl font-semibold text-foreground mb-4">Deal Not Found</h1>
+            <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] mb-4">Deal Not Found</h1>
             <Button variant="gradient" asChild>
               <Link to="/dashboard">Back to Dashboard</Link>
             </Button>

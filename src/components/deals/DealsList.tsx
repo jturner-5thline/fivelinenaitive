@@ -37,7 +37,7 @@ export function DealsList({ deals, onStatusChange, groupByStatus = true }: Deals
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
           <FileX className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium text-foreground">No deals found</h3>
+        <h3 className="text-lg font-medium bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">No deals found</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Try adjusting your filters or create a new deal to get started.
         </p>
@@ -103,7 +103,7 @@ export function DealsList({ deals, onStatusChange, groupByStatus = true }: Deals
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 )}
                 <span className={`h-2.5 w-2.5 rounded-full ${STATUS_CONFIG[status].dotColor}`} />
-                <h2 className="text-lg font-semibold text-foreground">
+                <h2 className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
                   {STATUS_CONFIG[status].label}
                 </h2>
                 <span className="text-sm text-muted-foreground">({statusDeals.length})</span>

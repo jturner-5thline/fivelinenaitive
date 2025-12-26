@@ -17,7 +17,7 @@ export const CTASection = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-accent/5 via-accent/10 to-accent/5 rounded-3xl -z-10" />
           
           <div className="py-12 px-6 md:py-20 md:px-12">
-            <h2 className="text-heading md:text-4xl text-foreground mb-4">
+            <h2 className="text-heading md:text-4xl bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] mb-4">
               Ready to Transform Your Deal Process?
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
