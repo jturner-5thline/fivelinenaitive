@@ -72,8 +72,8 @@ export default {
         }
       },
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(to right, #861E81, #5B21B6)',
-        'brand-gradient-hover': 'linear-gradient(to right, #9B238F, #6D28D9)'
+        'brand-gradient': 'linear-gradient(135deg, #861E81, #5B21B6)',
+        'brand-gradient-hover': 'linear-gradient(135deg, #9B238F, #6D28D9)'
       },
       borderRadius: {
         lg: 'var(--radius)',
