@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, Plus, Settings, User, SlidersHorizontal, LogOut, FlaskConical, HelpCircle } from 'lucide-react';
+import { Plus, Settings, User, SlidersHorizontal, LogOut, FlaskConical, HelpCircle } from 'lucide-react';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -92,19 +92,15 @@ export function DealsHeader() {
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            {company?.logo_url ? (
+            {company?.logo_url && (
               <Avatar className="h-9 w-9">
                 <AvatarImage src={company.logo_url} alt={company.name} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {company.name?.charAt(0) || 'C'}
                 </AvatarFallback>
               </Avatar>
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                <BarChart3 className="h-5 w-5 text-primary-foreground" />
-              </div>
             )}
-            <Logo />
+            <Logo className="text-2xl" />
           </Link>
           {isDemoUser && (
             <TooltipProvider>
