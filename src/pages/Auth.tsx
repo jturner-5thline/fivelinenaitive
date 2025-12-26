@@ -39,7 +39,7 @@ const Auth = () => {
         if (event === "PASSWORD_RECOVERY") {
           setMode("reset");
         } else if (session?.user && mode !== "reset") {
-          navigate("/dashboard");
+          navigate("/deals");
         }
       }
     );
@@ -51,7 +51,7 @@ const Auth = () => {
         if (hashParams.get("type") === "recovery") {
           setMode("reset");
         } else {
-          navigate("/dashboard");
+          navigate("/deals");
         }
       }
     });
@@ -88,7 +88,7 @@ const Auth = () => {
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
         toast.success("Password updated successfully!");
-        navigate("/dashboard");
+        navigate("/deals");
       } else {
         const validation = authSchema.safeParse({ email, password });
         if (!validation.success) {
@@ -109,7 +109,7 @@ const Auth = () => {
             email: email.trim(),
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/dashboard`,
+              emailRedirectTo: `${window.location.origin}/deals`,
             },
           });
           if (error) throw error;
@@ -338,7 +338,7 @@ const Auth = () => {
                           email: "demo@example.com",
                           password: "demo123456",
                           options: {
-                            emailRedirectTo: `${window.location.origin}/dashboard`,
+                            emailRedirectTo: `${window.location.origin}/deals`,
                           },
                         });
                         if (signUpError) throw signUpError;
@@ -357,7 +357,7 @@ const Auth = () => {
                         }
                       }
                       
-                      navigate("/dashboard");
+                      navigate("/deals");
                     } catch (error: any) {
                       toast.error(error.message || "Demo login failed. Please try again.");
                     } finally {

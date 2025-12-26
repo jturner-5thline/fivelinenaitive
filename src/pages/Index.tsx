@@ -47,7 +47,7 @@ const Index = () => {
               className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white px-8 py-6 text-base font-light tracking-wide"
               asChild
             >
-              <Link to="/dashboard">Deal Portal</Link>
+              <Link to="/deals">Deal Portal</Link>
             </Button>
           </div>
         </div>
