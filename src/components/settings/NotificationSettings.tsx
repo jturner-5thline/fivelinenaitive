@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Mail, Smartphone, Loader2 } from 'lucide-react';
+import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,13 @@ export function NotificationSettings() {
     in_app_notifications: true,
     deal_updates_app: true,
     lender_updates_app: true,
+    // Bell notification preferences
+    notify_stale_alerts: true,
+    notify_activity_deal_created: true,
+    notify_activity_lender_added: true,
+    notify_activity_lender_updated: true,
+    notify_activity_stage_changed: true,
+    notify_activity_status_changed: true,
   });
 
   useEffect(() => {
@@ -31,6 +38,13 @@ export function NotificationSettings() {
         in_app_notifications: profile.in_app_notifications ?? true,
         deal_updates_app: profile.deal_updates_app ?? true,
         lender_updates_app: profile.lender_updates_app ?? true,
+        // Bell notification preferences
+        notify_stale_alerts: (profile as any).notify_stale_alerts ?? true,
+        notify_activity_deal_created: (profile as any).notify_activity_deal_created ?? true,
+        notify_activity_lender_added: (profile as any).notify_activity_lender_added ?? true,
+        notify_activity_lender_updated: (profile as any).notify_activity_lender_updated ?? true,
+        notify_activity_stage_changed: (profile as any).notify_activity_stage_changed ?? true,
+        notify_activity_status_changed: (profile as any).notify_activity_status_changed ?? true,
       });
     }
   }, [profile]);
@@ -207,6 +221,123 @@ export function NotificationSettings() {
                 checked={preferences.lender_updates_app}
                 onCheckedChange={(checked) => handleToggle('lender_updates_app', checked)}
                 disabled={isSaving || !preferences.in_app_notifications}
+              />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Bell Notification Preferences */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium">Notification Bell Preferences</h3>
+          </div>
+          <p className="text-sm text-muted-foreground pl-6">
+            Control which notifications appear in the notification bell dropdown
+          </p>
+          
+          <div className="space-y-4 pl-6">
+            {/* Stale Alerts */}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_stale_alerts" className="flex flex-col gap-1">
+                <span className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  Stale lender alerts
+                </span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  Show alerts when lenders haven't been updated
+                </span>
+              </Label>
+              <Switch
+                id="notify_stale_alerts"
+                checked={preferences.notify_stale_alerts}
+                onCheckedChange={(checked) => handleToggle('notify_stale_alerts', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            <Separator className="my-2" />
+
+            {/* Activity Types */}
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Activity Types</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_activity_deal_created" className="flex flex-col gap-1">
+                <span>Deal created</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  When new deals are created
+                </span>
+              </Label>
+              <Switch
+                id="notify_activity_deal_created"
+                checked={preferences.notify_activity_deal_created}
+                onCheckedChange={(checked) => handleToggle('notify_activity_deal_created', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_activity_lender_added" className="flex flex-col gap-1">
+                <span>Lender added</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  When lenders are added to deals
+                </span>
+              </Label>
+              <Switch
+                id="notify_activity_lender_added"
+                checked={preferences.notify_activity_lender_added}
+                onCheckedChange={(checked) => handleToggle('notify_activity_lender_added', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_activity_lender_updated" className="flex flex-col gap-1">
+                <span>Lender updated</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  When lender information changes
+                </span>
+              </Label>
+              <Switch
+                id="notify_activity_lender_updated"
+                checked={preferences.notify_activity_lender_updated}
+                onCheckedChange={(checked) => handleToggle('notify_activity_lender_updated', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_activity_stage_changed" className="flex flex-col gap-1">
+                <span>Stage changed</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  When deal stages are updated
+                </span>
+              </Label>
+              <Switch
+                id="notify_activity_stage_changed"
+                checked={preferences.notify_activity_stage_changed}
+                onCheckedChange={(checked) => handleToggle('notify_activity_stage_changed', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_activity_status_changed" className="flex flex-col gap-1">
+                <span>Status changed</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  When deal status is updated
+                </span>
+              </Label>
+              <Switch
+                id="notify_activity_status_changed"
+                checked={preferences.notify_activity_status_changed}
+                onCheckedChange={(checked) => handleToggle('notify_activity_status_changed', checked)}
+                disabled={isSaving}
               />
             </div>
           </div>

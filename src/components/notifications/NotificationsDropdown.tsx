@@ -14,6 +14,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAllActivities } from '@/hooks/useAllActivities';
 import { useNotificationReads } from '@/hooks/useNotificationReads';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { Deal } from '@/types/deal';
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -77,21 +78,34 @@ function getActivityIcon(activityType: string) {
 export function NotificationsDropdown() {
   const [open, setOpen] = useState(false);
   const { deals } = useDealsContext();
-  const { preferences } = usePreferences();
+  const { preferences: appPreferences } = usePreferences();
   const { activities, isLoading: activitiesLoading } = useAllActivities(15);
   const { isRead, markAllAsRead, isLoading: readsLoading } = useNotificationReads();
+  const { shouldShowStaleAlerts, shouldShowActivity, isLoading: prefsLoading } = useNotificationPreferences();
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   
+  // Get all stale alerts
+  const allStaleAlerts = useMemo(() => 
+    getStaleDealAlerts(deals, appPreferences.lenderUpdateYellowDays),
+    [deals, appPreferences.lenderUpdateYellowDays]
+  );
+  
+  // Filter based on preferences
   const staleAlerts = useMemo(() => 
-    getStaleDealAlerts(deals, preferences.lenderUpdateYellowDays),
-    [deals, preferences.lenderUpdateYellowDays]
+    shouldShowStaleAlerts ? allStaleAlerts : [],
+    [shouldShowStaleAlerts, allStaleAlerts]
+  );
+  
+  const filteredActivities = useMemo(() => 
+    activities.filter(a => shouldShowActivity(a.activity_type)),
+    [activities, shouldShowActivity]
   );
   
   // Count unread notifications
   const unreadAlerts = staleAlerts.filter(a => !isRead('stale_alert', a.dealId));
-  const unreadActivities = activities.filter(a => !isRead('activity', a.id));
+  const unreadActivities = filteredActivities.filter(a => !isRead('activity', a.id));
   const unreadCount = unreadAlerts.length + unreadActivities.length;
-  const totalNotifications = staleAlerts.length + activities.length;
+  const totalNotifications = staleAlerts.length + filteredActivities.length;
   const hasAlerts = unreadAlerts.length > 0;
   
   const handleMarkAllAsRead = async () => {
@@ -99,7 +113,7 @@ export function NotificationsDropdown() {
     
     const allNotifications = [
       ...staleAlerts.map(a => ({ notification_type: 'stale_alert', notification_id: a.dealId })),
-      ...activities.map(a => ({ notification_type: 'activity', notification_id: a.id })),
+      ...filteredActivities.map(a => ({ notification_type: 'activity', notification_id: a.id })),
     ];
     
     await markAllAsRead(allNotifications);
@@ -107,7 +121,7 @@ export function NotificationsDropdown() {
     setIsMarkingRead(false);
   };
   
-  const isLoading = activitiesLoading || readsLoading;
+  const isLoading = activitiesLoading || readsLoading || prefsLoading;
   
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -200,7 +214,7 @@ export function NotificationsDropdown() {
           )}
           
           {/* Activity Feed Section */}
-          {activities.length > 0 && (
+          {filteredActivities.length > 0 && (
             <div>
               {staleAlerts.length > 0 && <Separator />}
               <div className="px-4 py-2 bg-muted/30 border-b">
@@ -210,7 +224,7 @@ export function NotificationsDropdown() {
                 </div>
               </div>
               <div className="divide-y">
-                {activities.map((activity) => {
+                {filteredActivities.map((activity) => {
                   const read = isRead('activity', activity.id);
                   return (
                     <Link
@@ -261,7 +275,7 @@ export function NotificationsDropdown() {
           )}
           
           {/* Loading State */}
-          {isLoading && activities.length === 0 && (
+          {isLoading && filteredActivities.length === 0 && (
             <div className="flex items-center justify-center py-12">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             </div>
