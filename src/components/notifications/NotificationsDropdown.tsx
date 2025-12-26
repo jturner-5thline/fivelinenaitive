@@ -81,7 +81,7 @@ export function NotificationsDropdown() {
   const { deals } = useDealsContext();
   const { preferences: appPreferences } = usePreferences();
   const { activities, isLoading: activitiesLoading } = useAllActivities(15);
-  const { isRead, markAllAsRead, isLoading: readsLoading } = useNotificationReads();
+  const { isRead, markAsRead, markAllAsRead, isLoading: readsLoading } = useNotificationReads();
   const { shouldShowStaleAlerts, shouldShowActivity, isLoading: prefsLoading } = useNotificationPreferences();
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   
@@ -203,7 +203,12 @@ export function NotificationsDropdown() {
                     <Link
                       key={alert.dealId}
                       to={`/deal/${alert.dealId}?highlight=stale`}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        if (!read) {
+                          markAsRead([{ notification_type: 'stale_alert', notification_id: alert.dealId }]);
+                        }
+                        setOpen(false);
+                      }}
                       className={cn(
                         "flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors",
                         read && "opacity-60"
@@ -251,7 +256,12 @@ export function NotificationsDropdown() {
                     <Link
                       key={activity.id}
                       to={`/deal/${activity.deal_id}`}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        if (!read) {
+                          markAsRead([{ notification_type: 'activity', notification_id: activity.id }]);
+                        }
+                        setOpen(false);
+                      }}
                       className={cn(
                         "flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors",
                         read && "opacity-60"
