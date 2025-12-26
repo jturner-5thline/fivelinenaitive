@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCompany } from '@/hooks/useCompany';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -7,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Plus } from 'lucide-react';
 
 export function CreateCompanyDialog() {
+  const navigate = useNavigate();
   const { createCompany, isSaving } = useCompany();
   const [open, setOpen] = useState(false);
   const [companyName, setCompanyName] = useState('');
@@ -23,6 +25,7 @@ export function CreateCompanyDialog() {
       setOpen(false);
       setCompanyName('');
       setError('');
+      navigate('/company');
     }
   };
 
