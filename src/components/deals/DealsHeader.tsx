@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BarChart3, Plus, Settings, User, SlidersHorizontal, LogOut, FlaskConical, HelpCircle } from 'lucide-react';
+import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -176,7 +177,8 @@ export function DealsHeader() {
             </Button>
           </nav>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <NotificationsDropdown />
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
             visible={isHintVisible('new-deal-button')}
