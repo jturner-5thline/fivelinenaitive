@@ -92,7 +92,13 @@ function getActivityLabel(activityType: string) {
 export default function Notifications() {
   const { deals } = useDealsContext();
   const { preferences: appPreferences } = usePreferences();
-  const { activities, isLoading: activitiesLoading } = useAllActivities(50);
+  const { 
+    activities, 
+    isLoading: activitiesLoading, 
+    isLoadingMore,
+    hasMore,
+    loadMore 
+  } = useAllActivities({ limit: 20, enablePagination: true });
   const { isRead, markAsRead, markAllAsRead, isLoading: readsLoading } = useNotificationReads();
   const { shouldShowStaleAlerts, shouldShowActivity, isLoading: prefsLoading } = useNotificationPreferences();
   const [isMarkingRead, setIsMarkingRead] = useState(false);
@@ -288,6 +294,27 @@ export default function Notifications() {
                         );
                       })}
                     </div>
+                    
+                    {/* Load More Button */}
+                    {hasMore && (
+                      <div className="p-4 border-t">
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={loadMore}
+                          disabled={isLoadingMore}
+                        >
+                          {isLoadingMore ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            'Load more activities'
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

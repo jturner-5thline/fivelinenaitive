@@ -13,31 +13,60 @@ export interface ActivityLogWithDeal {
   deal_name?: string;
 }
 
-export function useAllActivities(limit: number = 20) {
+interface UseAllActivitiesOptions {
+  limit?: number;
+  enablePagination?: boolean;
+}
+
+export function useAllActivities(options: UseAllActivitiesOptions | number = 20) {
+  // Handle both old signature (number) and new signature (options object)
+  const config = typeof options === 'number' 
+    ? { limit: options, enablePagination: false }
+    : { limit: options.limit ?? 20, enablePagination: options.enablePagination ?? false };
+  
+  const { limit, enablePagination } = config;
+  
   const [activities, setActivities] = useState<ActivityLogWithDeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
 
-  const fetchActivities = useCallback(async () => {
-    setIsLoading(true);
+  const fetchActivitiesPage = useCallback(async (pageNum: number, append: boolean = false) => {
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+    }
+    
+    const offset = pageNum * limit;
     
     // First fetch activity logs
     const { data: activityData, error: activityError } = await supabase
       .from('activity_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
 
     if (activityError) {
       console.error('Error fetching activities:', activityError);
       setIsLoading(false);
+      setIsLoadingMore(false);
       return;
     }
 
     if (!activityData || activityData.length === 0) {
-      setActivities([]);
+      if (!append) {
+        setActivities([]);
+      }
+      setHasMore(false);
       setIsLoading(false);
+      setIsLoadingMore(false);
       return;
     }
+
+    // Check if we have more pages
+    setHasMore(activityData.length === limit);
 
     // Get unique deal IDs
     const dealIds = [...new Set(activityData.map(a => a.deal_id))];
@@ -60,13 +89,33 @@ export function useAllActivities(limit: number = 20) {
       deal_name: dealNameMap.get(activity.deal_id),
     }));
 
-    setActivities(activitiesWithDeals);
+    if (append) {
+      setActivities(prev => [...prev, ...activitiesWithDeals]);
+    } else {
+      setActivities(activitiesWithDeals);
+    }
+    
     setIsLoading(false);
+    setIsLoadingMore(false);
   }, [limit]);
 
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchActivitiesPage(nextPage, true);
+    }
+  }, [isLoadingMore, hasMore, page, fetchActivitiesPage]);
+
+  const refresh = useCallback(() => {
+    setPage(0);
+    setHasMore(true);
+    fetchActivitiesPage(0, false);
+  }, [fetchActivitiesPage]);
+
   useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
+    fetchActivitiesPage(0, false);
+  }, [fetchActivitiesPage]);
 
   // Subscribe to realtime updates for all activity logs
   useEffect(() => {
@@ -87,11 +136,15 @@ export function useAllActivities(limit: number = 20) {
             .from('deals')
             .select('company')
             .eq('id', newActivity.deal_id)
-            .single();
+            .maybeSingle();
           
           newActivity.deal_name = dealData?.company;
           
-          setActivities((prev) => [newActivity, ...prev].slice(0, limit));
+          setActivities((prev) => {
+            const newList = [newActivity, ...prev];
+            // Only trim if not using pagination (dropdown use case)
+            return enablePagination ? newList : newList.slice(0, limit);
+          });
         }
       )
       .subscribe();
@@ -99,11 +152,14 @@ export function useAllActivities(limit: number = 20) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [limit]);
+  }, [limit, enablePagination]);
 
   return {
     activities,
     isLoading,
-    refreshActivities: fetchActivities,
+    isLoadingMore,
+    hasMore,
+    loadMore,
+    refreshActivities: refresh,
   };
 }
