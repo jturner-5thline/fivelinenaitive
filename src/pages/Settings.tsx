@@ -15,7 +15,11 @@ import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSe
 const SETTINGS_SECTIONS = [
   {
     id: 'account',
-    keywords: ['account', 'profile', 'company', 'personal', 'info', 'details', 'email', 'name', 'avatar'],
+    keywords: ['account', 'profile', 'personal', 'info', 'details', 'email', 'name', 'avatar'],
+  },
+  {
+    id: 'company',
+    keywords: ['company', 'team', 'organization', 'members', 'admin', 'logo', 'industry', 'employees'],
   },
   {
     id: 'database',
@@ -130,7 +134,7 @@ export default function Settings() {
                   <CardTitle className="text-lg">
                     Account
                   </CardTitle>
-                  <CardDescription>Manage your profile and company information</CardDescription>
+                  <CardDescription>Manage your personal profile</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Link
@@ -138,9 +142,34 @@ export default function Settings() {
                     className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
                   >
                     <div>
-                      <p className="font-medium">Profile & Company</p>
+                      <p className="font-medium">Profile Settings</p>
                       <p className="text-sm text-muted-foreground">
-                        Your personal info and company details
+                        Your personal info and account details
+                      </p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {isVisible('company') && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    Company
+                  </CardTitle>
+                  <CardDescription>Manage your company and team</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    to="/company"
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium">Company Settings</p>
+                      <p className="text-sm text-muted-foreground">
+                        Company profile, team members, and roles
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />

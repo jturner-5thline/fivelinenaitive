@@ -28,6 +28,7 @@ import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
 import Database from "./pages/Database";
 import Workflows from "./pages/Workflows";
+import Company from "./pages/Company";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -85,6 +86,9 @@ const App = () => (
                           } />
                           <Route path="/workflows" element={
                             <ProtectedRoute><Workflows /></ProtectedRoute>
+                          } />
+                          <Route path="/company" element={
+                            <ProtectedRoute><Company /></ProtectedRoute>
                           } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
