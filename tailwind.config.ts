@@ -67,13 +67,13 @@ export default {
         },
         brand: 'hsl(var(--brand))',
         'brand-gradient': {
-          from: '#861E81',
-          to: '#5B21B6'
+          from: '#4A5899',
+          to: '#6082B6'
         }
       },
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(to right, #861E81, #5B21B6)',
-        'brand-gradient-hover': 'linear-gradient(to right, #9B238F, #6D28D9)'
+        'brand-gradient': 'linear-gradient(to right, #4A5899, #6082B6)',
+        'brand-gradient-hover': 'linear-gradient(to right, #5868A9, #7092C6)'
       },
       borderRadius: {
         lg: 'var(--radius)',
