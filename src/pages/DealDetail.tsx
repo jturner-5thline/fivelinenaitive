@@ -144,9 +144,36 @@ export default function DealDetail() {
     if (contextDeal) {
       setDeal(prev => {
         if (!prev) return contextDeal;
+        
+        // Preserve lender order from local state while merging updated data from context
+        let mergedLenders = prev.lenders;
+        if (prev.lenders && contextDeal.lenders) {
+          // Create a map of context lenders for quick lookup
+          const contextLenderMap = new Map(contextDeal.lenders.map(l => [l.id, l]));
+          // Keep local order, update with context data, filter out deleted lenders
+          mergedLenders = prev.lenders
+            .filter(l => contextLenderMap.has(l.id))
+            .map(localLender => {
+              const contextLender = contextLenderMap.get(localLender.id);
+              // Merge context data but preserve local notes that may be in edit
+              return contextLender ? {
+                ...contextLender,
+                notes: localLender.notes, // Preserve local notes during editing
+                notesHistory: contextLender.notesHistory, // Use context history (persisted)
+              } : localLender;
+            });
+          // Add any new lenders from context that aren't in local state
+          contextDeal.lenders.forEach(cl => {
+            if (!prev.lenders?.find(l => l.id === cl.id)) {
+              mergedLenders = [...(mergedLenders || []), cl];
+            }
+          });
+        }
+        
         // Merge context changes with local state, preserving local edits for fee fields
         return {
           ...contextDeal,
+          lenders: mergedLenders,
           // Preserve local fee values that may not have been saved yet
           retainerFee: prev.retainerFee,
           milestoneFee: prev.milestoneFee,
