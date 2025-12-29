@@ -7,6 +7,7 @@ import { DealsList } from '@/components/deals/DealsList';
 import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
+import { StageProgression } from '@/components/deals/StageProgression';
 import { NotificationsBar } from '@/components/deals/NotificationsBar';
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
 import { DemoBanner } from '@/components/deals/DemoBanner';
@@ -107,7 +108,10 @@ export default function Dashboard() {
               {isLoading ? (
                 <WidgetsSectionSkeleton />
               ) : (
-                <WidgetsSection deals={allDeals} />
+                <>
+                  <WidgetsSection deals={allDeals} />
+                  <StageProgression deals={allDeals} />
+                </>
               )}
               <NotificationsBar deals={allDeals} />
             </div>
