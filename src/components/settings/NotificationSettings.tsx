@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity, Target } from 'lucide-react';
+import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity, Target, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProfile } from '@/hooks/useProfile';
 import { toast } from '@/hooks/use-toast';
 
-export function NotificationSettings() {
+interface NotificationSettingsProps {
+  collapsible?: boolean;
+}
+
+export function NotificationSettings({ collapsible = false }: NotificationSettingsProps) {
   const { profile, isLoading, updateProfile } = useProfile();
   const [isSaving, setIsSaving] = useState(false);
   
@@ -93,16 +98,33 @@ export function NotificationSettings() {
     );
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Bell className="h-5 w-5" />
-          Notifications
-        </CardTitle>
-        <CardDescription>Manage how you receive notifications</CardDescription>
+  const cardHeader = collapsible ? (
+    <CollapsibleTrigger className="w-full group">
+      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            <div className="text-left">
+              <CardTitle className="text-lg">Notifications</CardTitle>
+              <CardDescription>Manage how you receive notifications</CardDescription>
+            </div>
+          </div>
+          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+    </CollapsibleTrigger>
+  ) : (
+    <CardHeader>
+      <CardTitle className="text-lg flex items-center gap-2">
+        <Bell className="h-5 w-5" />
+        Notifications
+      </CardTitle>
+      <CardDescription>Manage how you receive notifications</CardDescription>
+    </CardHeader>
+  );
+
+  const cardContent = (
+    <CardContent className="space-y-6">
         {/* Email Notifications Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -393,6 +415,25 @@ export function NotificationSettings() {
           </div>
         </div>
       </CardContent>
+    );
+
+  if (collapsible) {
+    return (
+      <Collapsible defaultOpen>
+        <Card>
+          {cardHeader}
+          <CollapsibleContent>
+            {cardContent}
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+    );
+  }
+
+  return (
+    <Card>
+      {cardHeader}
+      {cardContent}
     </Card>
   );
 }
