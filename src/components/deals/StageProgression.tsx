@@ -42,6 +42,11 @@ export function StageProgression({ deals }: StageProgressionProps) {
   const { formatCurrencyValue } = usePreferences();
 
   const stageData = useMemo(() => {
+    // Count deals with legacy/unknown stages
+    const legacyDeals = deals.filter(d => !STAGE_ORDER.includes(d.stage as DealStage));
+    const legacyCount = legacyDeals.length;
+    const legacyValue = legacyDeals.reduce((sum, d) => sum + d.value, 0);
+    
     const stageCounts = STAGE_ORDER.map(stage => {
       const stageDeals = deals.filter(d => d.stage === stage);
       const count = stageDeals.length;
@@ -56,6 +61,18 @@ export function StageProgression({ deals }: StageProgressionProps) {
         color: STAGE_COLORS[stage],
       };
     });
+
+    // Add legacy stages at the beginning if there are any
+    if (legacyCount > 0) {
+      stageCounts.unshift({
+        stage: 'legacy' as DealStage,
+        label: 'Legacy Stage',
+        shortLabel: 'Legacy',
+        count: legacyCount,
+        value: legacyValue,
+        color: 'hsl(0, 0%, 50%)',
+      });
+    }
 
     return stageCounts;
   }, [deals]);
