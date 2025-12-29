@@ -71,7 +71,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
-
+import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 // Helper to calculate business days between two dates
 const getBusinessDaysDiff = (date: Date) => {
   const now = new Date();
@@ -679,17 +679,14 @@ export default function DealDetail() {
 
   const formatFee = (value: number) => formatCurrencyValue(value);
 
-  // Format number with commas for display in inputs
+  // Format number with commas for display in inputs (using shared utility)
   const formatWithCommas = (value: number | undefined): string => {
-    if (!value) return '';
-    return value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return formatCurrencyInputValue(value);
   };
 
-  // Parse currency string (with commas) to number
+  // Parse currency string (with commas) to number (using shared utility)
   const parseCurrencyInput = (valueStr: string): number | undefined => {
-    const cleaned = valueStr.replace(/[^0-9.]/g, '');
-    if (!cleaned) return undefined;
-    return parseFloat(cleaned);
+    return parseCurrencyInputValue(valueStr);
   };
 
   const parseValue = (valueStr: string): number => {
@@ -1877,10 +1874,11 @@ export default function DealDetail() {
                           <span className="text-xs text-muted-foreground">$</span>
                           <Input
                             type="text"
-                            inputMode="decimal"
+                            inputMode="numeric"
                             value={formatWithCommas(deal.retainerFee)}
                             onChange={(e) => {
-                              const value = parseCurrencyInput(e.target.value);
+                              const formatted = formatAmountWithCommas(e.target.value);
+                              const value = parseCurrencyInput(formatted);
                               setDeal(prev => prev ? { ...prev, retainerFee: value } : prev);
                             }}
                             onBlur={(e) => {
@@ -1898,10 +1896,11 @@ export default function DealDetail() {
                           <span className="text-xs text-muted-foreground">$</span>
                           <Input
                             type="text"
-                            inputMode="decimal"
+                            inputMode="numeric"
                             value={formatWithCommas(deal.milestoneFee)}
                             onChange={(e) => {
-                              const value = parseCurrencyInput(e.target.value);
+                              const formatted = formatAmountWithCommas(e.target.value);
+                              const value = parseCurrencyInput(formatted);
                               setDeal(prev => prev ? { ...prev, milestoneFee: value } : prev);
                             }}
                             onBlur={(e) => {
