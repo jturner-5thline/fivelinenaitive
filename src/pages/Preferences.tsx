@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock } from 'lucide-react';
+import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
@@ -18,10 +18,12 @@ import { Input } from '@/components/ui/input';
 import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/contexts/PreferencesContext';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { useLenderStages } from '@/contexts/LenderStagesContext';
 
 export default function Preferences() {
   const { theme, setTheme } = useTheme();
   const { preferences, updatePreference } = usePreferences();
+  const { stages } = useLenderStages();
 
   return (
     <>
@@ -154,6 +156,39 @@ export default function Preferences() {
                       <SelectItem value="14">14 days</SelectItem>
                       <SelectItem value="21">21 days</SelectItem>
                       <SelectItem value="30">30 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Lender Defaults
+                </CardTitle>
+                <CardDescription>Configure default settings for new lenders</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Default Stage</Label>
+                    <p className="text-sm text-muted-foreground">Stage assigned to newly added lenders</p>
+                  </div>
+                  <Select
+                    value={preferences.defaultLenderStage}
+                    onValueChange={(value) => updatePreference('defaultLenderStage', value)}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stages.map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          {stage.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
