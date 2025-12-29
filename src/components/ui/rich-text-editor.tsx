@@ -107,7 +107,7 @@ export function RichTextEditor({
       </div>
       <EditorContent 
         editor={editor} 
-        className="min-w-[600px] border border-input rounded-md bg-background focus-within:ring-1 focus-within:ring-ring"
+        className="w-[600px] max-w-[600px] border border-input rounded-md bg-background focus-within:ring-1 focus-within:ring-ring [&_.ProseMirror]:break-words [&_.ProseMirror]:whitespace-pre-wrap [&_.ProseMirror]:overflow-wrap-anywhere"
       />
     </div>
   );
