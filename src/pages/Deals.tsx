@@ -28,12 +28,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
+import { useWidgets } from '@/contexts/WidgetsContext';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
   const { deals: allDeals, isLoading, refreshDeals } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
+  const { specialWidgets } = useWidgets();
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
   
@@ -110,7 +112,7 @@ export default function Dashboard() {
               ) : (
                 <>
                   <WidgetsSection deals={allDeals} />
-                  <StageProgression deals={allDeals} />
+                  {specialWidgets['stage-progression'] && <StageProgression deals={allDeals} />}
                 </>
               )}
               <NotificationsBar deals={allDeals} />

@@ -16,20 +16,22 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
-import { useWidgets, Widget, WidgetMetric } from '@/contexts/WidgetsContext';
+import { useWidgets, Widget, WidgetMetric, SPECIAL_WIDGET_OPTIONS } from '@/contexts/WidgetsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { WidgetCard } from './WidgetCard';
 import { WidgetEditor } from './WidgetEditor';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Deal } from '@/types/deal';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface WidgetsSectionProps {
   deals: Deal[];
 }
 
 export function WidgetsSection({ deals }: WidgetsSectionProps) {
-  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets } = useWidgets();
+  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, specialWidgets, toggleSpecialWidget } = useWidgets();
   const { formatCurrencyValue } = usePreferences();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [isEditMode, setIsEditMode] = useState(false);
@@ -130,10 +132,31 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
 
       <div className="absolute bottom-2 right-2 flex items-center gap-2">
         {isEditMode && (
-          <Button variant="outline" size="sm" className="gap-1" onClick={handleAdd}>
-            <Plus className="h-4 w-4" />
-            Add Widget
-          </Button>
+          <>
+            {/* Special widgets toggles */}
+            <div className="flex items-center gap-4 mr-4 border-r border-border pr-4">
+              {SPECIAL_WIDGET_OPTIONS.map((option) => (
+                <div key={option.value} className="flex items-center gap-2">
+                  <Switch
+                    id={`toggle-${option.value}`}
+                    checked={specialWidgets[option.value]}
+                    onCheckedChange={() => toggleSpecialWidget(option.value)}
+                  />
+                  <Label 
+                    htmlFor={`toggle-${option.value}`} 
+                    className="text-xs text-muted-foreground cursor-pointer"
+                    title={option.description}
+                  >
+                    {option.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            <Button variant="outline" size="sm" className="gap-1" onClick={handleAdd}>
+              <Plus className="h-4 w-4" />
+              Add Widget
+            </Button>
+          </>
         )}
         <HintTooltip
           hint="Click the gear icon to customize these widgets. Add, remove, or rearrange metrics to match your workflow."

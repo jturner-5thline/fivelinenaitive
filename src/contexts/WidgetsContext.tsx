@@ -19,6 +19,12 @@ export interface Widget {
   color: 'primary' | 'accent' | 'success' | 'warning' | 'destructive';
 }
 
+export type SpecialWidget = 'stage-progression';
+
+export const SPECIAL_WIDGET_OPTIONS: { value: SpecialWidget; label: string; description: string }[] = [
+  { value: 'stage-progression', label: 'Pipeline Stage Progression', description: 'Visualize how deals move through pipeline stages' },
+];
+
 export const METRIC_OPTIONS: { value: WidgetMetric; label: string }[] = [
   { value: 'active-deals', label: 'Active Deals' },
   { value: 'active-deal-volume', label: 'Active Deal Volume' },
@@ -47,7 +53,12 @@ const DEFAULT_WIDGETS: Widget[] = [
   { id: 'w4', label: 'Dollars in Diligence', metric: 'dollars-in-diligence', color: 'warning' },
 ];
 
+const DEFAULT_SPECIAL_WIDGETS: Record<SpecialWidget, boolean> = {
+  'stage-progression': true,
+};
+
 const STORAGE_KEY = 'dashboard-widgets';
+const SPECIAL_WIDGETS_STORAGE_KEY = 'dashboard-special-widgets';
 
 const loadWidgets = (): Widget[] => {
   try {
@@ -69,22 +80,49 @@ const saveWidgets = (widgets: Widget[]) => {
   }
 };
 
+const loadSpecialWidgets = (): Record<SpecialWidget, boolean> => {
+  try {
+    const stored = localStorage.getItem(SPECIAL_WIDGETS_STORAGE_KEY);
+    if (stored) {
+      return { ...DEFAULT_SPECIAL_WIDGETS, ...JSON.parse(stored) };
+    }
+  } catch (error) {
+    console.error('Failed to load special widgets from localStorage:', error);
+  }
+  return DEFAULT_SPECIAL_WIDGETS;
+};
+
+const saveSpecialWidgets = (specialWidgets: Record<SpecialWidget, boolean>) => {
+  try {
+    localStorage.setItem(SPECIAL_WIDGETS_STORAGE_KEY, JSON.stringify(specialWidgets));
+  } catch (error) {
+    console.error('Failed to save special widgets to localStorage:', error);
+  }
+};
+
 interface WidgetsContextType {
   widgets: Widget[];
   addWidget: (widget: Omit<Widget, 'id'>) => void;
   updateWidget: (id: string, widget: Partial<Widget>) => void;
   deleteWidget: (id: string) => void;
   reorderWidgets: (widgets: Widget[]) => void;
+  specialWidgets: Record<SpecialWidget, boolean>;
+  toggleSpecialWidget: (widget: SpecialWidget) => void;
 }
 
 const WidgetsContext = createContext<WidgetsContextType | undefined>(undefined);
 
 export function WidgetsProvider({ children }: { children: ReactNode }) {
   const [widgets, setWidgets] = useState<Widget[]>(loadWidgets);
+  const [specialWidgets, setSpecialWidgets] = useState<Record<SpecialWidget, boolean>>(loadSpecialWidgets);
 
   useEffect(() => {
     saveWidgets(widgets);
   }, [widgets]);
+
+  useEffect(() => {
+    saveSpecialWidgets(specialWidgets);
+  }, [specialWidgets]);
 
   const addWidget = (widget: Omit<Widget, 'id'>) => {
     const newWidget: Widget = {
@@ -106,8 +144,23 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
     setWidgets(newWidgets);
   };
 
+  const toggleSpecialWidget = (widget: SpecialWidget) => {
+    setSpecialWidgets(prev => ({
+      ...prev,
+      [widget]: !prev[widget],
+    }));
+  };
+
   return (
-    <WidgetsContext.Provider value={{ widgets, addWidget, updateWidget, deleteWidget, reorderWidgets }}>
+    <WidgetsContext.Provider value={{ 
+      widgets, 
+      addWidget, 
+      updateWidget, 
+      deleteWidget, 
+      reorderWidgets,
+      specialWidgets,
+      toggleSpecialWidget,
+    }}>
       {children}
     </WidgetsContext.Provider>
   );
