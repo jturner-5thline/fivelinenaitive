@@ -181,9 +181,16 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed }: DealCardProps
             {stageConfig.label}
           </Badge>
         </div>
-        <p className={`text-sm line-clamp-2 mt-4 min-h-[2.5rem] ${deal.notes ? 'text-muted-foreground' : 'text-muted-foreground/50 italic'}`}>
-          {deal.notes || 'No Status'}
-        </p>
+        {deal.notes && deal.notes !== '<p></p>' ? (
+          <div 
+            className="text-sm line-clamp-2 mt-4 min-h-[2.5rem] text-muted-foreground prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4"
+            dangerouslySetInnerHTML={{ __html: deal.notes }} 
+          />
+        ) : (
+          <p className="text-sm line-clamp-2 mt-4 min-h-[2.5rem] text-muted-foreground/50 italic">
+            No Status
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4 mt-auto">
 
