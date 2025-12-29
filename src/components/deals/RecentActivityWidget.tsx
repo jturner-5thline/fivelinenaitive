@@ -75,13 +75,21 @@ export function RecentActivityWidget() {
             {recentActivities.map((activity) => (
               <Link
                 key={activity.id}
-                to={`/deals/${activity.deal_id}`}
+                to={`/deal/${activity.deal_id}`}
                 className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
               >
                 <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                   {getActivityIcon(activity.activity_type)}
                 </div>
                 <div className="flex-1 min-w-0">
+                  {activity.deal_name && (
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <Building2 className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-[10px] font-medium text-muted-foreground truncate">
+                        {activity.deal_name}
+                      </span>
+                    </div>
+                  )}
                   <p className="text-xs text-foreground line-clamp-2">
                     {activity.description}
                   </p>
