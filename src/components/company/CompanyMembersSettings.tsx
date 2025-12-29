@@ -20,6 +20,13 @@ const roleBadgeVariants: Record<CompanyRole, 'default' | 'secondary' | 'outline'
   member: 'outline',
 };
 
+// Display names for roles (member shows as "User" in UI)
+const roleDisplayNames: Record<CompanyRole, string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  member: 'User',
+};
+
 export function CompanyMembersSettings() {
   const { user } = useAuth();
   const { members, isAdmin, isOwner, updateMemberRole, removeMember } = useCompany();
@@ -94,7 +101,9 @@ export function CompanyMembersSettings() {
                           onValueChange={(value) => handleRoleChange(member.id, value as CompanyRole)}
                         >
                           <SelectTrigger className="w-32">
-                            <SelectValue />
+                            <SelectValue>
+                              {roleDisplayNames[member.role]}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="admin">
@@ -106,7 +115,7 @@ export function CompanyMembersSettings() {
                             <SelectItem value="member">
                               <div className="flex items-center gap-2">
                                 {roleIcons.member}
-                                Member
+                                User
                               </div>
                             </SelectItem>
                           </SelectContent>
@@ -139,10 +148,10 @@ export function CompanyMembersSettings() {
                         </AlertDialog>
                       </>
                     ) : (
-                      <Badge variant={roleBadgeVariants[member.role]} className="capitalize">
+                      <Badge variant={roleBadgeVariants[member.role]}>
                         <span className="flex items-center gap-1.5">
                           {roleIcons[member.role]}
-                          {member.role}
+                          {roleDisplayNames[member.role]}
                         </span>
                       </Badge>
                     )}
@@ -172,7 +181,7 @@ export function CompanyMembersSettings() {
               <div>
                 <p className="font-medium">Owner</p>
                 <p className="text-sm text-muted-foreground">
-                  Full access to all company settings, can delete company, manage all members
+                  Full access to all company settings, can delete company, cannot be removed
                 </p>
               </div>
             </div>
@@ -181,16 +190,16 @@ export function CompanyMembersSettings() {
               <div>
                 <p className="font-medium">Admin</p>
                 <p className="text-sm text-muted-foreground">
-                  Can edit company information, add/remove members (except owner)
+                  Can manage team members, edit company settings, and access all company deals
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               {roleIcons.member}
               <div>
-                <p className="font-medium">Member</p>
+                <p className="font-medium">User</p>
                 <p className="text-sm text-muted-foreground">
-                  Can view company information and team members
+                  Can view and edit all company deals, view team members
                 </p>
               </div>
             </div>

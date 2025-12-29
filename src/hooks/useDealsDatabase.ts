@@ -234,6 +234,13 @@ export function useDealsDatabase() {
     }
 
     try {
+      // Get user's company_id if they belong to a company
+      const { data: memberData } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
       const { data, error } = await supabase
         .from('deals')
         .insert({
@@ -245,6 +252,7 @@ export function useDealsDatabase() {
           manager: dealData.manager || 'Paz',
           referred_by: dealData.referredBy?.name || null,
           user_id: userId,
+          company_id: memberData?.company_id || null,
         })
         .select()
         .single();
