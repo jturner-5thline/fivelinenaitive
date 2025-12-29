@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
+import { useDealStages } from '@/contexts/DealStagesContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 
@@ -39,6 +40,7 @@ export function DealsHeader() {
   const { signOut, user } = useAuth();
   const { createDeal } = useDealsContext();
   const { company } = useCompany();
+  const { stages: dealStages } = useDealStages();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
@@ -63,7 +65,7 @@ export function DealsHeader() {
         value: parseFloat(dealAmount),
         manager: dealManager,
         status: 'on-track',
-        stage: 'final-credit-items',
+        stage: dealStages[0]?.id || 'final-credit-items',
         engagementType: 'guided',
       });
 

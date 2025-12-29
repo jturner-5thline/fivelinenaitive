@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +25,11 @@ interface DealCardProps {
 export function DealCard({ deal, onStatusChange }: DealCardProps) {
   const { formatCurrencyValue } = usePreferences();
   const { dealTypes } = useDealTypes();
+  const { getStageConfig } = useDealStages();
+  const dynamicStageConfig = getStageConfig();
+  
   const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
-  const stageConfig = STAGE_CONFIG[deal.stage] || { label: deal.stage, color: 'bg-muted' };
+  const stageConfig = dynamicStageConfig[deal.stage] || STAGE_CONFIG[deal.stage] || { label: deal.stage, color: 'bg-muted' };
 
   const getDealTypeLabels = () => {
     if (!deal.dealTypes || deal.dealTypes.length === 0) return [];

@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LendersProvider } from "@/contexts/LendersContext";
 import { LenderStagesProvider } from "@/contexts/LenderStagesContext";
+import { DealStagesProvider } from "@/contexts/DealStagesContext";
 import { DealTypesProvider } from "@/contexts/DealTypesContext";
 import { WidgetsProvider } from "@/contexts/WidgetsContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
@@ -43,6 +44,7 @@ const App = () => (
             <DealsProvider>
               <LendersProvider>
                 <LenderStagesProvider>
+                  <DealStagesProvider>
                   <DealTypesProvider>
                     <ChartsProvider>
                     <AnalyticsWidgetsProvider>
@@ -103,6 +105,7 @@ const App = () => (
                     </AnalyticsWidgetsProvider>
                     </ChartsProvider>
                   </DealTypesProvider>
+                  </DealStagesProvider>
                 </LenderStagesProvider>
               </LendersProvider>
             </DealsProvider>
