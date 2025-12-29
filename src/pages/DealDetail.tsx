@@ -22,6 +22,7 @@ import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderSta
 import { useLenders } from '@/contexts/LendersContext';
 import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/deals/ActivityTimeline';
 import { useActivityLog } from '@/hooks/useActivityLog';
@@ -133,6 +134,8 @@ export default function DealDetail() {
   const { getLenderNames, getLenderDetails } = useLenders();
   const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
   const { dealTypes: availableDealTypes } = useDealTypes();
+  const { stages: dealStages, getStageConfig } = useDealStages();
+  const dynamicStageConfig = getStageConfig();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deals } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
@@ -925,18 +928,18 @@ export default function DealDetail() {
                   </SelectContent>
                 </Select>
                 <Select
-                  value={STAGE_CONFIG[deal.stage] ? deal.stage : 'final-credit-items'}
+                  value={dynamicStageConfig[deal.stage] ? deal.stage : (dealStages[0]?.id || 'final-credit-items')}
                   onValueChange={(value: DealStage) => updateDeal('stage', value)}
                 >
                   <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 border">
                     <SelectValue>
-                      {STAGE_CONFIG[deal.stage]?.label || deal.stage}
+                      {dynamicStageConfig[deal.stage]?.label || STAGE_CONFIG[deal.stage]?.label || deal.stage}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(STAGE_CONFIG).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>
-                        {config.label}
+                    {dealStages.map((stage) => (
+                      <SelectItem key={stage.id} value={stage.id}>
+                        {stage.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

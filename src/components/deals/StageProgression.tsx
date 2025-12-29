@@ -3,69 +3,67 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { Deal, DealStage, STAGE_CONFIG } from '@/types/deal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
 
 interface StageProgressionProps {
   deals: Deal[];
 }
 
-// Define the stage order for the pipeline
-const STAGE_ORDER: DealStage[] = [
-  'final-credit-items',
-  'client-strategy-review',
-  'write-up-pending',
-  'submitted-to-lenders',
-  'lenders-in-review',
-  'terms-issued',
-  'in-due-diligence',
-  'funded-invoiced',
-  'closed-won',
-  'closed-lost',
-  'on-hold',
-];
-
-// Color mapping for stages using HSL values
-const STAGE_COLORS: Record<DealStage, string> = {
-  'final-credit-items': 'hsl(215, 14%, 50%)',
-  'client-strategy-review': 'hsl(217, 91%, 60%)',
-  'write-up-pending': 'hsl(239, 84%, 67%)',
-  'submitted-to-lenders': 'hsl(263, 70%, 50%)',
-  'lenders-in-review': 'hsl(271, 91%, 65%)',
-  'terms-issued': 'hsl(292, 84%, 61%)',
-  'in-due-diligence': 'hsl(38, 92%, 50%)',
-  'funded-invoiced': 'hsl(187, 85%, 43%)',
-  'closed-won': 'hsl(142, 76%, 36%)',
-  'closed-lost': 'hsl(0, 84%, 60%)',
-  'on-hold': 'hsl(215, 16%, 47%)',
+// Convert Tailwind bg color to HSL for Recharts
+const bgColorToHsl = (bgColor: string): string => {
+  const colorMap: Record<string, string> = {
+    'bg-slate-500': 'hsl(215, 14%, 50%)',
+    'bg-blue-500': 'hsl(217, 91%, 60%)',
+    'bg-indigo-500': 'hsl(239, 84%, 67%)',
+    'bg-violet-500': 'hsl(263, 70%, 50%)',
+    'bg-purple-500': 'hsl(271, 91%, 65%)',
+    'bg-fuchsia-500': 'hsl(292, 84%, 61%)',
+    'bg-amber-500': 'hsl(38, 92%, 50%)',
+    'bg-cyan-500': 'hsl(187, 85%, 43%)',
+    'bg-green-500': 'hsl(142, 76%, 36%)',
+    'bg-red-500': 'hsl(0, 84%, 60%)',
+    'bg-orange-500': 'hsl(24, 95%, 53%)',
+    'bg-yellow-500': 'hsl(45, 93%, 47%)',
+    'bg-success': 'hsl(142, 76%, 36%)',
+    'bg-destructive': 'hsl(0, 84%, 60%)',
+    'bg-muted': 'hsl(215, 16%, 47%)',
+  };
+  return colorMap[bgColor] || 'hsl(215, 14%, 50%)';
 };
 
 export function StageProgression({ deals }: StageProgressionProps) {
   const { formatCurrencyValue } = usePreferences();
+  const { stages, getStageConfig } = useDealStages();
+  const dynamicStageConfig = getStageConfig();
 
   const stageData = useMemo(() => {
+    // Get stage IDs in order
+    const stageOrder = stages.map(s => s.id);
+    
     // Count deals with legacy/unknown stages
-    const legacyDeals = deals.filter(d => !STAGE_ORDER.includes(d.stage as DealStage));
+    const legacyDeals = deals.filter(d => !stageOrder.includes(d.stage));
     const legacyCount = legacyDeals.length;
     const legacyValue = legacyDeals.reduce((sum, d) => sum + d.value, 0);
     
-    const stageCounts = STAGE_ORDER.map(stage => {
-      const stageDeals = deals.filter(d => d.stage === stage);
+    const stageCounts = stages.map(stage => {
+      const stageDeals = deals.filter(d => d.stage === stage.id);
       const count = stageDeals.length;
       const value = stageDeals.reduce((sum, d) => sum + d.value, 0);
       
       return {
-        stage,
-        label: STAGE_CONFIG[stage]?.label || stage,
-        shortLabel: STAGE_CONFIG[stage]?.label.split(' ').slice(0, 2).join(' ') || stage,
+        stage: stage.id,
+        label: stage.label,
+        shortLabel: stage.label.split(' ').slice(0, 2).join(' '),
         count,
         value,
-        color: STAGE_COLORS[stage],
+        color: bgColorToHsl(stage.color),
       };
     });
 
     // Add legacy stages at the beginning if there are any
     if (legacyCount > 0) {
       stageCounts.unshift({
-        stage: 'legacy' as DealStage,
+        stage: 'legacy',
         label: 'Legacy Stage',
         shortLabel: 'Legacy',
         count: legacyCount,
@@ -75,7 +73,7 @@ export function StageProgression({ deals }: StageProgressionProps) {
     }
 
     return stageCounts;
-  }, [deals]);
+  }, [deals, stages]);
 
   const totalDeals = deals.length;
   const maxCount = Math.max(...stageData.map(d => d.count), 1);

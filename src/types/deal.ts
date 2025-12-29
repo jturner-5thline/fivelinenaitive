@@ -1,4 +1,4 @@
-export type DealStage = 'final-credit-items' | 'client-strategy-review' | 'write-up-pending' | 'submitted-to-lenders' | 'lenders-in-review' | 'terms-issued' | 'in-due-diligence' | 'funded-invoiced' | 'closed-won' | 'closed-lost' | 'on-hold';
+export type DealStage = 'final-credit-items' | 'client-strategy-review' | 'write-up-pending' | 'submitted-to-lenders' | 'lenders-in-review' | 'terms-issued' | 'in-due-diligence' | 'funded-invoiced' | 'closed-won' | 'closed-lost' | 'on-hold' | string;
 
 export type DealStatus = 'on-track' | 'at-risk' | 'off-track' | 'on-hold' | 'archived';
 
