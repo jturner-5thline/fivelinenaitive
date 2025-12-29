@@ -1,6 +1,20 @@
 import { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, ArrowRight, Building2 } from 'lucide-react';
+import { 
+  Activity, 
+  ArrowRight, 
+  Building2, 
+  UserPlus, 
+  GitBranch, 
+  CircleDot, 
+  FileText, 
+  MessageSquare, 
+  PlusCircle,
+  RefreshCw,
+  Trash2,
+  CheckCircle,
+  Edit
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAllActivities } from '@/hooks/useAllActivities';
@@ -14,7 +28,54 @@ export function RecentActivityWidget() {
   }, [activities]);
 
   const getActivityIcon = (type: string) => {
-    return <Activity className="h-3.5 w-3.5" />;
+    const iconClass = "h-3.5 w-3.5";
+    
+    switch (type) {
+      case 'lender_added':
+        return <UserPlus className={iconClass} />;
+      case 'lender_updated':
+        return <RefreshCw className={iconClass} />;
+      case 'lender_removed':
+      case 'lender_deleted':
+        return <Trash2 className={iconClass} />;
+      case 'stage_changed':
+        return <GitBranch className={iconClass} />;
+      case 'status_changed':
+        return <CircleDot className={iconClass} />;
+      case 'deal_created':
+        return <PlusCircle className={iconClass} />;
+      case 'deal_updated':
+        return <Edit className={iconClass} />;
+      case 'note_added':
+      case 'status_note_added':
+        return <MessageSquare className={iconClass} />;
+      case 'attachment_added':
+      case 'document_added':
+        return <FileText className={iconClass} />;
+      case 'milestone_completed':
+        return <CheckCircle className={iconClass} />;
+      default:
+        return <Activity className={iconClass} />;
+    }
+  };
+
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'lender_added':
+      case 'deal_created':
+        return 'bg-success/10 text-success';
+      case 'lender_removed':
+      case 'lender_deleted':
+        return 'bg-destructive/10 text-destructive';
+      case 'stage_changed':
+        return 'bg-primary/10 text-primary';
+      case 'status_changed':
+        return 'bg-warning/10 text-warning';
+      case 'milestone_completed':
+        return 'bg-success/10 text-success';
+      default:
+        return 'bg-primary/10 text-primary';
+    }
   };
 
   if (isLoading) {
@@ -78,7 +139,7 @@ export function RecentActivityWidget() {
                 to={`/deal/${activity.deal_id}`}
                 className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
               >
-                <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                <div className={`flex-shrink-0 h-6 w-6 rounded-full ${getActivityColor(activity.activity_type)} flex items-center justify-center`}>
                   {getActivityIcon(activity.activity_type)}
                 </div>
                 <div className="flex-1 min-w-0">
