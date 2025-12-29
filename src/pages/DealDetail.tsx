@@ -384,7 +384,7 @@ export default function DealDetail() {
     // Add to database
     const newLender = await addLenderToDeal(deal.id, {
       name: lenderName.trim(),
-      stage: 'reviewing-drl',
+      stage: 'on-deck',
       trackingStatus: 'active',
     });
     

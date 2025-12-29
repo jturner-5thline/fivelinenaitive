@@ -47,6 +47,7 @@ interface LenderStagesContextType {
 const LenderStagesContext = createContext<LenderStagesContextType | undefined>(undefined);
 
 const defaultStages: StageOption[] = [
+  { id: 'on-deck', label: 'On Deck', group: 'on-deck' },
   { id: 'reviewing-drl', label: 'Reviewing DRL', group: 'active' },
   { id: 'management-call-set', label: 'Management Call Set', group: 'active' },
   { id: 'management-call-completed', label: 'Management Call Completed', group: 'active' },
