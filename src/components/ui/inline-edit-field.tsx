@@ -12,6 +12,7 @@ interface InlineEditFieldProps {
   placeholder?: string;
   className?: string;
   displayClassName?: string;
+  inputClassName?: string;
 }
 
 export function InlineEditField({
@@ -21,6 +22,7 @@ export function InlineEditField({
   placeholder = 'Click to edit',
   className,
   displayClassName,
+  inputClassName,
 }: InlineEditFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -67,7 +69,7 @@ export function InlineEditField({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[80px]"
+            className={cn("min-h-[80px]", inputClassName)}
           />
         ) : (
           <Input
@@ -76,7 +78,7 @@ export function InlineEditField({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="h-8"
+            className={cn("h-8", inputClassName)}
           />
         )}
         <div className="flex gap-1">
