@@ -48,7 +48,10 @@ export function InlineEditField({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && type !== 'textarea') {
+    if (e.key === 'Enter') {
+      // For textareas: Enter saves, Shift+Enter inserts a new line
+      if (type === 'textarea' && e.shiftKey) return;
+      e.preventDefault();
       handleSave();
     } else if (e.key === 'Escape') {
       handleCancel();
