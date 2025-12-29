@@ -1835,7 +1835,11 @@ export default function DealDetail() {
                             value={formatWithCommas(deal.retainerFee)}
                             onChange={(e) => {
                               const value = parseCurrencyInput(e.target.value);
-                              updateDeal('retainerFee', value);
+                              setDeal(prev => prev ? { ...prev, retainerFee: value } : prev);
+                            }}
+                            onBlur={(e) => {
+                              const value = parseCurrencyInput(e.target.value);
+                              updateDealInDb(deal.id, { retainerFee: value });
                             }}
                             placeholder="0"
                             className="w-24 h-7 text-right text-sm"
@@ -1852,7 +1856,11 @@ export default function DealDetail() {
                             value={formatWithCommas(deal.milestoneFee)}
                             onChange={(e) => {
                               const value = parseCurrencyInput(e.target.value);
-                              updateDeal('milestoneFee', value);
+                              setDeal(prev => prev ? { ...prev, milestoneFee: value } : prev);
+                            }}
+                            onBlur={(e) => {
+                              const value = parseCurrencyInput(e.target.value);
+                              updateDealInDb(deal.id, { milestoneFee: value });
                             }}
                             placeholder="0"
                             className="w-24 h-7 text-right text-sm"
@@ -1868,7 +1876,19 @@ export default function DealDetail() {
                             max="100"
                             step="0.1"
                             value={deal.successFeePercent ?? ''}
-                            onChange={(e) => updateDeal('successFeePercent', e.target.value ? parseFloat(e.target.value) : undefined)}
+                            onChange={(e) => {
+                              const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                              setDeal(prev => {
+                                if (!prev) return prev;
+                                const totalFee = prev.value && value ? (value / 100) * prev.value : prev.totalFee;
+                                return { ...prev, successFeePercent: value, totalFee };
+                              });
+                            }}
+                            onBlur={(e) => {
+                              const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                              const totalFee = deal.value && value ? (value / 100) * deal.value : deal.totalFee;
+                              updateDealInDb(deal.id, { successFeePercent: value, totalFee });
+                            }}
                             placeholder="0"
                             className="w-16 h-7 text-right text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
