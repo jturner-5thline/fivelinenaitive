@@ -309,6 +309,7 @@ export type Database = {
           created_at: string
           deal_type: string | null
           engagement_type: string | null
+          exclusivity: string | null
           id: string
           manager: string | null
           milestone_fee: number | null
@@ -329,6 +330,7 @@ export type Database = {
           created_at?: string
           deal_type?: string | null
           engagement_type?: string | null
+          exclusivity?: string | null
           id?: string
           manager?: string | null
           milestone_fee?: number | null
@@ -349,6 +351,7 @@ export type Database = {
           created_at?: string
           deal_type?: string | null
           engagement_type?: string | null
+          exclusivity?: string | null
           id?: string
           manager?: string | null
           milestone_fee?: number | null

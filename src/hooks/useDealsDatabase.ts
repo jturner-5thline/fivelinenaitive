@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Deal, DealLender, DealStatus, DealStage, EngagementType, Referrer, LenderNoteHistory } from '@/types/deal';
+import { Deal, DealLender, DealStatus, DealStage, EngagementType, ExclusivityType, Referrer, LenderNoteHistory } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 
@@ -11,6 +11,7 @@ interface DbDeal {
   status: string;
   stage: string;
   engagement_type: string | null;
+  exclusivity: string | null;
   deal_type: string | null;
   referred_by: string | null;
   manager: string | null;
@@ -193,6 +194,7 @@ export function useDealsDatabase() {
           stage: dbDeal.stage as DealStage,
           status: dbDeal.status as DealStatus,
           engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
+          exclusivity: (dbDeal.exclusivity || undefined) as ExclusivityType | undefined,
           manager: dbDeal.manager || 'Paz',
           referredBy: toReferrer(dbDeal.referred_by),
           lender: dealLenders[0]?.name || '',
@@ -322,6 +324,7 @@ export function useDealsDatabase() {
       if (updates.status !== undefined) dbUpdates.status = updates.status;
       if (updates.stage !== undefined) dbUpdates.stage = updates.stage;
       if (updates.engagementType !== undefined) dbUpdates.engagement_type = updates.engagementType;
+      if (updates.exclusivity !== undefined) dbUpdates.exclusivity = updates.exclusivity;
       if (updates.manager !== undefined) dbUpdates.manager = updates.manager;
       if (Object.prototype.hasOwnProperty.call(updates, 'referredBy')) {
         dbUpdates.referred_by = updates.referredBy?.name ?? null;
