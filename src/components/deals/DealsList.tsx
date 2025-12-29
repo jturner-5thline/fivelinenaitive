@@ -10,12 +10,13 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 interface DealsListProps {
   deals: Deal[];
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onMarkReviewed?: (dealId: string) => void;
   groupByStatus?: boolean;
 }
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, groupByStatus = true }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onMarkReviewed, groupByStatus = true }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
 
@@ -61,11 +62,11 @@ export function DealsList({ deals, onStatusChange, groupByStatus = true }: Deals
               showDelay={3500}
             >
               <div>
-                <DealCard deal={deal} onStatusChange={onStatusChange} />
+                <DealCard deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} />
               </div>
             </HintTooltip>
           ) : (
-            <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
+            <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} />
           )
         ))}
       </div>
@@ -127,14 +128,14 @@ export function DealsList({ deals, onStatusChange, groupByStatus = true }: Deals
                         showDelay={3500}
                       >
                         <div>
-                          <DealCard deal={deal} onStatusChange={onStatusChange} />
+                          <DealCard deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} />
                         </div>
                       </HintTooltip>
                     );
                   }
                   
                   return (
-                    <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} />
+                    <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} />
                   );
                 })}
               </div>
