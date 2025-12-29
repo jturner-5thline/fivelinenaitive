@@ -19,7 +19,11 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
-export function ReferralSourcesSettings() {
+interface ReferralSourcesSettingsProps {
+  isAdmin?: boolean;
+}
+
+export function ReferralSourcesSettings({ isAdmin = true }: ReferralSourcesSettingsProps) {
   const { referralSources, isLoading, addReferralSource, deleteReferralSource, refreshReferralSources } = useReferralSources();
   const [newSourceName, setNewSourceName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -123,7 +127,7 @@ export function ReferralSourcesSettings() {
               </div>
             </button>
           </CollapsibleTrigger>
-          {referralSources.length > 0 && !showAddForm && (
+          {isAdmin && referralSources.length > 0 && !showAddForm && (
             <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setShowAddForm(true); }} className="gap-1">
               <Plus className="h-4 w-4" />
               Add Source
@@ -141,10 +145,12 @@ export function ReferralSourcesSettings() {
             {referralSources.length === 0 && !showAddForm ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">No referral sources yet</p>
-                <Button onClick={() => setShowAddForm(true)} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add your first referral source
-                </Button>
+                {isAdmin && (
+                  <Button onClick={() => setShowAddForm(true)} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add your first referral source
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -187,40 +193,42 @@ export function ReferralSourcesSettings() {
                     ) : (
                       <>
                         <span className="font-medium">{source.name}</span>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleStartEdit(source)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete referral source?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{source.name}"? This will not affect existing deals that reference this source.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteReferralSource(source.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
+                        {isAdmin && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleStartEdit(source)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete referral source?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{source.name}"? This will not affect existing deals that reference this source.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteReferralSource(source.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -228,7 +236,7 @@ export function ReferralSourcesSettings() {
               </div>
             )}
 
-            {showAddForm && (
+            {isAdmin && showAddForm && (
               <div className="flex items-center gap-2 pt-2">
                 <Input
                   placeholder="Enter referral source name..."

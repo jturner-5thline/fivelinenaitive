@@ -47,9 +47,10 @@ interface SortableReasonItemProps {
   reason: PassReasonOption;
   onEdit: (reason: PassReasonOption) => void;
   onDelete: (id: string) => void;
+  isAdmin: boolean;
 }
 
-function SortableReasonItem({ reason, onEdit, onDelete }: SortableReasonItemProps) {
+function SortableReasonItem({ reason, onEdit, onDelete, isAdmin }: SortableReasonItemProps) {
   const {
     attributes,
     listeners,
@@ -69,56 +70,64 @@ function SortableReasonItem({ reason, onEdit, onDelete }: SortableReasonItemProp
       style={style}
       className="flex items-center gap-2 p-3 bg-card border rounded-lg group"
     >
-      <button
-        className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
+      {isAdmin && (
+        <button
+          className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
       <div className="flex-1">
         <span className="font-medium">{reason.label}</span>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => onEdit(reason)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete pass reason?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete "{reason.label}". This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onDelete(reason.id)}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      {isAdmin && (
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onEdit(reason)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete pass reason?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete "{reason.label}". This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onDelete(reason.id)}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
     </div>
   );
 }
 
-export function PassReasonsSettings() {
+interface PassReasonsSettingsProps {
+  isAdmin?: boolean;
+}
+
+export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps) {
   const { passReasons, addPassReason, updatePassReason, deletePassReason, reorderPassReasons } = useLenderStages();
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-pass-reasons-open');
@@ -191,10 +200,12 @@ export function PassReasonsSettings() {
               </div>
             </button>
           </CollapsibleTrigger>
-          <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setIsAddDialogOpen(true); }} className="gap-1">
-            <Plus className="h-4 w-4" />
-            Add Reason
-          </Button>
+          {isAdmin && (
+            <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setIsAddDialogOpen(true); }} className="gap-1">
+              <Plus className="h-4 w-4" />
+              Add Reason
+            </Button>
+          )}
         </CardHeader>
         <CollapsibleContent>
           <CardContent>
@@ -214,6 +225,7 @@ export function PassReasonsSettings() {
                       reason={reason}
                       onEdit={openEditDialog}
                       onDelete={handleDeleteReason}
+                      isAdmin={isAdmin}
                     />
                   ))}
                 </div>

@@ -48,9 +48,10 @@ interface SortableSubstageItemProps {
   index: number;
   onEdit: (substage: SubstageOption) => void;
   onDelete: (substage: SubstageOption) => void;
+  isAdmin: boolean;
 }
 
-function SortableSubstageItem({ substage, index, onEdit, onDelete }: SortableSubstageItemProps) {
+function SortableSubstageItem({ substage, index, onEdit, onDelete, isAdmin }: SortableSubstageItemProps) {
   const {
     attributes,
     listeners,
@@ -74,56 +75,64 @@ function SortableSubstageItem({ substage, index, onEdit, onDelete }: SortableSub
       }`}
     >
       <div className="flex items-center gap-3">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing touch-none"
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </button>
+        {isAdmin && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none"
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
         <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
         <p className="font-medium">{substage.label}</p>
       </div>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => onEdit(substage)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete "{substage.label}"?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will remove the milestone from available options. Existing deals using this milestone won't be affected.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onDelete(substage)}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      {isAdmin && (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onEdit(substage)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete "{substage.label}"?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will remove the milestone from available options. Existing deals using this milestone won't be affected.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onDelete(substage)}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
     </div>
   );
 }
 
-export function LenderSubstagesSettings() {
+interface LenderSubstagesSettingsProps {
+  isAdmin?: boolean;
+}
+
+export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSettingsProps) {
   const { substages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages } = useLenderStages();
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-lender-milestones-open');
@@ -214,10 +223,12 @@ export function LenderSubstagesSettings() {
                 </div>
               </button>
             </CollapsibleTrigger>
-            <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
-              <Plus className="h-4 w-4" />
-              Add Milestone
-            </Button>
+            {isAdmin && (
+              <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
+                <Plus className="h-4 w-4" />
+                Add Milestone
+              </Button>
+            )}
           </CardHeader>
           <CollapsibleContent>
             <CardContent>
@@ -235,6 +246,7 @@ export function LenderSubstagesSettings() {
                         index={index}
                         onEdit={openEditDialog}
                         onDelete={handleDelete}
+                        isAdmin={isAdmin}
                       />
                     ))}
                     {substages.length === 0 && (

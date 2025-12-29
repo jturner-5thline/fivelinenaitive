@@ -12,6 +12,7 @@ import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
 import { DealTypesSettings } from '@/components/settings/DealTypesSettings';
 import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
 import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
+import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
   {
@@ -62,6 +63,7 @@ const SETTINGS_SECTIONS = [
 
 export default function Settings() {
   const [searchQuery, setSearchQuery] = useState('');
+  const { isAdmin } = useCompany();
 
   const visibleSections = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -233,17 +235,17 @@ export default function Settings() {
               </Card>
             )}
 
-            {isVisible('lender-stages') && <LenderStagesSettings />}
+            {isVisible('lender-stages') && <LenderStagesSettings isAdmin={isAdmin} />}
 
-            {isVisible('lender-milestones') && <LenderSubstagesSettings />}
+            {isVisible('lender-milestones') && <LenderSubstagesSettings isAdmin={isAdmin} />}
 
-            {isVisible('pass-reasons') && <PassReasonsSettings />}
+            {isVisible('pass-reasons') && <PassReasonsSettings isAdmin={isAdmin} />}
 
-            {isVisible('deal-types') && <DealTypesSettings />}
+            {isVisible('deal-types') && <DealTypesSettings isAdmin={isAdmin} />}
 
-            {isVisible('deal-stages') && <DealStagesSettings />}
+            {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
 
-            {isVisible('referral-sources') && <ReferralSourcesSettings />}
+            {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
 
             {isVisible('preferences') && (
               <Card>

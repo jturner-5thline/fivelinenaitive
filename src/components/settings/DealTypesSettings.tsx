@@ -26,7 +26,11 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 
-export function DealTypesSettings() {
+interface DealTypesSettingsProps {
+  isAdmin?: boolean;
+}
+
+export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
   const { dealTypes, addDealType, updateDealType, deleteDealType } = useDealTypes();
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-deal-types-open');
@@ -102,10 +106,12 @@ export function DealTypesSettings() {
                 </div>
               </button>
             </CollapsibleTrigger>
-            <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
-              <Plus className="h-4 w-4" />
-              Add Type
-            </Button>
+            {isAdmin && (
+              <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
+                <Plus className="h-4 w-4" />
+                Add Type
+              </Button>
+            )}
           </CardHeader>
           <CollapsibleContent>
             <CardContent>
@@ -116,41 +122,43 @@ export function DealTypesSettings() {
                     className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                   >
                     <span className="font-medium">{dealType.label}</span>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEditDialog(dealType.id)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete "{dealType.label}"?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will remove the deal type from available options. Deals using this type will retain their current value.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(dealType.id)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => openEditDialog(dealType.id)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete "{dealType.label}"?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove the deal type from available options. Deals using this type will retain their current value.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(dealType.id)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {dealTypes.length === 0 && (
