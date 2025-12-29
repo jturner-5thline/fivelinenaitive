@@ -9,6 +9,7 @@ import { DealMilestones } from '@/components/deals/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
+import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -135,6 +136,7 @@ export default function DealDetail() {
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deals } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
+  const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb } = useDealMilestones(id);
   const lenderNames = getLenderNames();
   
   // Get deal from context
@@ -485,44 +487,29 @@ export default function DealDetail() {
     });
   }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity]);
 
-  const addMilestone = useCallback((milestone: Omit<DealMilestone, 'id'>) => {
+  const addMilestone = useCallback(async (milestone: Omit<DealMilestone, 'id'>) => {
     if (!deal) return;
-    const newMilestone: DealMilestone = {
-      ...milestone,
-      id: `m${Date.now()}`,
-    };
-    setDeal(prev => {
-      if (!prev) return prev;
-      setEditHistory(history => [...history, { deal: prev, field: 'milestones', timestamp: new Date() }]);
-      return { ...prev, milestones: [...(prev.milestones || []), newMilestone], updatedAt: new Date().toISOString() };
-    });
-    toast({
-      title: "Milestone added",
-      description: `"${milestone.title}" has been added.`,
-    });
-  }, [deal]);
+    const newMilestone = await addMilestoneToDb(milestone);
+    if (newMilestone) {
+      toast({
+        title: "Milestone added",
+        description: `"${milestone.title}" has been added.`,
+      });
+    }
+  }, [deal, addMilestoneToDb]);
 
-  const updateMilestone = useCallback((id: string, updates: Partial<DealMilestone>) => {
-    setDeal(prev => {
-      if (!prev) return prev;
-      setEditHistory(history => [...history, { deal: prev, field: 'milestones', timestamp: new Date() }]);
-      const updatedMilestones = (prev.milestones || []).map(m =>
-        m.id === id ? { ...m, ...updates } : m
-      );
-      return { ...prev, milestones: updatedMilestones, updatedAt: new Date().toISOString() };
-    });
-  }, []);
+  const updateMilestone = useCallback(async (id: string, updates: Partial<DealMilestone>) => {
+    await updateMilestoneInDb(id, updates);
+  }, [updateMilestoneInDb]);
 
-  const deleteMilestone = useCallback((id: string) => {
-    setDeal(prev => {
-      if (!prev) return prev;
-      setEditHistory(history => [...history, { deal: prev, field: 'milestones', timestamp: new Date() }]);
-      return { ...prev, milestones: (prev.milestones || []).filter(m => m.id !== id), updatedAt: new Date().toISOString() };
-    });
-    toast({
-      title: "Milestone deleted",
-    });
-  }, []);
+  const deleteMilestone = useCallback(async (id: string) => {
+    const success = await deleteMilestoneFromDb(id);
+    if (success) {
+      toast({
+        title: "Milestone deleted",
+      });
+    }
+  }, [deleteMilestoneFromDb]);
 
   const addOutstandingItem = useCallback((text: string, requestedBy: string[]) => {
     const newItem: OutstandingItem = {
@@ -733,6 +720,9 @@ export default function DealDetail() {
       } else {
         logActivity('deal_updated', `${field.charAt(0).toUpperCase() + field.slice(1)} updated`, { field });
       }
+      
+      // Persist to database
+      updateDealInDb(prev.id, { [field]: value } as Partial<Deal>);
       
       toast({
         title: "Deal updated",
@@ -957,7 +947,7 @@ export default function DealDetail() {
             <CardContent className="pt-0">
               {/* Milestones */}
               <DealMilestones
-                milestones={deal.milestones || []}
+                milestones={dbMilestones}
                 onAdd={addMilestone}
                 onUpdate={updateMilestone}
                 onDelete={deleteMilestone}
