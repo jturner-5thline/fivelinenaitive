@@ -1,4 +1,4 @@
-import { MoreHorizontal, User, Clock } from 'lucide-react';
+import { MoreHorizontal, User, Clock, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
@@ -16,6 +16,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DealCardProps {
   deal: Deal;
@@ -23,7 +29,7 @@ interface DealCardProps {
 }
 
 export function DealCard({ deal, onStatusChange }: DealCardProps) {
-  const { formatCurrencyValue } = usePreferences();
+  const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
@@ -51,6 +57,8 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
     
     let text: string;
     let highlightClass = '';
+    const isStale = days >= preferences.staleDealsDays && deal.status !== 'archived';
+    const isCritical = days >= 30;
     
     if (minutes < 60) {
       text = `${minutes} Min. Ago`;
@@ -58,25 +66,43 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
       text = `${hours} Hours Ago`;
     } else if (days < 7) {
       text = `${days} Days Ago`;
-      if (days > 3) {
-        highlightClass = 'bg-warning/20 px-1.5 py-0.5 rounded';
+      if (isStale) {
+        highlightClass = 'bg-warning/20 px-1.5 py-0.5 rounded text-warning';
       }
     } else if (days <= 30) {
       text = `${weeks} Weeks Ago`;
-      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
+      if (isStale) {
+        highlightClass = isCritical ? 'bg-destructive/20 px-1.5 py-0.5 rounded text-destructive' : 'bg-warning/20 px-1.5 py-0.5 rounded text-warning';
+      }
     } else {
       text = 'Over 30 Days';
-      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded';
+      highlightClass = 'bg-destructive/20 px-1.5 py-0.5 rounded text-destructive';
     }
     
-    return { text, highlightClass };
+    return { text, highlightClass, isStale, days };
   };
 
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
   return (
     <Link to={`/deal/${deal.id}`} className="block h-full">
-      <Card className="group cursor-pointer h-full flex flex-col">
+      <Card className={`group cursor-pointer h-full flex flex-col relative ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+        {timeAgoData.isStale && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="absolute -top-2 -right-2 z-10">
+                  <div className={`flex items-center justify-center h-6 w-6 rounded-full ${timeAgoData.days >= 30 ? 'bg-destructive' : 'bg-warning'} shadow-md`}>
+                    <AlertTriangle className="h-3.5 w-3.5 text-white" />
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Stale deal - no updates for {timeAgoData.days} days</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       <CardHeader className="space-y-0 pb-3">
         <div className="flex flex-row items-center justify-between">
           <h3 className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] leading-tight">{deal.company}</h3>
