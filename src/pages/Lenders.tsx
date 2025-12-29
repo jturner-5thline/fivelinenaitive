@@ -515,7 +515,7 @@ export default function Lenders() {
                         className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer transition-colors hover:bg-muted"
                         onClick={() => openLenderDetail(lender)}
                       >
-                        <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-2xl">{lender.name}</p>
                             {(() => {
