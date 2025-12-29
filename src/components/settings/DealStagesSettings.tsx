@@ -46,9 +46,10 @@ interface SortableStageItemProps {
   stage: DealStageOption;
   onEdit: (stage: DealStageOption) => void;
   onDelete: (id: string) => void;
+  isAdmin: boolean;
 }
 
-function SortableStageItem({ stage, onEdit, onDelete }: SortableStageItemProps) {
+function SortableStageItem({ stage, onEdit, onDelete, isAdmin }: SortableStageItemProps) {
   const {
     attributes,
     listeners,
@@ -69,36 +70,46 @@ function SortableStageItem({ stage, onEdit, onDelete }: SortableStageItemProps) 
       style={style}
       className={`flex items-center gap-2 p-2 bg-muted/50 rounded-lg ${isDragging ? 'opacity-50' : ''}`}
     >
-      <button
-        className="cursor-grab hover:bg-muted p-1 rounded"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </button>
+      {isAdmin && (
+        <button
+          className="cursor-grab hover:bg-muted p-1 rounded"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+      )}
       <div className={`w-3 h-3 rounded-full ${stage.color}`} />
       <span className="flex-1 text-sm">{stage.label}</span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={() => onEdit(stage)}
-      >
-        <Pencil className="h-3 w-3" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 text-destructive hover:text-destructive"
-        onClick={() => onDelete(stage.id)}
-      >
-        <Trash2 className="h-3 w-3" />
-      </Button>
+      {isAdmin && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onEdit(stage)}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-destructive hover:text-destructive"
+            onClick={() => onDelete(stage.id)}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </>
+      )}
     </div>
   );
 }
 
-export function DealStagesSettings() {
+interface DealStagesSettingsProps {
+  isAdmin?: boolean;
+}
+
+export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) {
   const { stages, addStage, updateStage, deleteStage, reorderStages } = useDealStages();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<DealStageOption | null>(null);
@@ -208,20 +219,23 @@ export function DealStagesSettings() {
                         stage={stage}
                         onEdit={openEditDialog}
                         onDelete={handleDelete}
+                        isAdmin={isAdmin}
                       />
                     ))}
                   </div>
                 </SortableContext>
               </DndContext>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openAddDialog}
-                className="w-full"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Stage
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openAddDialog}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Stage
+                </Button>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>

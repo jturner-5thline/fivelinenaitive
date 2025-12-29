@@ -57,9 +57,10 @@ interface SortableStageItemProps {
   onEdit: (stage: StageOption) => void;
   onDelete: (stage: StageOption) => void;
   onGroupChange: (stageId: string, group: StageGroup) => void;
+  isAdmin: boolean;
 }
 
-function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange }: SortableStageItemProps) {
+function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange, isAdmin }: SortableStageItemProps) {
   const {
     attributes,
     listeners,
@@ -85,13 +86,15 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange }: So
       }`}
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing touch-none"
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </button>
+        {isAdmin && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none"
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
         <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
         <p className="font-medium truncate">{stage.label}</p>
       </div>
@@ -99,6 +102,7 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange }: So
         <Select
           value={stage.group}
           onValueChange={(value: StageGroup) => onGroupChange(stage.id, value)}
+          disabled={!isAdmin}
         >
           <SelectTrigger className="w-[100px] h-7 text-xs">
             <SelectValue />
@@ -114,45 +118,53 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange }: So
             ))}
           </SelectContent>
         </Select>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => onEdit(stage)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
+        {isAdmin && (
+          <>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              className="h-8 w-8"
+              onClick={() => onEdit(stage)}
             >
-              <Trash2 className="h-4 w-4" />
+              <Pencil className="h-4 w-4" />
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete "{stage.label}"?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will remove the stage from available options. Existing deals using this stage won't be affected.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => onDelete(stage)}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete "{stage.label}"?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove the stage from available options. Existing deals using this stage won't be affected.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onDelete(stage)}>
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-export function LenderStagesSettings() {
+interface LenderStagesSettingsProps {
+  isAdmin?: boolean;
+}
+
+export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsProps) {
   const { stages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup } = useLenderStages();
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-lender-stages-open');
@@ -251,10 +263,12 @@ export function LenderStagesSettings() {
                 </div>
               </button>
             </CollapsibleTrigger>
-            <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
-              <Plus className="h-4 w-4" />
-              Add Stage
-            </Button>
+            {isAdmin && (
+              <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
+                <Plus className="h-4 w-4" />
+                Add Stage
+              </Button>
+            )}
           </CardHeader>
           <CollapsibleContent>
             <CardContent>
@@ -284,6 +298,7 @@ export function LenderStagesSettings() {
                         onEdit={openEditDialog}
                         onDelete={handleDelete}
                         onGroupChange={handleGroupChange}
+                        isAdmin={isAdmin}
                       />
                     ))}
                     {stages.length === 0 && (

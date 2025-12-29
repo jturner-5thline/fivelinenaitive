@@ -21,6 +21,7 @@ import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/conte
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
+import { useCompany } from '@/hooks/useCompany';
 import { cn } from '@/lib/utils';
 
 const SECTION_COUNT = 8;
@@ -65,6 +66,7 @@ export default function Preferences() {
   const { theme, setTheme } = useTheme();
   const { preferences, updatePreference } = usePreferences();
   const { stages } = useLenderStages();
+  const { isAdmin } = useCompany();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(loadSectionsFromStorage);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -279,6 +281,7 @@ export default function Preferences() {
                         value={preferences.lenderUpdateYellowDays}
                         onChange={(e) => updatePreference('lenderUpdateYellowDays', Math.max(1, parseInt(e.target.value) || 1))}
                         className="w-20 text-center"
+                        disabled={!isAdmin}
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -292,6 +295,7 @@ export default function Preferences() {
                         value={preferences.lenderUpdateRedDays}
                         onChange={(e) => updatePreference('lenderUpdateRedDays', Math.max(preferences.lenderUpdateYellowDays + 1, parseInt(e.target.value) || 14))}
                         className="w-20 text-center"
+                        disabled={!isAdmin}
                       />
                     </div>
                   </CardContent>
@@ -327,6 +331,7 @@ export default function Preferences() {
                       <Select
                         value={String(preferences.staleDealsDays)}
                         onValueChange={(value) => updatePreference('staleDealsDays', parseInt(value))}
+                        disabled={!isAdmin}
                       >
                         <SelectTrigger className="w-32">
                           <SelectValue />
@@ -372,6 +377,7 @@ export default function Preferences() {
                       <Select
                         value={preferences.defaultLenderStage}
                         onValueChange={(value) => updatePreference('defaultLenderStage', value)}
+                        disabled={!isAdmin}
                       >
                         <SelectTrigger className="w-48">
                           <SelectValue />
@@ -418,6 +424,7 @@ export default function Preferences() {
                       <Select
                         value={preferences.currencyFormat}
                         onValueChange={(value: CurrencyFormat) => updatePreference('currencyFormat', value)}
+                        disabled={!isAdmin}
                       >
                         <SelectTrigger className="w-40">
                           <SelectValue />
