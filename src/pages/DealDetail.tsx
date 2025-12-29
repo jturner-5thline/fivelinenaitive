@@ -8,6 +8,7 @@ import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/deals/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
+import { useStatusNotes } from '@/hooks/useStatusNotes';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -133,6 +134,7 @@ export default function DealDetail() {
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deals } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
+  const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const lenderNames = getLenderNames();
   
   // Get deal from context
@@ -189,7 +191,6 @@ export default function DealDetail() {
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   const [lenderSearchQuery, setLenderSearchQuery] = useState('');
   const [isLenderDropdownOpen, setIsLenderDropdownOpen] = useState(false);
-  const [statusHistory, setStatusHistory] = useState<{ note: string; timestamp: Date }[]>([]);
   const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
@@ -935,9 +936,10 @@ export default function DealDetail() {
                   <span className="text-lg text-foreground/90 mt-0.5">•</span>
                   <InlineEditField
                     value={deal.notes || ''}
-                    onSave={(value) => {
+                    onSave={async (value) => {
+                      // Save previous note to history before updating
                       if (deal.notes && deal.notes.trim()) {
-                        setStatusHistory(prev => [...prev, { note: deal.notes!, timestamp: new Date() }]);
+                        await addStatusNote(deal.notes.trim());
                       }
                       updateDeal('notes', value);
                     }}
@@ -967,7 +969,7 @@ export default function DealDetail() {
           <div className="grid gap-6 lg:grid-cols-3 items-start">
             {/* Left Column - Notes & Actions */}
             <div className="lg:col-span-2 flex flex-col gap-6">
-              {statusHistory.length > 0 && (
+              {statusNotes.length > 0 && (
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -988,19 +990,25 @@ export default function DealDetail() {
                       ) : (
                         <>
                           <ChevronDown className="h-4 w-4" />
-                          Show ({statusHistory.length})
+                          Show ({statusNotes.length})
                         </>
                       )}
                     </Button>
                   </CardHeader>
                   {isStatusHistoryExpanded && (
                     <CardContent className="space-y-3 pt-0">
-                      {[...statusHistory].reverse().map((item, index) => (
-                        <div key={index} className="text-sm p-3 bg-muted/50 rounded-lg">
-                          <p className="text-muted-foreground">{item.note}</p>
+                      {statusNotes.map((item) => (
+                        <div key={item.id} className="text-sm p-3 bg-muted/50 rounded-lg group relative">
+                          <p className="text-muted-foreground pr-6">{item.note}</p>
                           <p className="text-xs text-muted-foreground/70 mt-1">
-                            {item.timestamp.toLocaleDateString()} at {item.timestamp.toLocaleTimeString()}
+                            {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
                           </p>
+                          <button
+                            onClick={() => deleteStatusNote(item.id)}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       ))}
                     </CardContent>
