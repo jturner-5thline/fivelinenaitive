@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Users, Trash2, Pencil, Plus, X, Check, Loader2 } from 'lucide-react';
+import { Users, Trash2, Pencil, Plus, X, Check, Loader2, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useReferralSources, ReferralSource } from '@/hooks/useReferralSources';
@@ -96,18 +97,41 @@ export function ReferralSourcesSettings() {
     }
   };
 
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('settings-referral-sources-open');
+    return saved !== null ? saved === 'true' : false;
+  });
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    localStorage.setItem('settings-referral-sources-open', String(open));
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Referral Sources
-        </CardTitle>
-        <CardDescription>
-          Manage your list of referral sources for deals
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-left flex-1">
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Referral Sources
+                </CardTitle>
+                <CardDescription>Manage your list of referral sources for deals</CardDescription>
+              </div>
+            </button>
+          </CollapsibleTrigger>
+          {referralSources.length > 0 && !showAddForm && (
+            <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setShowAddForm(true); }} className="gap-1">
+              <Plus className="h-4 w-4" />
+              Add Source
+            </Button>
+          )}
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -204,7 +228,7 @@ export function ReferralSourcesSettings() {
               </div>
             )}
 
-            {showAddForm ? (
+            {showAddForm && (
               <div className="flex items-center gap-2 pt-2">
                 <Input
                   placeholder="Enter referral source name..."
@@ -235,21 +259,12 @@ export function ReferralSourcesSettings() {
                   Cancel
                 </Button>
               </div>
-            ) : (
-              referralSources.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAddForm(true)}
-                  className="w-full gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Referral Source
-                </Button>
-              )
             )}
           </>
         )}
       </CardContent>
-    </Card>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
