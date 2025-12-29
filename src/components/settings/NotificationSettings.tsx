@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity } from 'lucide-react';
+import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity, Target } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -21,11 +21,13 @@ export function NotificationSettings() {
     lender_updates_app: true,
     // Bell notification preferences
     notify_stale_alerts: true,
-    notify_activity_deal_created: true,
     notify_activity_lender_added: true,
     notify_activity_lender_updated: true,
     notify_activity_stage_changed: true,
     notify_activity_status_changed: true,
+    notify_activity_milestone_added: true,
+    notify_activity_milestone_completed: true,
+    notify_activity_milestone_missed: true,
   });
 
   useEffect(() => {
@@ -40,11 +42,13 @@ export function NotificationSettings() {
         lender_updates_app: profile.lender_updates_app ?? true,
         // Bell notification preferences
         notify_stale_alerts: (profile as any).notify_stale_alerts ?? true,
-        notify_activity_deal_created: (profile as any).notify_activity_deal_created ?? true,
         notify_activity_lender_added: (profile as any).notify_activity_lender_added ?? true,
         notify_activity_lender_updated: (profile as any).notify_activity_lender_updated ?? true,
         notify_activity_stage_changed: (profile as any).notify_activity_stage_changed ?? true,
         notify_activity_status_changed: (profile as any).notify_activity_status_changed ?? true,
+        notify_activity_milestone_added: (profile as any).notify_activity_milestone_added ?? true,
+        notify_activity_milestone_completed: (profile as any).notify_activity_milestone_completed ?? true,
+        notify_activity_milestone_missed: (profile as any).notify_activity_milestone_missed ?? true,
       });
     }
   }, [profile]);
@@ -244,7 +248,7 @@ export function NotificationSettings() {
               <Label htmlFor="notify_stale_alerts" className="flex flex-col gap-1">
                 <span className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-destructive" />
-                  Stale lender alerts
+                  Stale lender reminders
                 </span>
                 <span className="text-sm text-muted-foreground font-normal">
                   Show alerts when lenders haven't been updated
@@ -260,25 +264,10 @@ export function NotificationSettings() {
 
             <Separator className="my-2" />
 
-            {/* Activity Types */}
+            {/* Lender Activity Types */}
             <div className="flex items-center gap-2 mb-2">
               <Activity className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Activity Types</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="notify_activity_deal_created" className="flex flex-col gap-1">
-                <span>Deal created</span>
-                <span className="text-sm text-muted-foreground font-normal">
-                  When new deals are created
-                </span>
-              </Label>
-              <Switch
-                id="notify_activity_deal_created"
-                checked={preferences.notify_activity_deal_created}
-                onCheckedChange={(checked) => handleToggle('notify_activity_deal_created', checked)}
-                disabled={isSaving}
-              />
+              <span className="text-sm font-medium">Lender Activity</span>
             </div>
 
             <div className="flex items-center justify-between">
@@ -298,9 +287,9 @@ export function NotificationSettings() {
 
             <div className="flex items-center justify-between">
               <Label htmlFor="notify_activity_lender_updated" className="flex flex-col gap-1">
-                <span>Lender updated</span>
+                <span>Lender status changed</span>
                 <span className="text-sm text-muted-foreground font-normal">
-                  When lender information changes
+                  When lender stage or status changes
                 </span>
               </Label>
               <Switch
@@ -313,9 +302,9 @@ export function NotificationSettings() {
 
             <div className="flex items-center justify-between">
               <Label htmlFor="notify_activity_stage_changed" className="flex flex-col gap-1">
-                <span>Stage changed</span>
+                <span>Lender stage changed</span>
                 <span className="text-sm text-muted-foreground font-normal">
-                  When deal stages are updated
+                  When lender stages are updated
                 </span>
               </Label>
               <Switch
@@ -326,9 +315,17 @@ export function NotificationSettings() {
               />
             </div>
 
+            <Separator className="my-2" />
+
+            {/* Deal Activity */}
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Deal Activity</span>
+            </div>
+
             <div className="flex items-center justify-between">
               <Label htmlFor="notify_activity_status_changed" className="flex flex-col gap-1">
-                <span>Status changed</span>
+                <span>Deal status changed</span>
                 <span className="text-sm text-muted-foreground font-normal">
                   When deal status is updated
                 </span>
@@ -337,6 +334,59 @@ export function NotificationSettings() {
                 id="notify_activity_status_changed"
                 checked={preferences.notify_activity_status_changed}
                 onCheckedChange={(checked) => handleToggle('notify_activity_status_changed', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            <Separator className="my-2" />
+
+            {/* Milestone Activity */}
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Milestone Activity</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_activity_milestone_added" className="flex flex-col gap-1">
+                <span>Milestone added</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  When new milestones are created
+                </span>
+              </Label>
+              <Switch
+                id="notify_activity_milestone_added"
+                checked={preferences.notify_activity_milestone_added}
+                onCheckedChange={(checked) => handleToggle('notify_activity_milestone_added', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_activity_milestone_completed" className="flex flex-col gap-1">
+                <span>Milestone completed</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  When milestones are marked complete
+                </span>
+              </Label>
+              <Switch
+                id="notify_activity_milestone_completed"
+                checked={preferences.notify_activity_milestone_completed}
+                onCheckedChange={(checked) => handleToggle('notify_activity_milestone_completed', checked)}
+                disabled={isSaving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_activity_milestone_missed" className="flex flex-col gap-1">
+                <span>Milestone missed</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  When milestones pass their due date
+                </span>
+              </Label>
+              <Switch
+                id="notify_activity_milestone_missed"
+                checked={preferences.notify_activity_milestone_missed}
+                onCheckedChange={(checked) => handleToggle('notify_activity_milestone_missed', checked)}
                 disabled={isSaving}
               />
             </div>

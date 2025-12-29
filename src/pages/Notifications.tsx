@@ -57,16 +57,21 @@ function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[]
 
 function getActivityIcon(activityType: string) {
   switch (activityType) {
-    case 'deal_created':
-      return '🆕';
     case 'lender_added':
       return '🏦';
     case 'lender_updated':
+    case 'lender_stage_changed':
       return '📝';
     case 'stage_changed':
       return '📊';
     case 'status_changed':
       return '🔄';
+    case 'milestone_added':
+      return '🎯';
+    case 'milestone_completed':
+      return '✅';
+    case 'milestone_missed':
+      return '⚠️';
     default:
       return '📌';
   }
@@ -74,16 +79,21 @@ function getActivityIcon(activityType: string) {
 
 function getActivityLabel(activityType: string) {
   switch (activityType) {
-    case 'deal_created':
-      return 'Deal Created';
     case 'lender_added':
       return 'Lender Added';
     case 'lender_updated':
+    case 'lender_stage_changed':
       return 'Lender Updated';
     case 'stage_changed':
       return 'Stage Changed';
     case 'status_changed':
       return 'Status Changed';
+    case 'milestone_added':
+      return 'Milestone Added';
+    case 'milestone_completed':
+      return 'Milestone Completed';
+    case 'milestone_missed':
+      return 'Milestone Missed';
     default:
       return 'Activity';
   }
