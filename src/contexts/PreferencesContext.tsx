@@ -12,6 +12,7 @@ export interface Preferences {
   lenderUpdateYellowDays: number;
   lenderUpdateRedDays: number;
   staleDealsDays: number;
+  defaultLenderStage: string;
 }
 
 export const CURRENCY_FORMAT_OPTIONS: { value: CurrencyFormat; label: string; example: string }[] = [
@@ -31,6 +32,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   lenderUpdateYellowDays: 7,
   lenderUpdateRedDays: 14,
   staleDealsDays: 14,
+  defaultLenderStage: 'on-deck',
 };
 
 const STORAGE_KEY = 'user-preferences';

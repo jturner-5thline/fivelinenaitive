@@ -384,7 +384,7 @@ export default function DealDetail() {
     // Add to database
     const newLender = await addLenderToDeal(deal.id, {
       name: lenderName.trim(),
-      stage: 'on-deck',
+      stage: preferences.defaultLenderStage,
       trackingStatus: 'active',
     });
     
@@ -404,7 +404,7 @@ export default function DealDetail() {
         description: `${lenderName} has been added to the deal.`,
       });
     }
-  }, [deal, addLenderToDeal, logActivity]);
+  }, [deal, addLenderToDeal, logActivity, preferences.defaultLenderStage]);
 
   const updateLenderNotes = useCallback((lenderId: string, notes: string, committed: Record<string, string>) => {
     const committedNote = committed[lenderId]?.trim() || '';
