@@ -224,6 +224,50 @@ export type Database = {
           },
         ]
       }
+      deal_milestones: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          deal_id: string
+          due_date: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          deal_id: string
+          due_date?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          deal_id?: string
+          due_date?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_milestones_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_status_notes: {
         Row: {
           created_at: string
