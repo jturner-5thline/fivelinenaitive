@@ -27,6 +27,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/deals/ActivityTimeline';
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
+import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import {
@@ -949,19 +950,17 @@ export default function DealDetail() {
               <div className="flex items-start justify-between gap-4 border-t border-border mt-4 pt-4">
                 <div className="w-[60%] flex items-start gap-2 pl-4">
                   <span className="text-lg text-foreground/90 mt-0.5">•</span>
-                  <InlineEditField
+                  <RichTextInlineEdit
                     value={deal.notes || ''}
                     onSave={async (value) => {
                       // Save previous note to history before updating
-                      if (deal.notes && deal.notes.trim()) {
+                      if (deal.notes && deal.notes.trim() && deal.notes !== '<p></p>') {
                         await addStatusNote(deal.notes.trim());
                       }
                       updateDeal('notes', value);
                     }}
-                    type="textarea"
                     placeholder="Click to add status notes..."
                     displayClassName="text-lg text-foreground/90"
-                    inputClassName="min-w-[600px]"
                   />
                 </div>
                 <div className={`flex items-center gap-2 text-sm text-muted-foreground shrink-0 ${timeAgoData.highlightClass}`}>
