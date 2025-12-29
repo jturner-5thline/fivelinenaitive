@@ -86,7 +86,33 @@ export function useCompany() {
         .eq('company_id', memberData.company_id);
 
       if (membersError) throw membersError;
-      setMembers(membersData || []);
+
+      // Fetch profile data for each member to get display names and emails
+      if (membersData && membersData.length > 0) {
+        const userIds = membersData.map(m => m.user_id);
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+        }
+
+        // Merge profile data with members
+        const membersWithProfiles = membersData.map(member => {
+          const profile = profilesData?.find(p => p.user_id === member.user_id);
+          return {
+            ...member,
+            display_name: profile?.display_name || null,
+            email: user?.email && member.user_id === user.id ? user.email : null
+          };
+        });
+
+        setMembers(membersWithProfiles);
+      } else {
+        setMembers([]);
+      }
     } catch (error) {
       console.error('Error fetching company:', error);
     } finally {
