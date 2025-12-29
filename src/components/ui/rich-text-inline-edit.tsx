@@ -54,7 +54,7 @@ export function RichTextInlineEdit({
         <span className="text-muted-foreground/50 italic">{placeholder}</span>
       ) : (
         <div 
-          className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+          className="prose prose-sm max-w-[600px] w-[600px] break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
           dangerouslySetInnerHTML={{ __html: value }} 
         />
       )}
