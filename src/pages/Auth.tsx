@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
 import { Helmet } from "react-helmet-async";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { z } from "zod";
 
 const authSchema = z.object({
@@ -20,7 +20,12 @@ const emailSchema = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }),
 });
 
-type AuthMode = "login" | "signup" | "forgot" | "reset";
+type AuthMode = "login" | "signup" | "forgot" | "reset" | "mfa";
+
+interface MFAChallenge {
+  factorId: string;
+  challengeId: string;
+}
 
 const Auth = () => {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -32,6 +37,8 @@ const Auth = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [mfaChallenge, setMfaChallenge] = useState<MFAChallenge | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,14 +47,14 @@ const Auth = () => {
       (event, session) => {
         if (event === "PASSWORD_RECOVERY") {
           setMode("reset");
-        } else if (session?.user && mode !== "reset") {
+        } else if (session?.user && mode !== "reset" && mode !== "mfa") {
           navigate("/deals");
         }
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user && mode !== "reset") {
+      if (session?.user && mode !== "reset" && mode !== "mfa") {
         // Check URL for recovery token
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         if (hashParams.get("type") === "recovery") {
@@ -60,6 +67,28 @@ const Auth = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate, mode]);
+
+  const handleMFAVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaChallenge || mfaCode.length !== 6) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.mfa.verify({
+        factorId: mfaChallenge.factorId,
+        challengeId: mfaChallenge.challengeId,
+        code: mfaCode,
+      });
+
+      if (error) throw error;
+      toast.success("Welcome back!");
+      navigate("/deals");
+    } catch (error: any) {
+      toast.error(error.message || "Invalid verification code.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,11 +129,34 @@ const Auth = () => {
         }
 
         if (mode === "login") {
-          const { error } = await supabase.auth.signInWithPassword({
+          const { data, error } = await supabase.auth.signInWithPassword({
             email: email.trim(),
             password,
           });
+          
           if (error) throw error;
+
+          // Check if MFA is required
+          const { data: factorsData } = await supabase.auth.mfa.listFactors();
+          const verifiedFactors = factorsData?.totp?.filter(f => f.status === 'verified') || [];
+          
+          if (verifiedFactors.length > 0) {
+            // User has MFA enabled, need to verify
+            const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+              factorId: verifiedFactors[0].id,
+            });
+            
+            if (challengeError) throw challengeError;
+            
+            setMfaChallenge({
+              factorId: verifiedFactors[0].id,
+              challengeId: challengeData.id,
+            });
+            setMode("mfa");
+            setLoading(false);
+            return;
+          }
+          
           toast.success("Welcome back!");
         } else {
           const { error } = await supabase.auth.signUp({
@@ -155,6 +207,7 @@ const Auth = () => {
       case "forgot": return "Reset Password";
       case "reset": return "Set New Password";
       case "signup": return "Sign Up";
+      case "mfa": return "Two-Factor Authentication";
       default: return "Login";
     }
   };
@@ -164,6 +217,7 @@ const Auth = () => {
       case "forgot": return "Enter your email to receive a reset link";
       case "reset": return "Enter your new password";
       case "signup": return "Create your account";
+      case "mfa": return "Enter the code from your authenticator app";
       default: return "Welcome back";
     }
   };
@@ -187,8 +241,44 @@ const Auth = () => {
               {getSubtitle()}
             </p>
             
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {mode === "reset" ? (
+            <form onSubmit={mode === "mfa" ? handleMFAVerify : handleSubmit} className="space-y-6">
+              {mode === "mfa" ? (
+                <div className="space-y-4">
+                  <div className="flex justify-center mb-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+                      <ShieldCheck className="h-8 w-8 text-white/80" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="mfaCode" className="text-white/80 font-light">
+                      Verification Code
+                    </Label>
+                    <Input
+                      id="mfaCode"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={mfaCode}
+                      onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 text-center text-xl tracking-widest"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("login");
+                      setMfaChallenge(null);
+                      setMfaCode("");
+                    }}
+                    className="text-sm text-white/50 hover:text-white/80 underline underline-offset-4"
+                  >
+                    Use a different account
+                  </button>
+                </div>
+              ) : mode === "reset" ? (
                 <div className="space-y-2">
                   <Label htmlFor="newPassword" className="text-white/80 font-light">
                     New Password
@@ -284,12 +374,13 @@ const Auth = () => {
               
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (mode === "mfa" && mfaCode.length !== 6)}
                 className="w-full bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white/40 py-6 font-light tracking-wide"
               >
                 {loading ? "Please wait..." : 
                   mode === "forgot" ? "Send Reset Link" :
                   mode === "reset" ? "Update Password" :
+                  mode === "mfa" ? "Verify" :
                   mode === "login" ? "Login" : "Sign Up"}
               </Button>
 
@@ -391,7 +482,7 @@ const Auth = () => {
               )}
             </form>
             
-            {mode !== "reset" && (
+            {mode !== "reset" && mode !== "mfa" && (
               <p className="text-center text-white/50 mt-6 font-light">
                 {mode === "forgot" ? (
                   <button
