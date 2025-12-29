@@ -178,25 +178,23 @@ export function PassReasonsSettings() {
   return (
     <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-2 text-left flex-1">
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                  <CardTitle>Pass Reasons</CardTitle>
-                </div>
-              </button>
-            </CollapsibleTrigger>
-            <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setIsAddDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Reason
-            </Button>
-          </div>
-          <CardDescription className="pl-6">
-            Configure the reasons shown when marking a lender as passed
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-left flex-1">
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <XCircle className="h-5 w-5" />
+                  Pass Reasons
+                </CardTitle>
+                <CardDescription>Configure the reasons shown when marking a lender as passed</CardDescription>
+              </div>
+            </button>
+          </CollapsibleTrigger>
+          <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setIsAddDialogOpen(true); }} className="gap-1">
+            <Plus className="h-4 w-4" />
+            Add Reason
+          </Button>
         </CardHeader>
         <CollapsibleContent>
           <CardContent>
