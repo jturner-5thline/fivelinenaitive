@@ -33,6 +33,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
+import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 
 export function DealsHeader() {
   const navigate = useNavigate();
@@ -49,21 +50,6 @@ export function DealsHeader() {
   const [isCreating, setIsCreating] = useState(false);
 
   const isDemoUser = user?.email === 'demo@example.com';
-
-  // Format number string with commas (no decimals)
-  const formatAmountWithCommas = (value: string): string => {
-    // Remove any non-digit characters
-    const digits = value.replace(/\D/g, '');
-    if (!digits) return '';
-    // Add commas
-    return parseInt(digits, 10).toLocaleString('en-US');
-  };
-
-  // Parse comma-formatted string to number
-  const parseAmountToNumber = (value: string): number => {
-    const digits = value.replace(/\D/g, '');
-    return digits ? parseInt(digits, 10) : 0;
-  };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatAmountWithCommas(e.target.value);
