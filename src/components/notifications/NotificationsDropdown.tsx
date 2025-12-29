@@ -61,16 +61,21 @@ function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[]
 
 function getActivityIcon(activityType: string) {
   switch (activityType) {
-    case 'deal_created':
-      return '🆕';
     case 'lender_added':
       return '🏦';
     case 'lender_updated':
+    case 'lender_stage_changed':
       return '📝';
     case 'stage_changed':
       return '📊';
     case 'status_changed':
       return '🔄';
+    case 'milestone_added':
+      return '🎯';
+    case 'milestone_completed':
+      return '✅';
+    case 'milestone_missed':
+      return '⚠️';
     default:
       return '📌';
   }

@@ -574,6 +574,9 @@ export type Database = {
           notify_activity_deal_created: boolean
           notify_activity_lender_added: boolean
           notify_activity_lender_updated: boolean
+          notify_activity_milestone_added: boolean
+          notify_activity_milestone_completed: boolean
+          notify_activity_milestone_missed: boolean
           notify_activity_stage_changed: boolean
           notify_activity_status_changed: boolean
           notify_stale_alerts: boolean
@@ -602,6 +605,9 @@ export type Database = {
           notify_activity_deal_created?: boolean
           notify_activity_lender_added?: boolean
           notify_activity_lender_updated?: boolean
+          notify_activity_milestone_added?: boolean
+          notify_activity_milestone_completed?: boolean
+          notify_activity_milestone_missed?: boolean
           notify_activity_stage_changed?: boolean
           notify_activity_status_changed?: boolean
           notify_stale_alerts?: boolean
@@ -630,6 +636,9 @@ export type Database = {
           notify_activity_deal_created?: boolean
           notify_activity_lender_added?: boolean
           notify_activity_lender_updated?: boolean
+          notify_activity_milestone_added?: boolean
+          notify_activity_milestone_completed?: boolean
+          notify_activity_milestone_missed?: boolean
           notify_activity_stage_changed?: boolean
           notify_activity_status_changed?: boolean
           notify_stale_alerts?: boolean

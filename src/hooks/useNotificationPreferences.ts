@@ -4,20 +4,24 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export interface NotificationPreferences {
   notify_stale_alerts: boolean;
-  notify_activity_deal_created: boolean;
   notify_activity_lender_added: boolean;
   notify_activity_lender_updated: boolean;
   notify_activity_stage_changed: boolean;
   notify_activity_status_changed: boolean;
+  notify_activity_milestone_added: boolean;
+  notify_activity_milestone_completed: boolean;
+  notify_activity_milestone_missed: boolean;
 }
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   notify_stale_alerts: true,
-  notify_activity_deal_created: true,
   notify_activity_lender_added: true,
   notify_activity_lender_updated: true,
   notify_activity_stage_changed: true,
   notify_activity_status_changed: true,
+  notify_activity_milestone_added: true,
+  notify_activity_milestone_completed: true,
+  notify_activity_milestone_missed: true,
 };
 
 export function useNotificationPreferences() {
@@ -31,7 +35,7 @@ export function useNotificationPreferences() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('notify_stale_alerts, notify_activity_deal_created, notify_activity_lender_added, notify_activity_lender_updated, notify_activity_stage_changed, notify_activity_status_changed')
+      .select('notify_stale_alerts, notify_activity_lender_added, notify_activity_lender_updated, notify_activity_stage_changed, notify_activity_status_changed, notify_activity_milestone_added, notify_activity_milestone_completed, notify_activity_milestone_missed')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -40,11 +44,13 @@ export function useNotificationPreferences() {
     } else if (data) {
       setPreferences({
         notify_stale_alerts: data.notify_stale_alerts ?? true,
-        notify_activity_deal_created: data.notify_activity_deal_created ?? true,
         notify_activity_lender_added: data.notify_activity_lender_added ?? true,
         notify_activity_lender_updated: data.notify_activity_lender_updated ?? true,
         notify_activity_stage_changed: data.notify_activity_stage_changed ?? true,
         notify_activity_status_changed: data.notify_activity_status_changed ?? true,
+        notify_activity_milestone_added: (data as any).notify_activity_milestone_added ?? true,
+        notify_activity_milestone_completed: (data as any).notify_activity_milestone_completed ?? true,
+        notify_activity_milestone_missed: (data as any).notify_activity_milestone_missed ?? true,
       });
     }
     setIsLoading(false);
@@ -56,18 +62,26 @@ export function useNotificationPreferences() {
 
   const shouldShowActivity = useCallback((activityType: string): boolean => {
     switch (activityType) {
-      case 'deal_created':
-        return preferences.notify_activity_deal_created;
       case 'lender_added':
         return preferences.notify_activity_lender_added;
       case 'lender_updated':
+      case 'lender_stage_changed':
         return preferences.notify_activity_lender_updated;
       case 'stage_changed':
         return preferences.notify_activity_stage_changed;
       case 'status_changed':
         return preferences.notify_activity_status_changed;
+      case 'milestone_added':
+        return preferences.notify_activity_milestone_added;
+      case 'milestone_completed':
+        return preferences.notify_activity_milestone_completed;
+      case 'milestone_missed':
+        return preferences.notify_activity_milestone_missed;
+      case 'deal_created':
+        // Don't show deal_created notifications
+        return false;
       default:
-        return true; // Show unknown activity types by default
+        return false; // Don't show unknown activity types
     }
   }, [preferences]);
 
