@@ -416,6 +416,9 @@ export default function DealDetail() {
 
   // Track the last committed note for each lender to detect when user starts editing again
   const [committedNotes, setCommittedNotes] = useState<Record<string, string>>({});
+  
+  // Track which lender just had notes saved for visual feedback
+  const [savedNotesFlash, setSavedNotesFlash] = useState<Set<string>>(new Set());
 
   const commitLenderNotes = useCallback((lenderId: string) => {
     const lender = deal?.lenders?.find(l => l.id === lenderId);
@@ -426,6 +429,16 @@ export default function DealDetail() {
     
     // Store this as the committed note
     setCommittedNotes(prev => ({ ...prev, [lenderId]: currentNote }));
+    
+    // Trigger visual feedback
+    setSavedNotesFlash(prev => new Set(prev).add(lenderId));
+    setTimeout(() => {
+      setSavedNotesFlash(prev => {
+        const next = new Set(prev);
+        next.delete(lenderId);
+        return next;
+      });
+    }, 1500);
     
     // Persist to database
     updateLenderInDb(lenderId, { notes: currentNote });
@@ -1262,9 +1275,11 @@ export default function DealDetail() {
                                             commitLenderNotes(lender.id);
                                           }
                                         }}
-                                        className={`text-xs resize-none py-1.5 transition-all ${
-                                          expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
-                                        }`}
+                                        className={cn(
+                                          "text-xs resize-none py-1.5 transition-all",
+                                          expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
+                                          savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
+                                        )}
                                         rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
                                       />
                                     </div>
@@ -1521,9 +1536,11 @@ export default function DealDetail() {
                                                     commitLenderNotes(lender.id);
                                                   }
                                                 }}
-                                                className={`text-xs resize-none py-1.5 transition-all ${
-                                                  expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8'
-                                                }`}
+                                                className={cn(
+                                                  "text-xs resize-none py-1.5 transition-all",
+                                                  expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
+                                                  savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
+                                                )}
                                                 rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
                                               />
                                             </div>
