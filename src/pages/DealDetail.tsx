@@ -293,12 +293,7 @@ export default function DealDetail() {
   const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
   const [passReasonSearch, setPassReasonSearch] = useState('');
   
-  const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string; category: 'term-sheets' | 'credit-file' | 'reports' }[]>([
-    { id: '1', name: 'Term Sheet v2.pdf', type: 'pdf', size: '245 KB', uploadedAt: '2024-01-18', category: 'term-sheets' },
-    { id: '2', name: 'Financial Model.xlsx', type: 'xlsx', size: '1.2 MB', uploadedAt: '2024-01-17', category: 'credit-file' },
-    { id: '3', name: 'Due Diligence Checklist.docx', type: 'docx', size: '89 KB', uploadedAt: '2024-01-15', category: 'credit-file' },
-    { id: '4', name: 'Q4 Performance Report.pdf', type: 'pdf', size: '512 KB', uploadedAt: '2024-01-14', category: 'reports' },
-  ]);
+  const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string; category: 'term-sheets' | 'credit-file' | 'reports' }[]>([]);
   const filteredAttachments = attachmentFilter === 'all' 
     ? attachments 
     : attachments.filter(a => a.category === attachmentFilter);
