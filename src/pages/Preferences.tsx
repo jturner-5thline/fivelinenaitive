@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, User, ChevronsUpDown } from 'lucide-react';
@@ -24,21 +24,41 @@ import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { cn } from '@/lib/utils';
 
 const SECTION_COUNT = 8;
+const STORAGE_KEY = 'preferences-sections-state';
+
+const defaultOpenSections: Record<string, boolean> = {
+  profile: true,
+  appearance: true,
+  notifications: true,
+  lenderAlerts: true,
+  staleDeals: true,
+  lenderDefaults: true,
+  currency: true,
+  regional: true,
+};
+
+const loadSectionsFromStorage = (): Record<string, boolean> => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    // Ignore parse errors
+  }
+  return defaultOpenSections;
+};
 
 export default function Preferences() {
   const { theme, setTheme } = useTheme();
   const { preferences, updatePreference } = usePreferences();
   const { stages } = useLenderStages();
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    profile: true,
-    appearance: true,
-    notifications: true,
-    lenderAlerts: true,
-    staleDeals: true,
-    lenderDefaults: true,
-    currency: true,
-    regional: true,
-  });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(loadSectionsFromStorage);
+
+  // Persist to localStorage whenever openSections changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(openSections));
+  }, [openSections]);
 
   const allOpen = Object.values(openSections).every(Boolean);
   const allClosed = Object.values(openSections).every(v => !v);
