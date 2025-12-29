@@ -19,10 +19,12 @@ export interface Widget {
   color: 'primary' | 'accent' | 'success' | 'warning' | 'destructive';
 }
 
-export type SpecialWidget = 'stage-progression';
+export type SpecialWidget = 'stage-progression' | 'recent-activity' | 'stale-deals';
 
 export const SPECIAL_WIDGET_OPTIONS: { value: SpecialWidget; label: string; description: string }[] = [
-  { value: 'stage-progression', label: 'Pipeline Stage Progression', description: 'Visualize how deals move through pipeline stages' },
+  { value: 'stage-progression', label: 'Stage Progression', description: 'Visualize how deals move through pipeline stages' },
+  { value: 'recent-activity', label: 'Recent Activity', description: 'See latest activity across all deals' },
+  { value: 'stale-deals', label: 'Stale Deals', description: 'Alert for deals with no recent updates' },
 ];
 
 export const METRIC_OPTIONS: { value: WidgetMetric; label: string }[] = [
@@ -55,6 +57,8 @@ const DEFAULT_WIDGETS: Widget[] = [
 
 const DEFAULT_SPECIAL_WIDGETS: Record<SpecialWidget, boolean> = {
   'stage-progression': true,
+  'recent-activity': false,
+  'stale-deals': false,
 };
 
 const STORAGE_KEY = 'dashboard-widgets';
