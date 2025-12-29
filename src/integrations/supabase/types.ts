@@ -306,6 +306,7 @@ export type Database = {
       deals: {
         Row: {
           company: string
+          company_id: string | null
           created_at: string
           deal_type: string | null
           engagement_type: string | null
@@ -327,6 +328,7 @@ export type Database = {
         }
         Insert: {
           company: string
+          company_id?: string | null
           created_at?: string
           deal_type?: string | null
           engagement_type?: string | null
@@ -348,6 +350,7 @@ export type Database = {
         }
         Update: {
           company?: string
+          company_id?: string | null
           created_at?: string
           deal_type?: string | null
           engagement_type?: string | null
@@ -367,7 +370,15 @@ export type Database = {
           user_id?: string | null
           value?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "deals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lender_attachments: {
         Row: {
@@ -777,6 +788,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["company_role"]
       }
       is_company_admin: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_company_member: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
