@@ -297,6 +297,8 @@ export default function DealDetail() {
   // Deal attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('credit-file');
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const { 
     attachments, 
     isLoading: isLoadingAttachments, 
@@ -308,6 +310,16 @@ export default function DealDetail() {
   const filteredAttachments = attachmentFilter === 'all' 
     ? attachments 
     : attachments.filter(a => a.category === attachmentFilter);
+
+  const handleFileDrop = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+    setIsUploading(true);
+    try {
+      await uploadMultipleAttachments(files, uploadCategory);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [uploadMultipleAttachments, uploadCategory]);
 
   // Convert activity logs to ActivityItem format and combine with local undo actions
   const activities: ActivityItem[] = useMemo(() => {
@@ -2056,7 +2068,37 @@ export default function DealDetail() {
               </Card>
 
               {/* Attachments & Documents */}
-              <Card>
+              <Card 
+                className={cn(
+                  "transition-all duration-200",
+                  isDraggingOver && "ring-2 ring-primary ring-offset-2 bg-primary/5"
+                )}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingOver(true);
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingOver(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Only set to false if we're leaving the card entirely
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setIsDraggingOver(false);
+                  }
+                }}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingOver(false);
+                  const files = Array.from(e.dataTransfer.files);
+                  await handleFileDrop(files);
+                }}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">
@@ -2083,9 +2125,9 @@ export default function DealDetail() {
                         size="sm"
                         className="h-8 gap-1"
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={isLoadingAttachments}
+                        disabled={isLoadingAttachments || isUploading}
                       >
-                        {isLoadingAttachments ? (
+                        {(isLoadingAttachments || isUploading) ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Upload className="h-4 w-4" />
@@ -2100,7 +2142,12 @@ export default function DealDetail() {
                         onChange={async (e) => {
                           const files = Array.from(e.target.files || []);
                           if (files.length > 0) {
-                            await uploadMultipleAttachments(files, uploadCategory);
+                            setIsUploading(true);
+                            try {
+                              await uploadMultipleAttachments(files, uploadCategory);
+                            } finally {
+                              setIsUploading(false);
+                            }
                           }
                           e.target.value = '';
                         }}
@@ -2128,7 +2175,18 @@ export default function DealDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  {isLoadingAttachments ? (
+                  {isDraggingOver ? (
+                    <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-primary rounded-lg bg-primary/5">
+                      <Upload className="h-8 w-8 text-primary mb-2" />
+                      <p className="text-sm font-medium text-primary">Drop files here</p>
+                      <p className="text-xs text-muted-foreground">Files will be uploaded to {DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === uploadCategory)?.label}</p>
+                    </div>
+                  ) : isUploading ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+                      <p className="text-sm text-muted-foreground">Uploading files...</p>
+                    </div>
+                  ) : isLoadingAttachments ? (
                     <div className="flex items-center justify-center py-4">
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
@@ -2179,9 +2237,15 @@ export default function DealDetail() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No attachments {attachmentFilter !== 'all' ? 'in this category' : 'yet'}
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                      <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {attachmentFilter !== 'all' ? 'No attachments in this category' : 'No attachments yet'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Drag & drop files here or click Upload
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
