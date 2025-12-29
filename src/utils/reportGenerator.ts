@@ -469,7 +469,7 @@ export const generateTeamPerformanceReport = (
     managerStats[manager].deals++;
     managerStats[manager].totalValue += deal.value;
     managerStats[manager].totalFees += deal.totalFee || 0;
-    if (deal.stage === 'closed') managerStats[manager].closedDeals++;
+    if (deal.stage === 'closed-won' || deal.stage === 'closed-lost') managerStats[manager].closedDeals++;
     if (deal.status !== 'archived') managerStats[manager].activeDeals++;
   });
 
@@ -612,21 +612,31 @@ export const generateConversionMetricsReport = (
   exportFormat: 'pdf' | 'csv' | 'xlsx'
 ): void => {
   const stageProgression = {
-    'prospecting': deals.filter(d => d.stage === 'prospecting').length,
-    'initial-review': deals.filter(d => d.stage === 'initial-review').length,
-    'due-diligence': deals.filter(d => d.stage === 'due-diligence').length,
-    'term-sheet': deals.filter(d => d.stage === 'term-sheet').length,
-    'closing': deals.filter(d => d.stage === 'closing').length,
-    'closed': deals.filter(d => d.stage === 'closed').length,
+    'final-credit-items': deals.filter(d => d.stage === 'final-credit-items').length,
+    'client-strategy-review': deals.filter(d => d.stage === 'client-strategy-review').length,
+    'write-up-pending': deals.filter(d => d.stage === 'write-up-pending').length,
+    'submitted-to-lenders': deals.filter(d => d.stage === 'submitted-to-lenders').length,
+    'lenders-in-review': deals.filter(d => d.stage === 'lenders-in-review').length,
+    'terms-issued': deals.filter(d => d.stage === 'terms-issued').length,
+    'in-due-diligence': deals.filter(d => d.stage === 'in-due-diligence').length,
+    'funded-invoiced': deals.filter(d => d.stage === 'funded-invoiced').length,
+    'closed-won': deals.filter(d => d.stage === 'closed-won').length,
+    'closed-lost': deals.filter(d => d.stage === 'closed-lost').length,
+    'on-hold': deals.filter(d => d.stage === 'on-hold').length,
   };
 
   const conversionData = [
-    { 'Stage': 'Prospecting', 'Count': stageProgression['prospecting'], 'Conversion to Next': formatPercent((stageProgression['initial-review'] / stageProgression['prospecting']) * 100 || 0) },
-    { 'Stage': 'Initial Review', 'Count': stageProgression['initial-review'], 'Conversion to Next': formatPercent((stageProgression['due-diligence'] / stageProgression['initial-review']) * 100 || 0) },
-    { 'Stage': 'Due Diligence', 'Count': stageProgression['due-diligence'], 'Conversion to Next': formatPercent((stageProgression['term-sheet'] / stageProgression['due-diligence']) * 100 || 0) },
-    { 'Stage': 'Term Sheet', 'Count': stageProgression['term-sheet'], 'Conversion to Next': formatPercent((stageProgression['closing'] / stageProgression['term-sheet']) * 100 || 0) },
-    { 'Stage': 'Closing', 'Count': stageProgression['closing'], 'Conversion to Next': formatPercent((stageProgression['closed'] / stageProgression['closing']) * 100 || 0) },
-    { 'Stage': 'Closed', 'Count': stageProgression['closed'], 'Conversion to Next': '-' },
+    { 'Stage': 'Final Credit Items', 'Count': stageProgression['final-credit-items'], 'Conversion to Next': formatPercent((stageProgression['client-strategy-review'] / stageProgression['final-credit-items']) * 100 || 0) },
+    { 'Stage': 'Client Strategy Review', 'Count': stageProgression['client-strategy-review'], 'Conversion to Next': formatPercent((stageProgression['write-up-pending'] / stageProgression['client-strategy-review']) * 100 || 0) },
+    { 'Stage': 'Write-Up Pending', 'Count': stageProgression['write-up-pending'], 'Conversion to Next': formatPercent((stageProgression['submitted-to-lenders'] / stageProgression['write-up-pending']) * 100 || 0) },
+    { 'Stage': 'Submitted to Lenders', 'Count': stageProgression['submitted-to-lenders'], 'Conversion to Next': formatPercent((stageProgression['lenders-in-review'] / stageProgression['submitted-to-lenders']) * 100 || 0) },
+    { 'Stage': 'Lenders in Review', 'Count': stageProgression['lenders-in-review'], 'Conversion to Next': formatPercent((stageProgression['terms-issued'] / stageProgression['lenders-in-review']) * 100 || 0) },
+    { 'Stage': 'Terms Issued', 'Count': stageProgression['terms-issued'], 'Conversion to Next': formatPercent((stageProgression['in-due-diligence'] / stageProgression['terms-issued']) * 100 || 0) },
+    { 'Stage': 'In Due Diligence', 'Count': stageProgression['in-due-diligence'], 'Conversion to Next': formatPercent((stageProgression['funded-invoiced'] / stageProgression['in-due-diligence']) * 100 || 0) },
+    { 'Stage': 'Funded / Invoiced', 'Count': stageProgression['funded-invoiced'], 'Conversion to Next': formatPercent((stageProgression['closed-won'] / stageProgression['funded-invoiced']) * 100 || 0) },
+    { 'Stage': 'Closed Won', 'Count': stageProgression['closed-won'], 'Conversion to Next': '-' },
+    { 'Stage': 'Closed Lost', 'Count': stageProgression['closed-lost'], 'Conversion to Next': '-' },
+    { 'Stage': 'On Hold', 'Count': stageProgression['on-hold'], 'Conversion to Next': '-' },
   ];
 
   if (exportFormat === 'csv' || exportFormat === 'xlsx') {
@@ -641,7 +651,7 @@ export const generateConversionMetricsReport = (
   doc.text('Pipeline Conversion Metrics', 14, yPos);
   yPos += 10;
 
-  const overallConversion = formatPercent((stageProgression['closed'] / deals.length) * 100 || 0);
+  const overallConversion = formatPercent(((stageProgression['closed-won'] + stageProgression['closed-lost']) / deals.length) * 100 || 0);
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
   doc.text(`Overall Pipeline Conversion Rate: ${overallConversion}`, 14, yPos);
