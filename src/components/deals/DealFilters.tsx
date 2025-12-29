@@ -1,7 +1,8 @@
-import { Search, X } from 'lucide-react';
+import { Search, X, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Toggle } from '@/components/ui/toggle';
 import { DealFilters as FilterType } from '@/hooks/useDeals';
 import { 
   DealStage, 
@@ -17,6 +18,13 @@ import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface DealFiltersProps {
   filters: FilterType;
@@ -28,6 +36,7 @@ export function DealFilters({
   onFilterChange,
 }: DealFiltersProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
+  const { preferences } = usePreferences();
   const activeFiltersCount = [
     filters.stage.length > 0,
     filters.status.length > 0,
@@ -35,6 +44,7 @@ export function DealFilters({
     filters.manager.length > 0,
     filters.lender.length > 0,
     filters.referredBy.length > 0,
+    filters.staleOnly,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -46,6 +56,7 @@ export function DealFilters({
       manager: [],
       lender: [],
       referredBy: [],
+      staleOnly: false,
     });
   };
 
@@ -196,6 +207,26 @@ export function DealFilters({
             onChange={(referredBy) => onFilterChange({ referredBy })}
             className="w-[160px]"
           />
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Toggle
+                  pressed={filters.staleOnly}
+                  onPressedChange={(pressed) => onFilterChange({ staleOnly: pressed })}
+                  variant="outline"
+                  size="sm"
+                  className={`gap-1.5 ${filters.staleOnly ? 'bg-warning/20 border-warning text-warning hover:bg-warning/30' : ''}`}
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Stale
+                </Toggle>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Show only deals not updated in {preferences.staleDealsDays}+ days</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {activeFiltersCount > 0 && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">

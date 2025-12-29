@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
+import { differenceInDays } from 'date-fns';
 import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status';
 export type SortDirection = 'asc' | 'desc';
@@ -13,10 +15,12 @@ export interface DealFilters {
   manager: string[];
   lender: string[];
   referredBy: string[];
+  staleOnly: boolean;
 }
 
 export function useDeals() {
   const { deals, updateDealStatus: updateStatus, isLoading } = useDealsContext();
+  const { preferences } = usePreferences();
   const [filters, setFilters] = useState<DealFilters>({
     search: '',
     stage: [],
@@ -25,6 +29,7 @@ export function useDeals() {
     manager: [],
     lender: [],
     referredBy: [],
+    staleOnly: false,
   });
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -65,6 +70,15 @@ export function useDeals() {
 
     if (filters.referredBy.length > 0) {
       result = result.filter((deal) => deal.referredBy && filters.referredBy.includes(deal.referredBy.id));
+    }
+
+    if (filters.staleOnly) {
+      const now = new Date();
+      result = result.filter((deal) => {
+        if (deal.status === 'archived') return false;
+        const daysSinceUpdate = differenceInDays(now, new Date(deal.updatedAt));
+        return daysSinceUpdate >= preferences.staleDealsDays;
+      });
     }
 
     // Apply sorting
