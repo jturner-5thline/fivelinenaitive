@@ -63,7 +63,7 @@ export function DealsHeader() {
         value: parseFloat(dealAmount),
         manager: dealManager,
         status: 'on-track',
-        stage: 'prospecting',
+        stage: 'final-credit-items',
         engagementType: 'guided',
       });
 

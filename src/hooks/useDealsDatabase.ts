@@ -240,7 +240,7 @@ export function useDealsDatabase() {
           company: dealData.company || 'New Deal',
           value: dealData.value || 0,
           status: dealData.status || 'on-track',
-          stage: dealData.stage || 'prospecting',
+          stage: dealData.stage || 'final-credit-items',
           engagement_type: dealData.engagementType || 'guided',
           manager: dealData.manager || 'Paz',
           referred_by: dealData.referredBy?.name || null,
@@ -352,12 +352,12 @@ export function useDealsDatabase() {
           toStage: updates.stage,
         });
         
-        // Check for deal closed trigger (stage is 'closed')
-        if (updates.stage === 'closed') {
+        // Check for deal closed trigger (stage is 'closed-won' or 'closed-lost')
+        if (updates.stage === 'closed-won' || updates.stage === 'closed-lost') {
           triggerWorkflow('deal_closed', {
             dealId,
             dealName: previousDeal.company,
-            status: 'closed',
+            status: updates.stage,
           });
         }
       }

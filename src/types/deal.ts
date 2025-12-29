@@ -1,4 +1,4 @@
-export type DealStage = 'prospecting' | 'initial-review' | 'due-diligence' | 'term-sheet' | 'closing' | 'closed';
+export type DealStage = 'final-credit-items' | 'client-strategy-review' | 'write-up-pending' | 'submitted-to-lenders' | 'lenders-in-review' | 'terms-issued' | 'in-due-diligence' | 'funded-invoiced' | 'closed-won' | 'closed-lost' | 'on-hold';
 
 export type DealStatus = 'on-track' | 'at-risk' | 'off-track' | 'on-hold' | 'archived';
 
@@ -105,12 +105,17 @@ export const LENDER_TRACKING_STATUS_CONFIG: Record<LenderTrackingStatus, { label
 };
 
 export const STAGE_CONFIG: Record<DealStage, { label: string; color: string }> = {
-  'prospecting': { label: 'Prospecting', color: 'bg-slate-500' },
-  'initial-review': { label: 'Initial Review', color: 'bg-blue-500' },
-  'due-diligence': { label: 'Due Diligence', color: 'bg-amber-500' },
-  'term-sheet': { label: 'Term Sheet', color: 'bg-purple-500' },
-  'closing': { label: 'Closing', color: 'bg-cyan-500' },
-  'closed': { label: 'Closed', color: 'bg-success' },
+  'final-credit-items': { label: 'Final Credit Items', color: 'bg-slate-500' },
+  'client-strategy-review': { label: 'Client Strategy Review', color: 'bg-blue-500' },
+  'write-up-pending': { label: 'Write-Up Pending', color: 'bg-indigo-500' },
+  'submitted-to-lenders': { label: 'Submitted to Lenders', color: 'bg-violet-500' },
+  'lenders-in-review': { label: 'Lenders in Review', color: 'bg-purple-500' },
+  'terms-issued': { label: 'Terms Issued', color: 'bg-fuchsia-500' },
+  'in-due-diligence': { label: 'In Due Diligence', color: 'bg-amber-500' },
+  'funded-invoiced': { label: 'Funded / Invoiced', color: 'bg-cyan-500' },
+  'closed-won': { label: 'Closed Won', color: 'bg-success' },
+  'closed-lost': { label: 'Closed Lost', color: 'bg-destructive' },
+  'on-hold': { label: 'On Hold', color: 'bg-muted' },
 };
 
 export const STATUS_CONFIG: Record<DealStatus, { label: string; dotColor: string; badgeColor: string }> = {

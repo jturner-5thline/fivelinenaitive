@@ -50,9 +50,9 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       case 'active-deal-volume':
         return formatCurrencyValue(deals.filter(d => d.status !== 'archived').reduce((sum, d) => sum + d.value, 0));
       case 'deals-in-diligence':
-        return deals.filter(d => d.stage === 'due-diligence').length;
+        return deals.filter(d => d.stage === 'in-due-diligence').length;
       case 'dollars-in-diligence':
-        return formatCurrencyValue(deals.filter(d => d.stage === 'due-diligence').reduce((sum, d) => sum + d.value, 0));
+        return formatCurrencyValue(deals.filter(d => d.stage === 'in-due-diligence').reduce((sum, d) => sum + d.value, 0));
       case 'total-deals':
         return deals.length;
       case 'archived-deals':
