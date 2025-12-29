@@ -54,6 +54,10 @@ export function HintTooltip({
 
   return (
     <div className="relative inline-block">
+      {/* Highlight ring around the element */}
+      {showHint && (
+        <div className="absolute -inset-1 rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse pointer-events-none z-[99]" />
+      )}
       {children}
       {showHint && (
         <div
