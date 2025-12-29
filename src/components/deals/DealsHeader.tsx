@@ -50,10 +50,31 @@ export function DealsHeader() {
 
   const isDemoUser = user?.email === 'demo@example.com';
 
+  // Format number string with commas (no decimals)
+  const formatAmountWithCommas = (value: string): string => {
+    // Remove any non-digit characters
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return '';
+    // Add commas
+    return parseInt(digits, 10).toLocaleString('en-US');
+  };
+
+  // Parse comma-formatted string to number
+  const parseAmountToNumber = (value: string): number => {
+    const digits = value.replace(/\D/g, '');
+    return digits ? parseInt(digits, 10) : 0;
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatAmountWithCommas(e.target.value);
+    setDealAmount(formatted);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!dealName.trim() || !dealAmount.trim() || !dealManager.trim()) {
+    const parsedAmount = parseAmountToNumber(dealAmount);
+    if (!dealName.trim() || !parsedAmount || !dealManager.trim()) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -62,7 +83,7 @@ export function DealsHeader() {
     try {
       const newDeal = await createDeal({
         company: dealName,
-        value: parseFloat(dealAmount),
+        value: parsedAmount,
         manager: dealManager,
         status: 'on-track',
         stage: dealStages[0]?.id || 'final-credit-items',
@@ -213,9 +234,10 @@ export function DealsHeader() {
                     <Label htmlFor="dealAmount">Deal Amount</Label>
                     <Input
                       id="dealAmount"
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={dealAmount}
-                      onChange={(e) => setDealAmount(e.target.value)}
+                      onChange={handleAmountChange}
                       placeholder="Enter amount"
                     />
                   </div>
