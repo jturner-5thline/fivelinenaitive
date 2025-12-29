@@ -8,6 +8,8 @@ import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
 import { StageProgression } from '@/components/deals/StageProgression';
+import { RecentActivityWidget } from '@/components/deals/RecentActivityWidget';
+import { StaleDealsWidget } from '@/components/deals/StaleDealsWidget';
 import { NotificationsBar } from '@/components/deals/NotificationsBar';
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
 import { DemoBanner } from '@/components/deals/DemoBanner';
@@ -113,6 +115,10 @@ export default function Dashboard() {
                 <>
                   <WidgetsSection deals={allDeals} />
                   {specialWidgets['stage-progression'] && <StageProgression deals={allDeals} />}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {specialWidgets['recent-activity'] && <RecentActivityWidget />}
+                    {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
+                  </div>
                 </>
               )}
               <NotificationsBar deals={allDeals} />
