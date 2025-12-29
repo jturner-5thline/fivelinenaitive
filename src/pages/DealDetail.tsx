@@ -1614,77 +1614,80 @@ export default function DealDetail() {
                       </>
                     )}
                     <div className={`${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                      <div className="relative w-1/2">
-                        <Input
-                          placeholder="Type to add a lender..."
-                          value={lenderSearchQuery}
-                          onChange={(e) => {
-                            setLenderSearchQuery(e.target.value);
-                            setIsLenderDropdownOpen(true);
-                          }}
-                          onFocus={() => {
-                            setIsLenderDropdownOpen(true);
-                          }}
-                          onBlur={(e) => {
-                            // Delay closing to allow click on dropdown items
-                            setTimeout(() => setIsLenderDropdownOpen(false), 150);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && lenderSearchQuery.trim()) {
-                              const availableLenders = lenderNames.filter(
-                                name => !deal.lenders?.some(l => l.name === name) &&
-                                name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
-                              );
-                              if (availableLenders.length > 0) {
-                                addLender(availableLenders[0]);
-                              } else {
-                                addLender(lenderSearchQuery);
-                              }
-                              setLenderSearchQuery('');
-                              setIsLenderDropdownOpen(false);
-                            }
-                            if (e.key === 'Escape') {
-                              setIsLenderDropdownOpen(false);
-                            }
-                          }}
-                          className="h-8 text-sm"
-                        />
-                        {isLenderDropdownOpen && (
-                          <div className="absolute z-50 mt-1 w-full bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-auto">
-                            {lenderNames.filter(
-                              name => !deal.lenders?.some(l => l.name === name) &&
-                              name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
-                            ).map((lenderName) => (
-                              <button
-                                key={lenderName}
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                                onClick={() => {
-                                  addLender(lenderName);
+                      <Popover open={isLenderDropdownOpen} onOpenChange={setIsLenderDropdownOpen}>
+                        <PopoverTrigger asChild>
+                          <div className="w-1/2">
+                            <Input
+                              placeholder="Type to add a lender..."
+                              value={lenderSearchQuery}
+                              onChange={(e) => {
+                                setLenderSearchQuery(e.target.value);
+                                setIsLenderDropdownOpen(true);
+                              }}
+                              onFocus={() => {
+                                setIsLenderDropdownOpen(true);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && lenderSearchQuery.trim()) {
+                                  const availableLenders = lenderNames.filter(
+                                    name => !deal.lenders?.some(l => l.name === name) &&
+                                    name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
+                                  );
+                                  if (availableLenders.length > 0) {
+                                    addLender(availableLenders[0]);
+                                  } else {
+                                    addLender(lenderSearchQuery);
+                                  }
                                   setLenderSearchQuery('');
                                   setIsLenderDropdownOpen(false);
-                                }}
-                              >
-                                {lenderName}
-                              </button>
-                            ))}
-                            {lenderNames.filter(
-                              name => !deal.lenders?.some(l => l.name === name) &&
-                              name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
-                            ).length === 0 && (
-                              <button
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                                onClick={() => {
-                                  addLender(lenderSearchQuery);
-                                  setLenderSearchQuery('');
+                                }
+                                if (e.key === 'Escape') {
                                   setIsLenderDropdownOpen(false);
-                                }}
-                              >
-                                Add "{lenderSearchQuery}" as new lender
-                              </button>
-                            )}
+                                }
+                              }}
+                              className="h-8 text-sm"
+                            />
                           </div>
-                        )}
-                      </div>
+                        </PopoverTrigger>
+                        <PopoverContent 
+                          className="w-[var(--radix-popover-trigger-width)] p-0 max-h-48 overflow-auto" 
+                          align="start"
+                          sideOffset={4}
+                          onOpenAutoFocus={(e) => e.preventDefault()}
+                        >
+                          {lenderNames.filter(
+                            name => !deal.lenders?.some(l => l.name === name) &&
+                            name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
+                          ).map((lenderName) => (
+                            <button
+                              key={lenderName}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                              onClick={() => {
+                                addLender(lenderName);
+                                setLenderSearchQuery('');
+                                setIsLenderDropdownOpen(false);
+                              }}
+                            >
+                              {lenderName}
+                            </button>
+                          ))}
+                          {lenderNames.filter(
+                            name => !deal.lenders?.some(l => l.name === name) &&
+                            name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
+                          ).length === 0 && lenderSearchQuery.trim() && (
+                            <button
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                              onClick={() => {
+                                addLender(lenderSearchQuery);
+                                setLenderSearchQuery('');
+                                setIsLenderDropdownOpen(false);
+                              }}
+                            >
+                              Add "{lenderSearchQuery}" as new lender
+                            </button>
+                          )}
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                     </CardContent>
