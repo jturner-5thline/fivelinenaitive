@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, User } from 'lucide-react';
+import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, User, ChevronsUpDown } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
@@ -22,10 +23,43 @@ import { NotificationSettings } from '@/components/settings/NotificationSettings
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { cn } from '@/lib/utils';
 
+const SECTION_COUNT = 8;
+
 export default function Preferences() {
   const { theme, setTheme } = useTheme();
   const { preferences, updatePreference } = usePreferences();
   const { stages } = useLenderStages();
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    profile: true,
+    appearance: true,
+    notifications: true,
+    lenderAlerts: true,
+    staleDeals: true,
+    lenderDefaults: true,
+    currency: true,
+    regional: true,
+  });
+
+  const allOpen = Object.values(openSections).every(Boolean);
+  const allClosed = Object.values(openSections).every(v => !v);
+
+  const toggleAll = () => {
+    const newState = allOpen ? false : true;
+    setOpenSections({
+      profile: newState,
+      appearance: newState,
+      notifications: newState,
+      lenderAlerts: newState,
+      staleDeals: newState,
+      lenderDefaults: newState,
+      currency: newState,
+      regional: newState,
+    });
+  };
+
+  const toggleSection = (key: string) => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
     <>
@@ -46,16 +80,27 @@ export default function Preferences() {
           </Button>
 
           <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">Preferences</h1>
-              <p className="text-muted-foreground">Customize your experience</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">Preferences</h1>
+                <p className="text-muted-foreground">Customize your experience</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleAll}
+                className="gap-2"
+              >
+                <ChevronsUpDown className="h-4 w-4" />
+                {allOpen ? 'Collapse All' : 'Expand All'}
+              </Button>
             </div>
 
-            <ProfileSettings collapsible />
+            <ProfileSettings collapsible open={openSections.profile} onOpenChange={() => toggleSection('profile')} />
 
-            <Collapsible defaultOpen>
+            <Collapsible open={openSections.appearance} onOpenChange={() => toggleSection('appearance')}>
               <Card>
-                <CollapsibleTrigger className="w-full">
+                <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -65,7 +110,7 @@ export default function Preferences() {
                           <CardDescription>Customize how the app looks</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.appearance && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -102,9 +147,9 @@ export default function Preferences() {
               </Card>
             </Collapsible>
 
-            <NotificationSettings collapsible />
+            <NotificationSettings collapsible open={openSections.notifications} onOpenChange={() => toggleSection('notifications')} />
 
-            <Collapsible defaultOpen>
+            <Collapsible open={openSections.lenderAlerts} onOpenChange={() => toggleSection('lenderAlerts')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -116,7 +161,7 @@ export default function Preferences() {
                           <CardDescription>Configure when to show stale lender notifications</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.lenderAlerts && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -154,7 +199,7 @@ export default function Preferences() {
               </Card>
             </Collapsible>
 
-            <Collapsible defaultOpen>
+            <Collapsible open={openSections.staleDeals} onOpenChange={() => toggleSection('staleDeals')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -166,7 +211,7 @@ export default function Preferences() {
                           <CardDescription>Configure when deals are considered stale</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.staleDeals && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -197,7 +242,7 @@ export default function Preferences() {
               </Card>
             </Collapsible>
 
-            <Collapsible defaultOpen>
+            <Collapsible open={openSections.lenderDefaults} onOpenChange={() => toggleSection('lenderDefaults')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -209,7 +254,7 @@ export default function Preferences() {
                           <CardDescription>Configure default settings for new lenders</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.lenderDefaults && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -241,7 +286,7 @@ export default function Preferences() {
               </Card>
             </Collapsible>
 
-            <Collapsible defaultOpen>
+            <Collapsible open={openSections.currency} onOpenChange={() => toggleSection('currency')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -253,7 +298,7 @@ export default function Preferences() {
                           <CardDescription>Choose how currency values are displayed</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.currency && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -294,7 +339,7 @@ export default function Preferences() {
               </Card>
             </Collapsible>
 
-            <Collapsible defaultOpen>
+            <Collapsible open={openSections.regional} onOpenChange={() => toggleSection('regional')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -306,7 +351,7 @@ export default function Preferences() {
                           <CardDescription>Language and regional settings</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.regional && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>

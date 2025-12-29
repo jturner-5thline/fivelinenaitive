@@ -11,9 +11,11 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface ProfileSettingsProps {
   collapsible?: boolean;
+  open?: boolean;
+  onOpenChange?: () => void;
 }
 
-export function ProfileSettings({ collapsible = false }: ProfileSettingsProps) {
+export function ProfileSettings({ collapsible = false, open, onOpenChange }: ProfileSettingsProps) {
   const { user } = useAuth();
   const { profile, isLoading, updateProfile, uploadAvatar } = useProfile();
   const [displayName, setDisplayName] = useState('');
@@ -151,9 +153,11 @@ export function ProfileSettings({ collapsible = false }: ProfileSettingsProps) {
     </CardContent>
   );
 
+  const isOpen = open ?? true;
+
   if (collapsible) {
     return (
-      <Collapsible defaultOpen>
+      <Collapsible open={isOpen} onOpenChange={onOpenChange}>
         <Card>
           <CollapsibleTrigger className="w-full group">
             <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -167,7 +171,7 @@ export function ProfileSettings({ collapsible = false }: ProfileSettingsProps) {
                     </CardDescription>
                   </div>
                 </div>
-                <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
               </div>
             </CardHeader>
           </CollapsibleTrigger>
