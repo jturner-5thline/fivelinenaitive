@@ -4,6 +4,8 @@ export type DealStatus = 'on-track' | 'at-risk' | 'off-track' | 'on-hold' | 'arc
 
 export type EngagementType = 'guided' | 'advisory' | 'managed-process';
 
+export type ExclusivityType = 'exclusive' | 'non-exclusive' | 'modified-exclusive';
+
 export type LenderStatus = 'in-review' | 'terms-issued' | 'in-diligence' | 'closed-funded';
 
 export type LenderStage = string;
@@ -60,6 +62,7 @@ export interface Deal {
   stage: DealStage;
   status: DealStatus;
   engagementType: EngagementType;
+  exclusivity?: ExclusivityType;
   dealTypes?: string[]; // Array of deal type IDs
   manager: string;
   lender: string;
@@ -122,6 +125,12 @@ export const ENGAGEMENT_TYPE_CONFIG: Record<EngagementType, { label: string }> =
   'guided': { label: 'Guided' },
   'advisory': { label: 'Advisory' },
   'managed-process': { label: 'Managed Process' },
+};
+
+export const EXCLUSIVITY_CONFIG: Record<ExclusivityType, { label: string }> = {
+  'exclusive': { label: 'Exclusive' },
+  'non-exclusive': { label: 'Non-Exclusive' },
+  'modified-exclusive': { label: 'Modified Excl.' },
 };
 
 export const MANAGERS = [
