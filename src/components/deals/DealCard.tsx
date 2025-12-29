@@ -1,7 +1,7 @@
 import { MoreHorizontal, User, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
-import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -141,6 +141,11 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
           <Badge variant="secondary" className="text-xs rounded-lg">
             {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
           </Badge>
+          {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
+            <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
+              {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
+            </Badge>
+          )}
           {dealTypeLabels.map((label, index) => (
             <Badge key={index} variant="outline" className="text-xs rounded-lg">
               {label}
