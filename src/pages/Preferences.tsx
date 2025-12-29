@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, User, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, User, ChevronsUpDown, Search, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,18 @@ const defaultOpenSections: Record<string, boolean> = {
   regional: true,
 };
 
+// Searchable keywords for each section
+const sectionKeywords: Record<string, string[]> = {
+  profile: ['profile', 'avatar', 'display name', 'email', 'photo', 'picture', 'name', 'account'],
+  appearance: ['appearance', 'theme', 'dark', 'light', 'compact', 'mode', 'look', 'style', 'display'],
+  notifications: ['notifications', 'alerts', 'email', 'in-app', 'deal updates', 'lender updates', 'summary', 'weekly'],
+  lenderAlerts: ['lender', 'update', 'alerts', 'stale', 'warning', 'threshold', 'yellow', 'red', 'urgent', 'days'],
+  staleDeals: ['stale', 'deals', 'alert', 'threshold', 'days', 'inactive', 'old'],
+  lenderDefaults: ['lender', 'defaults', 'stage', 'new lenders', 'default stage'],
+  currency: ['currency', 'format', 'number', 'abbreviated', 'million', 'thousand', 'money'],
+  regional: ['regional', 'language', 'date', 'format', 'usd', 'eur', 'gbp', 'currency'],
+};
+
 const loadSectionsFromStorage = (): Record<string, boolean> => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -54,11 +66,39 @@ export default function Preferences() {
   const { preferences, updatePreference } = usePreferences();
   const { stages } = useLenderStages();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(loadSectionsFromStorage);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Persist to localStorage whenever openSections changes
+  // Persist to localStorage whenever openSections changes (only when not searching)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(openSections));
-  }, [openSections]);
+    if (!searchQuery) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(openSections));
+    }
+  }, [openSections, searchQuery]);
+
+  // Filter sections based on search query
+  const filteredSections = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return Object.keys(sectionKeywords);
+    }
+    const query = searchQuery.toLowerCase();
+    return Object.entries(sectionKeywords)
+      .filter(([_, keywords]) => 
+        keywords.some(keyword => keyword.toLowerCase().includes(query))
+      )
+      .map(([key]) => key);
+  }, [searchQuery]);
+
+  // Auto-expand matching sections when searching
+  const effectiveOpenSections = useMemo(() => {
+    if (searchQuery.trim()) {
+      const expanded: Record<string, boolean> = {};
+      filteredSections.forEach(key => {
+        expanded[key] = true;
+      });
+      return expanded;
+    }
+    return openSections;
+  }, [searchQuery, filteredSections, openSections]);
 
   const allOpen = Object.values(openSections).every(Boolean);
   const allClosed = Object.values(openSections).every(v => !v);
@@ -78,8 +118,13 @@ export default function Preferences() {
   };
 
   const toggleSection = (key: string) => {
-    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+    if (!searchQuery) {
+      setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+    }
   };
+
+  const shouldShowSection = (key: string) => filteredSections.includes(key);
+  const isSectionOpen = (key: string) => effectiveOpenSections[key] ?? false;
 
   return (
     <>
@@ -116,9 +161,40 @@ export default function Preferences() {
               </Button>
             </div>
 
-            <ProfileSettings collapsible open={openSections.profile} onOpenChange={() => toggleSection('profile')} />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search preferences..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
 
-            <Collapsible open={openSections.appearance} onOpenChange={() => toggleSection('appearance')}>
+            {filteredSections.length === 0 && (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  No preferences found matching "{searchQuery}"
+                </CardContent>
+              </Card>
+            )}
+
+            {shouldShowSection('profile') && (
+              <ProfileSettings collapsible open={isSectionOpen('profile')} onOpenChange={() => toggleSection('profile')} />
+            )}
+
+            {shouldShowSection('appearance') && (
+            <Collapsible open={isSectionOpen('appearance')} onOpenChange={() => toggleSection('appearance')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -130,7 +206,7 @@ export default function Preferences() {
                           <CardDescription>Customize how the app looks</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.appearance && "rotate-180")} />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isSectionOpen('appearance') && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -166,10 +242,14 @@ export default function Preferences() {
                 </CollapsibleContent>
               </Card>
             </Collapsible>
+            )}
 
-            <NotificationSettings collapsible open={openSections.notifications} onOpenChange={() => toggleSection('notifications')} />
+            {shouldShowSection('notifications') && (
+              <NotificationSettings collapsible open={isSectionOpen('notifications')} onOpenChange={() => toggleSection('notifications')} />
+            )}
 
-            <Collapsible open={openSections.lenderAlerts} onOpenChange={() => toggleSection('lenderAlerts')}>
+            {shouldShowSection('lenderAlerts') && (
+            <Collapsible open={isSectionOpen('lenderAlerts')} onOpenChange={() => toggleSection('lenderAlerts')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -181,7 +261,7 @@ export default function Preferences() {
                           <CardDescription>Configure when to show stale lender notifications</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.lenderAlerts && "rotate-180")} />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isSectionOpen('lenderAlerts') && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -218,8 +298,10 @@ export default function Preferences() {
                 </CollapsibleContent>
               </Card>
             </Collapsible>
+            )}
 
-            <Collapsible open={openSections.staleDeals} onOpenChange={() => toggleSection('staleDeals')}>
+            {shouldShowSection('staleDeals') && (
+            <Collapsible open={isSectionOpen('staleDeals')} onOpenChange={() => toggleSection('staleDeals')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -231,7 +313,7 @@ export default function Preferences() {
                           <CardDescription>Configure when deals are considered stale</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.staleDeals && "rotate-180")} />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isSectionOpen('staleDeals') && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -261,8 +343,10 @@ export default function Preferences() {
                 </CollapsibleContent>
               </Card>
             </Collapsible>
+            )}
 
-            <Collapsible open={openSections.lenderDefaults} onOpenChange={() => toggleSection('lenderDefaults')}>
+            {shouldShowSection('lenderDefaults') && (
+            <Collapsible open={isSectionOpen('lenderDefaults')} onOpenChange={() => toggleSection('lenderDefaults')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -274,7 +358,7 @@ export default function Preferences() {
                           <CardDescription>Configure default settings for new lenders</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.lenderDefaults && "rotate-180")} />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isSectionOpen('lenderDefaults') && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -305,8 +389,10 @@ export default function Preferences() {
                 </CollapsibleContent>
               </Card>
             </Collapsible>
+            )}
 
-            <Collapsible open={openSections.currency} onOpenChange={() => toggleSection('currency')}>
+            {shouldShowSection('currency') && (
+            <Collapsible open={isSectionOpen('currency')} onOpenChange={() => toggleSection('currency')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -318,7 +404,7 @@ export default function Preferences() {
                           <CardDescription>Choose how currency values are displayed</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.currency && "rotate-180")} />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isSectionOpen('currency') && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -358,8 +444,10 @@ export default function Preferences() {
                 </CollapsibleContent>
               </Card>
             </Collapsible>
+            )}
 
-            <Collapsible open={openSections.regional} onOpenChange={() => toggleSection('regional')}>
+            {shouldShowSection('regional') && (
+            <Collapsible open={isSectionOpen('regional')} onOpenChange={() => toggleSection('regional')}>
               <Card>
                 <CollapsibleTrigger className="w-full group">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -371,7 +459,7 @@ export default function Preferences() {
                           <CardDescription>Language and regional settings</CardDescription>
                         </div>
                       </div>
-                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", openSections.regional && "rotate-180")} />
+                      <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isSectionOpen('regional') && "rotate-180")} />
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
@@ -419,6 +507,7 @@ export default function Preferences() {
                 </CollapsibleContent>
               </Card>
             </Collapsible>
+            )}
           </div>
         </main>
       </div>
