@@ -59,14 +59,42 @@ export function HintTooltip({
         <>
           {/* Outer glow */}
           <div 
-            className="absolute -inset-2 rounded-xl pointer-events-none z-[99] animate-pulse"
+            className="absolute -inset-2 rounded-xl pointer-events-none z-[99]"
             style={{
               background: 'hsl(var(--primary) / 0.15)',
               boxShadow: '0 0 20px 8px hsl(var(--primary) / 0.3), 0 0 40px 16px hsl(var(--primary) / 0.15)',
+              animation: 'hint-glow 2s ease-in-out infinite',
             }}
           />
           {/* Inner ring */}
-          <div className="absolute -inset-1 rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse pointer-events-none z-[99]" />
+          <div 
+            className="absolute -inset-1 rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background pointer-events-none z-[99]"
+            style={{
+              animation: 'hint-ring 2s ease-in-out infinite',
+            }}
+          />
+          <style>{`
+            @keyframes hint-glow {
+              0%, 100% {
+                opacity: 0.6;
+                transform: scale(1);
+              }
+              50% {
+                opacity: 1;
+                transform: scale(1.02);
+              }
+            }
+            @keyframes hint-ring {
+              0%, 100% {
+                opacity: 0.7;
+                box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+              }
+              50% {
+                opacity: 1;
+                box-shadow: 0 0 8px 2px hsl(var(--primary) / 0.3);
+              }
+            }
+          `}</style>
         </>
       )}
       {children}
