@@ -54,9 +54,20 @@ export function HintTooltip({
 
   return (
     <div className="relative inline-block">
-      {/* Highlight ring around the element */}
+      {/* Highlight glow effect around the element */}
       {showHint && (
-        <div className="absolute -inset-1 rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse pointer-events-none z-[99]" />
+        <>
+          {/* Outer glow */}
+          <div 
+            className="absolute -inset-2 rounded-xl pointer-events-none z-[99] animate-pulse"
+            style={{
+              background: 'hsl(var(--primary) / 0.15)',
+              boxShadow: '0 0 20px 8px hsl(var(--primary) / 0.3), 0 0 40px 16px hsl(var(--primary) / 0.15)',
+            }}
+          />
+          {/* Inner ring */}
+          <div className="absolute -inset-1 rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background animate-pulse pointer-events-none z-[99]" />
+        </>
       )}
       {children}
       {showHint && (
