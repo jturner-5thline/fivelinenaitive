@@ -11,6 +11,7 @@ export interface Preferences {
   dateFormat: 'mdy' | 'dmy' | 'ymd';
   lenderUpdateYellowDays: number;
   lenderUpdateRedDays: number;
+  staleDealsDays: number;
 }
 
 export const CURRENCY_FORMAT_OPTIONS: { value: CurrencyFormat; label: string; example: string }[] = [
@@ -29,6 +30,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   dateFormat: 'mdy',
   lenderUpdateYellowDays: 7,
   lenderUpdateRedDays: 14,
+  staleDealsDays: 14,
 };
 
 const STORAGE_KEY = 'user-preferences';

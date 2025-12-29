@@ -6,13 +6,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Deal } from '@/types/deal';
 import { Link } from 'react-router-dom';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface StaleDealsWidgetProps {
   deals: Deal[];
-  staleDays?: number;
 }
 
-export function StaleDealsWidget({ deals, staleDays = 14 }: StaleDealsWidgetProps) {
+export function StaleDealsWidget({ deals }: StaleDealsWidgetProps) {
+  const { preferences } = usePreferences();
+  const staleDays = preferences.staleDealsDays;
+
   const staleDeals = useMemo(() => {
     const now = new Date();
     return deals

@@ -131,6 +131,38 @@ export default function Preferences() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Stale Deals Alert
+                </CardTitle>
+                <CardDescription>Configure when deals are considered stale</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Stale Threshold</Label>
+                    <p className="text-sm text-muted-foreground">Days without updates before a deal is flagged as stale</p>
+                  </div>
+                  <Select
+                    value={String(preferences.staleDealsDays)}
+                    onValueChange={(value) => updatePreference('staleDealsDays', parseInt(value))}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 days</SelectItem>
+                      <SelectItem value="14">14 days</SelectItem>
+                      <SelectItem value="21">21 days</SelectItem>
+                      <SelectItem value="30">30 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
                   <DollarSign className="h-5 w-5" />
                   Currency Formatting
                 </CardTitle>
