@@ -10,6 +10,7 @@ export interface DbDealMilestone {
   due_date: string | null;
   completed: boolean;
   completed_at: string | null;
+  position: number;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +22,7 @@ const dbToApp = (db: DbDealMilestone): DealMilestone => ({
   dueDate: db.due_date || undefined,
   completed: db.completed,
   completedAt: db.completed_at || undefined,
+  position: db.position,
 });
 
 export function useDealMilestones(dealId: string | undefined) {
@@ -38,7 +40,7 @@ export function useDealMilestones(dealId: string | undefined) {
         .from('deal_milestones')
         .select('*')
         .eq('deal_id', dealId)
-        .order('created_at', { ascending: true });
+        .order('position', { ascending: true });
       
       if (error) throw error;
       setMilestones((data || []).map(dbToApp));
@@ -54,6 +56,11 @@ export function useDealMilestones(dealId: string | undefined) {
     if (!dealId || !user) return null;
     
     try {
+      // Get max position
+      const maxPosition = milestones.length > 0 
+        ? Math.max(...milestones.map(m => m.position ?? 0)) + 1 
+        : 0;
+
       const { data, error } = await supabase
         .from('deal_milestones')
         .insert({
@@ -63,6 +70,7 @@ export function useDealMilestones(dealId: string | undefined) {
           due_date: milestone.dueDate || null,
           completed: milestone.completed,
           completed_at: milestone.completedAt || null,
+          position: maxPosition,
         })
         .select()
         .single();
@@ -76,7 +84,7 @@ export function useDealMilestones(dealId: string | undefined) {
       console.error('Error adding milestone:', error);
       return null;
     }
-  }, [dealId, user]);
+  }, [dealId, user, milestones]);
 
   // Update a milestone
   const updateMilestone = useCallback(async (id: string, updates: Partial<DealMilestone>) => {
@@ -88,6 +96,7 @@ export function useDealMilestones(dealId: string | undefined) {
       if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate || null;
       if (updates.completed !== undefined) updateData.completed = updates.completed;
       if (updates.completedAt !== undefined) updateData.completed_at = updates.completedAt || null;
+      if (updates.position !== undefined) updateData.position = updates.position;
       
       const { error } = await supabase
         .from('deal_milestones')
@@ -106,6 +115,32 @@ export function useDealMilestones(dealId: string | undefined) {
       return false;
     }
   }, [user]);
+
+  // Reorder milestones
+  const reorderMilestones = useCallback(async (reorderedMilestones: DealMilestone[]) => {
+    if (!user) return false;
+    
+    // Optimistically update local state
+    setMilestones(reorderedMilestones);
+    
+    try {
+      // Update positions in database
+      const updates = reorderedMilestones.map((m, index) => 
+        supabase
+          .from('deal_milestones')
+          .update({ position: index })
+          .eq('id', m.id)
+      );
+      
+      await Promise.all(updates);
+      return true;
+    } catch (error) {
+      console.error('Error reordering milestones:', error);
+      // Refetch on error to restore correct order
+      fetchMilestones();
+      return false;
+    }
+  }, [user, fetchMilestones]);
 
   // Delete a milestone
   const deleteMilestone = useCallback(async (id: string) => {
@@ -137,6 +172,7 @@ export function useDealMilestones(dealId: string | undefined) {
     addMilestone,
     updateMilestone,
     deleteMilestone,
+    reorderMilestones,
     refetch: fetchMilestones,
   };
 }

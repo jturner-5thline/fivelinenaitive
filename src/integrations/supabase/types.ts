@@ -232,6 +232,7 @@ export type Database = {
           deal_id: string
           due_date: string | null
           id: string
+          position: number
           title: string
           updated_at: string
           user_id: string | null
@@ -243,6 +244,7 @@ export type Database = {
           deal_id: string
           due_date?: string | null
           id?: string
+          position?: number
           title: string
           updated_at?: string
           user_id?: string | null
@@ -254,6 +256,7 @@ export type Database = {
           deal_id?: string
           due_date?: string | null
           id?: string
+          position?: number
           title?: string
           updated_at?: string
           user_id?: string | null
