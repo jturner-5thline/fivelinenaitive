@@ -224,6 +224,38 @@ export type Database = {
           },
         ]
       }
+      deal_status_notes: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          note: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          note: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          note?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_status_notes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           company: string
