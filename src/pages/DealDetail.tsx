@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2 } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -9,6 +9,7 @@ import { DealMilestones } from '@/components/deals/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
+import { useDealAttachments, DealAttachmentCategory, DEAL_ATTACHMENT_CATEGORIES } from '@/hooks/useDealAttachments';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -293,7 +294,17 @@ export default function DealDetail() {
   const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
   const [passReasonSearch, setPassReasonSearch] = useState('');
   
-  const [attachments, setAttachments] = useState<{ id: string; name: string; type: string; size: string; uploadedAt: string; category: 'term-sheets' | 'credit-file' | 'reports' }[]>([]);
+  // Deal attachments
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('credit-file');
+  const { 
+    attachments, 
+    isLoading: isLoadingAttachments, 
+    uploadMultipleAttachments, 
+    deleteAttachment,
+    formatFileSize 
+  } = useDealAttachments(id || null);
+  
   const filteredAttachments = attachmentFilter === 'all' 
     ? attachments 
     : attachments.filter(a => a.category === attachmentFilter);
@@ -2051,26 +2062,50 @@ export default function DealDetail() {
                     <CardTitle className="text-lg">
                       Attachments
                     </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-1"
-                      onClick={() => {
-                        const newAttachment = {
-                          id: `att-${Date.now()}`,
-                          name: 'New Document.pdf',
-                          type: 'pdf',
-                          size: '0 KB',
-                          uploadedAt: new Date().toISOString().split('T')[0],
-                          category: attachmentFilter === 'all' ? 'credit-file' : attachmentFilter,
-                        } as const;
-                        setAttachments(prev => [...prev, newAttachment]);
-                        toast({ title: 'Attachment added' });
-                      }}
-                    >
-                      <Upload className="h-4 w-4" />
-                      Upload
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Select 
+                        value={uploadCategory} 
+                        onValueChange={(v) => setUploadCategory(v as DealAttachmentCategory)}
+                      >
+                        <SelectTrigger className="w-[120px] h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DEAL_ATTACHMENT_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isLoadingAttachments}
+                      >
+                        {isLoadingAttachments ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        Upload
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length > 0) {
+                            await uploadMultipleAttachments(files, uploadCategory);
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
                   </div>
                   {/* Filter tabs */}
                   <div className="flex gap-1 mt-3">
@@ -2093,39 +2128,59 @@ export default function DealDetail() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  {filteredAttachments.length > 0 ? (
+                  {isLoadingAttachments ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : filteredAttachments.length > 0 ? (
                     <div className="space-y-2">
                       {filteredAttachments.map((attachment) => (
                         <div
                           key={attachment.id}
                           className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group hover:bg-muted transition-colors"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <a 
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                          >
                             <File className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{attachment.name}</p>
+                              <p className="text-sm font-medium truncate hover:underline">{attachment.name}</p>
                               <p className="text-xs text-muted-foreground">
-                                {attachment.size} • {attachment.uploadedAt}
+                                {formatFileSize(attachment.size_bytes)} • {new Date(attachment.created_at).toLocaleDateString()}
                               </p>
                             </div>
+                          </a>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                              onClick={() => {
+                                if (attachment.url) {
+                                  window.open(attachment.url, '_blank');
+                                }
+                              }}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteAttachment(attachment)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              setAttachments(prev => prev.filter(a => a.id !== attachment.id));
-                              toast({ title: 'Attachment removed' });
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      No attachments in this category
+                      No attachments {attachmentFilter !== 'all' ? 'in this category' : 'yet'}
                     </p>
                   )}
                 </CardContent>
