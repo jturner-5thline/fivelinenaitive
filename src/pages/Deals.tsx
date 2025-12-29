@@ -34,7 +34,7 @@ import { useWidgets } from '@/contexts/WidgetsContext';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
-  const { deals: allDeals, isLoading, refreshDeals } = useDealsContext();
+  const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
   const { specialWidgets } = useWidgets();
@@ -50,6 +50,22 @@ export default function Dashboard() {
     updateFilters,
     toggleSort,
   } = useDeals();
+
+  const handleMarkReviewed = async (dealId: string) => {
+    try {
+      await updateDeal(dealId, { updatedAt: new Date().toISOString() });
+      toast({ 
+        title: "Deal marked as reviewed", 
+        description: "The deal's timestamp has been updated." 
+      });
+    } catch (error) {
+      toast({ 
+        title: "Failed to update deal", 
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <>
@@ -152,7 +168,7 @@ export default function Dashboard() {
             {isLoading ? (
               <DealsListSkeleton groupByStatus={groupByStatus} />
             ) : (
-              <DealsList deals={deals} onStatusChange={updateDealStatus} groupByStatus={groupByStatus} />
+              <DealsList deals={deals} onStatusChange={updateDealStatus} onMarkReviewed={handleMarkReviewed} groupByStatus={groupByStatus} />
             )}
           </div>
         </main>

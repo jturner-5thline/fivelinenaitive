@@ -1,4 +1,4 @@
-import { MoreHorizontal, User, Clock, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
@@ -26,9 +26,10 @@ import {
 interface DealCardProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onMarkReviewed?: (dealId: string) => void;
 }
 
-export function DealCard({ deal, onStatusChange }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed }: DealCardProps) {
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
@@ -99,6 +100,30 @@ export function DealCard({ deal, onStatusChange }: DealCardProps) {
               </TooltipTrigger>
               <TooltipContent>
                 <p>Stale deal - no updates for {timeAgoData.days} days</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        {timeAgoData.isStale && onMarkReviewed && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 h-7 gap-1.5 bg-background shadow-md border-success/50 text-success hover:bg-success/10 hover:text-success opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMarkReviewed(deal.id);
+                  }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Mark Reviewed
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Update timestamp to mark as reviewed</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
