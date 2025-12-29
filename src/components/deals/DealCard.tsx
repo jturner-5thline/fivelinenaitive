@@ -24,8 +24,8 @@ interface DealCardProps {
 export function DealCard({ deal, onStatusChange }: DealCardProps) {
   const { formatCurrencyValue } = usePreferences();
   const { dealTypes } = useDealTypes();
-  const statusConfig = STATUS_CONFIG[deal.status];
-  const stageConfig = STAGE_CONFIG[deal.stage];
+  const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
+  const stageConfig = STAGE_CONFIG[deal.stage] || { label: deal.stage, color: 'bg-muted' };
 
   const getDealTypeLabels = () => {
     if (!deal.dealTypes || deal.dealTypes.length === 0) return [];

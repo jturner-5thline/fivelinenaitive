@@ -909,7 +909,9 @@ export default function DealDetail() {
                   onValueChange={(value: DealStatus) => updateDeal('status', value)}
                 >
                   <SelectTrigger className={`w-auto ${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg h-6 px-2`}>
-                    <SelectValue />
+                    <SelectValue>
+                      {STATUS_CONFIG[deal.status]?.label || deal.status}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(STATUS_CONFIG).map(([key, config]) => (
@@ -923,11 +925,13 @@ export default function DealDetail() {
                   </SelectContent>
                 </Select>
                 <Select
-                  value={deal.stage}
+                  value={STAGE_CONFIG[deal.stage] ? deal.stage : 'final-credit-items'}
                   onValueChange={(value: DealStage) => updateDeal('stage', value)}
                 >
                   <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 border">
-                    <SelectValue />
+                    <SelectValue>
+                      {STAGE_CONFIG[deal.stage]?.label || deal.stage}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(STAGE_CONFIG).map(([key, config]) => (
