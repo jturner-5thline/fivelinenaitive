@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
-import { Deal, DealStatus, DealStage, EngagementType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -1744,6 +1744,24 @@ export default function DealDetail() {
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Exclusivity</span>
+                    <Select
+                      value={deal.exclusivity || ''}
+                      onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
+                    >
+                      <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
                           <SelectItem key={key} value={key}>
                             {config.label}
                           </SelectItem>
