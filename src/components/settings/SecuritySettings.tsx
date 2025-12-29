@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { TwoFactorSettings } from './TwoFactorSettings';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -390,6 +391,11 @@ export function SecuritySettings() {
             </div>
           </div>
         )}
+
+        <Separator />
+
+        {/* Two-Factor Authentication Section */}
+        <TwoFactorSettings />
 
         <Separator />
 
