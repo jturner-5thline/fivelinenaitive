@@ -382,23 +382,30 @@ export default function DealDetail() {
     }
   }, [deal, addLenderToDeal, logActivity]);
 
-  const updateLenderNotes = useCallback((lenderId: string, notes: string) => {
+  const updateLenderNotes = useCallback((lenderId: string, notes: string, committed: Record<string, string>) => {
+    const committedNote = committed[lenderId]?.trim() || '';
+    
     setDeal(prev => {
       if (!prev) return prev;
       const updatedLenders = prev.lenders?.map(l => {
         if (l.id !== lenderId) return l;
         
-        const savedNote = l.savedNotes?.trim() || '';
         const currentNote = l.notes?.trim() || '';
         
-        // If there's a saved note and user starts typing something different, log the saved note to history
-        if (savedNote && notes.trim() !== savedNote && currentNote === savedNote) {
+        // If there's a committed note and user starts typing something different, log it to history
+        if (committedNote && notes.trim() !== committedNote && currentNote === committedNote) {
           const newHistory = [...(l.notesHistory || [])];
           newHistory.unshift({
-            text: savedNote,
-            updatedAt: l.notesUpdatedAt || new Date().toISOString(),
+            text: committedNote,
+            updatedAt: new Date().toISOString(),
           });
-          return { ...l, notes, notesHistory: newHistory, savedNotes: undefined };
+          // Clear the committed note since it's now in history
+          setCommittedNotes(prev => {
+            const next = { ...prev };
+            delete next[lenderId];
+            return next;
+          });
+          return { ...l, notes, notesHistory: newHistory };
         }
         
         return { ...l, notes };
@@ -407,48 +414,27 @@ export default function DealDetail() {
     });
   }, []);
 
+  // Track the last committed note for each lender to detect when user starts editing again
+  const [committedNotes, setCommittedNotes] = useState<Record<string, string>>({});
+
   const commitLenderNotes = useCallback((lenderId: string) => {
-    let noteSaved = false;
+    const lender = deal?.lenders?.find(l => l.id === lenderId);
+    const currentNote = lender?.notes?.trim() || '';
     
-    setDeal(prev => {
-      if (!prev) return prev;
-      const updatedLenders = prev.lenders?.map(l => {
-        if (l.id !== lenderId) return l;
-        
-        const currentNote = l.notes?.trim() || '';
-        
-        // Don't save empty notes
-        if (!currentNote) return l;
-        
-        noteSaved = true;
-        
-        return {
-          ...l,
-          savedNotes: currentNote,
-          notesUpdatedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      });
-      
-      // Persist to database
-      const lender = updatedLenders?.find(l => l.id === lenderId);
-      if (lender) {
-        updateLenderInDb(lenderId, { notes: lender.notes });
-      }
-      
-      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    // Don't save empty notes
+    if (!currentNote) return;
+    
+    // Store this as the committed note
+    setCommittedNotes(prev => ({ ...prev, [lenderId]: currentNote }));
+    
+    // Persist to database
+    updateLenderInDb(lenderId, { notes: currentNote });
+    
+    toast({
+      title: "Note saved",
+      description: "Your note has been saved successfully.",
     });
-    
-    // Show toast after state update
-    setTimeout(() => {
-      if (noteSaved) {
-        toast({
-          title: "Note saved",
-          description: "Your note has been saved successfully.",
-        });
-      }
-    }, 0);
-  }, [updateLenderInDb]);
+  }, [deal?.lenders, updateLenderInDb]);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
     // Find the first stage in the target group
@@ -1269,7 +1255,7 @@ export default function DealDetail() {
                                       <Textarea
                                         placeholder="Add notes... (Press Enter to save)"
                                         value={lender.notes || ''}
-                                        onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
+                                        onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter' && !e.shiftKey) {
                                             e.preventDefault();
@@ -1528,7 +1514,7 @@ export default function DealDetail() {
                                               <Textarea
                                                 placeholder="Add notes... (Press Enter to save)"
                                                 value={lender.notes || ''}
-                                                onChange={(e) => updateLenderNotes(lender.id, e.target.value)}
+                                                onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
                                                 onKeyDown={(e) => {
                                                   if (e.key === 'Enter' && !e.shiftKey) {
                                                     e.preventDefault();
