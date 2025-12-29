@@ -136,7 +136,7 @@ export default function DealDetail() {
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deals } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
-  const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb } = useDealMilestones(id);
+  const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
   const lenderNames = getLenderNames();
   
   // Get deal from context
@@ -951,6 +951,7 @@ export default function DealDetail() {
                 onAdd={addMilestone}
                 onUpdate={updateMilestone}
                 onDelete={deleteMilestone}
+                onReorder={reorderMilestones}
               />
             </CardContent>
           </Card>

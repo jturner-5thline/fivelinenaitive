@@ -38,6 +38,7 @@ export interface DealMilestone {
   dueDate?: string;
   completed: boolean;
   completedAt?: string;
+  position?: number;
 }
 
 export interface Referrer {
