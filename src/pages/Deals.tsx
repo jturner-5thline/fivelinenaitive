@@ -15,6 +15,7 @@ import { NotificationsBar } from '@/components/deals/NotificationsBar';
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
 import { DemoBanner } from '@/components/deals/DemoBanner';
 import { DemoTour } from '@/components/deals/DemoTour';
+import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -108,6 +109,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">5th Line</h1>
                 <div className="flex items-center gap-2">
+                  <FlaggedDealsPanel deals={allDeals} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-2">
