@@ -10,6 +10,7 @@ import { LendersProvider } from "@/contexts/LendersContext";
 import { LenderStagesProvider } from "@/contexts/LenderStagesContext";
 import { DealStagesProvider } from "@/contexts/DealStagesContext";
 import { DealTypesProvider } from "@/contexts/DealTypesContext";
+import { DefaultMilestonesProvider } from "@/contexts/DefaultMilestonesContext";
 import { WidgetsProvider } from "@/contexts/WidgetsContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChartsProvider } from "@/contexts/ChartsContext";
@@ -47,6 +48,7 @@ const App = () => (
                 <LenderStagesProvider>
                   <DealStagesProvider>
                   <DealTypesProvider>
+                  <DefaultMilestonesProvider>
                     <ChartsProvider>
                     <AnalyticsWidgetsProvider>
                     <WidgetsProvider>
@@ -106,6 +108,7 @@ const App = () => (
                     </WidgetsProvider>
                     </AnalyticsWidgetsProvider>
                     </ChartsProvider>
+                  </DefaultMilestonesProvider>
                   </DealTypesProvider>
                   </DealStagesProvider>
                 </LenderStagesProvider>
