@@ -209,9 +209,17 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed }: DealCardProps
       </CardHeader>
       <CardContent className="space-y-4 mt-auto">
 
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <User className="h-3.5 w-3.5" />
-          <span className="truncate">{deal.manager}</span>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <User className="h-3.5 w-3.5" />
+            <span className="truncate">{deal.manager || 'No manager'}</span>
+          </div>
+          {deal.dealOwner && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground/70">Owner:</span>
+              <span className="truncate">{deal.dealOwner}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
