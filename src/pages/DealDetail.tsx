@@ -898,15 +898,52 @@ export default function DealDetail() {
                     onSave={(value) => updateDeal('company', value)}
                     displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]"
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-10 w-10 ${deal.isFlagged ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
-                    onClick={() => updateDeal('isFlagged', !deal.isFlagged)}
-                    title={deal.isFlagged ? 'Remove flag' : 'Flag for discussion'}
-                  >
-                    <Flag className={`h-5 w-5 ${deal.isFlagged ? 'fill-current' : ''}`} />
-                  </Button>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-10 w-10 ${deal.isFlagged ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+                        title={deal.isFlagged ? 'Flagged for discussion' : 'Flag for discussion'}
+                      >
+                        <Flag className={`h-5 w-5 ${deal.isFlagged ? 'fill-current' : ''}`} />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80" align="start">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium">Flag for Discussion</label>
+                          <Button
+                            variant={deal.isFlagged ? "destructive" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              updateDeal('isFlagged', !deal.isFlagged);
+                              if (deal.isFlagged) {
+                                updateDeal('flagNotes', '');
+                              }
+                            }}
+                          >
+                            {deal.isFlagged ? 'Remove Flag' : 'Add Flag'}
+                          </Button>
+                        </div>
+                        {deal.isFlagged && (
+                          <div className="space-y-1.5">
+                            <label className="text-sm text-muted-foreground">Flag Notes</label>
+                            <Textarea
+                              value={deal.flagNotes || ''}
+                              onChange={(e) => updateDeal('flagNotes', e.target.value)}
+                              placeholder="Why is this deal flagged for discussion?"
+                              className="min-h-[80px] resize-none"
+                              maxLength={500}
+                            />
+                            <p className="text-xs text-muted-foreground text-right">
+                              {(deal.flagNotes || '').length}/500
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <InlineEditField
                   value={formatValue(deal.value)}

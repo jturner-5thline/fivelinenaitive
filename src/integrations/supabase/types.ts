@@ -356,6 +356,7 @@ export type Database = {
           deal_type: string | null
           engagement_type: string | null
           exclusivity: string | null
+          flag_notes: string | null
           id: string
           is_flagged: boolean
           manager: string | null
@@ -380,6 +381,7 @@ export type Database = {
           deal_type?: string | null
           engagement_type?: string | null
           exclusivity?: string | null
+          flag_notes?: string | null
           id?: string
           is_flagged?: boolean
           manager?: string | null
@@ -404,6 +406,7 @@ export type Database = {
           deal_type?: string | null
           engagement_type?: string | null
           exclusivity?: string | null
+          flag_notes?: string | null
           id?: string
           is_flagged?: boolean
           manager?: string | null

@@ -156,8 +156,15 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
                       <Flag className={`h-4 w-4 ${deal.isFlagged ? 'fill-current' : ''}`} />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{deal.isFlagged ? 'Remove flag' : 'Flag for discussion'}</p>
+                  <TooltipContent className="max-w-xs">
+                    {deal.isFlagged ? (
+                      <div>
+                        <p className="font-medium">Flagged for discussion</p>
+                        {deal.flagNotes && <p className="text-xs mt-1 opacity-90">{deal.flagNotes}</p>}
+                      </div>
+                    ) : (
+                      <p>Flag for discussion</p>
+                    )}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

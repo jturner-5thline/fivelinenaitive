@@ -62,6 +62,7 @@ interface DbDeal {
   manager: string | null;
   deal_owner: string | null;
   is_flagged: boolean;
+  flag_notes: string | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -245,6 +246,7 @@ export function useDealsDatabase() {
           manager: dbDeal.manager || '',
           dealOwner: dbDeal.deal_owner || undefined,
           isFlagged: dbDeal.is_flagged || false,
+          flagNotes: dbDeal.flag_notes || undefined,
           referredBy: toReferrer(dbDeal.referred_by),
           lender: dealLenders[0]?.name || '',
           value: Number(dbDeal.value),
@@ -390,6 +392,7 @@ export function useDealsDatabase() {
       if (updates.manager !== undefined) dbUpdates.manager = updates.manager;
       if (updates.dealOwner !== undefined) dbUpdates.deal_owner = updates.dealOwner;
       if (updates.isFlagged !== undefined) dbUpdates.is_flagged = updates.isFlagged;
+      if (updates.flagNotes !== undefined) dbUpdates.flag_notes = updates.flagNotes;
       if (Object.prototype.hasOwnProperty.call(updates, 'referredBy')) {
         dbUpdates.referred_by = updates.referredBy?.name ?? null;
       }

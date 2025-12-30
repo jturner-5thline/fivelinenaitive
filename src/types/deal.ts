@@ -67,6 +67,7 @@ export interface Deal {
   manager: string;
   dealOwner?: string;
   isFlagged?: boolean;
+  flagNotes?: string;
   lender: string;
   value: number;
   totalFee: number;
