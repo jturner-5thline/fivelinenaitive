@@ -11,12 +11,13 @@ interface DealsListProps {
   deals: Deal[];
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
   onMarkReviewed?: (dealId: string) => void;
+  onToggleFlag?: (dealId: string, isFlagged: boolean) => void;
   groupByStatus?: boolean;
 }
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onMarkReviewed, groupByStatus = true }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
 
@@ -62,11 +63,11 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, groupByStatus
               showDelay={3500}
             >
               <div>
-                <DealCard deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} />
+                <DealCard deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} onToggleFlag={onToggleFlag} />
               </div>
             </HintTooltip>
           ) : (
-            <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} />
+            <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} onToggleFlag={onToggleFlag} />
           )
         ))}
       </div>
@@ -128,14 +129,14 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, groupByStatus
                         showDelay={3500}
                       >
                         <div>
-                          <DealCard deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} />
+                          <DealCard deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} onToggleFlag={onToggleFlag} />
                         </div>
                       </HintTooltip>
                     );
                   }
                   
                   return (
-                    <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} />
+                    <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} onToggleFlag={onToggleFlag} />
                   );
                 })}
               </div>

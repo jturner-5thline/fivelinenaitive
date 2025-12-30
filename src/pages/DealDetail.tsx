@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -710,7 +710,7 @@ export default function DealDetail() {
     return numValue * 1000000;
   };
 
-  const updateDeal = (field: keyof Deal, value: string | number | string[] | undefined) => {
+  const updateDeal = (field: keyof Deal, value: string | number | string[] | boolean | undefined) => {
     setDeal(prev => {
       if (!prev) return prev;
       // Save current state to history before updating
@@ -892,11 +892,22 @@ export default function DealDetail() {
           <Card className="mb-6">
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
-                <InlineEditField
-                  value={deal.company}
-                  onSave={(value) => updateDeal('company', value)}
-                  displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]"
-                />
+                <div className="flex items-center gap-3">
+                  <InlineEditField
+                    value={deal.company}
+                    onSave={(value) => updateDeal('company', value)}
+                    displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-10 w-10 ${deal.isFlagged ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+                    onClick={() => updateDeal('isFlagged', !deal.isFlagged)}
+                    title={deal.isFlagged ? 'Remove flag' : 'Flag for discussion'}
+                  >
+                    <Flag className={`h-5 w-5 ${deal.isFlagged ? 'fill-current' : ''}`} />
+                  </Button>
+                </div>
                 <InlineEditField
                   value={formatValue(deal.value)}
                   onSave={(value) => updateDeal('value', parseValue(value))}

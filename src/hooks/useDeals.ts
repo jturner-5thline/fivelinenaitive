@@ -16,6 +16,7 @@ export interface DealFilters {
   lender: string[];
   referredBy: string[];
   staleOnly: boolean;
+  flaggedOnly: boolean;
 }
 
 export function useDeals() {
@@ -30,6 +31,7 @@ export function useDeals() {
     lender: [],
     referredBy: [],
     staleOnly: false,
+    flaggedOnly: false,
   });
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -79,6 +81,10 @@ export function useDeals() {
         const daysSinceUpdate = differenceInDays(now, new Date(deal.updatedAt));
         return daysSinceUpdate >= preferences.staleDealsDays;
       });
+    }
+
+    if (filters.flaggedOnly) {
+      result = result.filter((deal) => deal.isFlagged === true);
     }
 
     // Apply sorting

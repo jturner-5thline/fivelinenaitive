@@ -66,6 +66,7 @@ export interface Deal {
   dealTypes?: string[]; // Array of deal type IDs
   manager: string;
   dealOwner?: string;
+  isFlagged?: boolean;
   lender: string;
   value: number;
   totalFee: number;

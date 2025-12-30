@@ -357,6 +357,7 @@ export type Database = {
           engagement_type: string | null
           exclusivity: string | null
           id: string
+          is_flagged: boolean
           manager: string | null
           milestone_fee: number | null
           post_signing_hours: number | null
@@ -380,6 +381,7 @@ export type Database = {
           engagement_type?: string | null
           exclusivity?: string | null
           id?: string
+          is_flagged?: boolean
           manager?: string | null
           milestone_fee?: number | null
           post_signing_hours?: number | null
@@ -403,6 +405,7 @@ export type Database = {
           engagement_type?: string | null
           exclusivity?: string | null
           id?: string
+          is_flagged?: boolean
           manager?: string | null
           milestone_fee?: number | null
           post_signing_hours?: number | null

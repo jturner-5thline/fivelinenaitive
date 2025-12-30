@@ -68,6 +68,22 @@ export default function Dashboard() {
     }
   };
 
+  const handleToggleFlag = async (dealId: string, isFlagged: boolean) => {
+    try {
+      await updateDeal(dealId, { isFlagged });
+      toast({ 
+        title: isFlagged ? "Deal flagged" : "Flag removed", 
+        description: isFlagged ? "Deal marked for discussion." : "Flag has been removed from the deal." 
+      });
+    } catch (error) {
+      toast({ 
+        title: "Failed to update flag", 
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -170,7 +186,7 @@ export default function Dashboard() {
             {isLoading ? (
               <DealsListSkeleton groupByStatus={groupByStatus} />
             ) : (
-              <DealsList deals={deals} onStatusChange={updateDealStatus} onMarkReviewed={handleMarkReviewed} groupByStatus={groupByStatus} />
+              <DealsList deals={deals} onStatusChange={updateDealStatus} onMarkReviewed={handleMarkReviewed} onToggleFlag={handleToggleFlag} groupByStatus={groupByStatus} />
             )}
           </div>
         </main>
