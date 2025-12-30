@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Users, Trash2, Crown, Shield, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InviteMemberDialog } from './InviteMemberDialog';
+import { PendingInvitations } from './PendingInvitations';
 
 const roleIcons: Record<CompanyRole, React.ReactNode> = {
   owner: <Crown className="h-4 w-4 text-amber-500" />,
@@ -166,6 +167,11 @@ export function CompanyMembersSettings() {
           )}
         </CardContent>
       </Card>
+
+      {/* Pending Invitations */}
+      {isAdmin && company && (
+        <PendingInvitations companyId={company.id} companyName={company.name} />
+      )}
 
       {/* Role Permissions Info */}
       <Card>
