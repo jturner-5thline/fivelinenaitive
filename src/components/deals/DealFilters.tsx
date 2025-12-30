@@ -1,4 +1,4 @@
-import { Search, X, AlertTriangle } from 'lucide-react';
+import { Search, X, AlertTriangle, Flag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +45,7 @@ export function DealFilters({
     filters.lender.length > 0,
     filters.referredBy.length > 0,
     filters.staleOnly,
+    filters.flaggedOnly,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -57,6 +58,7 @@ export function DealFilters({
       lender: [],
       referredBy: [],
       staleOnly: false,
+      flaggedOnly: false,
     });
   };
 
@@ -224,6 +226,26 @@ export function DealFilters({
               </TooltipTrigger>
               <TooltipContent>
                 <p>Show only deals not updated in {preferences.staleDealsDays}+ days</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Toggle
+                  pressed={filters.flaggedOnly}
+                  onPressedChange={(pressed) => onFilterChange({ flaggedOnly: pressed })}
+                  variant="outline"
+                  size="sm"
+                  className={`gap-1.5 ${filters.flaggedOnly ? 'bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30' : ''}`}
+                >
+                  <Flag className="h-4 w-4" />
+                  Flagged
+                </Toggle>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Show only flagged deals</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

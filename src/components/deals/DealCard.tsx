@@ -1,4 +1,4 @@
-import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
@@ -32,9 +32,10 @@ interface DealCardProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
   onMarkReviewed?: (dealId: string) => void;
+  onToggleFlag?: (dealId: string, isFlagged: boolean) => void;
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }: DealCardProps) {
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
@@ -138,6 +139,29 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed }: DealCardProps
           <h3 className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] leading-tight">{deal.company}</h3>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">{formatCurrencyValue(deal.value)}</span>
+            {onToggleFlag && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onToggleFlag(deal.id, !deal.isFlagged);
+                      }}
+                    >
+                      <Flag className={`h-4 w-4 ${deal.isFlagged ? 'fill-current' : ''}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{deal.isFlagged ? 'Remove flag' : 'Flag for discussion'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
