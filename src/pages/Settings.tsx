@@ -11,6 +11,7 @@ import { LenderSubstagesSettings } from '@/components/settings/LenderSubstagesSe
 import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
 import { DealTypesSettings } from '@/components/settings/DealTypesSettings';
 import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
+import { DefaultMilestonesSettings } from '@/components/settings/DefaultMilestonesSettings';
 import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 import { useCompany } from '@/hooks/useCompany';
 
@@ -50,6 +51,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'deal-stages',
     keywords: ['deal', 'stages', 'stage', 'pipeline', 'progression', 'workflow'],
+  },
+  {
+    id: 'default-milestones',
+    keywords: ['default', 'milestones', 'milestone', 'templates', 'automatic', 'deal'],
   },
   {
     id: 'referral-sources',
@@ -244,6 +249,8 @@ export default function Settings() {
             {isVisible('deal-types') && <DealTypesSettings isAdmin={isAdmin} />}
 
             {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
+
+            {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
 
             {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
 
