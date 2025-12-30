@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Settings, User, SlidersHorizontal, LogOut, FlaskConical, HelpCircle } from 'lucide-react';
+import { Plus, Settings, User, SlidersHorizontal, LogOut, FlaskConical, HelpCircle, Flag, Calendar } from 'lucide-react';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,14 +26,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { useDefaultMilestones } from '@/contexts/DefaultMilestonesContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
+import { addDays, format } from 'date-fns';
 
 export function DealsHeader() {
   const navigate = useNavigate();
@@ -42,12 +45,16 @@ export function DealsHeader() {
   const { createDeal } = useDealsContext();
   const { company } = useCompany();
   const { stages: dealStages } = useDealStages();
+  const { defaultMilestones } = useDefaultMilestones();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
   const [dealManager, setDealManager] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
+
+  const sortedMilestones = [...defaultMilestones].sort((a, b) => a.position - b.position);
 
   const isDemoUser = user?.email === 'demo@example.com';
 
@@ -236,6 +243,32 @@ export function DealsHeader() {
                       placeholder="Enter manager name"
                     />
                   </div>
+                  {sortedMilestones.length > 0 && (
+                    <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                          <span className="flex items-center gap-2">
+                            <Flag className="h-4 w-4" />
+                            {sortedMilestones.length} default milestone{sortedMilestones.length !== 1 ? 's' : ''} will be added
+                          </span>
+                          <span className="text-xs">{showMilestonesPreview ? 'Hide' : 'Show'}</span>
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                          {sortedMilestones.map((milestone) => (
+                            <div key={milestone.id} className="flex items-center justify-between text-sm">
+                              <span className="font-medium">{milestone.title}</span>
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(addDays(new Date(), milestone.daysFromCreation), 'MMM d, yyyy')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button type="submit" variant="gradient" disabled={isCreating}>
