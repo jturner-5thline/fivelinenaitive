@@ -1743,7 +1743,28 @@ export default function DealDetail() {
                         onValueChange={(value) => updateDeal('manager', value)}
                       >
                         <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                          <SelectValue />
+                          <SelectValue placeholder="Select manager" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MANAGERS.map((manager) => (
+                            <SelectItem key={manager} value={manager}>
+                              {manager}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Deal Owner</span>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <Select
+                        value={deal.dealOwner || ''}
+                        onValueChange={(value) => updateDeal('dealOwner', value)}
+                      >
+                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                          <SelectValue placeholder="Select owner" />
                         </SelectTrigger>
                         <SelectContent>
                           {MANAGERS.map((manager) => (

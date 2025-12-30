@@ -60,6 +60,7 @@ interface DbDeal {
   deal_type: string | null;
   referred_by: string | null;
   manager: string | null;
+  deal_owner: string | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -240,7 +241,8 @@ export function useDealsDatabase() {
           status: dbDeal.status as DealStatus,
           engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
           exclusivity: (dbDeal.exclusivity || undefined) as ExclusivityType | undefined,
-          manager: dbDeal.manager || 'Paz',
+          manager: dbDeal.manager || '',
+          dealOwner: dbDeal.deal_owner || undefined,
           referredBy: toReferrer(dbDeal.referred_by),
           lender: dealLenders[0]?.name || '',
           value: Number(dbDeal.value),
@@ -384,6 +386,7 @@ export function useDealsDatabase() {
       if (updates.engagementType !== undefined) dbUpdates.engagement_type = updates.engagementType;
       if (updates.exclusivity !== undefined) dbUpdates.exclusivity = updates.exclusivity;
       if (updates.manager !== undefined) dbUpdates.manager = updates.manager;
+      if (updates.dealOwner !== undefined) dbUpdates.deal_owner = updates.dealOwner;
       if (Object.prototype.hasOwnProperty.call(updates, 'referredBy')) {
         dbUpdates.referred_by = updates.referredBy?.name ?? null;
       }
