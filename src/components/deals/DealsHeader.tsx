@@ -26,6 +26,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,7 +50,7 @@ export function DealsHeader() {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { createDeal } = useDealsContext();
-  const { company } = useCompany();
+  const { company, members } = useCompany();
   const { stages: dealStages } = useDealStages();
   const { defaultMilestones } = useDefaultMilestones();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
@@ -51,10 +58,17 @@ export function DealsHeader() {
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
   const [dealManager, setDealManager] = useState('');
+  const [dealOwner, setDealOwner] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
 
   const sortedMilestones = [...defaultMilestones].sort((a, b) => a.position - b.position);
+
+  // Get member options for dropdowns
+  const memberOptions = members.map(member => ({
+    value: member.user_id,
+    label: member.display_name || member.email || member.user_id.slice(0, 8),
+  }));
 
   const isDemoUser = user?.email === 'demo@example.com';
 
@@ -67,17 +81,22 @@ export function DealsHeader() {
     e.preventDefault();
     
     const parsedAmount = parseAmountToNumber(dealAmount);
-    if (!dealName.trim() || !parsedAmount || !dealManager.trim()) {
-      toast.error('Please fill in all fields');
+    if (!dealName.trim() || !parsedAmount) {
+      toast.error('Please fill in deal name and amount');
       return;
     }
+
+    // Get display names for the selected users
+    const managerName = memberOptions.find(m => m.value === dealManager)?.label || dealManager;
+    const ownerName = memberOptions.find(m => m.value === dealOwner)?.label || dealOwner;
 
     setIsCreating(true);
     try {
       const newDeal = await createDeal({
         company: dealName,
         value: parsedAmount,
-        manager: dealManager,
+        manager: managerName,
+        dealOwner: ownerName || undefined,
         status: 'on-track',
         stage: dealStages[0]?.id || 'final-credit-items',
         engagementType: 'guided',
@@ -89,6 +108,7 @@ export function DealsHeader() {
         setDealName('');
         setDealAmount('');
         setDealManager('');
+        setDealOwner('');
         navigate(`/deal/${newDeal.id}`);
       }
     } catch (error) {
@@ -236,12 +256,33 @@ export function DealsHeader() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="dealManager">Deal Manager</Label>
-                    <Input
-                      id="dealManager"
-                      value={dealManager}
-                      onChange={(e) => setDealManager(e.target.value)}
-                      placeholder="Enter manager name"
-                    />
+                    <Select value={dealManager} onValueChange={setDealManager}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select manager" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {memberOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dealOwner">Deal Owner</Label>
+                    <Select value={dealOwner} onValueChange={setDealOwner}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select owner (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {memberOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {sortedMilestones.length > 0 && (
                     <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
