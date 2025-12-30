@@ -3,6 +3,51 @@ import { supabase } from '@/integrations/supabase/client';
 import { Deal, DealLender, DealStatus, DealStage, EngagementType, ExclusivityType, Referrer, LenderNoteHistory } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
+import { addDays } from 'date-fns';
+
+interface DefaultMilestone {
+  id: string;
+  title: string;
+  daysFromCreation: number;
+  position: number;
+}
+
+// Get default milestones from localStorage
+function getDefaultMilestones(): DefaultMilestone[] {
+  try {
+    const stored = localStorage.getItem('default-deal-milestones');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Failed to load default milestones:', error);
+  }
+  return [];
+}
+
+// Create default milestones for a new deal
+async function createDefaultMilestones(dealId: string, userId: string) {
+  const defaultMilestones = getDefaultMilestones();
+  if (defaultMilestones.length === 0) return;
+
+  const now = new Date();
+  const milestonesToInsert = defaultMilestones
+    .sort((a, b) => a.position - b.position)
+    .map((m, index) => ({
+      deal_id: dealId,
+      user_id: userId,
+      title: m.title,
+      due_date: addDays(now, m.daysFromCreation).toISOString(),
+      completed: false,
+      position: index,
+    }));
+
+  try {
+    await supabase.from('deal_milestones').insert(milestonesToInsert);
+  } catch (error) {
+    console.error('Error creating default milestones:', error);
+  }
+}
 
 interface DbDeal {
   id: string;
@@ -291,6 +336,9 @@ export function useDealsDatabase() {
       };
 
       setDeals(prev => [newDeal, ...prev]);
+      
+      // Create default milestones for the new deal
+      await createDefaultMilestones(newDeal.id, userId);
       
       // Trigger new_deal workflow
       triggerWorkflow('new_deal', {
