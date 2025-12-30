@@ -352,6 +352,7 @@ export type Database = {
           company: string
           company_id: string | null
           created_at: string
+          deal_owner: string | null
           deal_type: string | null
           engagement_type: string | null
           exclusivity: string | null
@@ -374,6 +375,7 @@ export type Database = {
           company: string
           company_id?: string | null
           created_at?: string
+          deal_owner?: string | null
           deal_type?: string | null
           engagement_type?: string | null
           exclusivity?: string | null
@@ -396,6 +398,7 @@ export type Database = {
           company?: string
           company_id?: string | null
           created_at?: string
+          deal_owner?: string | null
           deal_type?: string | null
           engagement_type?: string | null
           exclusivity?: string | null

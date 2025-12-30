@@ -65,6 +65,7 @@ export interface Deal {
   exclusivity?: ExclusivityType;
   dealTypes?: string[]; // Array of deal type IDs
   manager: string;
+  dealOwner?: string;
   lender: string;
   value: number;
   totalFee: number;
