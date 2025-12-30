@@ -30,6 +30,7 @@ import Reports from "./pages/Reports";
 import Database from "./pages/Database";
 import Workflows from "./pages/Workflows";
 import Company from "./pages/Company";
+import AcceptInvite from "./pages/AcceptInvite";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
@@ -96,6 +97,7 @@ const App = () => (
                           <Route path="/notifications" element={
                             <ProtectedRoute><Notifications /></ProtectedRoute>
                           } />
+                          <Route path="/accept-invite" element={<AcceptInvite />} />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
                         </Routes>
