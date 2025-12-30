@@ -146,7 +146,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`h-8 w-8 ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                      className={`h-8 w-8 relative ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -154,6 +154,9 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
                       }}
                     >
                       <Flag className={`h-4 w-4 ${deal.isFlagged ? 'fill-current' : ''}`} />
+                      {deal.isFlagged && deal.flagNotes && (
+                        <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+                      )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
