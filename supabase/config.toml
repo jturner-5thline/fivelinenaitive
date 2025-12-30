@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.send-weekly-summary]
 verify_jwt = false
+
+[functions.check-stale-deals]
+verify_jwt = false
