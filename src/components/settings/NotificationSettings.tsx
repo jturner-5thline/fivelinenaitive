@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity, Target, ChevronDown } from 'lucide-react';
+import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity, Target, ChevronDown, Send } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface NotificationSettingsProps {
@@ -15,8 +18,10 @@ interface NotificationSettingsProps {
 }
 
 export function NotificationSettings({ collapsible = false, open, onOpenChange }: NotificationSettingsProps) {
+  const { user } = useAuth();
   const { profile, isLoading, updateProfile } = useProfile();
   const [isSaving, setIsSaving] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
   
   const [preferences, setPreferences] = useState({
     email_notifications: true,
@@ -81,6 +86,38 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!user?.id) return;
+    
+    setIsSendingTest(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-notification-email', {
+        body: {
+          type: 'deal_created',
+          user_id: user.id,
+          deal_id: 'test-deal',
+          deal_name: 'Test Deal',
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Test email sent',
+        description: 'Check your inbox for a test notification email.',
+      });
+    } catch (error: any) {
+      console.error('Test email error:', error);
+      toast({
+        title: 'Failed to send test email',
+        description: error.message || 'Please check your email configuration.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
@@ -195,6 +232,35 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
                 onCheckedChange={(checked) => handleToggle('weekly_summary_email', checked)}
                 disabled={isSaving || !preferences.email_notifications}
               />
+            </div>
+
+            <Separator className="my-2" />
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Test email notifications</span>
+                <span className="text-sm text-muted-foreground">
+                  Send a test email to verify your setup
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendTestEmail}
+                disabled={isSendingTest || !preferences.email_notifications}
+              >
+                {isSendingTest ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Test
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
