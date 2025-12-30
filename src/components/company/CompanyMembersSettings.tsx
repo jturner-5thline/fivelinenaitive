@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, UserPlus, Trash2, Crown, Shield, User } from 'lucide-react';
+import { Users, Trash2, Crown, Shield, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { InviteMemberDialog } from './InviteMemberDialog';
 
 const roleIcons: Record<CompanyRole, React.ReactNode> = {
   owner: <Crown className="h-4 w-4 text-amber-500" />,
@@ -29,7 +30,7 @@ const roleDisplayNames: Record<CompanyRole, string> = {
 
 export function CompanyMembersSettings() {
   const { user } = useAuth();
-  const { members, isAdmin, isOwner, updateMemberRole, removeMember } = useCompany();
+  const { company, members, isAdmin, isOwner, updateMemberRole, removeMember } = useCompany();
 
   const handleRoleChange = async (memberId: string, newRole: CompanyRole) => {
     await updateMemberRole(memberId, newRole);
@@ -53,11 +54,8 @@ export function CompanyMembersSettings() {
                 {members.length} member{members.length !== 1 ? 's' : ''} in your company
               </CardDescription>
             </div>
-            {isAdmin && (
-              <Button variant="outline" size="sm" disabled>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Invite Member
-              </Button>
+            {isAdmin && company && (
+              <InviteMemberDialog companyId={company.id} companyName={company.name} />
             )}
           </div>
         </CardHeader>
