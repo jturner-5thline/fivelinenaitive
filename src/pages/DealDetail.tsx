@@ -128,6 +128,36 @@ interface EditHistory {
   timestamp: Date;
 }
 
+// Component to handle flag notes with local state to prevent freezing
+function FlagNotesInput({ value, onSave }: { value: string; onSave: (value: string) => void }) {
+  const [localValue, setLocalValue] = useState(value);
+  
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+  
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm text-muted-foreground">Flag Notes</label>
+      <Textarea
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={() => {
+          if (localValue !== value) {
+            onSave(localValue);
+          }
+        }}
+        placeholder="Why is this deal flagged for discussion?"
+        className="min-h-[80px] resize-none"
+        maxLength={500}
+      />
+      <p className="text-xs text-muted-foreground text-right">
+        {localValue.length}/500
+      </p>
+    </div>
+  );
+}
+
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -927,19 +957,10 @@ export default function DealDetail() {
                           </Button>
                         </div>
                         {deal.isFlagged && (
-                          <div className="space-y-1.5">
-                            <label className="text-sm text-muted-foreground">Flag Notes</label>
-                            <Textarea
-                              value={deal.flagNotes || ''}
-                              onChange={(e) => updateDeal('flagNotes', e.target.value)}
-                              placeholder="Why is this deal flagged for discussion?"
-                              className="min-h-[80px] resize-none"
-                              maxLength={500}
-                            />
-                            <p className="text-xs text-muted-foreground text-right">
-                              {(deal.flagNotes || '').length}/500
-                            </p>
-                          </div>
+                          <FlagNotesInput
+                            value={deal.flagNotes || ''}
+                            onSave={(value) => updateDeal('flagNotes', value)}
+                          />
                         )}
                       </div>
                     </PopoverContent>
