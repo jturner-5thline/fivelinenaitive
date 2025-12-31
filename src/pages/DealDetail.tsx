@@ -1081,7 +1081,7 @@ export default function DealDetail() {
                     <CardContent className="space-y-3 pt-0">
                       {statusNotes.map((item) => (
                         <div key={item.id} className="text-sm p-3 bg-muted/50 rounded-lg group relative">
-                          <p className="text-muted-foreground pr-6">{item.note}</p>
+                          <p className="text-muted-foreground pr-6">{item.note.replace(/<[^>]*>/g, '')}</p>
                           <p className="text-xs text-muted-foreground/70 mt-1">
                             {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
                           </p>
