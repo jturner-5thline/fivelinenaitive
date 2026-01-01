@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { cn } from '@/lib/utils';
+import DOMPurify from 'dompurify';
 
 interface RichTextInlineEditProps {
   value: string;
@@ -55,7 +56,7 @@ export function RichTextInlineEdit({
       ) : (
         <div 
           className="prose prose-sm max-w-[600px] w-[600px] break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
-          dangerouslySetInnerHTML={{ __html: value }} 
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
         />
       )}
       <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
