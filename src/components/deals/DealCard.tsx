@@ -1,4 +1,5 @@
 import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
@@ -224,14 +225,14 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
           <HoverCard openDelay={300}>
             <HoverCardTrigger asChild>
               <div 
-                className="text-sm line-clamp-2 mt-4 min-h-[2.5rem] text-muted-foreground prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer"
-                dangerouslySetInnerHTML={{ __html: deal.notes }} 
+              className="text-sm line-clamp-2 mt-4 min-h-[2.5rem] text-muted-foreground prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
               />
             </HoverCardTrigger>
             <HoverCardContent className="w-80 max-h-60 overflow-y-auto" align="start">
               <div 
                 className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
-                dangerouslySetInnerHTML={{ __html: deal.notes }} 
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
               />
             </HoverCardContent>
           </HoverCard>
