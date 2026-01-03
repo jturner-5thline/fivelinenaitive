@@ -34,6 +34,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface ActivityItem {
   id: string;
@@ -400,6 +401,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
           </Button>
         </div>
       ) : (
+        <ScrollArea className="max-h-[480px] pr-3">
         <ul className="-mb-8">
           {filteredActivities.map((activity, index) => {
             const Icon = activityIcons[activity.type] || Clock;
@@ -464,6 +466,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
           );
         })}
         </ul>
+        </ScrollArea>
       )}
     </div>
   );
