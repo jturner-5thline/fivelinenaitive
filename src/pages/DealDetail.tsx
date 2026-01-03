@@ -785,9 +785,17 @@ export default function DealDetail() {
           { from: String(oldValue), to: String(value) }
         );
       } else if (field === 'value') {
-        logActivity('value_updated', `Deal value updated to ${value}`, { value: String(value) });
+        logActivity('value_updated', `Deal value updated`, { 
+          field,
+          oldValue: String(oldValue), 
+          newValue: String(value) 
+        });
       } else {
-        logActivity('deal_updated', `${field.charAt(0).toUpperCase() + field.slice(1)} updated`, { field });
+        logActivity('deal_updated', `${field.charAt(0).toUpperCase() + field.slice(1)} updated`, { 
+          field,
+          oldValue: oldValue !== undefined ? String(oldValue) : undefined,
+          newValue: value !== undefined ? String(value) : undefined,
+        });
       }
       
       // Persist to database
