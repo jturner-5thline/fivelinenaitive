@@ -12,7 +12,9 @@ import {
   Edit,
   DollarSign,
   Building2,
-  Users
+  Users,
+  Filter,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ActivityLog } from '@/hooks/useActivityLog';
@@ -22,6 +24,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 export interface ActivityItem {
   id: string;
@@ -45,6 +55,18 @@ export interface ActivityItem {
 interface ActivityTimelineProps {
   activities: ActivityItem[];
 }
+
+// Activity type filter options
+const activityTypeFilters: { value: string; label: string }[] = [
+  { value: 'status_change', label: 'Status Changes' },
+  { value: 'stage_change', label: 'Stage Changes' },
+  { value: 'deal_updated', label: 'Field Updates' },
+  { value: 'value_updated', label: 'Value Updates' },
+  { value: 'lender_added', label: 'Lender Added' },
+  { value: 'lender_removed', label: 'Lender Removed' },
+  { value: 'lender_stage_change', label: 'Lender Stage Changes' },
+  { value: 'deal_created', label: 'Deal Created' },
+];
 
 const activityIcons: Record<string, typeof Clock> = {
   status_change: ArrowRight,
@@ -207,6 +229,8 @@ function ActivityDetailPopover({ activity }: { activity: ActivityItem }) {
 }
 
 export function ActivityTimeline({ activities }: ActivityTimelineProps) {
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
+
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', {
@@ -217,6 +241,27 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
       minute: '2-digit',
     });
   };
+
+  const toggleFilter = (type: string) => {
+    setSelectedFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return next;
+    });
+  };
+
+  const clearFilters = () => {
+    setSelectedFilters(new Set());
+  };
+
+  // Filter activities based on selected filters
+  const filteredActivities = selectedFilters.size === 0 
+    ? activities 
+    : activities.filter(a => selectedFilters.has(a.type));
 
   if (activities.length === 0) {
     return (
@@ -230,11 +275,89 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
 
   return (
     <div className="flow-root">
-      <ul className="-mb-8">
-        {activities.map((activity, index) => {
-          const Icon = activityIcons[activity.type] || Clock;
-          const isLast = index === activities.length - 1;
-          const colorClass = activityColors[activity.type] || 'bg-muted-foreground/20';
+      {/* Filter Controls */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                <Filter className="h-3 w-3" />
+                Filter
+                {selectedFilters.size > 0 && (
+                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                    {selectedFilters.size}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              {activityTypeFilters.map((filter) => (
+                <DropdownMenuCheckboxItem
+                  key={filter.value}
+                  checked={selectedFilters.has(filter.value)}
+                  onCheckedChange={() => toggleFilter(filter.value)}
+                >
+                  {filter.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+              {selectedFilters.size > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={false}
+                    onCheckedChange={clearFilters}
+                    className="text-muted-foreground"
+                  >
+                    Clear all
+                  </DropdownMenuCheckboxItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {selectedFilters.size > 0 && (
+            <div className="flex items-center gap-1">
+              {Array.from(selectedFilters).map(filter => {
+                const filterInfo = activityTypeFilters.find(f => f.value === filter);
+                return (
+                  <Badge 
+                    key={filter} 
+                    variant="secondary" 
+                    className="h-5 text-[10px] gap-1 pr-1"
+                  >
+                    {filterInfo?.label || filter}
+                    <button
+                      onClick={() => toggleFilter(filter)}
+                      className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {filteredActivities.length} of {activities.length}
+        </p>
+      </div>
+
+      {filteredActivities.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          <Filter className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No matching activities</p>
+          <Button variant="link" size="sm" onClick={clearFilters} className="text-xs">
+            Clear filters
+          </Button>
+        </div>
+      ) : (
+        <ul className="-mb-8">
+          {filteredActivities.map((activity, index) => {
+            const Icon = activityIcons[activity.type] || Clock;
+            const isLast = index === filteredActivities.length - 1;
+            const colorClass = activityColors[activity.type] || 'bg-muted-foreground/20';
 
           return (
             <li key={activity.id} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
@@ -293,7 +416,8 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
             </li>
           );
         })}
-      </ul>
+        </ul>
+      )}
     </div>
   );
 }
