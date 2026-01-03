@@ -361,6 +361,7 @@ export type Database = {
           is_flagged: boolean
           manager: string | null
           milestone_fee: number | null
+          notes: string | null
           post_signing_hours: number | null
           pre_signing_hours: number | null
           referred_by: string | null
@@ -386,6 +387,7 @@ export type Database = {
           is_flagged?: boolean
           manager?: string | null
           milestone_fee?: number | null
+          notes?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
           referred_by?: string | null
@@ -411,6 +413,7 @@ export type Database = {
           is_flagged?: boolean
           manager?: string | null
           milestone_fee?: number | null
+          notes?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
           referred_by?: string | null
