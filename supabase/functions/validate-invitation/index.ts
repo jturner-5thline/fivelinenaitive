@@ -75,6 +75,8 @@ Deno.serve(async (req) => {
 
     // Return invitation details (excluding sensitive data like the token itself)
     console.log('Invitation valid for:', invitation.email)
+    const companyName = (invitation.companies as { name: string } | null)?.name || 'Unknown Company'
+    
     return new Response(
       JSON.stringify({
         status: 'valid',
@@ -83,7 +85,7 @@ Deno.serve(async (req) => {
           email: invitation.email,
           role: invitation.role,
           company_id: invitation.company_id,
-          company_name: invitation.companies?.name || 'Unknown Company',
+          company_name: companyName,
         }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
