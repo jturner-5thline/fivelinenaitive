@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Check } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { cn } from '@/lib/utils';
 import DOMPurify from 'dompurify';
@@ -23,7 +23,9 @@ export function RichTextInlineEdit({
 }: RichTextInlineEditProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
+  const [showSaved, setShowSaved] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const savedIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedValueRef = useRef(value);
 
   // Sync editValue when value prop changes externally
@@ -34,6 +36,17 @@ export function RichTextInlineEdit({
     }
   }, [value, isEditing]);
 
+  // Show saved indicator briefly
+  const showSavedIndicator = useCallback(() => {
+    setShowSaved(true);
+    if (savedIndicatorTimeoutRef.current) {
+      clearTimeout(savedIndicatorTimeoutRef.current);
+    }
+    savedIndicatorTimeoutRef.current = setTimeout(() => {
+      setShowSaved(false);
+    }, 2000);
+  }, []);
+
   // Auto-save with debounce
   const debouncedSave = useCallback((newValue: string) => {
     if (saveTimeoutRef.current) {
@@ -43,15 +56,19 @@ export function RichTextInlineEdit({
       if (newValue !== lastSavedValueRef.current) {
         onSave(newValue);
         lastSavedValueRef.current = newValue;
+        showSavedIndicator();
       }
     }, autoSaveDelay);
-  }, [onSave, autoSaveDelay]);
+  }, [onSave, autoSaveDelay, showSavedIndicator]);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
+      }
+      if (savedIndicatorTimeoutRef.current) {
+        clearTimeout(savedIndicatorTimeoutRef.current);
       }
     };
   }, []);
@@ -71,6 +88,7 @@ export function RichTextInlineEdit({
     if (editValue !== lastSavedValueRef.current) {
       onSave(editValue);
       lastSavedValueRef.current = editValue;
+      showSavedIndicator();
     }
     setIsEditing(false);
   };
@@ -86,12 +104,20 @@ export function RichTextInlineEdit({
 
   if (isEditing) {
     return (
-      <RichTextEditor
-        content={editValue}
-        onChange={handleChange}
-        onSave={handleSave}
-        onCancel={handleCancel}
-      />
+      <div className="relative">
+        <RichTextEditor
+          content={editValue}
+          onChange={handleChange}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
+        {showSaved && (
+          <div className="absolute -top-6 right-0 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 animate-fade-in">
+            <Check className="h-3 w-3" />
+            <span>Saved</span>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -100,7 +126,7 @@ export function RichTextInlineEdit({
   return (
     <div
       className={cn(
-        "group flex items-start gap-2 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors",
+        "group flex items-start gap-2 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors relative",
         displayClassName
       )}
       onClick={() => setIsEditing(true)}
@@ -114,6 +140,12 @@ export function RichTextInlineEdit({
         />
       )}
       <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
+      {showSaved && (
+        <div className="absolute -top-5 right-0 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 animate-fade-in">
+          <Check className="h-3 w-3" />
+          <span>Saved</span>
+        </div>
+      )}
     </div>
   );
 }
