@@ -14,8 +14,10 @@ import {
   Building2,
   Users,
   Filter,
-  X
+  X,
+  Search
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ActivityLog } from '@/hooks/useActivityLog';
 import { Json } from '@/integrations/supabase/types';
@@ -230,6 +232,7 @@ function ActivityDetailPopover({ activity }: { activity: ActivityItem }) {
 
 export function ActivityTimeline({ activities }: ActivityTimelineProps) {
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -256,12 +259,33 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
 
   const clearFilters = () => {
     setSelectedFilters(new Set());
+    setSearchQuery('');
   };
 
-  // Filter activities based on selected filters
-  const filteredActivities = selectedFilters.size === 0 
-    ? activities 
-    : activities.filter(a => selectedFilters.has(a.type));
+  // Filter activities based on selected filters and search query
+  const filteredActivities = activities.filter(a => {
+    // Type filter
+    if (selectedFilters.size > 0 && !selectedFilters.has(a.type)) {
+      return false;
+    }
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const matchesDescription = a.description.toLowerCase().includes(query);
+      const matchesUser = a.user.toLowerCase().includes(query);
+      const matchesFrom = a.metadata?.from?.toLowerCase().includes(query);
+      const matchesTo = a.metadata?.to?.toLowerCase().includes(query);
+      const matchesOldValue = formatValue(a.metadata?.oldValue).toLowerCase().includes(query);
+      const matchesNewValue = formatValue(a.metadata?.newValue).toLowerCase().includes(query);
+      const matchesLender = a.metadata?.lenderName?.toLowerCase().includes(query);
+      
+      if (!matchesDescription && !matchesUser && !matchesFrom && !matchesTo && 
+          !matchesOldValue && !matchesNewValue && !matchesLender) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   if (activities.length === 0) {
     return (
@@ -273,75 +297,98 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
     );
   }
 
+  const hasActiveFilters = selectedFilters.size > 0 || searchQuery.trim().length > 0;
+
   return (
     <div className="flow-root">
-      {/* Filter Controls */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                <Filter className="h-3 w-3" />
-                Filter
-                {selectedFilters.size > 0 && (
-                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">
-                    {selectedFilters.size}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              {activityTypeFilters.map((filter) => (
-                <DropdownMenuCheckboxItem
-                  key={filter.value}
-                  checked={selectedFilters.has(filter.value)}
-                  onCheckedChange={() => toggleFilter(filter.value)}
-                >
-                  {filter.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-              {selectedFilters.size > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuCheckboxItem
-                    checked={false}
-                    onCheckedChange={clearFilters}
-                    className="text-muted-foreground"
-                  >
-                    Clear all
-                  </DropdownMenuCheckboxItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {selectedFilters.size > 0 && (
-            <div className="flex items-center gap-1">
-              {Array.from(selectedFilters).map(filter => {
-                const filterInfo = activityTypeFilters.find(f => f.value === filter);
-                return (
-                  <Badge 
-                    key={filter} 
-                    variant="secondary" 
-                    className="h-5 text-[10px] gap-1 pr-1"
-                  >
-                    {filterInfo?.label || filter}
-                    <button
-                      onClick={() => toggleFilter(filter)}
-                      className="hover:bg-muted-foreground/20 rounded-full p-0.5"
-                    >
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  </Badge>
-                );
-              })}
-            </div>
+      {/* Search and Filter Controls */}
+      <div className="space-y-3 mb-4">
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search activities..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 pl-8 pr-8 text-xs"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 hover:bg-muted rounded-full p-0.5"
+            >
+              <X className="h-3 w-3 text-muted-foreground" />
+            </button>
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          {filteredActivities.length} of {activities.length}
-        </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                  <Filter className="h-3 w-3" />
+                  Filter
+                  {selectedFilters.size > 0 && (
+                    <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                      {selectedFilters.size}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {activityTypeFilters.map((filter) => (
+                  <DropdownMenuCheckboxItem
+                    key={filter.value}
+                    checked={selectedFilters.has(filter.value)}
+                    onCheckedChange={() => toggleFilter(filter.value)}
+                  >
+                    {filter.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {hasActiveFilters && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                      checked={false}
+                      onCheckedChange={clearFilters}
+                      className="text-muted-foreground"
+                    >
+                      Clear all
+                    </DropdownMenuCheckboxItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {selectedFilters.size > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {Array.from(selectedFilters).map(filter => {
+                  const filterInfo = activityTypeFilters.find(f => f.value === filter);
+                  return (
+                    <Badge 
+                      key={filter} 
+                      variant="secondary" 
+                      className="h-5 text-[10px] gap-1 pr-1"
+                    >
+                      {filterInfo?.label || filter}
+                      <button
+                        onClick={() => toggleFilter(filter)}
+                        className="hover:bg-muted-foreground/20 rounded-full p-0.5"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {filteredActivities.length} of {activities.length}
+          </p>
+        </div>
       </div>
 
       {filteredActivities.length === 0 ? (
