@@ -401,8 +401,8 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
           </Button>
         </div>
       ) : (
-        <ScrollArea className="max-h-[480px] pr-3">
-        <ul className="-mb-8">
+        <div className="max-h-[480px] overflow-y-auto pr-1">
+          <ul className="-mb-8">
           {filteredActivities.map((activity, index) => {
             const Icon = activityIcons[activity.type] || Clock;
             const isLast = index === filteredActivities.length - 1;
@@ -465,8 +465,8 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
             </li>
           );
         })}
-        </ul>
-        </ScrollArea>
+          </ul>
+        </div>
       )}
     </div>
   );
