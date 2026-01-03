@@ -1,8 +1,7 @@
-import { Search, X, AlertTriangle, Flag } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Toggle } from '@/components/ui/toggle';
 import { DealFilters as FilterType } from '@/hooks/useDeals';
 import { 
   DealStage, 
@@ -18,13 +17,6 @@ import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
-import { usePreferences } from '@/contexts/PreferencesContext';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface DealFiltersProps {
   filters: FilterType;
@@ -36,7 +28,6 @@ export function DealFilters({
   onFilterChange,
 }: DealFiltersProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
-  const { preferences } = usePreferences();
   const activeFiltersCount = [
     filters.stage.length > 0,
     filters.status.length > 0,
@@ -210,45 +201,6 @@ export function DealFilters({
             className="w-[160px]"
           />
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Toggle
-                  pressed={filters.staleOnly}
-                  onPressedChange={(pressed) => onFilterChange({ staleOnly: pressed })}
-                  variant="outline"
-                  size="sm"
-                  className={`gap-1.5 ${filters.staleOnly ? 'bg-warning/20 border-warning text-warning hover:bg-warning/30' : ''}`}
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  Stale
-                </Toggle>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Show only deals not updated in {preferences.staleDealsDays}+ days</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Toggle
-                  pressed={filters.flaggedOnly}
-                  onPressedChange={(pressed) => onFilterChange({ flaggedOnly: pressed })}
-                  variant="outline"
-                  size="sm"
-                  className={`gap-1.5 ${filters.flaggedOnly ? 'bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30' : ''}`}
-                >
-                  <Flag className="h-4 w-4" />
-                  Flagged
-                </Toggle>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Show only flagged deals</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
 
           {activeFiltersCount > 0 && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { DealsList } from '@/components/deals/DealsList';
@@ -24,6 +24,14 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Toggle } from '@/components/ui/toggle';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +48,7 @@ export default function Dashboard() {
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
   const { specialWidgets } = useWidgets();
+  const { preferences } = usePreferences();
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
   
@@ -172,15 +181,57 @@ export default function Dashboard() {
                 Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
                 {deals.length === 1 ? 'deal' : 'deals'}
               </p>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="group-by-status"
-                  checked={groupByStatus}
-                  onCheckedChange={setGroupByStatus}
-                />
-                <Label htmlFor="group-by-status" className="text-sm text-muted-foreground cursor-pointer">
-                  Group by Status
-                </Label>
+              <div className="flex items-center gap-3">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Toggle
+                        pressed={filters.staleOnly}
+                        onPressedChange={(pressed) => updateFilters({ staleOnly: pressed })}
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 w-8 p-0 ${filters.staleOnly ? 'bg-warning/20 border-warning text-warning hover:bg-warning/30' : ''}`}
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                      </Toggle>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Show only stale deals ({preferences.staleDealsDays}+ days)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Toggle
+                        pressed={filters.flaggedOnly}
+                        onPressedChange={(pressed) => updateFilters({ flaggedOnly: pressed })}
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 w-8 p-0 ${filters.flaggedOnly ? 'bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30' : ''}`}
+                      >
+                        <Flag className="h-4 w-4" />
+                      </Toggle>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Show only flagged deals</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <div className="h-4 w-px bg-border" />
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="group-by-status"
+                    checked={groupByStatus}
+                    onCheckedChange={setGroupByStatus}
+                  />
+                  <Label htmlFor="group-by-status" className="text-sm text-muted-foreground cursor-pointer">
+                    Group by Status
+                  </Label>
+                </div>
               </div>
             </div>
 
