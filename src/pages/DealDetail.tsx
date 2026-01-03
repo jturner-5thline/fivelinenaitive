@@ -131,29 +131,49 @@ interface EditHistory {
 // Component to handle flag notes with local state to prevent freezing
 function FlagNotesInput({ value, onSave }: { value: string; onSave: (value: string) => void }) {
   const [localValue, setLocalValue] = useState(value);
+  const [hasChanges, setHasChanges] = useState(false);
   
   useEffect(() => {
     setLocalValue(value);
+    setHasChanges(false);
   }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setLocalValue(e.target.value);
+    setHasChanges(e.target.value !== value);
+  };
+
+  const handleSave = () => {
+    if (localValue !== value) {
+      onSave(localValue);
+      setHasChanges(false);
+    }
+  };
   
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <label className="text-sm text-muted-foreground">Flag Notes</label>
       <Textarea
         value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
-        onBlur={() => {
-          if (localValue !== value) {
-            onSave(localValue);
-          }
-        }}
+        onChange={handleChange}
         placeholder="Why is this deal flagged for discussion?"
         className="min-h-[80px] resize-none"
         maxLength={500}
       />
-      <p className="text-xs text-muted-foreground text-right">
-        {localValue.length}/500
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {localValue.length}/500
+        </p>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={!hasChanges}
+          className="h-7 text-xs"
+        >
+          <Save className="h-3 w-3 mr-1" />
+          Save
+        </Button>
+      </div>
     </div>
   );
 }
