@@ -1020,13 +1020,15 @@ export default function DealDetail() {
                     value={deal.notes || ''}
                     onSave={async (value) => {
                       // Save previous note to history before updating
-                      if (deal.notes && deal.notes.trim() && deal.notes !== '<p></p>') {
+                      if (deal.notes && deal.notes.trim() && deal.notes !== '<p></p>' && value !== deal.notes) {
                         await addStatusNote(deal.notes.trim());
                       }
                       updateDeal('notes', value);
                     }}
                     placeholder="Click to add status notes..."
                     displayClassName="text-lg text-foreground/90"
+                    autoSave
+                    autoSaveDelay={1500}
                   />
                 </div>
                 <div className={`flex items-center gap-2 text-sm text-muted-foreground shrink-0 ${timeAgoData.highlightClass}`}>

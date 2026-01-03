@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Pencil } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,8 @@ interface RichTextInlineEditProps {
   onSave: (value: string) => void;
   placeholder?: string;
   displayClassName?: string;
+  autoSave?: boolean;
+  autoSaveDelay?: number;
 }
 
 export function RichTextInlineEdit({
@@ -16,16 +18,68 @@ export function RichTextInlineEdit({
   onSave,
   placeholder = 'Click to edit',
   displayClassName,
+  autoSave = false,
+  autoSaveDelay = 1000,
 }: RichTextInlineEditProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedValueRef = useRef(value);
+
+  // Sync editValue when value prop changes externally
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(value);
+      lastSavedValueRef.current = value;
+    }
+  }, [value, isEditing]);
+
+  // Auto-save with debounce
+  const debouncedSave = useCallback((newValue: string) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      if (newValue !== lastSavedValueRef.current) {
+        onSave(newValue);
+        lastSavedValueRef.current = newValue;
+      }
+    }, autoSaveDelay);
+  }, [onSave, autoSaveDelay]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleChange = (newValue: string) => {
+    setEditValue(newValue);
+    if (autoSave) {
+      debouncedSave(newValue);
+    }
+  };
 
   const handleSave = () => {
-    onSave(editValue);
+    // Clear any pending auto-save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    if (editValue !== lastSavedValueRef.current) {
+      onSave(editValue);
+      lastSavedValueRef.current = editValue;
+    }
     setIsEditing(false);
   };
 
   const handleCancel = () => {
+    // Clear any pending auto-save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
     setEditValue(value);
     setIsEditing(false);
   };
@@ -34,7 +88,7 @@ export function RichTextInlineEdit({
     return (
       <RichTextEditor
         content={editValue}
-        onChange={setEditValue}
+        onChange={handleChange}
         onSave={handleSave}
         onCancel={handleCancel}
       />
