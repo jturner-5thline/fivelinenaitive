@@ -8,6 +8,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
+interface InvitationData {
+  id: string;
+  email: string;
+  role: string;
+  company_id: string;
+  company_name: string;
+}
+
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -15,8 +23,7 @@ export default function AcceptInvite() {
   const token = searchParams.get('token');
 
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'expired' | 'accepted'>('loading');
-  const [invitation, setInvitation] = useState<any>(null);
-  const [companyName, setCompanyName] = useState<string>('');
+  const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
 
   useEffect(() => {
@@ -26,30 +33,43 @@ export default function AcceptInvite() {
     }
 
     const checkInvitation = async () => {
-      const { data, error } = await supabase
-        .from('company_invitations')
-        .select('*, companies(name)')
-        .eq('token', token)
-        .single();
+      try {
+        // Use secure edge function to validate token
+        const { data, error } = await supabase.functions.invoke('validate-invitation', {
+          body: { token }
+        });
 
-      if (error || !data) {
+        if (error) {
+          console.error('Error validating invitation:', error);
+          setStatus('invalid');
+          return;
+        }
+
+        if (data.status === 'invalid') {
+          setStatus('invalid');
+          return;
+        }
+
+        if (data.status === 'accepted') {
+          setStatus('accepted');
+          return;
+        }
+
+        if (data.status === 'expired') {
+          setStatus('expired');
+          return;
+        }
+
+        if (data.status === 'valid' && data.invitation) {
+          setInvitation(data.invitation);
+          setStatus('valid');
+        } else {
+          setStatus('invalid');
+        }
+      } catch (err) {
+        console.error('Error checking invitation:', err);
         setStatus('invalid');
-        return;
       }
-
-      if (data.accepted_at) {
-        setStatus('accepted');
-        return;
-      }
-
-      if (new Date(data.expires_at) < new Date()) {
-        setStatus('expired');
-        return;
-      }
-
-      setInvitation(data);
-      setCompanyName(data.companies?.name || 'Unknown Company');
-      setStatus('valid');
     };
 
     checkInvitation();
@@ -92,23 +112,28 @@ export default function AcceptInvite() {
       // Add user as company member
       const { error: memberError } = await supabase
         .from('company_members')
-        .insert({
+        .insert([{
           company_id: invitation.company_id,
           user_id: user.id,
-          role: invitation.role,
-        });
+          role: invitation.role as 'admin' | 'member' | 'owner',
+        }]);
 
       if (memberError) throw memberError;
 
-      // Mark invitation as accepted
-      await supabase
+      // Mark invitation as accepted - this uses RLS policy for users with matching email
+      const { error: updateError } = await supabase
         .from('company_invitations')
         .update({ accepted_at: new Date().toISOString() })
         .eq('id', invitation.id);
 
+      if (updateError) {
+        console.error('Error updating invitation:', updateError);
+        // Don't throw - user was added as member, just log the error
+      }
+
       toast({
         title: "Welcome to the team!",
-        description: `You've successfully joined ${companyName}`,
+        description: `You've successfully joined ${invitation.company_name}`,
       });
 
       navigate('/deals');
@@ -188,7 +213,7 @@ export default function AcceptInvite() {
             <>
               <CardHeader className="text-center">
                 <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>Join {companyName}</CardTitle>
+                <CardTitle>Join {invitation?.company_name}</CardTitle>
                 <CardDescription>
                   You've been invited to join as a {invitation?.role === 'admin' ? 'Admin' : 'User'}.
                   Sign in or create an account to accept.
@@ -209,7 +234,7 @@ export default function AcceptInvite() {
             <>
               <CardHeader className="text-center">
                 <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>Join {companyName}</CardTitle>
+                <CardTitle>Join {invitation?.company_name}</CardTitle>
                 <CardDescription>
                   Accept your invitation to join the team as a {invitation?.role === 'admin' ? 'Admin' : 'User'}.
                 </CardDescription>
