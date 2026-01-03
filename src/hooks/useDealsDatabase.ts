@@ -63,6 +63,7 @@ interface DbDeal {
   deal_owner: string | null;
   is_flagged: boolean;
   flag_notes: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -256,6 +257,7 @@ export function useDealsDatabase() {
           successFeePercent: Number(dbDeal.success_fee_percent || 0),
           preSigningHours: Number(dbDeal.pre_signing_hours || 0),
           postSigningHours: Number(dbDeal.post_signing_hours || 0),
+          notes: dbDeal.notes || undefined,
           contact: '',
           createdAt: dbDeal.created_at,
           updatedAt: dbDeal.updated_at,
@@ -402,6 +404,7 @@ export function useDealsDatabase() {
       if (updates.retainerFee !== undefined) dbUpdates.retainer_fee = updates.retainerFee;
       if (updates.milestoneFee !== undefined) dbUpdates.milestone_fee = updates.milestoneFee;
       if (updates.successFeePercent !== undefined) dbUpdates.success_fee_percent = updates.successFeePercent;
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
 
       const { error } = await supabase
         .from('deals')
