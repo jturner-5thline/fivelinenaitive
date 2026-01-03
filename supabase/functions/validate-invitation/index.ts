@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       .from('company_invitations')
       .select('id, email, role, company_id, expires_at, accepted_at, companies(name)')
       .eq('token', token)
-      .single()
+      .single() as { data: { id: string; email: string; role: string; company_id: string; expires_at: string; accepted_at: string | null; companies: { name: string } | null } | null; error: any }
 
     if (error || !invitation) {
       console.log('Invitation not found:', error?.message)

@@ -17,3 +17,12 @@ verify_jwt = false
 
 [functions.check-stale-deals]
 verify_jwt = false
+
+[functions.check-missed-milestones]
+verify_jwt = false
+
+[functions.seed-demo-data]
+verify_jwt = false
+
+[functions.validate-invitation]
+verify_jwt = false
