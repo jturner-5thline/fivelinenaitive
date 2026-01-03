@@ -362,6 +362,7 @@ export type Database = {
           manager: string | null
           milestone_fee: number | null
           notes: string | null
+          notes_updated_at: string | null
           post_signing_hours: number | null
           pre_signing_hours: number | null
           referred_by: string | null
@@ -388,6 +389,7 @@ export type Database = {
           manager?: string | null
           milestone_fee?: number | null
           notes?: string | null
+          notes_updated_at?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
           referred_by?: string | null
@@ -414,6 +416,7 @@ export type Database = {
           manager?: string | null
           milestone_fee?: number | null
           notes?: string | null
+          notes_updated_at?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
           referred_by?: string | null

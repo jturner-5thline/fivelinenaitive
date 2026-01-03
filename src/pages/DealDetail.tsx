@@ -1014,22 +1014,29 @@ export default function DealDetail() {
               </div>
               
               <div className="flex items-start justify-between gap-4 border-t border-border mt-4 pt-4">
-                <div className="w-[60%] flex items-start gap-2 pl-4">
-                  <span className="text-lg text-foreground/90 mt-0.5">•</span>
-                  <RichTextInlineEdit
-                    value={deal.notes || ''}
-                    onSave={async (value) => {
-                      // Save previous note to history before updating
-                      if (deal.notes && deal.notes.trim() && deal.notes !== '<p></p>' && value !== deal.notes) {
-                        await addStatusNote(deal.notes.trim());
-                      }
-                      updateDeal('notes', value);
-                    }}
-                    placeholder="Click to add status notes..."
-                    displayClassName="text-lg text-foreground/90"
-                    autoSave
-                    autoSaveDelay={1500}
-                  />
+                <div className="w-[60%] flex flex-col gap-1 pl-4">
+                  <div className="flex items-start gap-2">
+                    <span className="text-lg text-foreground/90 mt-0.5">•</span>
+                    <RichTextInlineEdit
+                      value={deal.notes || ''}
+                      onSave={async (value) => {
+                        // Save previous note to history before updating
+                        if (deal.notes && deal.notes.trim() && deal.notes !== '<p></p>' && value !== deal.notes) {
+                          await addStatusNote(deal.notes.trim());
+                        }
+                        updateDeal('notes', value);
+                      }}
+                      placeholder="Click to add status notes..."
+                      displayClassName="text-lg text-foreground/90"
+                      autoSave
+                      autoSaveDelay={1500}
+                    />
+                  </div>
+                  {deal.notesUpdatedAt && (
+                    <p className="text-xs text-muted-foreground/70 pl-6">
+                      Last updated {format(new Date(deal.notesUpdatedAt), 'MMM d, yyyy')} at {format(new Date(deal.notesUpdatedAt), 'h:mm a')}
+                    </p>
+                  )}
                 </div>
                 <div className={`flex items-center gap-2 text-sm text-muted-foreground shrink-0 ${timeAgoData.highlightClass}`}>
                   <Clock className="h-4 w-4" />

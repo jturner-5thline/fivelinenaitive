@@ -81,6 +81,7 @@ export interface Deal {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  notesUpdatedAt?: string;
   lenders?: DealLender[];
   milestones?: DealMilestone[];
 }
