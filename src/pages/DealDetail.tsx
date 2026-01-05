@@ -160,6 +160,13 @@ function FlagNotesInput({ value, onSave, onClose }: { value: string; onSave: (va
     onClose?.();
   };
   
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+  
   return (
     <div className="space-y-2">
       <label className="text-sm text-muted-foreground">Flag Notes</label>
@@ -167,13 +174,14 @@ function FlagNotesInput({ value, onSave, onClose }: { value: string; onSave: (va
         ref={textareaRef}
         value={localValue}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
         placeholder="Why is this deal flagged for discussion?"
         className="min-h-[80px] resize-none"
         maxLength={500}
       />
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {localValue.length}/500
+          {localValue.length}/500 · Press Enter to save
         </p>
         <Button
           size="sm"
