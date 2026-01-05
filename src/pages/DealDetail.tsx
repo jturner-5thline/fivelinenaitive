@@ -135,11 +135,17 @@ interface EditHistory {
 function FlagNotesInput({ value, onSave, onClose }: { value: string; onSave: (value: string) => void; onClose?: () => void }) {
   const [localValue, setLocalValue] = useState(value);
   const [hasChanges, setHasChanges] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   useEffect(() => {
     setLocalValue(value);
     setHasChanges(false);
   }, [value]);
+
+  // Auto-focus the textarea when mounted
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setLocalValue(e.target.value);
@@ -158,6 +164,7 @@ function FlagNotesInput({ value, onSave, onClose }: { value: string; onSave: (va
     <div className="space-y-2">
       <label className="text-sm text-muted-foreground">Flag Notes</label>
       <Textarea
+        ref={textareaRef}
         value={localValue}
         onChange={handleChange}
         placeholder="Why is this deal flagged for discussion?"
@@ -1136,7 +1143,13 @@ export default function DealDetail() {
                     onSave={(value) => updateDeal('company', value)}
                     displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]"
                   />
-                  <Popover open={isFlagPopoverOpen} onOpenChange={setIsFlagPopoverOpen}>
+                  <Popover open={isFlagPopoverOpen} onOpenChange={(open) => {
+                    setIsFlagPopoverOpen(open);
+                    // Auto-flag when opening the popover
+                    if (open && !deal.isFlagged) {
+                      updateDeal('isFlagged', true);
+                    }
+                  }}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="ghost"
@@ -1152,25 +1165,22 @@ export default function DealDetail() {
                         <div className="flex items-center justify-between">
                           <label className="text-sm font-medium">Flag for Discussion</label>
                           <Button
-                            variant={deal.isFlagged ? "destructive" : "outline"}
+                            variant="destructive"
                             size="sm"
                             onClick={() => {
-                              updateDeal('isFlagged', !deal.isFlagged);
-                              if (deal.isFlagged) {
-                                updateDeal('flagNotes', '');
-                              }
+                              updateDeal('isFlagged', false);
+                              updateDeal('flagNotes', '');
+                              setIsFlagPopoverOpen(false);
                             }}
                           >
-                            {deal.isFlagged ? 'Remove Flag' : 'Add Flag'}
+                            Remove Flag
                           </Button>
                         </div>
-                        {deal.isFlagged && (
-                          <FlagNotesInput
-                            value={deal.flagNotes || ''}
-                            onSave={(value) => updateDeal('flagNotes', value)}
-                            onClose={() => setIsFlagPopoverOpen(false)}
-                          />
-                        )}
+                        <FlagNotesInput
+                          value={deal.flagNotes || ''}
+                          onSave={(value) => updateDeal('flagNotes', value)}
+                          onClose={() => setIsFlagPopoverOpen(false)}
+                        />
                       </div>
                     </PopoverContent>
                   </Popover>
