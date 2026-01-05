@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -183,15 +183,17 @@ function FlagNotesInput({ value, onSave }: { value: string; onSave: (value: stri
 
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightStale = searchParams.get('highlight') === 'stale';
+  const deleteAction = searchParams.get('action') === 'delete';
   const { getLenderNames, getLenderDetails } = useLenders();
   const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { stages: dealStages, getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
   const { formatCurrencyValue, preferences } = usePreferences();
-  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deals } = useDealsContext();
+  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
@@ -372,7 +374,41 @@ export default function DealDetail() {
   } | null>(null);
   const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
   const [passReasonSearch, setPassReasonSearch] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(deleteAction);
+  const [isDeleting, setIsDeleting] = useState(false);
   
+  // Handle delete action from query param
+  useEffect(() => {
+    if (deleteAction) {
+      setIsDeleteDialogOpen(true);
+      // Clear the action param from URL
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('action');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [deleteAction, searchParams, setSearchParams]);
+
+  const handleDeleteDeal = async () => {
+    if (!deal) return;
+    setIsDeleting(true);
+    try {
+      await deleteDeal(deal.id);
+      toast({
+        title: "Deal deleted",
+        description: `${deal.company} has been permanently deleted.`,
+      });
+      navigate('/deals');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete deal. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
   // Deal attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('credit-file');
@@ -873,6 +909,40 @@ export default function DealDetail() {
         <title>{deal.name} - nAItive</title>
         <meta name="description" content={`Deal details for ${deal.name} with ${deal.company}`} />
       </Helmet>
+
+      {/* Delete Deal Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Deal</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete <strong>{deal.company}</strong>? 
+              This will also delete all associated lenders, milestones, and attachments. 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteDeal}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Deal
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="min-h-screen bg-background">
         <DealsHeader />
