@@ -1,6 +1,6 @@
-import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag } from 'lucide-react';
+import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2 } from 'lucide-react';
 import DOMPurify from 'dompurify';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -37,6 +37,7 @@ interface DealCardProps {
 }
 
 export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }: DealCardProps) {
+  const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
@@ -200,9 +201,17 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>View Details</DropdownMenuItem>
-                <DropdownMenuItem>Edit Deal</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    navigate(`/deal/${deal.id}?action=delete`);
+                  }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
