@@ -144,13 +144,15 @@ function FlagNotesInput({
   onSave, 
   onClose,
   history,
-  onDeleteHistoryItem
+  onDeleteHistoryItem,
+  onChangeValue,
 }: { 
   value: string; 
   onSave: (value: string) => void; 
   onClose?: () => void;
   history: FlagNoteHistoryItem[];
   onDeleteHistoryItem: (id: string) => void;
+  onChangeValue?: (value: string) => void;
 }) {
   const [localValue, setLocalValue] = useState(value);
   const [hasChanges, setHasChanges] = useState(false);
@@ -169,6 +171,7 @@ function FlagNotesInput({
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setLocalValue(e.target.value);
+    onChangeValue?.(e.target.value);
     setHasChanges(e.target.value !== value);
   };
 
@@ -445,7 +448,7 @@ export default function DealDetail() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFlagPopoverOpen, setIsFlagPopoverOpen] = useState(false);
   const [isDeleteFlagDialogOpen, setIsDeleteFlagDialogOpen] = useState(false);
-  
+  const [flagDraftNote, setFlagDraftNote] = useState('');
   // Handle delete action from query param
   useEffect(() => {
     if (deleteAction) {
@@ -1206,6 +1209,11 @@ export default function DealDetail() {
                   />
                   <Popover open={isFlagPopoverOpen} onOpenChange={(open) => {
                     setIsFlagPopoverOpen(open);
+                    if (open) {
+                      setFlagDraftNote(deal.flagNotes || '');
+                    } else {
+                      setFlagDraftNote('');
+                    }
                     // Auto-flag when opening the popover
                     if (open && !deal.isFlagged) {
                       updateDeal('isFlagged', true);
@@ -1268,12 +1276,13 @@ export default function DealDetail() {
                               size="sm"
                               className="gap-1 h-6 text-xs px-2"
                               onClick={async () => {
-                                // Save current note to history if exists
-                                if (deal.flagNotes && deal.flagNotes.trim()) {
-                                  await addFlagNote(deal.flagNotes);
+                                const noteToArchive = (flagDraftNote || deal.flagNotes || '').trim();
+                                if (noteToArchive) {
+                                  await addFlagNote(noteToArchive);
                                 }
                                 updateDeal('isFlagged', false);
                                 updateDeal('flagNotes', '');
+                                setFlagDraftNote('');
                                 setIsFlagPopoverOpen(false);
                                 toast({
                                   title: "Flag completed",
@@ -1288,7 +1297,10 @@ export default function DealDetail() {
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                              onClick={() => setIsDeleteFlagDialogOpen(true)}
+                              onClick={() => {
+                                setFlagDraftNote(deal.flagNotes || '');
+                                setIsDeleteFlagDialogOpen(true);
+                              }}
                               title="Delete flag"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -1297,11 +1309,13 @@ export default function DealDetail() {
                         </div>
                         <FlagNotesInput
                           value={deal.flagNotes || ''}
+                          onChangeValue={setFlagDraftNote}
                           onSave={(value) => {
                             // Save previous note to history before updating
                             if (deal.flagNotes && deal.flagNotes.trim() && value !== deal.flagNotes) {
                               addFlagNote(deal.flagNotes);
                             }
+                            setFlagDraftNote(value);
                             updateDeal('flagNotes', value);
                           }}
                           onClose={() => setIsFlagPopoverOpen(false)}
