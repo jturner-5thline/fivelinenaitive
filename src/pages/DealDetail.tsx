@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -409,6 +409,27 @@ export default function DealDetail() {
       setIsDeleteDialogOpen(false);
     }
   };
+
+  const handleArchiveDeal = async () => {
+    if (!deal) return;
+    try {
+      await updateDealInDb(deal.id, { status: 'archived' as any });
+      setDeal(prev => prev ? { ...prev, status: 'archived' as any } : prev);
+      toast({
+        title: "Deal archived",
+        description: `${deal.company} has been archived. You can find it in the archived filter.`,
+      });
+      setIsDeleteDialogOpen(false);
+      navigate('/deals');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to archive deal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Deal attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('credit-file');
@@ -912,31 +933,56 @@ export default function DealDetail() {
 
       {/* Delete Deal Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Deal</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to permanently delete <strong>{deal.company}</strong>? 
-              This will also delete all associated lenders, milestones, and attachments. 
-              This action cannot be undone.
+            <AlertDialogTitle>Delete or Archive Deal?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                What would you like to do with <strong>{deal.company}</strong>?
+              </p>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
+                <div className="flex items-start gap-2">
+                  <Archive className="h-4 w-4 mt-0.5 text-primary" />
+                  <div>
+                    <span className="font-medium">Archive</span> - Hide from active deals but keep all data. You can restore it later.
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Trash2 className="h-4 w-4 mt-0.5 text-destructive" />
+                  <div>
+                    <span className="font-medium">Delete</span> - Permanently remove the deal and all associated data. Cannot be undone.
+                  </div>
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={isDeleting} className="sm:mr-auto">Cancel</AlertDialogCancel>
+            {deal.status !== 'archived' && (
+              <Button
+                variant="outline"
+                onClick={handleArchiveDeal}
+                disabled={isDeleting}
+                className="gap-2"
+              >
+                <Archive className="h-4 w-4" />
+                Archive
+              </Button>
+            )}
             <AlertDialogAction 
               onClick={handleDeleteDeal}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Deleting...
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Deal
+                  <Trash2 className="h-4 w-4" />
+                  Delete
                 </>
               )}
             </AlertDialogAction>
