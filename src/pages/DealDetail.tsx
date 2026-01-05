@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -425,6 +425,24 @@ export default function DealDetail() {
       toast({
         title: "Error",
         description: "Failed to archive deal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRestoreFromArchive = async () => {
+    if (!deal) return;
+    try {
+      await updateDealInDb(deal.id, { status: 'active' as any });
+      setDeal(prev => prev ? { ...prev, status: 'active' as any } : prev);
+      toast({
+        title: "Deal restored",
+        description: `${deal.company} has been restored from archive.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to restore deal. Please try again.",
         variant: "destructive",
       });
     }
@@ -1183,6 +1201,17 @@ export default function DealDetail() {
                     ))}
                   </SelectContent>
                 </Select>
+                {deal.status === 'archived' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 text-xs gap-1"
+                    onClick={handleRestoreFromArchive}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Restore from Archive
+                  </Button>
+                )}
                 <Select
                   value={dynamicStageConfig[deal.stage] ? deal.stage : (dealStages[0]?.id || 'final-credit-items')}
                   onValueChange={(value: DealStage) => updateDeal('stage', value)}
