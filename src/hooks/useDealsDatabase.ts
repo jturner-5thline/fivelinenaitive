@@ -206,6 +206,7 @@ export function useDealsDatabase() {
             notesHistoryMap[nh.deal_lender_id] = [];
           }
           notesHistoryMap[nh.deal_lender_id].push({
+            id: nh.id,
             text: nh.text,
             updatedAt: nh.created_at,
           });
@@ -650,6 +651,40 @@ export function useDealsDatabase() {
     }
   }, [deals]);
 
+  // Delete lender note history
+  const deleteLenderNoteHistory = useCallback(async (noteId: string, lenderId: string) => {
+    // Store previous state for rollback
+    const previousDeals = deals;
+    
+    // Optimistically remove from UI immediately
+    setDeals(prev => prev.map(deal => ({
+      ...deal,
+      lenders: deal.lenders?.map(lender => 
+        lender.id === lenderId 
+          ? { ...lender, notesHistory: lender.notesHistory?.filter(n => n.id !== noteId) }
+          : lender
+      )
+    })));
+
+    try {
+      const { error } = await supabase
+        .from('lender_notes_history')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) throw error;
+    } catch (err) {
+      // Rollback on error
+      setDeals(previousDeals);
+      console.error('Error deleting lender note history:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete note",
+        variant: "destructive",
+      });
+    }
+  }, [deals]);
+
   // Get a single deal by ID
   const getDealById = useCallback((dealId: string): Deal | undefined => {
     return deals.find(d => d.id === dealId);
@@ -709,6 +744,7 @@ export function useDealsDatabase() {
     addLenderToDeal,
     updateLender,
     deleteLender,
+    deleteLenderNoteHistory,
     deleteDeal,
     getDealById,
   };
