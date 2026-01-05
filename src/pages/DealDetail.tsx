@@ -1226,10 +1226,47 @@ export default function DealDetail() {
                         <div className="flex items-center justify-between">
                           <label className="text-sm font-medium">Flag for Discussion</label>
                           <div className="flex items-center gap-1">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                  title="View flag history"
+                                >
+                                  <Clock className="h-3.5 w-3.5" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-72" align="start">
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium">Flag History</p>
+                                  {flagNotes.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">No previous flags</p>
+                                  ) : (
+                                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                                      {flagNotes.map((item) => (
+                                        <div key={item.id} className="text-xs p-2 bg-muted/50 rounded group relative">
+                                          <p className="text-muted-foreground pr-5 break-words">{item.note}</p>
+                                          <p className="text-muted-foreground/70 mt-1">
+                                            {format(new Date(item.created_at), 'MMM d, yyyy h:mm a')}
+                                          </p>
+                                          <button
+                                            onClick={() => deleteFlagNote(item.id)}
+                                            className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                             <Button
                               variant="default"
                               size="sm"
-                              className="gap-1"
+                              className="gap-1 h-6 text-xs px-2"
                               onClick={async () => {
                                 // Save current note to history if exists
                                 if (deal.flagNotes && deal.flagNotes.trim()) {
@@ -1244,17 +1281,17 @@ export default function DealDetail() {
                                 });
                               }}
                             >
-                              <Check className="h-3 w-3" />
+                              <Check className="h-2.5 w-2.5" />
                               Complete
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
                               onClick={() => setIsDeleteFlagDialogOpen(true)}
                               title="Delete flag"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
