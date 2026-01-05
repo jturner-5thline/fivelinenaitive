@@ -760,6 +760,9 @@ export default function DealDetail() {
     return numValue * 1000000;
   };
 
+  // Fields that should log activity (significant changes only)
+  const ACTIVITY_LOG_FIELDS: (keyof Deal)[] = ['status', 'stage', 'value', 'manager', 'dealOwner', 'engagementType', 'exclusivity', 'dealTypes'];
+  
   const updateDeal = (field: keyof Deal, value: string | number | string[] | boolean | undefined) => {
     setDeal(prev => {
       if (!prev) return prev;
@@ -776,35 +779,33 @@ export default function DealDetail() {
         }
       }
       
-      // Log activity for significant changes
+      // Log activity only for significant changes (not every keystroke for text fields)
       const oldValue = prev[field];
-      if (field === 'status' || field === 'stage') {
-        logActivity(
-          field === 'status' ? 'status_change' : 'stage_change',
-          `${field.charAt(0).toUpperCase() + field.slice(1)} changed`,
-          { from: String(oldValue), to: String(value) }
-        );
-      } else if (field === 'value') {
-        logActivity('value_updated', `Deal value updated`, { 
-          field,
-          oldValue: String(oldValue), 
-          newValue: String(value) 
-        });
-      } else {
-        logActivity('deal_updated', `${field.charAt(0).toUpperCase() + field.slice(1)} updated`, { 
-          field,
-          oldValue: oldValue !== undefined ? String(oldValue) : undefined,
-          newValue: value !== undefined ? String(value) : undefined,
-        });
+      if (ACTIVITY_LOG_FIELDS.includes(field) && oldValue !== value) {
+        if (field === 'status' || field === 'stage') {
+          logActivity(
+            field === 'status' ? 'status_change' : 'stage_change',
+            `${field.charAt(0).toUpperCase() + field.slice(1)} changed`,
+            { from: String(oldValue), to: String(value) }
+          );
+        } else if (field === 'value') {
+          logActivity('value_updated', `Deal value updated`, { 
+            field,
+            oldValue: String(oldValue), 
+            newValue: String(value) 
+          });
+        } else {
+          logActivity('deal_updated', `${field.charAt(0).toUpperCase() + field.slice(1)} updated`, { 
+            field,
+            oldValue: oldValue !== undefined ? String(oldValue) : undefined,
+            newValue: value !== undefined ? String(value) : undefined,
+          });
+        }
       }
       
       // Persist to database
       updateDealInDb(prev.id, { [field]: value } as Partial<Deal>);
       
-      toast({
-        title: "Deal updated",
-        description: `${field.charAt(0).toUpperCase() + field.slice(1)} has been updated.`,
-      });
       return updated;
     });
   };
