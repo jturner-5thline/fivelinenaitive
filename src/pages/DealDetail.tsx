@@ -132,7 +132,7 @@ interface EditHistory {
 }
 
 // Component to handle flag notes with local state to prevent freezing
-function FlagNotesInput({ value, onSave }: { value: string; onSave: (value: string) => void }) {
+function FlagNotesInput({ value, onSave, onClose }: { value: string; onSave: (value: string) => void; onClose?: () => void }) {
   const [localValue, setLocalValue] = useState(value);
   const [hasChanges, setHasChanges] = useState(false);
   
@@ -151,6 +151,7 @@ function FlagNotesInput({ value, onSave }: { value: string; onSave: (value: stri
       onSave(localValue);
       setHasChanges(false);
     }
+    onClose?.();
   };
   
   return (
@@ -170,7 +171,6 @@ function FlagNotesInput({ value, onSave }: { value: string; onSave: (value: stri
         <Button
           size="sm"
           onClick={handleSave}
-          disabled={!hasChanges}
           className="h-7 text-xs"
         >
           <Save className="h-3 w-3 mr-1" />
@@ -376,6 +376,7 @@ export default function DealDetail() {
   const [passReasonSearch, setPassReasonSearch] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(deleteAction);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isFlagPopoverOpen, setIsFlagPopoverOpen] = useState(false);
   
   // Handle delete action from query param
   useEffect(() => {
@@ -1135,7 +1136,7 @@ export default function DealDetail() {
                     onSave={(value) => updateDeal('company', value)}
                     displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]"
                   />
-                  <Popover>
+                  <Popover open={isFlagPopoverOpen} onOpenChange={setIsFlagPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="ghost"
@@ -1167,6 +1168,7 @@ export default function DealDetail() {
                           <FlagNotesInput
                             value={deal.flagNotes || ''}
                             onSave={(value) => updateDeal('flagNotes', value)}
+                            onClose={() => setIsFlagPopoverOpen(false)}
                           />
                         )}
                       </div>
