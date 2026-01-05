@@ -45,11 +45,32 @@ export function HintTooltip({
     end: side === 'top' || side === 'bottom' ? 'right-0' : 'bottom-0',
   };
 
-  const arrowClasses = {
-    top: 'top-full left-1/2 -translate-x-1/2 border-t-primary/90 border-l-transparent border-r-transparent border-b-transparent',
-    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-primary/90 border-l-transparent border-r-transparent border-t-transparent',
-    left: 'left-full top-1/2 -translate-y-1/2 border-l-primary/90 border-t-transparent border-b-transparent border-r-transparent',
-    right: 'right-full top-1/2 -translate-y-1/2 border-r-primary/90 border-t-transparent border-b-transparent border-l-transparent',
+  const getArrowClasses = () => {
+    const baseArrowPosition = {
+      top: 'top-full border-t-primary/90 border-l-transparent border-r-transparent border-b-transparent',
+      bottom: 'bottom-full border-b-primary/90 border-l-transparent border-r-transparent border-t-transparent',
+      left: 'left-full border-l-primary/90 border-t-transparent border-b-transparent border-r-transparent',
+      right: 'right-full border-r-primary/90 border-t-transparent border-b-transparent border-l-transparent',
+    };
+
+    // Adjust horizontal position based on align for top/bottom sides
+    const horizontalAlign = {
+      start: 'left-4',
+      center: 'left-1/2 -translate-x-1/2',
+      end: 'right-4',
+    };
+
+    // Adjust vertical position based on align for left/right sides
+    const verticalAlign = {
+      start: 'top-4',
+      center: 'top-1/2 -translate-y-1/2',
+      end: 'bottom-4',
+    };
+
+    if (side === 'top' || side === 'bottom') {
+      return `${baseArrowPosition[side]} ${horizontalAlign[align]}`;
+    }
+    return `${baseArrowPosition[side]} ${verticalAlign[align]}`;
   };
 
   return (
@@ -123,7 +144,7 @@ export function HintTooltip({
             <div
               className={cn(
                 'absolute border-[6px]',
-                arrowClasses[side]
+                getArrowClasses()
               )}
             />
           </div>
