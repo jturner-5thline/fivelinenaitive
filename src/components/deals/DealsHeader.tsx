@@ -38,6 +38,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
+import { useProfile } from '@/hooks/useProfile';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { useDefaultMilestones } from '@/contexts/DefaultMilestonesContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
@@ -51,6 +52,7 @@ export function DealsHeader() {
   const { signOut, user } = useAuth();
   const { createDeal } = useDealsContext();
   const { company, members } = useCompany();
+  const { profile } = useProfile();
   const { stages: dealStages } = useDealStages();
   const { defaultMilestones } = useDefaultMilestones();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
@@ -64,11 +66,24 @@ export function DealsHeader() {
 
   const sortedMilestones = [...defaultMilestones].sort((a, b) => a.position - b.position);
 
-  // Get member options for dropdowns
-  const memberOptions = members.map(member => ({
-    value: member.user_id,
-    label: member.display_name || member.email || member.user_id.slice(0, 8),
-  }));
+  // Get member options for dropdowns - always include current user
+  const memberOptions = (() => {
+    const options = members.map(member => ({
+      value: member.user_id,
+      label: member.display_name || member.email || member.user_id.slice(0, 8),
+    }));
+    
+    // If current user is not in the list, add them
+    if (user && !options.some(opt => opt.value === user.id)) {
+      const currentUserLabel = profile?.display_name || user.email || 'Me';
+      options.unshift({
+        value: user.id,
+        label: currentUserLabel,
+      });
+    }
+    
+    return options;
+  })();
 
   const isDemoUser = user?.email === 'demo@example.com';
 
