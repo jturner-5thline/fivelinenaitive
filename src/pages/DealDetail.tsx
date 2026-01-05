@@ -9,6 +9,7 @@ import { DealMilestones } from '@/components/deals/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
+import { useFlagNotes } from '@/hooks/useFlagNotes';
 import { useDealAttachments, DealAttachmentCategory, DEAL_ATTACHMENT_CATEGORIES } from '@/hooks/useDealAttachments';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { Button } from '@/components/ui/button';
@@ -131,10 +132,29 @@ interface EditHistory {
   timestamp: Date;
 }
 
+interface FlagNoteHistoryItem {
+  id: string;
+  note: string;
+  created_at: string;
+}
+
 // Component to handle flag notes with local state to prevent freezing
-function FlagNotesInput({ value, onSave, onClose }: { value: string; onSave: (value: string) => void; onClose?: () => void }) {
+function FlagNotesInput({ 
+  value, 
+  onSave, 
+  onClose,
+  history,
+  onDeleteHistoryItem
+}: { 
+  value: string; 
+  onSave: (value: string) => void; 
+  onClose?: () => void;
+  history: FlagNoteHistoryItem[];
+  onDeleteHistoryItem: (id: string) => void;
+}) {
   const [localValue, setLocalValue] = useState(value);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   useEffect(() => {
@@ -192,6 +212,37 @@ function FlagNotesInput({ value, onSave, onClose }: { value: string; onSave: (va
           Save
         </Button>
       </div>
+      
+      {history.length > 0 && (
+        <div className="border-t border-border pt-2 mt-2">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <History className="h-3 w-3" />
+            {showHistory ? 'Hide' : 'Show'} history ({history.length})
+            {showHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+          {showHistory && (
+            <div className="mt-2 space-y-2 max-h-[150px] overflow-y-auto">
+              {history.map((item) => (
+                <div key={item.id} className="text-xs p-2 bg-muted/50 rounded group relative">
+                  <p className="text-muted-foreground pr-5 break-words">{item.note}</p>
+                  <p className="text-muted-foreground/70 mt-1">
+                    {format(new Date(item.created_at), 'MMM d, yyyy h:mm a')}
+                  </p>
+                  <button
+                    onClick={() => onDeleteHistoryItem(item.id)}
+                    className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -211,6 +262,7 @@ export default function DealDetail() {
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
+  const { flagNotes, addFlagNote, deleteFlagNote } = useFlagNotes(id || null);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
   const { user } = useAuth();
   const { members } = useCompany();
@@ -1186,8 +1238,16 @@ export default function DealDetail() {
                         </div>
                         <FlagNotesInput
                           value={deal.flagNotes || ''}
-                          onSave={(value) => updateDeal('flagNotes', value)}
+                          onSave={(value) => {
+                            // Save previous note to history before updating
+                            if (deal.flagNotes && deal.flagNotes.trim() && value !== deal.flagNotes) {
+                              addFlagNote(deal.flagNotes);
+                            }
+                            updateDeal('flagNotes', value);
+                          }}
                           onClose={() => setIsFlagPopoverOpen(false)}
+                          history={flagNotes}
+                          onDeleteHistoryItem={deleteFlagNote}
                         />
                       </div>
                     </PopoverContent>
