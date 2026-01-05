@@ -16,6 +16,7 @@ import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBan
 import { DemoBanner } from '@/components/deals/DemoBanner';
 import { DemoTour } from '@/components/deals/DemoTour';
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
+import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -112,6 +113,7 @@ export default function Dashboard() {
           <DemoTour />
           <EmailVerificationBanner />
           <DemoBanner onDataCleared={refreshDeals} />
+          <CreateCompanyBanner />
           <div className="space-y-6">
             {/* Page Header & Widgets */}
             <div className="space-y-3">
