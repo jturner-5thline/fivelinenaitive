@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -444,6 +444,7 @@ export default function DealDetail() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(deleteAction);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFlagPopoverOpen, setIsFlagPopoverOpen] = useState(false);
+  const [isDeleteFlagDialogOpen, setIsDeleteFlagDialogOpen] = useState(false);
   
   // Handle delete action from query param
   useEffect(() => {
@@ -1224,17 +1225,38 @@ export default function DealDetail() {
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <label className="text-sm font-medium">Flag for Discussion</label>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              updateDeal('isFlagged', false);
-                              updateDeal('flagNotes', '');
-                              setIsFlagPopoverOpen(false);
-                            }}
-                          >
-                            Remove Flag
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => {
+                                // Save current note to history if exists
+                                if (deal.flagNotes && deal.flagNotes.trim()) {
+                                  addFlagNote(deal.flagNotes);
+                                }
+                                updateDeal('isFlagged', false);
+                                updateDeal('flagNotes', '');
+                                setIsFlagPopoverOpen(false);
+                                toast({
+                                  title: "Flag completed",
+                                  description: "The flag has been marked as complete.",
+                                });
+                              }}
+                            >
+                              <Check className="h-3 w-3" />
+                              Complete
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => setIsDeleteFlagDialogOpen(true)}
+                              title="Delete flag"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         <FlagNotesInput
                           value={deal.flagNotes || ''}
@@ -1250,6 +1272,36 @@ export default function DealDetail() {
                           onDeleteHistoryItem={deleteFlagNote}
                         />
                       </div>
+                      
+                      {/* Delete Flag Confirmation Dialog */}
+                      <AlertDialog open={isDeleteFlagDialogOpen} onOpenChange={setIsDeleteFlagDialogOpen}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete flag?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove the flag and all its notes. The note history will be preserved.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => {
+                                updateDeal('isFlagged', false);
+                                updateDeal('flagNotes', '');
+                                setIsDeleteFlagDialogOpen(false);
+                                setIsFlagPopoverOpen(false);
+                                toast({
+                                  title: "Flag deleted",
+                                  description: "The flag has been removed.",
+                                });
+                              }}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </PopoverContent>
                   </Popover>
                 </div>
