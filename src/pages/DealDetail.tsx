@@ -188,7 +188,7 @@ export default function DealDetail() {
   const { stages: dealStages, getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
   const { formatCurrencyValue, preferences } = usePreferences();
-  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deals } = useDealsContext();
+  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deals } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
@@ -1459,11 +1459,19 @@ export default function DealDetail() {
                                       </CollapsibleTrigger>
                                       <CollapsibleContent className="mt-1 space-y-1.5">
                                         {lender.notesHistory.map((historyItem, idx) => (
-                                          <div key={idx} className="flex items-start gap-2 text-xs bg-muted/30 rounded px-2 py-1.5">
+                                          <div key={historyItem.id || idx} className="flex items-start gap-2 text-xs bg-muted/30 rounded px-2 py-1.5 group/note relative">
                                             <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-0.5">
                                               {format(new Date(historyItem.updatedAt), "MM-dd HH:mm")}
                                             </span>
-                                            <p className="text-foreground/80">{historyItem.text}</p>
+                                            <p className="text-foreground/80 pr-5">{historyItem.text}</p>
+                                            {historyItem.id && (
+                                              <button
+                                                onClick={() => deleteLenderNoteHistory(historyItem.id!, lender.id)}
+                                                className="absolute top-1.5 right-1.5 opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </button>
+                                            )}
                                           </div>
                                         ))}
                                       </CollapsibleContent>
@@ -1720,11 +1728,19 @@ export default function DealDetail() {
                                               {expandedLenderHistory.has(lender.id) && (
                                                 <div className="mt-1 space-y-1 border-l-2 border-muted pl-2">
                                                   {lender.notesHistory.map((historyItem, idx) => (
-                                                    <div key={idx} className="text-xs">
+                                                    <div key={historyItem.id || idx} className="text-xs group/note relative">
                                                       <span className="text-[10px] text-muted-foreground">
                                                         {format(new Date(historyItem.updatedAt), 'MM-dd')}
                                                       </span>
-                                                      <p className="text-foreground/80 mt-0.5">{historyItem.text}</p>
+                                                      <p className="text-foreground/80 mt-0.5 pr-5">{historyItem.text}</p>
+                                                      {historyItem.id && (
+                                                        <button
+                                                          onClick={() => deleteLenderNoteHistory(historyItem.id!, lender.id)}
+                                                          className="absolute top-0 right-0 opacity-0 group-hover/note:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                                        >
+                                                          <Trash2 className="h-3 w-3" />
+                                                        </button>
+                                                      )}
                                                     </div>
                                                   ))}
                                                 </div>

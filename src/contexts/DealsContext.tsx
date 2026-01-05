@@ -25,6 +25,7 @@ interface DealsContextType {
   addLenderToDeal: (dealId: string, lenderData: Partial<DealLender>) => Promise<DealLender | null>;
   updateLender: (lenderId: string, updates: Partial<DealLender>) => Promise<void>;
   deleteLender: (lenderId: string) => Promise<void>;
+  deleteLenderNoteHistory: (noteId: string, lenderId: string) => Promise<void>;
   deleteDeal: (dealId: string) => Promise<void>;
   getDealById: (dealId: string) => Deal | undefined;
   refreshDeals: () => Promise<void>;
@@ -44,6 +45,7 @@ export function DealsProvider({ children }: { children: ReactNode }) {
     addLenderToDeal,
     updateLender,
     deleteLender,
+    deleteLenderNoteHistory,
     deleteDeal,
     getDealById,
   } = useDealsDatabase();
@@ -58,6 +60,7 @@ export function DealsProvider({ children }: { children: ReactNode }) {
     addLenderToDeal,
     updateLender,
     deleteLender,
+    deleteLenderNoteHistory,
     deleteDeal,
     getDealById,
     refreshDeals: fetchDeals,
@@ -71,6 +74,7 @@ export function DealsProvider({ children }: { children: ReactNode }) {
     addLenderToDeal,
     updateLender,
     deleteLender,
+    deleteLenderNoteHistory,
     deleteDeal,
     getDealById,
     fetchDeals,
