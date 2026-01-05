@@ -1230,10 +1230,10 @@ export default function DealDetail() {
                               variant="default"
                               size="sm"
                               className="gap-1"
-                              onClick={() => {
+                              onClick={async () => {
                                 // Save current note to history if exists
                                 if (deal.flagNotes && deal.flagNotes.trim()) {
-                                  addFlagNote(deal.flagNotes);
+                                  await addFlagNote(deal.flagNotes);
                                 }
                                 updateDeal('isFlagged', false);
                                 updateDeal('flagNotes', '');
