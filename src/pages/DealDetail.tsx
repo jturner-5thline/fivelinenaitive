@@ -18,7 +18,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
-import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, MANAGERS, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+import { useProfile } from '@/hooks/useProfile';
+import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useLenderStages, STAGE_GROUPS, StageGroup } from '@/contexts/LenderStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -192,7 +195,29 @@ export default function DealDetail() {
   const { activities: activityLogs, logActivity } = useActivityLog(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
+  const { user } = useAuth();
+  const { members } = useCompany();
+  const { profile } = useProfile();
   const lenderNames = getLenderNames();
+  
+  // Get member options for manager/owner dropdowns - always include current user
+  const memberOptions = useMemo(() => {
+    const options = members.map(member => ({
+      value: member.display_name || member.email || member.user_id.slice(0, 8),
+      label: member.display_name || member.email || member.user_id.slice(0, 8),
+    }));
+    
+    // If current user is not in the list, add them
+    const currentUserLabel = profile?.display_name || user?.email || 'Me';
+    if (user && !options.some(opt => opt.value === currentUserLabel)) {
+      options.unshift({
+        value: currentUserLabel,
+        label: currentUserLabel,
+      });
+    }
+    
+    return options;
+  }, [members, user, profile]);
   
   // Get deal from context
   const contextDeal = getDealById(id || '');
@@ -1869,9 +1894,9 @@ export default function DealDetail() {
                           <SelectValue placeholder="Select manager" />
                         </SelectTrigger>
                         <SelectContent>
-                          {MANAGERS.map((manager) => (
-                            <SelectItem key={manager} value={manager}>
-                              {manager}
+                          {memberOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1890,9 +1915,9 @@ export default function DealDetail() {
                           <SelectValue placeholder="Select owner" />
                         </SelectTrigger>
                         <SelectContent>
-                          {MANAGERS.map((manager) => (
-                            <SelectItem key={manager} value={manager}>
-                              {manager}
+                          {memberOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
