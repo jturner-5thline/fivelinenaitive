@@ -410,24 +410,43 @@ export default function DealDetail() {
       user: 'You',
       timestamp: item.timestamp,
       metadata: { lenderName: item.lender.name, lenderData: item.lender },
-      onUndo: () => {
-        // Restore the lender
-        setDeal(prev => {
-          if (!prev) return prev;
-          return { ...prev, lenders: [...(prev.lenders || []), item.lender], updatedAt: new Date().toISOString() };
+      onUndo: async () => {
+        if (!deal) return;
+        
+        // Re-add the lender to the database
+        const restoredLender = await addLenderToDeal(deal.id, {
+          name: item.lender.name,
+          stage: item.lender.stage,
+          substage: item.lender.substage,
+          notes: item.lender.notes,
+          passReason: item.lender.passReason,
         });
-        // Remove from removed lenders list
-        setRemovedLenders(prev => prev.filter(r => r.id !== item.id));
-        toast({
-          title: "Lender restored",
-          description: `${item.lender.name} has been restored to the deal.`,
-        });
+        
+        if (restoredLender) {
+          // Update local state with the new lender (with new ID from database)
+          setDeal(prev => {
+            if (!prev) return prev;
+            return { ...prev, lenders: [...(prev.lenders || []), restoredLender], updatedAt: new Date().toISOString() };
+          });
+          // Remove from removed lenders list
+          setRemovedLenders(prev => prev.filter(r => r.id !== item.id));
+          toast({
+            title: "Lender restored",
+            description: `${item.lender.name} has been restored to the deal.`,
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to restore lender. Please try again.",
+            variant: "destructive",
+          });
+        }
       },
     }));
     return [...localActivities, ...dbActivities].sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-  }, [activityLogs, removedLenders]);
+  }, [activityLogs, removedLenders, deal, addLenderToDeal]);
 
   // Get all deals where selected lender appears
   const getLenderDeals = useCallback((lenderName: string) => {
