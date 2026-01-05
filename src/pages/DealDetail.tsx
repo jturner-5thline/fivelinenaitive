@@ -1359,7 +1359,7 @@ export default function DealDetail() {
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                                           <AlertDialogAction
-                                            onClick={() => {
+                                            onClick={async () => {
                                               const removedLender = lender;
                                               const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
                                               setDeal(prev => {
@@ -1367,6 +1367,8 @@ export default function DealDetail() {
                                                 setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
                                                 return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
                                               });
+                                              // Actually delete from database
+                                              await deleteLenderInDb(lender.id);
                                               setRemovedLenders(prev => [...prev, {
                                                 lender: removedLender,
                                                 timestamp: new Date().toISOString(),
@@ -1628,7 +1630,7 @@ export default function DealDetail() {
                                                 <AlertDialogFooter>
                                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                                   <AlertDialogAction
-                                                    onClick={() => {
+                                                    onClick={async () => {
                                                       const removedLender = lender;
                                                       const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
                                                       setDeal(prev => {
@@ -1636,6 +1638,8 @@ export default function DealDetail() {
                                                         setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
                                                         return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
                                                       });
+                                                      // Actually delete from database
+                                                      await deleteLenderInDb(lender.id);
                                                       setRemovedLenders(prev => [...prev, {
                                                         lender: removedLender,
                                                         timestamp: new Date().toISOString(),
