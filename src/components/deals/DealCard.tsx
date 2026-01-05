@@ -1,4 +1,4 @@
-import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2 } from 'lucide-react';
+import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link, useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -201,6 +201,18 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
+                {deal.status !== 'archived' && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onStatusChange(deal.id, 'archived');
+                    }}
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archive
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.preventDefault();
