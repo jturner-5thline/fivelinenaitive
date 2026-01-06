@@ -404,7 +404,7 @@ export type Database = {
           success_fee_percent: number | null
           total_fee: number | null
           updated_at: string
-          user_id: string | null
+          user_id: string
           value: number
         }
         Insert: {
@@ -431,7 +431,7 @@ export type Database = {
           success_fee_percent?: number | null
           total_fee?: number | null
           updated_at?: string
-          user_id?: string | null
+          user_id: string
           value?: number
         }
         Update: {
@@ -458,7 +458,7 @@ export type Database = {
           success_fee_percent?: number | null
           total_fee?: number | null
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
           value?: number
         }
         Relationships: [
