@@ -53,6 +53,7 @@ const defaultStages: StageOption[] = [
   { id: 'management-call-completed', label: 'Management Call Completed', group: 'active' },
   { id: 'draft-terms', label: 'Draft Terms', group: 'active' },
   { id: 'term-sheets', label: 'Term Sheets', group: 'active' },
+  { id: 'passed', label: 'Passed', group: 'passed' },
 ];
 
 const defaultSubstages: SubstageOption[] = [
