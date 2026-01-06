@@ -60,6 +60,35 @@ export function PendingInvitations({ companyId, companyName }: PendingInvitation
         .eq('user_id', user?.id)
         .maybeSingle();
 
+      const expired = isExpired(invitation.expires_at);
+      let tokenToUse = invitation.token;
+
+      // If expired, generate new token and reset expiration
+      if (expired) {
+        const newExpiresAt = new Date();
+        newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+        const newToken = crypto.randomUUID();
+
+        const { error: updateError } = await supabase
+          .from('company_invitations')
+          .update({ 
+            token: newToken,
+            expires_at: newExpiresAt.toISOString()
+          })
+          .eq('id', invitation.id);
+
+        if (updateError) throw updateError;
+
+        tokenToUse = newToken;
+        
+        // Update local state
+        setInvitations(prev => prev.map(inv => 
+          inv.id === invitation.id 
+            ? { ...inv, token: newToken, expires_at: newExpiresAt.toISOString() }
+            : inv
+        ));
+      }
+
       // Send the invitation email
       const { error } = await supabase.functions.invoke('send-invite', {
         body: {
@@ -68,15 +97,17 @@ export function PendingInvitations({ companyId, companyName }: PendingInvitation
           companyName,
           inviterName: profile?.display_name || user?.email || 'A team member',
           role: invitation.role === 'admin' ? 'Admin' : 'User',
-          token: invitation.token,
+          token: tokenToUse,
         },
       });
 
       if (error) throw error;
 
       toast({
-        title: 'Invitation resent',
-        description: `A new invitation email has been sent to ${invitation.email}`,
+        title: expired ? 'Invitation renewed' : 'Invitation resent',
+        description: expired 
+          ? `A new invitation with a fresh 7-day expiry has been sent to ${invitation.email}`
+          : `A new invitation email has been sent to ${invitation.email}`,
       });
     } catch (error: any) {
       console.error('Error resending invitation:', error);
