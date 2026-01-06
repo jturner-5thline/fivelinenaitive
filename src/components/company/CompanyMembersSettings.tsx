@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Users, Trash2, Crown, Shield, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InviteMemberDialog } from './InviteMemberDialog';
+import { BulkInviteDialog } from './BulkInviteDialog';
 import { PendingInvitations } from './PendingInvitations';
 
 const roleIcons: Record<CompanyRole, React.ReactNode> = {
@@ -56,7 +57,10 @@ export function CompanyMembersSettings() {
               </CardDescription>
             </div>
             {isAdmin && company && (
-              <InviteMemberDialog companyId={company.id} companyName={company.name} />
+              <div className="flex items-center gap-2">
+                <InviteMemberDialog companyId={company.id} companyName={company.name} />
+                <BulkInviteDialog companyId={company.id} companyName={company.name} />
+              </div>
             )}
           </div>
         </CardHeader>
