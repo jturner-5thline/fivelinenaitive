@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Plus, Settings, User, SlidersHorizontal, LogOut, FlaskConical, HelpCircle, Flag, Calendar } from 'lucide-react';
+import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar } from 'lucide-react';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
+import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
@@ -85,7 +85,7 @@ export function DealsHeader() {
     return options;
   })();
 
-  const isDemoUser = user?.email === 'demo@example.com';
+  
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatAmountWithCommas(e.target.value);
@@ -153,21 +153,7 @@ export function DealsHeader() {
             )}
             <Logo className="text-2xl" />
           </Link>
-          {isDemoUser && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="gap-1.5 border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 cursor-help">
-                    <FlaskConical className="h-3 w-3" />
-                    Demo Mode
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-sm">You're exploring with sample data. Feel free to experiment—changes won't affect real accounts.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          <DemoModeBadge />
           <nav className="hidden items-center gap-1 md:flex">
             <Button 
               variant="ghost" 
