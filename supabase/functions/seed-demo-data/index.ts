@@ -95,6 +95,15 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Parse request body for force option
+    let forceReseed = false;
+    try {
+      const body = await req.json();
+      forceReseed = body?.force === true;
+    } catch {
+      // No body or invalid JSON, use defaults
+    }
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No authorization header" }), {
@@ -133,7 +142,18 @@ Deno.serve(async (req) => {
       throw checkError;
     }
 
-    if (existingDeals && existingDeals.length > 0) {
+    // If force re-seed, delete existing deals first
+    if (forceReseed && existingDeals && existingDeals.length > 0) {
+      console.log("Force re-seeding: deleting existing deals for user", user.id);
+      const { error: deleteError } = await supabaseAdmin
+        .from("deals")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+    } else if (existingDeals && existingDeals.length > 0) {
       return new Response(JSON.stringify({ 
         message: "Demo data already exists", 
         seeded: false 

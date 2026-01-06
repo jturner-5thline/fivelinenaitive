@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Info, Trash2, Play } from 'lucide-react';
+import { Info, Trash2, Play, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -22,6 +22,7 @@ interface DemoBannerProps {
 export function DemoBanner({ onDataCleared }: DemoBannerProps) {
   const [isDemoUser, setIsDemoUser] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isReseeding, setIsReseeding] = useState(false);
 
   useEffect(() => {
     const checkDemoUser = async () => {
@@ -64,6 +65,32 @@ export function DemoBanner({ onDataCleared }: DemoBannerProps) {
     }
   };
 
+  const handleReseedData = async () => {
+    setIsReseeding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('seed-demo-data', {
+        body: { force: true },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Demo data refreshed',
+        description: `${data?.dealsCreated || 7} demo deals have been created.`,
+      });
+
+      onDataCleared?.();
+    } catch (error: any) {
+      toast({
+        title: 'Error re-seeding data',
+        description: error.message || 'Failed to re-seed demo data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsReseeding(false);
+    }
+  };
+
   if (!isDemoUser) {
     return null;
   }
@@ -93,6 +120,32 @@ export function DemoBanner({ onDataCleared }: DemoBannerProps) {
               <Play className="h-3.5 w-3.5" />
               Restart tour
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="gradient" size="sm" className="gap-2">
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Re-seed demo data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Re-seed demo data?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will delete all existing deals and create fresh demo data. 
+                    This is useful for testing or starting over with the original sample deals.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleReseedData}
+                    disabled={isReseeding}
+                  >
+                    {isReseeding ? 'Re-seeding...' : 'Re-seed data'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="gradient" size="sm" className="gap-2">
