@@ -444,6 +444,14 @@ export default function DealDetail() {
   } | null>(null);
   const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
   const [passReasonSearch, setPassReasonSearch] = useState('');
+  
+  // Term Sheet milestone confirmation dialog state
+  const [termSheetMilestoneDialogOpen, setTermSheetMilestoneDialogOpen] = useState(false);
+  const [pendingTermSheetMilestone, setPendingTermSheetMilestone] = useState<{
+    milestoneId: string;
+    milestoneTitle: string;
+    lenderName: string;
+  } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(deleteAction);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFlagPopoverOpen, setIsFlagPopoverOpen] = useState(false);
@@ -764,6 +772,25 @@ export default function DealDetail() {
   const updateMilestone = useCallback(async (id: string, updates: Partial<DealMilestone>) => {
     await updateMilestoneInDb(id, updates);
   }, [updateMilestoneInDb]);
+
+  // Helper to check if Term Sheet Received milestone should be prompted for completion
+  const checkTermSheetMilestone = useCallback((lenderName: string) => {
+    // Find "Term Sheet Received" milestone that's not completed
+    const termSheetMilestone = dbMilestones.find(
+      m => m.title.toLowerCase().includes('term sheet') && 
+           m.title.toLowerCase().includes('received') && 
+           !m.completed
+    );
+    
+    if (termSheetMilestone) {
+      setPendingTermSheetMilestone({
+        milestoneId: termSheetMilestone.id,
+        milestoneTitle: termSheetMilestone.title,
+        lenderName,
+      });
+      setTermSheetMilestoneDialogOpen(true);
+    }
+  }, [dbMilestones]);
 
   const deleteMilestone = useCallback(async (id: string) => {
     const success = await deleteMilestoneFromDb(id);
@@ -1646,6 +1673,11 @@ export default function DealDetail() {
                                           l.id === lender.id ? { ...l, stage: value, passReason: undefined, updatedAt: new Date().toISOString() } : l
                                         );
                                         updateDeal('lenders', updatedLenders as any);
+                                        
+                                        // Check if lender moved to "term-sheets" stage - prompt for milestone completion
+                                        if (value === 'term-sheets') {
+                                          checkTermSheetMilestone(lender.name);
+                                        }
                                       }
                                     }}
                                   >
@@ -1917,6 +1949,11 @@ export default function DealDetail() {
                                                   l.id === lender.id ? { ...l, stage: value, passReason: undefined, updatedAt: new Date().toISOString() } : l
                                                 );
                                                 updateDeal('lenders', updatedLenders as any);
+                                                
+                                                // Check if lender moved to "term-sheets" stage - prompt for milestone completion
+                                                if (value === 'term-sheets') {
+                                                  checkTermSheetMilestone(lender.name);
+                                                }
                                               }
                                             }}
                                           >
@@ -3091,6 +3128,43 @@ export default function DealDetail() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Term Sheet Milestone Confirmation Dialog */}
+      <AlertDialog open={termSheetMilestoneDialogOpen} onOpenChange={setTermSheetMilestoneDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark Milestone Complete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingTermSheetMilestone?.lenderName} has been moved to "Term Sheets" stage. 
+              Would you like to mark the "{pendingTermSheetMilestone?.milestoneTitle}" milestone as complete?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setTermSheetMilestoneDialogOpen(false);
+              setPendingTermSheetMilestone(null);
+            }}>
+              No, Keep Incomplete
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (pendingTermSheetMilestone) {
+                await updateMilestoneInDb(pendingTermSheetMilestone.milestoneId, {
+                  completed: true,
+                  completedAt: new Date().toISOString(),
+                });
+                toast({
+                  title: "Milestone completed",
+                  description: `"${pendingTermSheetMilestone.milestoneTitle}" has been marked as complete.`,
+                });
+              }
+              setTermSheetMilestoneDialogOpen(false);
+              setPendingTermSheetMilestone(null);
+            }}>
+              Yes, Mark Complete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
