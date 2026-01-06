@@ -156,7 +156,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
         {!isExpanded && milestones.length > 0 && (
-          <div className="relative py-1">
+          <div className="relative py-1 overflow-hidden">
             {/* Connecting line that spans the full width */}
             <div className="absolute top-[18px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
             
@@ -170,15 +170,15 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
               />
             )}
             
-            <div className="relative flex justify-between">
+            <div className="relative flex justify-between min-w-0 overflow-hidden">
               {milestones.map((milestone) => (
-                <div key={milestone.id} className="flex flex-col items-center">
+                <div key={milestone.id} className="flex flex-col items-center min-w-0 flex-shrink-0" style={{ maxWidth: `${100 / milestones.length}%` }}>
                   {/* Diamond Icon */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
                         className={cn(
-                          "transition-colors cursor-pointer bg-background p-0.5",
+                          "transition-colors cursor-pointer bg-background p-0.5 flex-shrink-0",
                           getMilestoneColor(milestone)
                         )}
                       >
@@ -233,7 +233,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                   {/* Label below diamond */}
                   <span
                     className={cn(
-                      "text-[12px] mt-0.5 text-center max-w-20 leading-tight",
+                      "text-[12px] mt-0.5 text-center leading-tight truncate w-full px-0.5",
                       milestone.completed
                         ? "text-foreground"
                         : isOverdue(milestone)
