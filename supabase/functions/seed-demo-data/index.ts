@@ -143,10 +143,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Insert demo deals
+    // Check if user belongs to a company
+    const { data: companyMembership } = await supabaseAdmin
+      .from("company_members")
+      .select("company_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    const companyId = companyMembership?.company_id || null;
+    console.log("User company_id:", companyId);
+
+    // Insert demo deals with user_id and company_id
     const dealsToInsert = DEMO_DEALS.map(deal => ({
       ...deal,
       user_id: user.id,
+      company_id: companyId,
     }));
 
     const { data: insertedDeals, error: insertError } = await supabaseAdmin
