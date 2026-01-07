@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const HINTS_STORAGE_KEY = 'dismissed-hints';
 
@@ -33,23 +34,47 @@ export function useFirstTimeHints(): UseFirstTimeHintsReturn {
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
 
   useEffect(() => {
-    // Check if user has completed the tour (indicates they're a new user who needs hints)
-    const tourCompleted = localStorage.getItem('tour-completed');
-    const hintsFullyDismissed = localStorage.getItem('hints-fully-dismissed');
-    
-    // Show hints only if tour was completed and hints haven't been fully dismissed
-    setIsFirstTimeUser(tourCompleted === 'true' && hintsFullyDismissed !== 'true');
-
-    // Load dismissed hints from storage
-    const stored = localStorage.getItem(HINTS_STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as HintId[];
-        setDismissedHints(new Set(parsed));
-      } catch {
-        // Ignore parse errors
+    const checkHintEligibility = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const isDemo = user.email === 'demo@example.com';
+      const tourCompleted = localStorage.getItem('tour-completed');
+      const hintsFullyDismissed = localStorage.getItem('hints-fully-dismissed');
+      
+      // For demo users: Always show hints (they get reset each session in DemoTour)
+      if (isDemo) {
+        setIsFirstTimeUser(tourCompleted === 'true' && hintsFullyDismissed !== 'true');
+      } else {
+        // For regular users: Show hints if tour was completed and hints haven't been fully dismissed
+        // Also show hints for new users who just signed up
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('user_id', user.id)
+          .single();
+        
+        const isNewUser = profile && !profile.onboarding_completed;
+        
+        // Show hints if: (tour completed OR new user) AND hints not fully dismissed
+        setIsFirstTimeUser(
+          (tourCompleted === 'true' || isNewUser) && hintsFullyDismissed !== 'true'
+        );
       }
-    }
+
+      // Load dismissed hints from storage
+      const stored = localStorage.getItem(HINTS_STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as HintId[];
+          setDismissedHints(new Set(parsed));
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    };
+    
+    checkHintEligibility();
   }, []);
 
   // Find the first hint in priority order that hasn't been dismissed
