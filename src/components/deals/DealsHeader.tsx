@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar } from 'lucide-react';
+import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar, RotateCcw } from 'lucide-react';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
@@ -356,17 +356,28 @@ export function DealsHeader() {
                     Account
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => {
+                    localStorage.removeItem('tour-completed');
+                    localStorage.removeItem('dismissed-hints');
+                    localStorage.removeItem('hints-fully-dismissed');
+                    sessionStorage.removeItem('demo-tour-shown-this-session');
+                    window.location.href = '/deals';
+                  }}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restart Tour
+                </DropdownMenuItem>
                 {isFirstTimeUser && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={dismissAllHints}
-                      className="flex items-center gap-2 cursor-pointer text-muted-foreground"
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                      Dismiss all hints
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem 
+                    onClick={dismissAllHints}
+                    className="flex items-center gap-2 cursor-pointer text-muted-foreground"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                    Dismiss all hints
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
