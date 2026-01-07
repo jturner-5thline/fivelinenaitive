@@ -717,11 +717,16 @@ export default function DealDetail() {
     // Persist to database
     updateLenderInDb(lenderId, { notes: currentNote });
     
+    // Log activity for lender notes update
+    logActivity('lender_notes_updated', `${lender?.name} notes updated`, {
+      lender_name: lender?.name,
+    });
+    
     toast({
       title: "Note saved",
       description: "Your note has been saved successfully.",
     });
-  }, [deal?.lenders, updateLenderInDb]);
+  }, [deal?.lenders, updateLenderInDb, logActivity]);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
     // Find the first stage in the target group
@@ -813,14 +818,21 @@ export default function DealDetail() {
       requestedBy,
     };
     setOutstandingItems(prev => [...prev, newItem]);
+    
+    // Log activity for adding requested item
+    logActivity('requested_item_added', `Requested item added: "${text}"`, {
+      item_text: text,
+      requested_by: requestedBy.join(', ') || 'None',
+    });
+    
     toast({
       title: "Item added",
     });
-  }, []);
+  }, [logActivity]);
 
   const updateOutstandingItem = useCallback((id: string, updates: Partial<OutstandingItem>) => {
-    setOutstandingItems(prev =>
-      prev.map(item => {
+    setOutstandingItems(prev => {
+      const updatedItems = prev.map(item => {
         if (item.id !== id) return item;
         const updatedItem = { ...item, ...updates };
         // Set completedAt when both received and approved become true
@@ -832,9 +844,45 @@ export default function DealDetail() {
           updatedItem.completedAt = undefined;
         }
         return updatedItem;
-      })
-    );
-  }, []);
+      });
+      
+      // Log activity for significant status changes
+      const originalItem = prev.find(item => item.id === id);
+      if (originalItem) {
+        // Log when item status changes (received, approved, delivered)
+        if (updates.received !== undefined && updates.received !== originalItem.received) {
+          logActivity('requested_item_updated', `Requested item "${originalItem.text}" marked as ${updates.received ? 'received' : 'not received'}`, {
+            item_text: originalItem.text,
+            status: updates.received ? 'received' : 'not received',
+          });
+        }
+        if (updates.approved !== undefined && updates.approved !== originalItem.approved) {
+          logActivity('requested_item_updated', `Requested item "${originalItem.text}" marked as ${updates.approved ? 'approved' : 'not approved'}`, {
+            item_text: originalItem.text,
+            status: updates.approved ? 'approved' : 'not approved',
+          });
+        }
+        if (updates.deliveredToLenders !== undefined && JSON.stringify(updates.deliveredToLenders) !== JSON.stringify(originalItem.deliveredToLenders)) {
+          const newDeliveries = updates.deliveredToLenders.filter(l => !originalItem.deliveredToLenders.includes(l));
+          if (newDeliveries.length > 0) {
+            logActivity('requested_item_updated', `Requested item "${originalItem.text}" delivered to ${newDeliveries.join(', ')}`, {
+              item_text: originalItem.text,
+              delivered_to: newDeliveries.join(', '),
+            });
+          }
+        }
+        // Log when item text is edited
+        if (updates.text !== undefined && updates.text !== originalItem.text) {
+          logActivity('requested_item_updated', `Requested item updated: "${updates.text}"`, {
+            old_text: originalItem.text,
+            new_text: updates.text,
+          });
+        }
+      }
+      
+      return updatedItems;
+    });
+  }, [logActivity]);
 
   const deleteOutstandingItem = useCallback((id: string) => {
     setOutstandingItems(prev => prev.filter(item => item.id !== id));
@@ -1019,6 +1067,36 @@ export default function DealDetail() {
             newValue: value !== undefined ? String(value) : undefined,
           });
         }
+      }
+      
+      // Log activity for lender information updates (substage, stage changes via inline edit)
+      if (field === 'lenders' && Array.isArray(value) && prev.lenders && value.length > 0 && typeof value[0] === 'object') {
+        const newLenders = value as unknown as DealLender[];
+        prev.lenders.forEach((oldLender) => {
+          const newLender = newLenders.find(l => l.id === oldLender.id);
+          if (newLender) {
+            // Log substage changes
+            if (oldLender.substage !== newLender.substage) {
+              const oldLabel = oldLender.substage ? (configuredSubstages.find(s => s.id === oldLender.substage)?.label || oldLender.substage) : 'None';
+              const newLabel = newLender.substage ? (configuredSubstages.find(s => s.id === newLender.substage)?.label || newLender.substage) : 'None';
+              logActivity('lender_substage_change', `${newLender.name} milestone changed`, {
+                lender_name: newLender.name,
+                from: oldLabel,
+                to: newLabel,
+              });
+            }
+            // Log stage changes (if done via inline select, not updateLenderGroup)
+            if (oldLender.stage !== newLender.stage) {
+              const oldStageLabel = configuredStages.find(s => s.id === oldLender.stage)?.label || oldLender.stage;
+              const newStageLabel = configuredStages.find(s => s.id === newLender.stage)?.label || newLender.stage;
+              logActivity('lender_stage_change', `${newLender.name} stage changed`, {
+                lender_name: newLender.name,
+                from: oldStageLabel,
+                to: newStageLabel,
+              });
+            }
+          }
+        });
       }
       
       // Persist to database
