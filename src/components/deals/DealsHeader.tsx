@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar, RotateCcw } from 'lucide-react';
+import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar, RotateCcw, BookOpen } from 'lucide-react';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
@@ -357,6 +357,12 @@ export function DealsHeader() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/help" className="flex items-center gap-2 cursor-pointer">
+                    <BookOpen className="h-4 w-4" />
+                    Help & Tips
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => {
                     localStorage.removeItem('tour-completed');
