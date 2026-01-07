@@ -85,20 +85,52 @@ export function DemoTour() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Check if user just completed onboarding
-      const justCompletedOnboarding = sessionStorage.getItem('just-completed-onboarding');
       const isDemo = user.email === 'demo@example.com';
       setIsDemoUser(isDemo);
       
-      if (justCompletedOnboarding || isDemo) {
+      // For demo users: Always show tour on each login session
+      // Use sessionStorage to track if tour was shown this session
+      const demoTourShownThisSession = sessionStorage.getItem('demo-tour-shown-this-session');
+      
+      if (isDemo) {
         setShouldShowTour(true);
-        const tourCompleted = localStorage.getItem('tour-completed');
+        if (!demoTourShownThisSession) {
+          // Reset tour state for demo users each session
+          localStorage.removeItem('tour-completed');
+          localStorage.removeItem('dismissed-hints');
+          localStorage.removeItem('hints-fully-dismissed');
+          sessionStorage.setItem('demo-tour-shown-this-session', 'true');
+          setTimeout(() => setShowTour(true), 500);
+        }
+        return;
+      }
+      
+      // For regular users: Check if they just completed onboarding
+      const justCompletedOnboarding = sessionStorage.getItem('just-completed-onboarding');
+      
+      // Also check if this is a new user who hasn't completed the tour yet
+      const tourCompleted = localStorage.getItem('tour-completed');
+      
+      // Check if user's profile indicates they need onboarding
+      // If onboarding not completed and tour not completed, show tour
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_completed')
+        .eq('user_id', user.id)
+        .single();
+      
+      const isNewUser = profile && !profile.onboarding_completed;
+      
+      if (justCompletedOnboarding || (isNewUser && !tourCompleted)) {
+        setShouldShowTour(true);
         if (!tourCompleted) {
-          // Small delay to let the page render first
           setTimeout(() => setShowTour(true), 500);
         }
         // Clear the onboarding flag after checking
         sessionStorage.removeItem('just-completed-onboarding');
+      } else if (tourCompleted) {
+        // User has completed tour before, enable hints system
+        setShouldShowTour(true);
       }
     };
     checkTourEligibility();
