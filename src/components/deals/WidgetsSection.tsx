@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Settings2, PieChartIcon, BarChart3, TrendingUp } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Settings2, PieChartIcon, BarChart3, TrendingUp, Download, Image, FileText } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -33,6 +33,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from '@/hooks/use-toast';
 
 interface WidgetsSectionProps {
   deals: Deal[];
@@ -184,6 +191,82 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
 
   const isClickableMetric = (metric: WidgetMetric) => {
     return true; // All metrics are now clickable
+  };
+
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  const exportToCSV = () => {
+    if (chartData.length === 0) return;
+    
+    const headers = ['Name', chartDialogType === 'count' ? 'Count' : 'Value'];
+    const rows = chartData.map(item => [
+      item.name,
+      item.value.toString()
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${chartDialogTitle.replace(/\s+/g, '_').toLowerCase()}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    toast({
+      title: 'CSV exported',
+      description: `${chartData.length} rows exported to CSV.`
+    });
+  };
+
+  const exportToImage = async () => {
+    if (!chartRef.current) return;
+    
+    try {
+      const svgElement = chartRef.current.querySelector('svg');
+      if (!svgElement) {
+        toast({ title: 'Export failed', description: 'Could not find chart to export.', variant: 'destructive' });
+        return;
+      }
+
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new window.Image();
+      
+      img.onload = () => {
+        canvas.width = img.width * 2;
+        canvas.height = img.height * 2;
+        ctx?.scale(2, 2);
+        ctx!.fillStyle = 'white';
+        ctx!.fillRect(0, 0, canvas.width, canvas.height);
+        ctx?.drawImage(img, 0, 0);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${chartDialogTitle.replace(/\s+/g, '_').toLowerCase()}.png`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            
+            toast({
+              title: 'Image exported',
+              description: 'Chart exported as PNG.'
+            });
+          }
+        }, 'image/png');
+      };
+      
+      img.src = URL.createObjectURL(svgBlob);
+    } catch (error) {
+      toast({ title: 'Export failed', description: 'Could not export chart image.', variant: 'destructive' });
+    }
   };
 
   const CustomTooltip = ({ active, payload }: any) => {
@@ -355,37 +438,56 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       <Dialog open={chartDialogOpen} onOpenChange={setChartDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>{chartDialogTitle}</DialogTitle>
-              <div className="flex items-center gap-1 border border-border rounded-lg p-1">
-                <Button
-                  variant={chartViewType === 'pie' ? 'default' : 'ghost'}
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setChartViewType('pie')}
-                >
-                  <PieChartIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={chartViewType === 'bar' ? 'default' : 'ghost'}
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setChartViewType('bar')}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={chartViewType === 'line' ? 'default' : 'ghost'}
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setChartViewType('line')}
-                >
-                  <TrendingUp className="h-4 w-4" />
-                </Button>
+            <div className="flex items-center justify-between gap-2">
+              <DialogTitle className="text-base">{chartDialogTitle}</DialogTitle>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 border border-border rounded-lg p-1">
+                  <Button
+                    variant={chartViewType === 'pie' ? 'default' : 'ghost'}
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setChartViewType('pie')}
+                  >
+                    <PieChartIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={chartViewType === 'bar' ? 'default' : 'ghost'}
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setChartViewType('bar')}
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={chartViewType === 'line' ? 'default' : 'ghost'}
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setChartViewType('line')}
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                  </Button>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-7 w-7">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={exportToCSV}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportToImage}>
+                      <Image className="h-4 w-4 mr-2" />
+                      Export as Image
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </DialogHeader>
-          <div className="h-[300px] w-full">
+          <div ref={chartRef} className="h-[300px] w-full">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 {chartViewType === 'pie' ? (
