@@ -97,6 +97,31 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       });
 
+      console.log("Email response:", JSON.stringify(emailResponse));
+
+      // Check if Resend returned an error in the response
+      if (emailResponse.error) {
+        console.error("Resend API error:", emailResponse.error);
+        
+        if (invitationId) {
+          await supabaseAdmin
+            .from('company_invitations')
+            .update({ 
+              email_status: 'failed',
+              email_error: emailResponse.error.message || 'Email delivery failed'
+            })
+            .eq('id', invitationId);
+        }
+
+        return new Response(
+          JSON.stringify({ error: emailResponse.error.message, email_failed: true }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+
       console.log("Email sent successfully:", emailResponse);
 
       // Update invitation status to sent
