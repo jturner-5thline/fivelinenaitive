@@ -58,6 +58,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
   const [chartDialogType, setChartDialogType] = useState<'count' | 'value' | null>(null);
   const [chartDialogTitle, setChartDialogTitle] = useState('');
+  const [chartDataSource, setChartDataSource] = useState<'active' | 'diligence'>('active');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -67,22 +68,27 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   );
 
   const activeDeals = deals.filter(d => d.status !== 'archived');
+  const diligenceDeals = deals.filter(d => d.stage === 'in-due-diligence');
 
   const getChartData = () => {
     if (!chartDialogType) return [];
 
-    const stageGroups: Record<string, { count: number; value: number }> = {};
+    const sourceDeals = chartDataSource === 'diligence' ? diligenceDeals : activeDeals;
+    const groups: Record<string, { count: number; value: number }> = {};
     
-    activeDeals.forEach(deal => {
-      const stage = deal.stage || 'Unknown';
-      if (!stageGroups[stage]) {
-        stageGroups[stage] = { count: 0, value: 0 };
+    sourceDeals.forEach(deal => {
+      // For diligence deals, group by status; for active deals, group by stage
+      const groupKey = chartDataSource === 'diligence' 
+        ? (deal.status || 'Unknown')
+        : (deal.stage || 'Unknown');
+      if (!groups[groupKey]) {
+        groups[groupKey] = { count: 0, value: 0 };
       }
-      stageGroups[stage].count += 1;
-      stageGroups[stage].value += deal.value || 0;
+      groups[groupKey].count += 1;
+      groups[groupKey].value += deal.value || 0;
     });
 
-    return Object.entries(stageGroups).map(([name, data]) => ({
+    return Object.entries(groups).map(([name, data]) => ({
       name: formatStageName(name),
       value: chartDialogType === 'count' ? data.count : data.value,
     }));
@@ -98,17 +104,29 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const handleWidgetClick = (metric: WidgetMetric) => {
     if (metric === 'active-deals') {
       setChartDialogType('count');
+      setChartDataSource('active');
       setChartDialogTitle('Active Deals by Stage');
       setChartDialogOpen(true);
     } else if (metric === 'active-deal-volume') {
       setChartDialogType('value');
+      setChartDataSource('active');
       setChartDialogTitle('Active Deal Volume by Stage');
+      setChartDialogOpen(true);
+    } else if (metric === 'deals-in-diligence') {
+      setChartDialogType('count');
+      setChartDataSource('diligence');
+      setChartDialogTitle('Deals in Diligence by Status');
+      setChartDialogOpen(true);
+    } else if (metric === 'dollars-in-diligence') {
+      setChartDialogType('value');
+      setChartDataSource('diligence');
+      setChartDialogTitle('Dollars in Diligence by Status');
       setChartDialogOpen(true);
     }
   };
 
   const isClickableMetric = (metric: WidgetMetric) => {
-    return metric === 'active-deals' || metric === 'active-deal-volume';
+    return metric === 'active-deals' || metric === 'active-deal-volume' || metric === 'deals-in-diligence' || metric === 'dollars-in-diligence';
   };
 
   const chartData = getChartData();
