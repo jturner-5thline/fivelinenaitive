@@ -59,7 +59,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending invite to ${email} for company ${companyName}`);
 
     const emailResponse = await resend.emails.send({
-      from: "nAItive <onboarding@resend.dev>",
+      from: "nAItive <team@5thline.co>",
       to: [email],
       subject: `You've been invited to join ${companyName}`,
       html: `
