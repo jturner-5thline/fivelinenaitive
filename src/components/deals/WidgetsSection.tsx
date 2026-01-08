@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Settings2, PieChartIcon, BarChart3 } from 'lucide-react';
+import { Plus, Settings2, PieChartIcon, BarChart3, TrendingUp } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -15,7 +15,8 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Area, AreaChart } from 'recharts';
+import { format, startOfMonth, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useWidgets, Widget, WidgetMetric, SPECIAL_WIDGET_OPTIONS } from '@/contexts/WidgetsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -60,7 +61,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartDialogTitle, setChartDialogTitle] = useState('');
   const [chartGroupBy, setChartGroupBy] = useState<'stage' | 'status' | 'manager'>('stage');
   const [chartFilterFn, setChartFilterFn] = useState<((d: Deal) => boolean) | null>(null);
-  const [chartViewType, setChartViewType] = useState<'pie' | 'bar'>('pie');
+  const [chartViewType, setChartViewType] = useState<'pie' | 'bar' | 'line'>('pie');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -97,6 +98,34 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       value: chartDialogType === 'count' ? data.count : data.value,
     }));
   };
+
+  const getTimeSeriesData = () => {
+    if (!chartDialogType || !chartFilterFn) return [];
+
+    const sourceDeals = deals.filter(chartFilterFn);
+    const monthlyGroups: Record<string, { count: number; value: number; date: Date }> = {};
+    
+    sourceDeals.forEach(deal => {
+      const dealDate = deal.createdAt ? parseISO(deal.createdAt) : new Date();
+      const monthStart = startOfMonth(dealDate);
+      const monthKey = format(monthStart, 'yyyy-MM');
+      
+      if (!monthlyGroups[monthKey]) {
+        monthlyGroups[monthKey] = { count: 0, value: 0, date: monthStart };
+      }
+      monthlyGroups[monthKey].count += 1;
+      monthlyGroups[monthKey].value += deal.value || 0;
+    });
+
+    return Object.entries(monthlyGroups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([_, data]) => ({
+        name: format(data.date, 'MMM yyyy'),
+        value: chartDialogType === 'count' ? data.count : data.value,
+      }));
+  };
+
+  const chartData = chartViewType === 'line' ? getTimeSeriesData() : getChartData();
 
   const formatStageName = (stage: string) => {
     return stage
@@ -156,8 +185,6 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const isClickableMetric = (metric: WidgetMetric) => {
     return true; // All metrics are now clickable
   };
-
-  const chartData = getChartData();
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -347,6 +374,14 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                 >
                   <BarChart3 className="h-4 w-4" />
                 </Button>
+                <Button
+                  variant={chartViewType === 'line' ? 'default' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setChartViewType('line')}
+                >
+                  <TrendingUp className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </DialogHeader>
@@ -372,7 +407,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                     <Tooltip content={<CustomTooltip />} />
                     <Legend />
                   </PieChart>
-                ) : (
+                ) : chartViewType === 'bar' ? (
                   <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
@@ -389,6 +424,32 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                       ))}
                     </Bar>
                   </BarChart>
+                ) : (
+                  <AreaChart data={chartData} margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={2}
+                      fill="url(#colorValue)" 
+                    />
+                  </AreaChart>
                 )}
               </ResponsiveContainer>
             ) : (
