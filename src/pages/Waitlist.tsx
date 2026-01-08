@@ -68,6 +68,11 @@ const Waitlist = () => {
           title: 'Welcome to the waitlist!',
           description: "We'll notify you when nAItive launches.",
         });
+        
+        // Send welcome email (fire and forget)
+        supabase.functions.invoke('send-waitlist-welcome', {
+          body: { name: validation.data.name || 'there', email: validation.data.email }
+        }).catch(err => console.error('Failed to send welcome email:', err));
       }
     } catch (error: any) {
       console.error('Error joining waitlist:', error);

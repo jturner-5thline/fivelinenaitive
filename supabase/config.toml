@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.validate-invitation]
 verify_jwt = false
+
+[functions.send-waitlist-welcome]
+verify_jwt = false
