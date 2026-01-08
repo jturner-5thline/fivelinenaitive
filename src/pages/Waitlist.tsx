@@ -120,7 +120,7 @@ const Waitlist = () => {
         
         <div className="absolute inset-0 bg-gradient-to-b from-[#010128]/95 via-[#010128]/90 to-[#010114]/95" />
         
-        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 animate-fade-in">
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-2 tracking-tight">
             nAItive
           </h1>
