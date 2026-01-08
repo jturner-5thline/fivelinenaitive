@@ -63,6 +63,7 @@ const App = () => (
                           <Route path="/" element={<Waitlist />} />
                           <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<Auth />} />
+                          <Route path="/auth" element={<Auth />} />
                           <Route path="/onboarding" element={
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
