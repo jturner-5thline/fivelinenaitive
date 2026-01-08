@@ -47,23 +47,18 @@ const Auth = () => {
       (event, session) => {
         if (event === "PASSWORD_RECOVERY") {
           setMode("reset");
-        } else if (session?.user && mode !== "reset" && mode !== "mfa") {
+        } else if (event === "SIGNED_IN" && session?.user && mode !== "reset" && mode !== "mfa") {
+          // Only redirect on actual sign-in event, not on page load with existing session
           navigate("/deals");
         }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user && mode !== "reset" && mode !== "mfa") {
-        // Check URL for recovery token
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        if (hashParams.get("type") === "recovery") {
-          setMode("reset");
-        } else {
-          navigate("/deals");
-        }
-      }
-    });
+    // Check URL for recovery token only
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    if (hashParams.get("type") === "recovery") {
+      setMode("reset");
+    }
 
     return () => subscription.unsubscribe();
   }, [navigate, mode]);
