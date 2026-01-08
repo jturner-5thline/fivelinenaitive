@@ -77,6 +77,13 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     })
   );
 
+  const formatStageName = (stage: string) => {
+    return stage
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const getChartData = () => {
     if (!chartDialogType || !chartFilterFn) return [];
 
@@ -133,13 +140,6 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   const chartData = chartViewType === 'line' ? getTimeSeriesData() : getChartData();
-
-  const formatStageName = (stage: string) => {
-    return stage
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
 
   const openChartDialog = (
     type: 'count' | 'value',
