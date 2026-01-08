@@ -58,7 +58,8 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
   const [chartDialogType, setChartDialogType] = useState<'count' | 'value' | null>(null);
   const [chartDialogTitle, setChartDialogTitle] = useState('');
-  const [chartDataSource, setChartDataSource] = useState<'active' | 'diligence'>('active');
+  const [chartGroupBy, setChartGroupBy] = useState<'stage' | 'status' | 'manager'>('stage');
+  const [chartFilterFn, setChartFilterFn] = useState<((d: Deal) => boolean) | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -67,20 +68,22 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     })
   );
 
-  const activeDeals = deals.filter(d => d.status !== 'archived');
-  const diligenceDeals = deals.filter(d => d.stage === 'in-due-diligence');
-
   const getChartData = () => {
-    if (!chartDialogType) return [];
+    if (!chartDialogType || !chartFilterFn) return [];
 
-    const sourceDeals = chartDataSource === 'diligence' ? diligenceDeals : activeDeals;
+    const sourceDeals = deals.filter(chartFilterFn);
     const groups: Record<string, { count: number; value: number }> = {};
     
     sourceDeals.forEach(deal => {
-      // For diligence deals, group by status; for active deals, group by stage
-      const groupKey = chartDataSource === 'diligence' 
-        ? (deal.status || 'Unknown')
-        : (deal.stage || 'Unknown');
+      let groupKey: string;
+      if (chartGroupBy === 'status') {
+        groupKey = deal.status || 'Unknown';
+      } else if (chartGroupBy === 'manager') {
+        groupKey = deal.manager || 'Unassigned';
+      } else {
+        groupKey = deal.stage || 'Unknown';
+      }
+      
       if (!groups[groupKey]) {
         groups[groupKey] = { count: 0, value: 0 };
       }
@@ -101,32 +104,56 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       .join(' ');
   };
 
+  const openChartDialog = (
+    type: 'count' | 'value',
+    title: string,
+    groupBy: 'stage' | 'status' | 'manager',
+    filterFn: (d: Deal) => boolean
+  ) => {
+    setChartDialogType(type);
+    setChartDialogTitle(title);
+    setChartGroupBy(groupBy);
+    setChartFilterFn(() => filterFn);
+    setChartDialogOpen(true);
+  };
+
   const handleWidgetClick = (metric: WidgetMetric) => {
-    if (metric === 'active-deals') {
-      setChartDialogType('count');
-      setChartDataSource('active');
-      setChartDialogTitle('Active Deals by Stage');
-      setChartDialogOpen(true);
-    } else if (metric === 'active-deal-volume') {
-      setChartDialogType('value');
-      setChartDataSource('active');
-      setChartDialogTitle('Active Deal Volume by Stage');
-      setChartDialogOpen(true);
-    } else if (metric === 'deals-in-diligence') {
-      setChartDialogType('count');
-      setChartDataSource('diligence');
-      setChartDialogTitle('Deals in Diligence by Status');
-      setChartDialogOpen(true);
-    } else if (metric === 'dollars-in-diligence') {
-      setChartDialogType('value');
-      setChartDataSource('diligence');
-      setChartDialogTitle('Dollars in Diligence by Status');
-      setChartDialogOpen(true);
+    switch (metric) {
+      case 'active-deals':
+        openChartDialog('count', 'Active Deals by Stage', 'stage', d => d.status !== 'archived');
+        break;
+      case 'active-deal-volume':
+        openChartDialog('value', 'Active Deal Volume by Stage', 'stage', d => d.status !== 'archived');
+        break;
+      case 'deals-in-diligence':
+        openChartDialog('count', 'Deals in Diligence by Status', 'status', d => d.stage === 'in-due-diligence');
+        break;
+      case 'dollars-in-diligence':
+        openChartDialog('value', 'Dollars in Diligence by Status', 'status', d => d.stage === 'in-due-diligence');
+        break;
+      case 'total-deals':
+        openChartDialog('count', 'All Deals by Stage', 'stage', () => true);
+        break;
+      case 'archived-deals':
+        openChartDialog('count', 'Archived Deals by Stage', 'stage', d => d.status === 'archived');
+        break;
+      case 'on-track-deals':
+        openChartDialog('count', 'On Track Deals by Stage', 'stage', d => d.status === 'on-track');
+        break;
+      case 'at-risk-deals':
+        openChartDialog('count', 'At Risk Deals by Stage', 'stage', d => d.status === 'at-risk');
+        break;
+      case 'total-pipeline-value':
+        openChartDialog('value', 'Pipeline Value by Stage', 'stage', () => true);
+        break;
+      case 'average-deal-size':
+        openChartDialog('value', 'Deal Value by Manager', 'manager', d => d.status !== 'archived');
+        break;
     }
   };
 
   const isClickableMetric = (metric: WidgetMetric) => {
-    return metric === 'active-deals' || metric === 'active-deal-volume' || metric === 'deals-in-diligence' || metric === 'dollars-in-diligence';
+    return true; // All metrics are now clickable
   };
 
   const chartData = getChartData();
