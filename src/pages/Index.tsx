@@ -50,25 +50,14 @@ const Index = () => {
             AI-Powered Deal Intelligence
           </p>
           
-          <div className="flex gap-4">
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white px-8 py-6 text-base font-light tracking-wide"
-              asChild
-            >
-              <Link to="/login">Login</Link>
-            </Button>
-            
-            <Button 
-              variant="outline"
-              size="lg"
-              className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white px-8 py-6 text-base font-light tracking-wide"
-              asChild
-            >
-              <Link to="/deals">Deal Portal</Link>
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            size="lg"
+            className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white px-8 py-6 text-base font-light tracking-wide"
+            asChild
+          >
+            <Link to="/login">Login</Link>
+          </Button>
         </div>
       </div>
     </>
