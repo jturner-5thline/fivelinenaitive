@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Mail, Trash2, RefreshCw, Clock, Loader2, Shield, User } from 'lucide-react';
+import { Mail, Trash2, RefreshCw, Clock, Loader2, Shield, User, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,6 +17,9 @@ interface Invitation {
   expires_at: string;
   created_at: string;
   accepted_at: string | null;
+  email_status: string | null;
+  email_error: string | null;
+  email_sent_at: string | null;
 }
 
 interface PendingInvitationsProps {
@@ -206,19 +210,43 @@ export function PendingInvitations({ companyId, companyName }: PendingInvitation
                           {invitation.role === 'admin' ? 'Admin' : 'User'}
                         </span>
                       </Badge>
-                      {expired && (
-                        <Badge variant="destructive" className="text-xs">Expired</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Sent {formatDistanceToNow(new Date(invitation.created_at), { addSuffix: true })}
-                      {!expired && (
-                        <span className="ml-2">
-                          • Expires {formatDistanceToNow(new Date(invitation.expires_at), { addSuffix: true })}
-                        </span>
-                      )}
-                    </p>
+                          {expired && (
+                            <Badge variant="destructive" className="text-xs">Expired</Badge>
+                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center">
+                                  {invitation.email_status === 'sent' ? (
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                  ) : invitation.email_status === 'failed' ? (
+                                    <XCircle className="h-4 w-4 text-destructive" />
+                                  ) : (
+                                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {invitation.email_status === 'sent' ? (
+                                  <p>Email delivered{invitation.email_sent_at ? ` ${formatDistanceToNow(new Date(invitation.email_sent_at), { addSuffix: true })}` : ''}</p>
+                                ) : invitation.email_status === 'failed' ? (
+                                  <p className="text-destructive">Failed: {invitation.email_error || 'Unknown error'}</p>
+                                ) : (
+                                  <p>Email pending</p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Sent {formatDistanceToNow(new Date(invitation.created_at), { addSuffix: true })}
+                          {!expired && (
+                            <span className="ml-2">
+                              • Expires {formatDistanceToNow(new Date(invitation.expires_at), { addSuffix: true })}
+                            </span>
+                          )}
+                        </p>
                   </div>
                 </div>
 
