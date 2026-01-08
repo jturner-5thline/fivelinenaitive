@@ -106,6 +106,9 @@ export type Database = {
           company_id: string
           created_at: string
           email: string
+          email_error: string | null
+          email_sent_at: string | null
+          email_status: string | null
           expires_at: string
           id: string
           invited_by: string
@@ -117,6 +120,9 @@ export type Database = {
           company_id: string
           created_at?: string
           email: string
+          email_error?: string | null
+          email_sent_at?: string | null
+          email_status?: string | null
           expires_at?: string
           id?: string
           invited_by: string
@@ -128,6 +134,9 @@ export type Database = {
           company_id?: string
           created_at?: string
           email?: string
+          email_error?: string | null
+          email_sent_at?: string | null
+          email_status?: string | null
           expires_at?: string
           id?: string
           invited_by?: string

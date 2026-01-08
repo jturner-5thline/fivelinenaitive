@@ -42,6 +42,12 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
+    // Create admin client for updating invitation status
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -50,7 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { email, companyName, inviterName, role, token }: SendInviteRequest = await req.json();
+    const { invitationId, email, companyName, inviterName, role, token }: SendInviteRequest = await req.json();
 
     // Construct the invite URL - use the origin from the request or fallback
     const origin = req.headers.get("origin") || "https://lovable.dev";
@@ -58,44 +64,79 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending invite to ${email} for company ${companyName}`);
 
-    const emailResponse = await resend.emails.send({
-      from: "nAItive <team@5thline.co>",
-      to: [email],
-      subject: `You've been invited to join ${companyName}`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background-color: #f5f5f5;">
-          <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 24px;">You're Invited!</h1>
-            <p style="color: #666; font-size: 16px; line-height: 1.6;">
-              <strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> as a <strong>${role}</strong>.
-            </p>
-            <p style="color: #666; font-size: 16px; line-height: 1.6;">
-              Click the button below to accept the invitation and get started.
-            </p>
-            <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; margin: 24px 0;">
-              Accept Invitation
-            </a>
-            <p style="color: #999; font-size: 14px; margin-top: 32px;">
-              This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
-            </p>
-          </div>
-        </body>
-        </html>
-      `,
-    });
+    try {
+      const emailResponse = await resend.emails.send({
+        from: "nAItive <team@5thline.co>",
+        to: [email],
+        subject: `You've been invited to join ${companyName}`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background-color: #f5f5f5;">
+            <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 24px;">You're Invited!</h1>
+              <p style="color: #666; font-size: 16px; line-height: 1.6;">
+                <strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> as a <strong>${role}</strong>.
+              </p>
+              <p style="color: #666; font-size: 16px; line-height: 1.6;">
+                Click the button below to accept the invitation and get started.
+              </p>
+              <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; margin: 24px 0;">
+                Accept Invitation
+              </a>
+              <p style="color: #999; font-size: 14px; margin-top: 32px;">
+                This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
+              </p>
+            </div>
+          </body>
+          </html>
+        `,
+      });
 
-    console.log("Email sent successfully:", emailResponse);
+      console.log("Email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify({ success: true, emailResponse }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+      // Update invitation status to sent
+      if (invitationId) {
+        await supabaseAdmin
+          .from('company_invitations')
+          .update({ 
+            email_status: 'sent',
+            email_sent_at: new Date().toISOString(),
+            email_error: null
+          })
+          .eq('id', invitationId);
+      }
+
+      return new Response(JSON.stringify({ success: true, emailResponse }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    } catch (emailError: any) {
+      console.error("Email sending failed:", emailError);
+
+      // Update invitation status to failed
+      if (invitationId) {
+        await supabaseAdmin
+          .from('company_invitations')
+          .update({ 
+            email_status: 'failed',
+            email_error: emailError.message || 'Unknown email error'
+          })
+          .eq('id', invitationId);
+      }
+
+      return new Response(
+        JSON.stringify({ error: emailError.message, email_failed: true }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
   } catch (error: any) {
     console.error("Error in send-invite function:", error);
     return new Response(
