@@ -17,6 +17,7 @@ import { ChartsProvider } from "@/contexts/ChartsContext";
 import { AnalyticsWidgetsProvider } from "@/contexts/AnalyticsWidgetsContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Waitlist from "./pages/Waitlist";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -58,7 +59,8 @@ const App = () => (
                       <Sonner />
                       <BrowserRouter>
                         <Routes>
-                          <Route path="/" element={<Index />} />
+                          <Route path="/" element={<Waitlist />} />
+                          <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<Auth />} />
                           <Route path="/onboarding" element={
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>

@@ -794,6 +794,30 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string | null
+        }
+        Relationships: []
+      }
       workflow_runs: {
         Row: {
           completed_at: string | null
