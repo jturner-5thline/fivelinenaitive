@@ -118,7 +118,7 @@ const Waitlist = () => {
           />
         </div>
         
-        <div className="absolute inset-0 bg-gradient-to-b from-[#010128]/70 via-[#010128]/60 to-[#010114]/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#010128]/85 via-[#010128]/80 to-[#010114]/90" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-2 tracking-tight">
