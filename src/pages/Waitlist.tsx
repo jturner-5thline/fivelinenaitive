@@ -15,7 +15,7 @@ const waitlistSchema = z.object({
   company: z.string().trim().optional(),
 });
 
-const ACCESS_PASSWORD = "nAItive2025";
+const ACCESS_PASSWORD = "5thlinenaitive";
 
 const Waitlist = () => {
   const [email, setEmail] = useState('');
