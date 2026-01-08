@@ -9,8 +9,10 @@ interface WidgetCardProps {
   widget: Widget;
   value: string | number;
   isEditMode: boolean;
+  isClickable?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onClick?: () => void;
 }
 
 const metricIcons: Record<WidgetMetric, typeof TrendingUp> = {
@@ -34,7 +36,7 @@ const colorClasses: Record<Widget['color'], { text: string; bg: string }> = {
   destructive: { text: 'text-destructive', bg: 'bg-destructive/10' },
 };
 
-export function WidgetCard({ widget, value, isEditMode, onEdit, onDelete }: WidgetCardProps) {
+export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onDelete, onClick }: WidgetCardProps) {
   const Icon = metricIcons[widget.metric];
   const colors = colorClasses[widget.color];
 
@@ -53,11 +55,18 @@ export function WidgetCard({ widget, value, isEditMode, onEdit, onDelete }: Widg
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const handleClick = () => {
+    if (!isEditMode && isClickable && onClick) {
+      onClick();
+    }
+  };
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
-      className={`relative ${isEditMode ? 'ring-2 ring-primary/50' : ''} ${isDragging ? 'z-50' : ''}`}
+      className={`relative ${isEditMode ? 'ring-2 ring-primary/50' : ''} ${isDragging ? 'z-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      onClick={handleClick}
     >
       {isEditMode && (
         <div className="absolute top-2 right-2 flex gap-1 z-10">
