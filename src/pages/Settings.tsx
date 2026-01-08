@@ -25,6 +25,10 @@ const SETTINGS_SECTIONS = [
     keywords: ['company', 'team', 'organization', 'members', 'admin', 'logo', 'industry', 'employees'],
   },
   {
+    id: 'waitlist',
+    keywords: ['waitlist', 'signups', 'subscribers', 'leads', 'admin'],
+  },
+  {
     id: 'database',
     keywords: ['database', 'lenders', 'directory', 'data', 'directories'],
   },
@@ -182,6 +186,31 @@ export default function Settings() {
                       <p className="font-medium">Company Settings</p>
                       <p className="text-sm text-muted-foreground">
                         Company profile, team members, and roles
+                      </p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {isVisible('waitlist') && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    Waitlist
+                  </CardTitle>
+                  <CardDescription>View and manage waitlist signups</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    to="/waitlist-admin"
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium">Waitlist Admin</p>
+                      <p className="text-sm text-muted-foreground">
+                        View signups and export to CSV
                       </p>
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />

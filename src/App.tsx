@@ -35,6 +35,7 @@ import Company from "./pages/Company";
 import AcceptInvite from "./pages/AcceptInvite";
 import Notifications from "./pages/Notifications";
 import Help from "./pages/Help";
+import WaitlistAdmin from "./pages/WaitlistAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -104,6 +105,9 @@ const App = () => (
                           } />
                           <Route path="/help" element={
                             <ProtectedRoute><Help /></ProtectedRoute>
+                          } />
+                          <Route path="/waitlist-admin" element={
+                            <ProtectedRoute><WaitlistAdmin /></ProtectedRoute>
                           } />
                           <Route path="/accept-invite" element={<AcceptInvite />} />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
