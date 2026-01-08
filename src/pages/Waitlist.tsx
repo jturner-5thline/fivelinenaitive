@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SpinningGlobe } from '@/components/SpinningGlobe';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, Lock, Mail, User, Building2 } from 'lucide-react';
@@ -107,9 +107,18 @@ const Waitlist = () => {
       </Helmet>
       
       <div className="min-h-screen bg-[#010114] relative overflow-hidden">
-        <SpinningGlobe />
+        {/* YouTube Video Background */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden">
+          <iframe
+            src="https://www.youtube.com/embed/cR1FyHv_rJE?autoplay=1&mute=1&loop=1&playlist=cR1FyHv_rJE&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.78vh] min-w-full h-[56.25vw] min-h-full pointer-events-none"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            title="Background video"
+          />
+        </div>
         
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
+        <div className="absolute inset-0 bg-[#010114]/60" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-2 tracking-tight">
