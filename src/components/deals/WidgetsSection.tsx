@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Settings2 } from 'lucide-react';
+import { Plus, Settings2, PieChartIcon, BarChart3 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -15,7 +15,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { useWidgets, Widget, WidgetMetric, SPECIAL_WIDGET_OPTIONS } from '@/contexts/WidgetsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -60,6 +60,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const [chartDialogTitle, setChartDialogTitle] = useState('');
   const [chartGroupBy, setChartGroupBy] = useState<'stage' | 'status' | 'manager'>('stage');
   const [chartFilterFn, setChartFilterFn] = useState<((d: Deal) => boolean) | null>(null);
+  const [chartViewType, setChartViewType] = useState<'pie' | 'bar'>('pie');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -325,31 +326,70 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       />
 
       <Dialog open={chartDialogOpen} onOpenChange={setChartDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{chartDialogTitle}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>{chartDialogTitle}</DialogTitle>
+              <div className="flex items-center gap-1 border border-border rounded-lg p-1">
+                <Button
+                  variant={chartViewType === 'pie' ? 'default' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setChartViewType('pie')}
+                >
+                  <PieChartIcon className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={chartViewType === 'bar' ? 'default' : 'ghost'}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setChartViewType('bar')}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </DialogHeader>
           <div className="h-[300px] w-full">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomLabel}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                </PieChart>
+                {chartViewType === 'pie' ? (
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={renderCustomLabel}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {chartData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                  </PieChart>
+                ) : (
+                  <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={100} 
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {chartData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground">
