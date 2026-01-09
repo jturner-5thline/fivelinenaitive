@@ -57,11 +57,13 @@ export function CompanyMembersSettings() {
                 {members.length} member{members.length !== 1 ? 's' : ''} in your company
               </CardDescription>
             </div>
-            {isAdmin && company && (
+            {company && (
               <div className="flex items-center gap-2">
                 <ShareInviteLinkDialog companyId={company.id} companyName={company.name} />
                 <InviteMemberDialog companyId={company.id} companyName={company.name} />
-                <BulkInviteDialog companyId={company.id} companyName={company.name} />
+                {isAdmin && (
+                  <BulkInviteDialog companyId={company.id} companyName={company.name} />
+                )}
               </div>
             )}
           </div>
