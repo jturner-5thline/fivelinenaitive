@@ -61,10 +61,10 @@ export function MigrateDealsDialog({
   const handleMigrate = async () => {
     setIsMigrating(true);
     try {
-      // Update all personal deals to belong to the company
+      // Update all personal deals to belong to the company and mark as migrated
       const { error } = await supabase
         .from('deals')
-        .update({ company_id: companyId })
+        .update({ company_id: companyId, migrated_from_personal: true })
         .eq('user_id', userId)
         .is('company_id', null);
 

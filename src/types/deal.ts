@@ -85,6 +85,7 @@ export interface Deal {
   notesUpdatedAt?: string;
   lenders?: DealLender[];
   milestones?: DealMilestone[];
+  migratedFromPersonal?: boolean;
 }
 
 export const LENDER_STATUS_CONFIG: Record<LenderStatus, { label: string }> = {
