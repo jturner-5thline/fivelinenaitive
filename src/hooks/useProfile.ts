@@ -7,6 +7,8 @@ interface Profile {
   id: string;
   user_id: string;
   display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   avatar_url: string | null;
   onboarding_completed: boolean;
   phone: string | null;
