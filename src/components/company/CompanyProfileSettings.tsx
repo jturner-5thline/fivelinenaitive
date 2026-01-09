@@ -63,10 +63,24 @@ export function CompanyProfileSettings() {
   };
 
   const handleSave = async () => {
-    const result = await updateCompany(formData);
+    // Filter out empty strings and convert them to null for optional fields
+    const cleanedData: Partial<Company> = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      if (key === 'name') {
+        // Name is required, keep as-is
+        cleanedData[key as keyof Company] = value as any;
+      } else {
+        // Convert empty strings to null for optional fields
+        cleanedData[key as keyof Company] = (value === '' ? null : value) as any;
+      }
+    });
+    
+    console.log('Saving company data:', cleanedData);
+    const result = await updateCompany(cleanedData);
+    console.log('Save result:', result);
     if (!result.error) {
       setHasChanges(false);
-      await refetch(); // Ensure we have the latest data from DB
+      await refetch();
     }
   };
 
