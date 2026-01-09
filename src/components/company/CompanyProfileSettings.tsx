@@ -63,8 +63,11 @@ export function CompanyProfileSettings() {
   };
 
   const handleSave = async () => {
-    await updateCompany(formData);
-    setHasChanges(false);
+    const result = await updateCompany(formData);
+    if (!result.error) {
+      setHasChanges(false);
+      await refetch(); // Ensure we have the latest data from DB
+    }
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
