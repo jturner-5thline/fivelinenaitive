@@ -331,8 +331,17 @@ export function DealsHeader() {
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Settings className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="relative">
+                  {profile?.avatar_url ? (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={profile.avatar_url} alt={profile.display_name || 'User'} />
+                      <AvatarFallback className="text-xs">
+                        {profile?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <Settings className="h-5 w-5" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">

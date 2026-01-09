@@ -2,7 +2,7 @@ import { useCompany, CompanyRole } from '@/hooks/useCompany';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Users, Trash2, Crown, Shield, User } from 'lucide-react';
@@ -79,6 +79,7 @@ export function CompanyMembersSettings() {
                 >
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
+                      <AvatarImage src={member.avatar_url || undefined} alt={member.display_name || 'User'} />
                       <AvatarFallback className="bg-primary/10 text-primary">
                         {member.display_name?.charAt(0) || member.email?.charAt(0) || 'U'}
                       </AvatarFallback>
