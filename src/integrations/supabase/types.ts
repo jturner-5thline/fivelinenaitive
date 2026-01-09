@@ -677,6 +677,7 @@ export type Database = {
           deal_updates_app: boolean
           deal_updates_email: boolean
           display_name: string | null
+          email: string | null
           email_notifications: boolean
           first_name: string | null
           id: string
@@ -710,6 +711,7 @@ export type Database = {
           deal_updates_app?: boolean
           deal_updates_email?: boolean
           display_name?: string | null
+          email?: string | null
           email_notifications?: boolean
           first_name?: string | null
           id?: string
@@ -743,6 +745,7 @@ export type Database = {
           deal_updates_app?: boolean
           deal_updates_email?: boolean
           display_name?: string | null
+          email?: string | null
           email_notifications?: boolean
           first_name?: string | null
           id?: string

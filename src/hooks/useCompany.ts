@@ -93,7 +93,7 @@ export function useCompany() {
         const userIds = membersData.map(m => m.user_id);
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('user_id, display_name, first_name, last_name, avatar_url')
+          .select('user_id, display_name, first_name, last_name, avatar_url, email')
           .in('user_id', userIds);
 
         if (profilesError) {
@@ -129,7 +129,7 @@ export function useCompany() {
             ...member,
             display_name: displayName,
             avatar_url: profile?.avatar_url || null,
-            email: user?.email && member.user_id === user.id ? user.email : null
+            email: profile?.email || null
           };
         });
 
