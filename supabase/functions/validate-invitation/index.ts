@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
           role: invitation.role,
           company_id: invitation.company_id,
           company_name: companyName,
+          expires_at: invitation.expires_at,
         }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
