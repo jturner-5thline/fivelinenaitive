@@ -678,8 +678,10 @@ export type Database = {
           deal_updates_email: boolean
           display_name: string | null
           email_notifications: boolean
+          first_name: string | null
           id: string
           in_app_notifications: boolean
+          last_name: string | null
           lender_updates_app: boolean
           lender_updates_email: boolean
           notify_activity_deal_created: boolean
@@ -709,8 +711,10 @@ export type Database = {
           deal_updates_email?: boolean
           display_name?: string | null
           email_notifications?: boolean
+          first_name?: string | null
           id?: string
           in_app_notifications?: boolean
+          last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
           notify_activity_deal_created?: boolean
@@ -740,8 +744,10 @@ export type Database = {
           deal_updates_email?: boolean
           display_name?: string | null
           email_notifications?: boolean
+          first_name?: string | null
           id?: string
           in_app_notifications?: boolean
+          last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
           notify_activity_deal_created?: boolean
