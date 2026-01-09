@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, Trash2, Crown, Shield, User } from 'lucide-react';
+import { Users, Trash2, Shield, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { InviteMemberDialog } from './InviteMemberDialog';
 import { BulkInviteDialog } from './BulkInviteDialog';
@@ -13,7 +13,7 @@ import { ShareInviteLinkDialog } from './ShareInviteLinkDialog';
 import { PendingInvitations } from './PendingInvitations';
 
 const roleIcons: Record<CompanyRole, React.ReactNode> = {
-  owner: <Crown className="h-4 w-4 text-amber-500" />,
+  owner: <Shield className="h-4 w-4 text-primary" />,
   admin: <Shield className="h-4 w-4 text-primary" />,
   member: <User className="h-4 w-4 text-muted-foreground" />,
 };
