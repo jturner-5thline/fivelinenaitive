@@ -57,7 +57,7 @@ export function ShareInviteLinkDialog({ companyId, companyName }: ShareInviteLin
           email: placeholderEmail,
           role,
           invited_by: user.id,
-          email_status: 'link_only', // Mark as link-only invite
+          email_status: 'pending', // Use 'pending' status for link-only invites
         })
         .select('token')
         .single();
