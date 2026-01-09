@@ -19,22 +19,28 @@ export function ProfileSettings({ collapsible = false, open, onOpenChange }: Pro
   const { user } = useAuth();
   const { profile, isLoading, updateProfile, uploadAvatar } = useProfile();
   const [displayName, setDisplayName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize display name when profile loads
+  // Initialize fields when profile loads
   useEffect(() => {
-    if (profile?.display_name) {
-      setDisplayName(profile.display_name);
+    if (profile) {
+      setDisplayName(profile.display_name || '');
+      setFirstName(profile.first_name || '');
+      setLastName(profile.last_name || '');
     }
-  }, [profile?.display_name]);
+  }, [profile?.display_name, profile?.first_name, profile?.last_name]);
 
-  const handleSaveDisplayName = async () => {
-    if (!displayName.trim()) return;
-    
+  const handleSaveProfile = async () => {
     setIsSaving(true);
-    await updateProfile({ display_name: displayName.trim() });
+    await updateProfile({ 
+      display_name: displayName.trim() || null,
+      first_name: firstName.trim() || null,
+      last_name: lastName.trim() || null,
+    });
     setIsSaving(false);
   };
 
@@ -113,29 +119,57 @@ export function ProfileSettings({ collapsible = false, open, onOpenChange }: Pro
         </div>
       </div>
 
+      {/* First Name & Last Name */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="firstName">First Name</Label>
+          <Input
+            id="firstName"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="Enter your first name"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="lastName">Last Name</Label>
+          <Input
+            id="lastName"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Enter your last name"
+          />
+        </div>
+      </div>
+
       {/* Display Name */}
       <div className="space-y-2">
         <Label htmlFor="displayName">Display Name</Label>
-        <div className="flex gap-2">
-          <Input
-            id="displayName"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder={profile?.display_name || "Enter your display name"}
-            className="flex-1"
-          />
-          <Button 
-            onClick={handleSaveDisplayName} 
-            disabled={isSaving || !displayName.trim()}
-          >
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Save'
-            )}
-          </Button>
-        </div>
+        <Input
+          id="displayName"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder={profile?.display_name || "Enter your display name"}
+        />
+        <p className="text-xs text-muted-foreground">
+          This is how your name appears to others
+        </p>
       </div>
+
+      {/* Save Button */}
+      <Button 
+        onClick={handleSaveProfile} 
+        disabled={isSaving}
+        className="w-full sm:w-auto"
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          'Save Changes'
+        )}
+      </Button>
 
       {/* Email (read-only) */}
       <div className="space-y-2">
