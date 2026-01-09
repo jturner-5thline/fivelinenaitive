@@ -30,6 +30,7 @@ export interface CompanyMember {
   updated_at: string;
   email?: string;
   display_name?: string;
+  avatar_url?: string | null;
 }
 
 export function useCompany() {
@@ -87,24 +88,42 @@ export function useCompany() {
 
       if (membersError) throw membersError;
 
-      // Fetch profile data for each member to get display names and emails
+      // Fetch profile data for each member to get display names, emails, and avatars
       if (membersData && membersData.length > 0) {
         const userIds = membersData.map(m => m.user_id);
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('user_id, display_name')
+          .select('user_id, display_name, avatar_url')
           .in('user_id', userIds);
 
         if (profilesError) {
           console.error('Error fetching profiles:', profilesError);
         }
 
+        // Generate signed URLs for avatars stored in Supabase storage
+        const profilesWithSignedUrls = await Promise.all(
+          (profilesData || []).map(async (profile) => {
+            let signedAvatarUrl = profile.avatar_url;
+            
+            // If avatar_url is a storage path (not a full URL), generate signed URL
+            if (profile.avatar_url && !profile.avatar_url.startsWith('http')) {
+              const { data: signedData } = await supabase.storage
+                .from('avatars')
+                .createSignedUrl(profile.avatar_url, 3600);
+              signedAvatarUrl = signedData?.signedUrl || profile.avatar_url;
+            }
+            
+            return { ...profile, avatar_url: signedAvatarUrl };
+          })
+        );
+
         // Merge profile data with members
         const membersWithProfiles = membersData.map(member => {
-          const profile = profilesData?.find(p => p.user_id === member.user_id);
+          const profile = profilesWithSignedUrls?.find(p => p.user_id === member.user_id);
           return {
             ...member,
             display_name: profile?.display_name || null,
+            avatar_url: profile?.avatar_url || null,
             email: user?.email && member.user_id === user.id ? user.email : null
           };
         });
