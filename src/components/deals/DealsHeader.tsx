@@ -61,6 +61,8 @@ export function DealsHeader() {
   const [dealAmount, setDealAmount] = useState('');
   const [dealManager, setDealManager] = useState('');
   const [dealOwner, setDealOwner] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
 
@@ -100,6 +102,11 @@ export function DealsHeader() {
       toast.error('Please fill in deal name and amount');
       return;
     }
+    
+    if (!contactName.trim() || !contactInfo.trim()) {
+      toast.error('Please fill in contact name and contact info');
+      return;
+    }
 
     // Get display names for the selected users
     const managerName = memberOptions.find(m => m.value === dealManager)?.label || dealManager;
@@ -112,6 +119,8 @@ export function DealsHeader() {
         value: parsedAmount,
         manager: managerName,
         dealOwner: ownerName || undefined,
+        contact: contactName.trim(),
+        contactInfo: contactInfo.trim(),
         status: 'on-track',
         stage: dealStages[0]?.id || 'final-credit-items',
         engagementType: 'guided',
@@ -124,6 +133,8 @@ export function DealsHeader() {
         setDealAmount('');
         setDealManager('');
         setDealOwner('');
+        setContactName('');
+        setContactInfo('');
         navigate(`/deal/${newDeal.id}`);
       }
     } catch (error) {
@@ -284,6 +295,26 @@ export function DealsHeader() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="contactName">Contact Name <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="contactName"
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="Enter contact name"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="contactInfo">Contact Info <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="contactInfo"
+                      value={contactInfo}
+                      onChange={(e) => setContactInfo(e.target.value)}
+                      placeholder="Email or phone number"
+                      required
+                    />
                   </div>
                   {sortedMilestones.length > 0 && (
                     <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
