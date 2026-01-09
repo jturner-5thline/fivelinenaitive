@@ -257,14 +257,18 @@ export function DealsHeader() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="dealAmount">Deal Amount</Label>
-                    <Input
-                      id="dealAmount"
-                      type="text"
-                      inputMode="numeric"
-                      value={dealAmount}
-                      onChange={handleAmountChange}
-                      placeholder="Enter amount"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        id="dealAmount"
+                        type="text"
+                        inputMode="numeric"
+                        value={dealAmount}
+                        onChange={handleAmountChange}
+                        placeholder="0"
+                        className="pl-7"
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
