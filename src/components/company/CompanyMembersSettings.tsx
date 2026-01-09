@@ -59,7 +59,7 @@ export function CompanyMembersSettings() {
             </div>
             {company && (
               <div className="flex items-center gap-2">
-                <ShareInviteLinkDialog companyId={company.id} companyName={company.name} isAdmin={isAdmin} />
+                <ShareInviteLinkDialog companyId={company.id} companyName={company.name} />
                 <InviteMemberDialog companyId={company.id} companyName={company.name} />
                 {isAdmin && (
                   <BulkInviteDialog companyId={company.id} companyName={company.name} />

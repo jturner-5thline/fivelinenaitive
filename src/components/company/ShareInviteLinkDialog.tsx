@@ -28,10 +28,9 @@ type CompanyRole = Database['public']['Enums']['company_role'];
 interface ShareInviteLinkDialogProps {
   companyId: string;
   companyName: string;
-  isAdmin?: boolean;
 }
 
-export function ShareInviteLinkDialog({ companyId, companyName, isAdmin = false }: ShareInviteLinkDialogProps) {
+export function ShareInviteLinkDialog({ companyId, companyName }: ShareInviteLinkDialogProps) {
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<CompanyRole>('member');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -126,27 +125,21 @@ export function ShareInviteLinkDialog({ companyId, companyName, isAdmin = false 
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {isAdmin ? (
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={(value: CompanyRole) => setRole(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                The person who uses this link will be assigned this role.
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              The person who uses this link will join as a <strong>Member</strong>.
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select value={role} onValueChange={(value: CompanyRole) => setRole(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              The person who uses this link will be assigned this role.
             </p>
-          )}
+          </div>
 
           {inviteLink ? (
             <div className="space-y-2">
