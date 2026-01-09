@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +40,10 @@ const Auth = () => {
   const [mfaChallenge, setMfaChallenge] = useState<MFAChallenge | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Get redirect URL from query params (for invite links, etc.)
+  const redirectUrl = searchParams.get('redirect') || '/deals';
 
   useEffect(() => {
     // Check for password recovery event
@@ -48,8 +52,8 @@ const Auth = () => {
         if (event === "PASSWORD_RECOVERY") {
           setMode("reset");
         } else if (event === "SIGNED_IN" && session?.user && mode !== "reset" && mode !== "mfa") {
-          // Only redirect on actual sign-in event, not on page load with existing session
-          navigate("/deals");
+          // Redirect to the specified URL or default to /deals
+          navigate(redirectUrl);
         }
       }
     );
@@ -61,7 +65,7 @@ const Auth = () => {
     }
 
     return () => subscription.unsubscribe();
-  }, [navigate, mode]);
+  }, [navigate, mode, redirectUrl]);
 
   const handleMFAVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +81,7 @@ const Auth = () => {
 
       if (error) throw error;
       toast.success("Welcome back!");
+      navigate(redirectUrl);
       navigate("/deals");
     } catch (error: any) {
       toast.error(error.message || "Invalid verification code.");
@@ -158,7 +163,7 @@ const Auth = () => {
             email: email.trim(),
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/deals`,
+              emailRedirectTo: `${window.location.origin}${redirectUrl}`,
             },
           });
           if (error) throw error;
