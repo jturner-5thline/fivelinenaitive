@@ -266,35 +266,37 @@ export function DealsHeader() {
                       placeholder="Enter amount"
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="dealManager">Deal Manager</Label>
-                    <Select value={dealManager} onValueChange={setDealManager}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select manager" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {memberOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="dealOwner">Deal Owner</Label>
-                    <Select value={dealOwner} onValueChange={setDealOwner}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select owner (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {memberOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="dealManager">Deal Manager</Label>
+                      <Select value={dealManager} onValueChange={setDealManager}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select manager" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {memberOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="dealOwner">Deal Owner</Label>
+                      <Select value={dealOwner} onValueChange={setDealOwner}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select owner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {memberOptions.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="contactName">Contact Name <span className="text-destructive">*</span></Label>
