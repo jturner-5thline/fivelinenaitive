@@ -81,8 +81,9 @@ export default function AcceptInvite() {
     setIsAccepting(true);
 
     try {
-      // Check if user email matches invitation
-      if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
+      // Check if user email matches invitation (skip for link-only invites)
+      const isLinkOnlyInvite = invitation.email.includes('@placeholder.local');
+      if (!isLinkOnlyInvite && user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
         toast({
           title: "Email mismatch",
           description: `This invitation was sent to ${invitation.email}. Please sign in with that email address.`,
