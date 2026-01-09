@@ -93,7 +93,7 @@ export function useCompany() {
         const userIds = membersData.map(m => m.user_id);
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('user_id, display_name, avatar_url')
+          .select('user_id, display_name, first_name, last_name, avatar_url')
           .in('user_id', userIds);
 
         if (profilesError) {
@@ -120,9 +120,14 @@ export function useCompany() {
         // Merge profile data with members
         const membersWithProfiles = membersData.map(member => {
           const profile = profilesWithSignedUrls?.find(p => p.user_id === member.user_id);
+          // Build display name from first+last if display_name is missing
+          const displayName = profile?.display_name || 
+            (profile?.first_name && profile?.last_name 
+              ? `${profile.first_name} ${profile.last_name}`.trim() 
+              : profile?.first_name || null);
           return {
             ...member,
-            display_name: profile?.display_name || null,
+            display_name: displayName,
             avatar_url: profile?.avatar_url || null,
             email: user?.email && member.user_id === user.id ? user.email : null
           };
