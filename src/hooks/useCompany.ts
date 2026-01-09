@@ -214,14 +214,20 @@ export function useCompany() {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      const { data, error, count } = await supabase
         .from('companies')
         .update(updates)
-        .eq('id', company.id);
+        .eq('id', company.id)
+        .select()
+        .single();
 
       if (error) throw error;
 
-      setCompany(prev => prev ? { ...prev, ...updates } : null);
+      if (!data) {
+        throw new Error('Update failed - no rows affected');
+      }
+
+      setCompany(data);
       toast.success('Company updated successfully');
       return { error: null };
     } catch (error: any) {

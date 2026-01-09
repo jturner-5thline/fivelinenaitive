@@ -75,12 +75,9 @@ export function CompanyProfileSettings() {
       }
     });
     
-    console.log('Saving company data:', cleanedData);
     const result = await updateCompany(cleanedData);
-    console.log('Save result:', result);
     if (!result.error) {
       setHasChanges(false);
-      await refetch();
     }
   };
 
