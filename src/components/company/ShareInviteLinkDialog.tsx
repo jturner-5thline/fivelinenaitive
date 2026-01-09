@@ -64,7 +64,7 @@ export function ShareInviteLinkDialog({ companyId, companyName }: ShareInviteLin
 
       if (error) throw error;
 
-      const baseUrl = window.location.origin;
+      const baseUrl = 'https://naitive.co';
       const link = `${baseUrl}/accept-invite?token=${invitation.token}`;
       setInviteLink(link);
       toast.success('Invite link generated! Share it with your team member.');
