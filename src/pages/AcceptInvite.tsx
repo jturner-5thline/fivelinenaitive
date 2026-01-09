@@ -10,7 +10,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { ProfileSetupModal } from '@/components/onboarding/ProfileSetupModal';
-
+import { MigrateDealsDialog } from '@/components/company/MigrateDealsDialog';
 interface InvitationData {
   id: string;
   email: string;
@@ -31,6 +31,7 @@ export default function AcceptInvite() {
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [showMigrateDeals, setShowMigrateDeals] = useState(false);
   const [autoAcceptTriggered, setAutoAcceptTriggered] = useState(false);
 
   useEffect(() => {
@@ -157,7 +158,8 @@ export default function AcceptInvite() {
       if (needsProfileSetup) {
         setShowProfileSetup(true);
       } else {
-        navigate('/deals');
+        // Show migrate deals dialog
+        setShowMigrateDeals(true);
       }
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
@@ -173,6 +175,12 @@ export default function AcceptInvite() {
 
   const handleProfileSetupComplete = () => {
     setShowProfileSetup(false);
+    // Show migrate deals dialog after profile setup
+    setShowMigrateDeals(true);
+  };
+
+  const handleMigrateDealsClose = () => {
+    setShowMigrateDeals(false);
     navigate('/deals');
   };
 
@@ -310,6 +318,17 @@ export default function AcceptInvite() {
         onComplete={handleProfileSetupComplete}
         companyName={invitation?.company_name}
       />
+
+      {/* Migrate Deals Dialog */}
+      {user && invitation && (
+        <MigrateDealsDialog
+          open={showMigrateDeals}
+          onClose={handleMigrateDealsClose}
+          companyId={invitation.company_id}
+          companyName={invitation.company_name}
+          userId={user.id}
+        />
+      )}
     </>
   );
 }
