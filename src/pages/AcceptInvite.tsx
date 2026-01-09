@@ -31,6 +31,7 @@ export default function AcceptInvite() {
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [autoAcceptTriggered, setAutoAcceptTriggered] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -80,6 +81,14 @@ export default function AcceptInvite() {
 
     checkInvitation();
   }, [token]);
+
+  // Auto-accept for logged-in users
+  useEffect(() => {
+    if (status === 'valid' && user && invitation && !autoAcceptTriggered && !isAccepting) {
+      setAutoAcceptTriggered(true);
+      handleAccept();
+    }
+  }, [status, user, invitation, autoAcceptTriggered, isAccepting]);
 
   const handleAccept = async () => {
     if (!user || !invitation) return;
@@ -259,33 +268,37 @@ export default function AcceptInvite() {
           {status === 'valid' && user && (
             <>
               <CardHeader className="text-center">
-                <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
-                <CardTitle>Join {invitation?.company_name}</CardTitle>
+                {isAccepting ? (
+                  <Loader2 className="h-12 w-12 text-primary mx-auto mb-4 animate-spin" />
+                ) : (
+                  <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
+                )}
+                <CardTitle>
+                  {isAccepting ? `Joining ${invitation?.company_name}...` : `Join ${invitation?.company_name}`}
+                </CardTitle>
                 <CardDescription>
-                  Accept your invitation to join the team as a {invitation?.role === 'admin' ? 'Admin' : 'Member'}.
+                  {isAccepting 
+                    ? 'Please wait while we add you to the team.'
+                    : `Accept your invitation to join the team as a ${invitation?.role === 'admin' ? 'Admin' : 'Member'}.`
+                  }
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {invitation?.expires_at && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md py-2 px-3">
-                    <Clock className="h-4 w-4" />
-                    <span>Expires {formatDistanceToNow(new Date(invitation.expires_at), { addSuffix: true })}</span>
-                  </div>
-                )}
-                <Button className="w-full" onClick={handleAccept} disabled={isAccepting}>
-                  {isAccepting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Accepting...
-                    </>
-                  ) : (
-                    'Accept Invitation'
+              {!isAccepting && (
+                <CardContent className="space-y-3">
+                  {invitation?.expires_at && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md py-2 px-3">
+                      <Clock className="h-4 w-4" />
+                      <span>Expires {formatDistanceToNow(new Date(invitation.expires_at), { addSuffix: true })}</span>
+                    </div>
                   )}
-                </Button>
-                <Button variant="outline" className="w-full" onClick={() => navigate('/deals')}>
-                  Decline
-                </Button>
-              </CardContent>
+                  <Button className="w-full" onClick={handleAccept} disabled={isAccepting}>
+                    Accept Invitation
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={() => navigate('/deals')}>
+                    Decline
+                  </Button>
+                </CardContent>
+              )}
             </>
           )}
         </Card>
