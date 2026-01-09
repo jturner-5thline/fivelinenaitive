@@ -3,10 +3,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle, Mail } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Mail, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 
 interface InvitationData {
   id: string;
@@ -14,6 +15,7 @@ interface InvitationData {
   role: string;
   company_id: string;
   company_name: string;
+  expires_at: string;
 }
 
 export default function AcceptInvite() {
@@ -216,11 +218,17 @@ export default function AcceptInvite() {
                 <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
                 <CardTitle>Join {invitation?.company_name}</CardTitle>
                 <CardDescription>
-                  You've been invited to join as a {invitation?.role === 'admin' ? 'Admin' : 'User'}.
+                  You've been invited to join as a {invitation?.role === 'admin' ? 'Admin' : 'Member'}.
                   Sign in or create an account to accept.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
+                {invitation?.expires_at && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md py-2 px-3">
+                    <Clock className="h-4 w-4" />
+                    <span>Expires {formatDistanceToNow(new Date(invitation.expires_at), { addSuffix: true })}</span>
+                  </div>
+                )}
                 <Button className="w-full" onClick={() => navigate(`/auth?redirect=/accept-invite?token=${token}`)}>
                   Sign In to Accept
                 </Button>
@@ -237,10 +245,16 @@ export default function AcceptInvite() {
                 <Mail className="h-12 w-12 text-primary mx-auto mb-4" />
                 <CardTitle>Join {invitation?.company_name}</CardTitle>
                 <CardDescription>
-                  Accept your invitation to join the team as a {invitation?.role === 'admin' ? 'Admin' : 'User'}.
+                  Accept your invitation to join the team as a {invitation?.role === 'admin' ? 'Admin' : 'Member'}.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
+                {invitation?.expires_at && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md py-2 px-3">
+                    <Clock className="h-4 w-4" />
+                    <span>Expires {formatDistanceToNow(new Date(invitation.expires_at), { addSuffix: true })}</span>
+                  </div>
+                )}
                 <Button className="w-full" onClick={handleAccept} disabled={isAccepting}>
                   {isAccepting ? (
                     <>
