@@ -229,12 +229,14 @@ export default function AcceptInvite() {
                     <span>Expires {formatDistanceToNow(new Date(invitation.expires_at), { addSuffix: true })}</span>
                   </div>
                 )}
-                <Button className="w-full" onClick={() => navigate(`/auth?redirect=/accept-invite?token=${token}`)}>
+                <Button className="w-full" onClick={() => navigate(`/auth?redirect=${encodeURIComponent(`/accept-invite?token=${token}`)}`)}>
                   Sign In to Accept
                 </Button>
-                <p className="text-sm text-center text-muted-foreground">
-                  Make sure to sign in with <strong>{invitation?.email}</strong>
-                </p>
+                {invitation?.email && !invitation.email.includes('@placeholder.local') && (
+                  <p className="text-sm text-center text-muted-foreground">
+                    Make sure to sign in with <strong>{invitation.email}</strong>
+                  </p>
+                )}
               </CardContent>
             </>
           )}
