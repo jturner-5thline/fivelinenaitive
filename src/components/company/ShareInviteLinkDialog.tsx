@@ -63,7 +63,15 @@ export function ShareInviteLinkDialog({ companyId, companyName, isAdmin = false 
         .select('token')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+
+      if (!invitation?.token) {
+        console.error('No token returned:', invitation);
+        throw new Error('No token returned from invitation creation');
+      }
 
       const baseUrl = 'https://naitive.co';
       const link = `${baseUrl}/accept-invite?token=${invitation.token}`;
