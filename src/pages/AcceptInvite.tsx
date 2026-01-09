@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, Mail, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { ProfileSetupModal } from '@/components/onboarding/ProfileSetupModal';
 
 interface InvitationData {
   id: string;
@@ -22,11 +24,13 @@ export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
+  const { profile, isLoading: profileLoading } = useProfile();
   const token = searchParams.get('token');
 
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'expired' | 'accepted'>('loading');
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -139,7 +143,13 @@ export default function AcceptInvite() {
         description: `You've successfully joined ${invitation.company_name}`,
       });
 
-      navigate('/deals');
+      // Check if profile needs to be completed
+      const needsProfileSetup = !profile?.first_name || !profile?.display_name;
+      if (needsProfileSetup) {
+        setShowProfileSetup(true);
+      } else {
+        navigate('/deals');
+      }
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
       toast({
@@ -152,7 +162,12 @@ export default function AcceptInvite() {
     }
   };
 
-  if (authLoading || status === 'loading') {
+  const handleProfileSetupComplete = () => {
+    setShowProfileSetup(false);
+    navigate('/deals');
+  };
+
+  if (authLoading || status === 'loading' || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -275,6 +290,13 @@ export default function AcceptInvite() {
           )}
         </Card>
       </div>
+      
+      {/* Profile Setup Modal for new users */}
+      <ProfileSetupModal 
+        open={showProfileSetup} 
+        onComplete={handleProfileSetupComplete}
+        companyName={invitation?.company_name}
+      />
     </>
   );
 }
