@@ -931,6 +931,10 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_same_company_as_user: {
+        Args: { _current_user_id: string; _deal_owner_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       company_role: "owner" | "admin" | "member"
