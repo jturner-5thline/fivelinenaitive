@@ -401,6 +401,7 @@ export type Database = {
           id: string
           is_flagged: boolean
           manager: string | null
+          migrated_from_personal: boolean
           milestone_fee: number | null
           notes: string | null
           notes_updated_at: string | null
@@ -428,6 +429,7 @@ export type Database = {
           id?: string
           is_flagged?: boolean
           manager?: string | null
+          migrated_from_personal?: boolean
           milestone_fee?: number | null
           notes?: string | null
           notes_updated_at?: string | null
@@ -455,6 +457,7 @@ export type Database = {
           id?: string
           is_flagged?: boolean
           manager?: string | null
+          migrated_from_personal?: boolean
           milestone_fee?: number | null
           notes?: string | null
           notes_updated_at?: string | null

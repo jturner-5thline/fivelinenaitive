@@ -1,4 +1,4 @@
-import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive } from 'lucide-react';
+import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link, useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -241,6 +241,24 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
           >
             {stageConfig.label}
           </Badge>
+          {deal.migratedFromPersonal && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="text-xs rounded-lg bg-accent/50 text-accent-foreground border-accent gap-1"
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    Migrated
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>This deal was migrated from a personal account</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
         {deal.notes && deal.notes !== '<p></p>' ? (
           <HoverCard openDelay={300}>

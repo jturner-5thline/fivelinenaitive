@@ -74,6 +74,7 @@ interface DbDeal {
   retainer_fee: number | null;
   milestone_fee: number | null;
   success_fee_percent: number | null;
+  migrated_from_personal: boolean;
 }
 
 interface DbDealLender {
@@ -265,6 +266,7 @@ export function useDealsDatabase() {
           createdAt: dbDeal.created_at,
           updatedAt: dbDeal.updated_at,
           lenders: dealLenders,
+          migratedFromPersonal: dbDeal.migrated_from_personal || false,
         };
       });
 
