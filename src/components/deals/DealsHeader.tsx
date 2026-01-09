@@ -333,12 +333,17 @@ export function DealsHeader() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
                   {profile?.avatar_url ? (
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={profile.avatar_url} alt={profile.display_name || 'User'} />
-                      <AvatarFallback className="text-xs">
-                        {profile?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={profile.avatar_url} alt={profile.display_name || 'User'} />
+                        <AvatarFallback className="text-xs">
+                          {profile?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-muted border border-border shadow-sm">
+                        <Settings className="h-2.5 w-2.5 text-muted-foreground" />
+                      </div>
+                    </div>
                   ) : (
                     <Settings className="h-5 w-5" />
                   )}
