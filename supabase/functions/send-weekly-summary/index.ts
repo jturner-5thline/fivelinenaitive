@@ -121,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const emailResponse = await resend.emails.send({
-          from: "nAItive <updates@naitive.co>",
+          from: "nAItive <noreply@updates.naitive.co>",
           to: [userData.user.email],
           subject: `nAItive: Your Weekly Summary`,
           html: `
