@@ -19,13 +19,75 @@ interface ExecuteWorkflowRequest {
   actions: WorkflowAction[];
 }
 
+function validateWebhookUrl(url: string): { valid: boolean; error?: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+
+  // Only allow HTTPS for security
+  if (parsed.protocol !== 'https:') {
+    return { valid: false, error: 'Only HTTPS URLs are allowed' };
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  // Block localhost and loopback
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+    return { valid: false, error: 'Localhost URLs are not allowed' };
+  }
+
+  // Block private IP ranges and cloud metadata endpoints
+  const privatePatterns = [
+    /^127\./, // Loopback
+    /^10\./, // Private class A
+    /^172\.(1[6-9]|2[0-9]|3[01])\./, // Private class B
+    /^192\.168\./, // Private class C
+    /^169\.254\./, // Link-local / AWS/GCP/Azure metadata
+    /^0\.0\.0\.0$/,
+    /^fd[0-9a-f]{2}:/i, // IPv6 private
+    /^fe80:/i, // IPv6 link-local
+  ];
+
+  for (const pattern of privatePatterns) {
+    if (pattern.test(hostname)) {
+      return { valid: false, error: 'Private/internal URLs are not allowed' };
+    }
+  }
+
+  // Block known cloud metadata hostnames
+  const blockedHostnames = [
+    'metadata.google.internal',
+    'metadata.goog',
+    'instance-data',
+  ];
+
+  if (blockedHostnames.includes(hostname)) {
+    return { valid: false, error: 'Cloud metadata endpoints are not allowed' };
+  }
+
+  return { valid: true };
+}
+
 async function executeWebhookAction(config: Record<string, any>, triggerData: Record<string, any>): Promise<{ success: boolean; message: string }> {
   const url = config.url;
   if (!url) {
     return { success: false, message: "No webhook URL configured" };
   }
 
+  // Validate URL to prevent SSRF attacks
+  const validation = validateWebhookUrl(url);
+  if (!validation.valid) {
+    console.error(`Invalid webhook URL rejected: ${url} - ${validation.error}`);
+    return { success: false, message: `Invalid webhook URL: ${validation.error}` };
+  }
+
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,7 +96,10 @@ async function executeWebhookAction(config: Record<string, any>, triggerData: Re
         trigger_data: triggerData,
         source: "nAItive Workflow",
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     // For Zapier webhooks with no-cors, we can't check response status
     return { success: true, message: `Webhook called: ${url}` };
