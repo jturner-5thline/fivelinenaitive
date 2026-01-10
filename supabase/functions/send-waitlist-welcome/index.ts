@@ -26,7 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending waitlist welcome email to ${email}`);
 
     const emailResponse = await resend.emails.send({
-      from: "nAItive <updates@naitive.co>",
+      from: "nAItive <noreply@updates.naitive.co>",
       to: [email],
       subject: "Welcome to the nAItive Waitlist! 🎉",
       html: `
