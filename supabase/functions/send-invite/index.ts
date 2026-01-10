@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       const emailResponse = await resend.emails.send({
-        from: "nAItive <team@5thline.co>",
+        from: "nAItive <updates@naitive.co>",
         to: [email],
         subject: `You've been invited to join ${companyName}`,
         html: `
