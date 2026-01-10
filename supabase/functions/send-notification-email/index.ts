@@ -130,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
     const dealUrl = payload.deal_id ? `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app')}/deal/${payload.deal_id}` : null;
 
     const emailResponse = await resend.emails.send({
-      from: "nAItive <onboarding@resend.dev>",
+      from: "nAItive <updates@naitive.co>",
       to: [userData.user.email],
       subject: `nAItive: ${template.subject}`,
       html: `
