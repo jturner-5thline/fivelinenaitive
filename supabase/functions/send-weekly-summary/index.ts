@@ -165,9 +165,16 @@ const handler = async (req: Request): Promise<Response> => {
                   View Dashboard
                 </a>
 
-                <p style="color: #999; font-size: 14px; margin-top: 32px; border-top: 1px solid #eee; padding-top: 24px;">
-                  You can manage your notification preferences in your account settings.
-                </p>
+                <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #eee; text-align: center;">
+                  <p style="color: #999; font-size: 12px; margin: 0;">
+                    © ${new Date().getFullYear()} nAItive. All rights reserved.
+                  </p>
+                  <p style="color: #999; font-size: 12px; margin: 8px 0 0 0;">
+                    <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage email preferences</a>
+                    &nbsp;|&nbsp;
+                    <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+                  </p>
+                </div>
               </div>
             </body>
             </html>

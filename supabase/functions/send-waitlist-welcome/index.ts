@@ -82,7 +82,10 @@ const handler = async (req: Request): Promise<Response> => {
                   <tr>
                     <td align="center" style="padding-top: 32px;">
                       <p style="margin: 0; font-size: 12px; color: #52525b;">
-                        © ${new Date().getFullYear()} 5th Line. All rights reserved.
+                        © ${new Date().getFullYear()} nAItive. All rights reserved.
+                      </p>
+                      <p style="margin: 8px 0 0 0; font-size: 12px; color: #52525b;">
+                        <a href="https://naitive.co/unsubscribe" style="color: #22c55e; text-decoration: underline;">Unsubscribe</a>
                       </p>
                     </td>
                   </tr>

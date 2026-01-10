@@ -91,6 +91,16 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="color: #999; font-size: 14px; margin-top: 32px;">
                 This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
               </p>
+              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #eee; text-align: center;">
+                <p style="color: #999; font-size: 12px; margin: 0;">
+                  © ${new Date().getFullYear()} nAItive. All rights reserved.
+                </p>
+                <p style="color: #999; font-size: 12px; margin: 8px 0 0 0;">
+                  <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage email preferences</a>
+                  &nbsp;|&nbsp;
+                  <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+                </p>
+              </div>
             </div>
           </body>
           </html>
