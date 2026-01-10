@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, Lock, Mail, User, Building2 } from 'lucide-react';
+import { Loader2, CheckCircle2, LogIn, Mail, User, Building2 } from 'lucide-react';
 import { z } from 'zod';
+import { useNavigate } from 'react-router-dom';
 
 const waitlistSchema = z.object({
   email: z.string().trim().email({ message: "Please enter a valid email address" }),
@@ -15,18 +16,13 @@ const waitlistSchema = z.object({
   company: z.string().trim().optional(),
 });
 
-const ACCESS_PASSWORD = "5thlinenaitive";
-
 const Waitlist = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [password, setPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,16 +82,6 @@ const Waitlist = () => {
     }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === ACCESS_PASSWORD) {
-      sessionStorage.setItem('landing-access', 'granted');
-      window.location.href = '/home';
-    } else {
-      setPasswordError('Incorrect password');
-    }
-  };
-
   return (
     <>
       <Helmet>
@@ -143,10 +129,10 @@ const Waitlist = () => {
               <Button
                 variant="outline"
                 className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40"
-                onClick={() => setShowPasswordModal(true)}
+                onClick={() => navigate('/auth')}
               >
-                <Lock className="h-4 w-4 mr-2" />
-                Already have access?
+                <LogIn className="h-4 w-4 mr-2" />
+                Already have an account? Sign in
               </Button>
             </div>
           ) : (
@@ -224,63 +210,16 @@ const Waitlist = () => {
                   variant="ghost"
                   size="sm"
                   className="text-white/40 hover:text-white/60 hover:bg-white/5"
-                  onClick={() => setShowPasswordModal(true)}
+                  onClick={() => navigate('/auth')}
                 >
-                  <Lock className="h-3 w-3 mr-2" />
-                  Already have access?
+                  <LogIn className="h-3 w-3 mr-2" />
+                  Already have an account? Sign in
                 </Button>
               </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* Password Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#0a0a1f] border border-white/10 rounded-2xl p-8 w-full max-w-sm mx-4">
-            <h3 className="text-xl font-semibold text-white mb-4 text-center">Enter Access Code</h3>
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setPasswordError('');
-                  }}
-                  placeholder="Access password"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-white/30"
-                  autoFocus
-                />
-                {passwordError && (
-                  <p className="text-red-400 text-sm">{passwordError}</p>
-                )}
-              </div>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/5"
-                  onClick={() => {
-                    setShowPasswordModal(false);
-                    setPassword('');
-                    setPasswordError('');
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0"
-                >
-                  Enter
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </>
   );
 };
