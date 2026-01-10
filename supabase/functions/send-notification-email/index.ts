@@ -131,35 +131,65 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResponse = await resend.emails.send({
       from: "nAItive <noreply@updates.naitive.co>",
+      reply_to: "support@naitive.co",
       to: [userData.user.email],
       subject: `nAItive: ${template.subject}`,
+      headers: {
+        "List-Unsubscribe": "<https://naitive.co/unsubscribe>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+      text: `${template.subject}\n\n${message}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnAItive - Manage preferences: https://naitive.co/settings | Unsubscribe: https://naitive.co/unsubscribe`,
       html: `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <meta name="color-scheme" content="light">
+          <meta name="supported-color-schemes" content="light">
+          <title>${template.subject}</title>
         </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background-color: #f5f5f5;">
-          <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 24px;">${template.subject}</h1>
-            <p style="color: #666; font-size: 16px; line-height: 1.6;">${message}</p>
-            ${dealUrl ? `
-              <a href="${dealUrl}" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; margin: 24px 0;">
-                View Deal
-              </a>
-            ` : ''}
-            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #eee;">
-              <p style="color: #999; font-size: 12px; margin: 0; text-align: center;">
-                © ${new Date().getFullYear()} nAItive. All rights reserved.
-              </p>
-              <p style="color: #999; font-size: 12px; margin: 8px 0 0 0; text-align: center;">
-                <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage email preferences</a>
-                &nbsp;|&nbsp;
-                <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
-              </p>
-            </div>
+        <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+          <!-- Preheader text -->
+          <div style="display: none; max-height: 0; overflow: hidden;">
+            ${message.substring(0, 100)}...
+            &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
           </div>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5;">
+            <tr>
+              <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" width="500" cellspacing="0" cellpadding="0" border="0" style="max-width: 500px; background: #ffffff; border-radius: 8px;">
+                  <tr>
+                    <td style="padding: 40px;">
+                      <h1 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 24px 0; line-height: 1.3;">${template.subject}</h1>
+                      <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">${message}</p>
+                      ${dealUrl ? `
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                          <tr>
+                            <td style="border-radius: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%);">
+                              <a href="${dealUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">View Deal</a>
+                            </td>
+                          </tr>
+                        </table>
+                      ` : ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 24px 40px; border-top: 1px solid #eeeeee; text-align: center;">
+                      <p style="color: #888888; font-size: 12px; margin: 0 0 8px 0;">
+                        © ${new Date().getFullYear()} nAItive. All rights reserved.
+                      </p>
+                      <p style="color: #888888; font-size: 12px; margin: 0;">
+                        <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
+                        &nbsp;|&nbsp;
+                        <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
         </body>
         </html>
       `,

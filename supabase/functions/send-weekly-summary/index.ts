@@ -122,60 +122,110 @@ const handler = async (req: Request): Promise<Response> => {
 
         const emailResponse = await resend.emails.send({
           from: "nAItive <noreply@updates.naitive.co>",
+          reply_to: "support@naitive.co",
           to: [userData.user.email],
-          subject: `nAItive: Your Weekly Summary`,
+          subject: "nAItive: Your Weekly Summary",
+          headers: {
+            "List-Unsubscribe": "<https://naitive.co/unsubscribe>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+          text: `Weekly Summary\n\nHi ${profile.display_name || 'there'}, here's what happened this week.\n\nActive Deals: ${totalDeals}\nActivities This Week: ${totalActivities}\nUpcoming Milestones: ${upcomingCount}\n\nView Dashboard: https://naitive.co/deals\n\n---\nnAItive - Manage preferences: https://naitive.co/settings | Unsubscribe: https://naitive.co/unsubscribe`,
           html: `
             <!DOCTYPE html>
-            <html>
+            <html lang="en">
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta name="color-scheme" content="light">
+              <meta name="supported-color-schemes" content="light">
+              <title>Your Weekly Summary</title>
             </head>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px 20px; background-color: #f5f5f5;">
-              <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 8px;">Weekly Summary</h1>
-                <p style="color: #999; font-size: 14px; margin-bottom: 32px;">Hi ${profile.display_name || 'there'}, here's what happened this week.</p>
-                
-                <div style="display: flex; gap: 16px; margin-bottom: 24px;">
-                  <div style="flex: 1; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 32px; font-weight: bold;">${totalDeals}</div>
-                    <div style="font-size: 14px; opacity: 0.9;">Active Deals</div>
-                  </div>
-                  <div style="flex: 1; background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 32px; font-weight: bold; color: #1a1a1a;">${totalActivities}</div>
-                    <div style="font-size: 14px; color: #666;">Activities This Week</div>
-                  </div>
-                  <div style="flex: 1; background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 32px; font-weight: bold; color: #1a1a1a;">${upcomingCount}</div>
-                    <div style="font-size: 14px; color: #666;">Upcoming Milestones</div>
-                  </div>
-                </div>
-
-                ${newDeals.length > 0 ? `
-                  <h2 style="color: #1a1a1a; font-size: 18px; margin-top: 32px;">New Deals</h2>
-                  <ul style="color: #666; padding-left: 20px;">
-                    ${newDeals.map(d => `<li style="margin-bottom: 8px;"><strong>${d.company}</strong> - ${d.stage}</li>`).join('')}
-                  </ul>
-                ` : ''}
-
-                ${activitiesHtml}
-                ${milestonesHtml}
-
-                <a href="https://lovable.dev" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; margin: 32px 0 0 0;">
-                  View Dashboard
-                </a>
-
-                <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #eee; text-align: center;">
-                  <p style="color: #999; font-size: 12px; margin: 0;">
-                    © ${new Date().getFullYear()} nAItive. All rights reserved.
-                  </p>
-                  <p style="color: #999; font-size: 12px; margin: 8px 0 0 0;">
-                    <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage email preferences</a>
-                    &nbsp;|&nbsp;
-                    <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
-                  </p>
-                </div>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+              <!-- Preheader text -->
+              <div style="display: none; max-height: 0; overflow: hidden;">
+                ${totalDeals} active deals, ${totalActivities} activities this week, ${upcomingCount} upcoming milestones.
+                &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
               </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f5f5f5;">
+                <tr>
+                  <td align="center" style="padding: 40px 20px;">
+                    <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background: #ffffff; border-radius: 8px;">
+                      <tr>
+                        <td style="padding: 40px;">
+                          <h1 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Weekly Summary</h1>
+                          <p style="color: #888888; font-size: 14px; margin: 0 0 32px 0;">Hi ${profile.display_name || 'there'}, here's what happened this week.</p>
+                          
+                          <!-- Stats Grid -->
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 24px;">
+                            <tr>
+                              <td width="33%" style="padding: 0 8px 0 0;">
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%); border-radius: 8px;">
+                                  <tr>
+                                    <td style="padding: 20px; text-align: center;">
+                                      <div style="font-size: 28px; font-weight: bold; color: #ffffff;">${totalDeals}</div>
+                                      <div style="font-size: 12px; color: rgba(255,255,255,0.9);">Active Deals</div>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                              <td width="33%" style="padding: 0 4px;">
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: #f5f5f5; border-radius: 8px;">
+                                  <tr>
+                                    <td style="padding: 20px; text-align: center;">
+                                      <div style="font-size: 28px; font-weight: bold; color: #1a1a1a;">${totalActivities}</div>
+                                      <div style="font-size: 12px; color: #666666;">Activities</div>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                              <td width="33%" style="padding: 0 0 0 8px;">
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background: #f5f5f5; border-radius: 8px;">
+                                  <tr>
+                                    <td style="padding: 20px; text-align: center;">
+                                      <div style="font-size: 28px; font-weight: bold; color: #1a1a1a;">${upcomingCount}</div>
+                                      <div style="font-size: 12px; color: #666666;">Milestones</div>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+
+                          ${newDeals.length > 0 ? `
+                            <h2 style="color: #1a1a1a; font-size: 18px; font-weight: 600; margin: 32px 0 16px 0;">New Deals</h2>
+                            <ul style="color: #4a4a4a; padding-left: 20px; margin: 0;">
+                              ${newDeals.map(d => `<li style="margin-bottom: 8px; line-height: 1.5;"><strong>${d.company}</strong> - ${d.stage}</li>`).join('')}
+                            </ul>
+                          ` : ''}
+
+                          ${activitiesHtml}
+                          ${milestonesHtml}
+
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top: 32px;">
+                            <tr>
+                              <td style="border-radius: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%);">
+                                <a href="https://naitive.co/deals" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">View Dashboard</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 24px 40px; border-top: 1px solid #eeeeee; text-align: center;">
+                          <p style="color: #888888; font-size: 12px; margin: 0 0 8px 0;">
+                            © ${new Date().getFullYear()} nAItive. All rights reserved.
+                          </p>
+                          <p style="color: #888888; font-size: 12px; margin: 0;">
+                            <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
+                            &nbsp;|&nbsp;
+                            <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
             </body>
             </html>
           `,
