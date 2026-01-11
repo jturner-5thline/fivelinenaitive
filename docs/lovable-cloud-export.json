@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "exportedAt": "2026-01-11T17:14:04.000Z",
+    "tables": [
+      { "table": "companies", "rowCount": 2 },
+      { "table": "profiles", "rowCount": 2 },
+      { "table": "company_members", "rowCount": 2 },
+      { "table": "company_invitations", "rowCount": 0 },
+      { "table": "deals", "rowCount": 3 },
+      { "table": "deal_lenders", "rowCount": 3 },
+      { "table": "deal_milestones", "rowCount": 9 },
+      { "table": "deal_attachments", "rowCount": 0 },
+      { "table": "deal_status_notes", "rowCount": 0 },
+      { "table": "deal_flag_notes", "rowCount": 1 },
+      { "table": "lender_notes_history", "rowCount": 0 },
+      { "table": "lender_attachments", "rowCount": 0 },
+      { "table": "activity_logs", "rowCount": 50 },
+      { "table": "outstanding_items", "rowCount": 1 },
+      { "table": "referral_sources", "rowCount": 0 },
+      { "table": "workflows", "rowCount": 0 },
+      { "table": "workflow_runs", "rowCount": 0 },
+      { "table": "notification_reads", "rowCount": 0 },
+      { "table": "login_history", "rowCount": 0 },
+      { "table": "waitlist", "rowCount": 0 }
+    ],
+    "totalRows": 73
+  },
+  "instructions": "To import this data to your external Supabase:",
+  "steps": [
+    "1. Use the migration-schema.sql file in docs/ to create the database schema in your Supabase project",
+    "2. Upload this JSON file and use the import-data edge function, OR",
+    "3. Manually insert the data using Supabase SQL editor with INSERT statements"
+  ],
+  "schemaFile": "docs/migration-schema.sql",
+  "note": "The full export data is available by calling the /export-data edge function directly or using the Migration Tool in the app at /migration"
+}
