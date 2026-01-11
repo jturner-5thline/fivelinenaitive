@@ -133,7 +133,7 @@ export default function MigrationTool() {
               Export all your data from Lovable Cloud
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Button
               onClick={handleExport}
               disabled={isExporting || exportSuccess}
@@ -157,13 +157,20 @@ export default function MigrationTool() {
               )}
             </Button>
             {exportSuccess && (
-              <Button
-                variant="outline"
-                onClick={downloadExport}
-                className="w-full mt-2"
-              >
-                Download JSON Backup
-              </Button>
+              <>
+                <Button
+                  variant="default"
+                  onClick={downloadExport}
+                  className="w-full"
+                  size="lg"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download JSON File
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Save this file to import into your external Supabase project
+                </p>
+              </>
             )}
           </CardContent>
         </Card>
