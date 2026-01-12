@@ -35,29 +35,37 @@ export function useActivityLog(dealId: string | undefined) {
     setIsLoading(false);
   }, [dealId]);
 
-  const logActivity = useCallback(async (
+  // Fire-and-forget activity logging - does not block UI
+  const logActivity = useCallback((
     activityType: string,
     description: string,
     metadata: Record<string, any> = {}
   ) => {
     if (!dealId) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    // Execute async operation without blocking
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-    const { error } = await supabase
-      .from('activity_logs')
-      .insert({
-        deal_id: dealId,
-        user_id: user.id,
-        activity_type: activityType,
-        description,
-        metadata,
-      });
+        const { error } = await supabase
+          .from('activity_logs')
+          .insert({
+            deal_id: dealId,
+            user_id: user.id,
+            activity_type: activityType,
+            description,
+            metadata,
+          });
 
-    if (error) {
-      console.error('Error logging activity:', error);
-    }
+        if (error) {
+          console.error('Error logging activity:', error);
+        }
+      } catch (err) {
+        console.error('Error logging activity:', err);
+      }
+    })();
   }, [dealId]);
 
   useEffect(() => {
