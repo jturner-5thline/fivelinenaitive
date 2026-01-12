@@ -53,6 +53,38 @@ export interface DealWriteUpData {
   publishAsAnonymous: boolean;
 }
 
+export interface DealDataForWriteUp {
+  company?: string;
+  dealTypes?: string[] | null;
+  value?: number;
+  notes?: string | null;
+  status?: string;
+}
+
+export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpData => ({
+  companyName: deal?.company || '',
+  companyUrl: '',
+  linkedinUrl: '',
+  dataRoomUrl: '',
+  industry: '',
+  location: '',
+  dealType: deal?.dealTypes?.[0] || '',
+  billingModel: '',
+  profitability: '',
+  grossMargins: '',
+  capitalAsk: deal?.value ? `$${deal.value.toLocaleString()}` : '',
+  thisYearRevenue: '',
+  lastYearRevenue: '',
+  financialDataAsOf: null,
+  accountingSystem: '',
+  status: deal?.status === 'active' ? 'Published' : deal?.status === 'closed' ? 'Closed' : 'Draft',
+  useOfFunds: '',
+  existingDebtDetails: '',
+  description: deal?.notes || '',
+  keyItems: [],
+  publishAsAnonymous: false,
+});
+
 interface DealWriteUpProps {
   data: DealWriteUpData;
   onChange: (data: DealWriteUpData) => void;
@@ -499,26 +531,3 @@ export const DealWriteUp = ({ data, onChange, onSave, onCancel, isSaving }: Deal
   );
 };
 
-export const getEmptyDealWriteUpData = (): DealWriteUpData => ({
-  companyName: '',
-  companyUrl: '',
-  linkedinUrl: '',
-  dataRoomUrl: '',
-  industry: '',
-  location: '',
-  dealType: '',
-  billingModel: '',
-  profitability: '',
-  grossMargins: '',
-  capitalAsk: '',
-  thisYearRevenue: '',
-  lastYearRevenue: '',
-  financialDataAsOf: null,
-  accountingSystem: '',
-  status: 'Draft',
-  useOfFunds: '',
-  existingDebtDetails: '',
-  description: '',
-  keyItems: [],
-  publishAsAnonymous: false,
-});

@@ -34,7 +34,7 @@ import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
-import { DealWriteUp, DealWriteUpData, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
+import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import {
@@ -358,6 +358,20 @@ export default function DealDetail() {
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'deal-writeup'>('deal-info');
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
+  
+  // Initialize deal write-up data from existing deal
+  useEffect(() => {
+    if (deal) {
+      const dealData: DealDataForWriteUp = {
+        company: deal.company,
+        dealTypes: deal.dealTypes,
+        value: deal.value,
+        notes: deal.notes,
+        status: deal.status,
+      };
+      setDealWriteUpData(getEmptyDealWriteUpData(dealData));
+    }
+  }, [deal?.id]); // Only re-initialize when deal ID changes, not on every deal update
   
   // Save operation tracking for loading indicators
   const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
