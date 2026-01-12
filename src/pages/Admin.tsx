@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, Building2, ListTodo, Mail, ClipboardList } from "lucide-react";
+import { Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
 import { AdminStatsCards } from "@/components/admin/AdminStatsCards";
@@ -11,6 +11,7 @@ import { CompaniesTable } from "@/components/admin/CompaniesTable";
 import { WaitlistTable } from "@/components/admin/WaitlistTable";
 import { InvitationsTable } from "@/components/admin/InvitationsTable";
 import { AuditLogTable } from "@/components/admin/AuditLogTable";
+import { ExternalDataTab } from "@/components/admin/ExternalDataTab";
 
 const Admin = () => {
   const { isAdmin, isLoading: roleLoading } = useAdminRole();
@@ -63,7 +64,7 @@ const Admin = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full max-w-3xl grid-cols-5">
+        <TabsList className="grid w-full max-w-4xl grid-cols-6">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Users
@@ -71,6 +72,10 @@ const Admin = () => {
           <TabsTrigger value="companies" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Companies
+          </TabsTrigger>
+          <TabsTrigger value="external" className="flex items-center gap-2">
+            <Cloud className="h-4 w-4" />
+            External
           </TabsTrigger>
           <TabsTrigger value="waitlist" className="flex items-center gap-2">
             <ListTodo className="h-4 w-4" />
@@ -118,6 +123,10 @@ const Admin = () => {
               <CompaniesTable />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="external">
+          <ExternalDataTab />
         </TabsContent>
 
         <TabsContent value="waitlist">
