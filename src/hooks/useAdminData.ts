@@ -191,6 +191,25 @@ export const useToggleCompanySuspension = () => {
   });
 };
 
+export const useDeleteCompany = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (companyId: string) => {
+      const { error } = await supabase.rpc("admin_delete_company", { _company_id: companyId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-system-stats"] });
+      toast.success("Company deleted successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to delete company: " + error.message);
+    },
+  });
+};
+
 export const useAllInvitations = () => {
   return useQuery({
     queryKey: ["admin-all-invitations"],
