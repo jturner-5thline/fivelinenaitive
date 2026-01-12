@@ -1,15 +1,18 @@
 import { useState, useMemo } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
-  UserX, Building2, Ban, CheckCircle, Shield, UserPlus, Trash2, Search, X
+  UserX, Building2, Ban, CheckCircle, Shield, UserPlus, Trash2, Search, X, CalendarIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useAuditLogs } from "@/hooks/useAdminData";
 
 const actionConfig: Record<string, { icon: React.ElementType; label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -42,6 +45,8 @@ export const AuditLogTable = () => {
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [targetFilter, setTargetFilter] = useState("all");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   const filteredLogs = useMemo(() => {
     if (!logs) return [];
@@ -60,17 +65,33 @@ export const AuditLogTable = () => {
       
       // Target type filter
       const matchesTarget = targetFilter === "all" || log.target_type === targetFilter;
-      
-      return matchesSearch && matchesAction && matchesTarget;
-    });
-  }, [logs, search, actionFilter, targetFilter]);
 
-  const hasActiveFilters = search || actionFilter !== "all" || targetFilter !== "all";
+      // Date range filter
+      const logDate = new Date(log.created_at);
+      let matchesDateRange = true;
+      if (startDate && endDate) {
+        matchesDateRange = isWithinInterval(logDate, { 
+          start: startOfDay(startDate), 
+          end: endOfDay(endDate) 
+        });
+      } else if (startDate) {
+        matchesDateRange = logDate >= startOfDay(startDate);
+      } else if (endDate) {
+        matchesDateRange = logDate <= endOfDay(endDate);
+      }
+      
+      return matchesSearch && matchesAction && matchesTarget && matchesDateRange;
+    });
+  }, [logs, search, actionFilter, targetFilter, startDate, endDate]);
+
+  const hasActiveFilters = search || actionFilter !== "all" || targetFilter !== "all" || startDate || endDate;
 
   const clearFilters = () => {
     setSearch("");
     setActionFilter("all");
     setTargetFilter("all");
+    setStartDate(undefined);
+    setEndDate(undefined);
   };
 
   if (isLoading) {
@@ -117,45 +138,104 @@ export const AuditLogTable = () => {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, admin, or details..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, admin, or details..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Action type" />
+            </SelectTrigger>
+            <SelectContent>
+              {actionOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={targetFilter} onValueChange={setTargetFilter}>
+            <SelectTrigger className="w-full sm:w-[150px]">
+              <SelectValue placeholder="Target type" />
+            </SelectTrigger>
+            <SelectContent>
+              {targetOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Action type" />
-          </SelectTrigger>
-          <SelectContent>
-            {actionOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={targetFilter} onValueChange={setTargetFilter}>
-          <SelectTrigger className="w-full sm:w-[150px]">
-            <SelectValue placeholder="Target type" />
-          </SelectTrigger>
-          <SelectContent>
-            {targetOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="icon" onClick={clearFilters} className="shrink-0">
-            <X className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">From:</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[150px] justify-start text-left font-normal",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "MMM d, yyyy") : "Start date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  disabled={(date) => (endDate ? date > endDate : false) || date > new Date()}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">To:</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[150px] justify-start text-left font-normal",
+                    !endDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "MMM d, yyyy") : "End date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  disabled={(date) => (startDate ? date < startDate : false) || date > new Date()}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0">
+              <X className="h-4 w-4 mr-1" />
+              Clear filters
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Results count */}
