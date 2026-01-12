@@ -65,6 +65,8 @@ export type Database = {
           logo_url: string | null
           name: string
           state: string | null
+          suspended_at: string | null
+          suspended_reason: string | null
           updated_at: string
           website_url: string | null
         }
@@ -80,6 +82,8 @@ export type Database = {
           logo_url?: string | null
           name: string
           state?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           updated_at?: string
           website_url?: string | null
         }
@@ -95,6 +99,8 @@ export type Database = {
           logo_url?: string | null
           name?: string
           state?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           updated_at?: string
           website_url?: string | null
         }
@@ -981,6 +987,39 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_get_company_activity: {
+        Args: { _company_id: string; _limit?: number }
+        Returns: {
+          activity_type: string
+          created_at: string
+          deal_id: string
+          deal_name: string
+          description: string
+          id: string
+          user_name: string
+        }[]
+      }
+      admin_get_company_members: {
+        Args: { _company_id: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          role: Database["public"]["Enums"]["company_role"]
+          user_id: string
+        }[]
+      }
+      admin_get_company_stats: {
+        Args: { _company_id: string }
+        Returns: {
+          active_deals: number
+          total_deal_value: number
+          total_deals: number
+          total_lenders: number
+        }[]
+      }
       admin_get_system_stats: {
         Args: never
         Returns: {
@@ -991,6 +1030,10 @@ export type Database = {
           total_users: number
           waitlist_count: number
         }[]
+      }
+      admin_toggle_company_suspension: {
+        Args: { _company_id: string; _reason?: string; _suspend: boolean }
+        Returns: undefined
       }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_company_role: {
