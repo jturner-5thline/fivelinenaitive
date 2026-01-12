@@ -34,6 +34,7 @@ import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
+import { DealWriteUp, DealWriteUpData, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import {
@@ -355,6 +356,8 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'deal-writeup'>('deal-info');
+  const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   
   // Save operation tracking for loading indicators
   const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
@@ -1577,61 +1580,69 @@ export default function DealDetail() {
           <div className="grid gap-6 lg:grid-cols-3 items-start">
             {/* Left Column - Notes & Actions */}
             <div className="lg:col-span-2 flex flex-col gap-6">
-              {statusNotes.length > 0 && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Status History
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 text-xs gap-1"
-                      onClick={() => setIsStatusHistoryExpanded(!isStatusHistoryExpanded)}
-                    >
-                      {isStatusHistoryExpanded ? (
-                        <>
-                          <ChevronUp className="h-4 w-4" />
-                          Hide
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-4 w-4" />
-                          Show ({statusNotes.length})
-                        </>
-                      )}
-                    </Button>
-                  </CardHeader>
-                  {isStatusHistoryExpanded && (
-                    <CardContent className="space-y-3 pt-0">
-                      {statusNotes.map((item) => (
-                        <div key={item.id} className="text-sm p-3 bg-muted/50 rounded-lg group relative">
-                          <p className="text-muted-foreground pr-6 break-words whitespace-pre-wrap overflow-hidden">{item.note.replace(/<[^>]*>/g, '')}</p>
-                          <p className="text-xs text-muted-foreground/70 mt-1">
-                            {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
-                          </p>
-                          <button
-                            onClick={() => deleteStatusNote(item.id)}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </CardContent>
-                  )}
-                </Card>
-              )}
+              {/* Tab Navigation */}
+              <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'deal-writeup')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
+                  <TabsTrigger value="deal-writeup">Deal Write Up</TabsTrigger>
+                </TabsList>
 
-              {/* Outstanding Items */}
-              <OutstandingItems
-                items={outstandingItems}
-                lenderNames={deal.lenders?.map(l => l.name) || []}
-                onAdd={addOutstandingItem}
-                onUpdate={updateOutstandingItem}
-                onDelete={deleteOutstandingItem}
-              />
+                <TabsContent value="deal-info" className="mt-6 space-y-6">
+                  {statusNotes.length > 0 && (
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Status History
+                        </CardTitle>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => setIsStatusHistoryExpanded(!isStatusHistoryExpanded)}
+                        >
+                          {isStatusHistoryExpanded ? (
+                            <>
+                              <ChevronUp className="h-4 w-4" />
+                              Hide
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4" />
+                              Show ({statusNotes.length})
+                            </>
+                          )}
+                        </Button>
+                      </CardHeader>
+                      {isStatusHistoryExpanded && (
+                        <CardContent className="space-y-3 pt-0">
+                          {statusNotes.map((item) => (
+                            <div key={item.id} className="text-sm p-3 bg-muted/50 rounded-lg group relative">
+                              <p className="text-muted-foreground pr-6 break-words whitespace-pre-wrap overflow-hidden">{item.note.replace(/<[^>]*>/g, '')}</p>
+                              <p className="text-xs text-muted-foreground/70 mt-1">
+                                {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
+                              </p>
+                              <button
+                                onClick={() => deleteStatusNote(item.id)}
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </CardContent>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* Outstanding Items */}
+                  <OutstandingItems
+                    items={outstandingItems}
+                    lenderNames={deal.lenders?.map(l => l.name) || []}
+                    onAdd={addOutstandingItem}
+                    onUpdate={updateOutstandingItem}
+                    onDelete={deleteOutstandingItem}
+                  />
 
               {/* Lenders Card */}
               <Collapsible open={isLendersExpanded} onOpenChange={setIsLendersExpanded}>
@@ -2353,6 +2364,22 @@ export default function DealDetail() {
                   </CollapsibleContent>
                 </Card>
               </Collapsible>
+                </TabsContent>
+
+                <TabsContent value="deal-writeup" className="mt-6">
+                  <DealWriteUp
+                    data={dealWriteUpData}
+                    onChange={setDealWriteUpData}
+                    onSave={() => {
+                      toast({
+                        title: "Deal updated",
+                        description: "Deal write-up has been saved successfully.",
+                      });
+                    }}
+                    onCancel={() => setDealInfoTab('deal-info')}
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
 
             {/* Right Column - Deal Info & Activity */}
