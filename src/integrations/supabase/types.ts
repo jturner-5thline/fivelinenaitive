@@ -525,6 +525,198 @@ export type Database = {
           },
         ]
       }
+      external_activity_logs: {
+        Row: {
+          activity_type: string | null
+          deal_id: string | null
+          description: string | null
+          external_created_at: string | null
+          external_deal_id: string | null
+          external_id: string
+          id: string
+          metadata: Json | null
+          source_project_id: string
+          synced_at: string
+          user_id: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          deal_id?: string | null
+          description?: string | null
+          external_created_at?: string | null
+          external_deal_id?: string | null
+          external_id: string
+          id?: string
+          metadata?: Json | null
+          source_project_id: string
+          synced_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          deal_id?: string | null
+          description?: string | null
+          external_created_at?: string | null
+          external_deal_id?: string | null
+          external_id?: string
+          id?: string
+          metadata?: Json | null
+          source_project_id?: string
+          synced_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      external_deal_lenders: {
+        Row: {
+          deal_id: string | null
+          external_created_at: string | null
+          external_deal_id: string | null
+          external_id: string
+          external_updated_at: string | null
+          id: string
+          name: string | null
+          notes: string | null
+          source_project_id: string
+          stage: string | null
+          status: string | null
+          substage: string | null
+          synced_at: string
+        }
+        Insert: {
+          deal_id?: string | null
+          external_created_at?: string | null
+          external_deal_id?: string | null
+          external_id: string
+          external_updated_at?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          source_project_id: string
+          stage?: string | null
+          status?: string | null
+          substage?: string | null
+          synced_at?: string
+        }
+        Update: {
+          deal_id?: string | null
+          external_created_at?: string | null
+          external_deal_id?: string | null
+          external_id?: string
+          external_updated_at?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          source_project_id?: string
+          stage?: string | null
+          status?: string | null
+          substage?: string | null
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      external_deals: {
+        Row: {
+          borrower_name: string | null
+          company: string | null
+          company_id: string | null
+          deal_type: string | null
+          external_created_at: string | null
+          external_id: string
+          external_updated_at: string | null
+          id: string
+          notes: string | null
+          property_address: string | null
+          source_project_id: string
+          stage: string | null
+          status: string | null
+          synced_at: string
+          user_id: string | null
+          value: number | null
+        }
+        Insert: {
+          borrower_name?: string | null
+          company?: string | null
+          company_id?: string | null
+          deal_type?: string | null
+          external_created_at?: string | null
+          external_id: string
+          external_updated_at?: string | null
+          id?: string
+          notes?: string | null
+          property_address?: string | null
+          source_project_id: string
+          stage?: string | null
+          status?: string | null
+          synced_at?: string
+          user_id?: string | null
+          value?: number | null
+        }
+        Update: {
+          borrower_name?: string | null
+          company?: string | null
+          company_id?: string | null
+          deal_type?: string | null
+          external_created_at?: string | null
+          external_id?: string
+          external_updated_at?: string | null
+          id?: string
+          notes?: string | null
+          property_address?: string | null
+          source_project_id?: string
+          stage?: string | null
+          status?: string | null
+          synced_at?: string
+          user_id?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
+      external_profiles: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          email: string | null
+          external_created_at: string | null
+          external_id: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          onboarding_completed: boolean | null
+          source_project_id: string
+          synced_at: string
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          display_name?: string | null
+          email?: string | null
+          external_created_at?: string | null
+          external_id: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          onboarding_completed?: boolean | null
+          source_project_id: string
+          synced_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          display_name?: string | null
+          email?: string | null
+          external_created_at?: string | null
+          external_id?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          onboarding_completed?: boolean | null
+          source_project_id?: string
+          synced_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       lender_attachments: {
         Row: {
           category: string
