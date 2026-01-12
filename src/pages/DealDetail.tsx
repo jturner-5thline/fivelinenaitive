@@ -36,6 +36,7 @@ import { OutstandingItems, OutstandingItem } from '@/components/deal/Outstanding
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import {
@@ -362,6 +363,14 @@ export default function DealDetail() {
   
   // Deal writeup persistence hook
   const { writeupData: savedWriteupData, isLoading: isLoadingWriteup, isSaving: isSavingWriteup, saveWriteup } = useDealWriteup(id);
+  
+  // Auto-save for deal writeup
+  const { status: autoSaveStatus, saveNow: saveWriteupNow } = useAutoSave({
+    data: dealWriteUpData,
+    onSave: saveWriteup,
+    delay: 1500,
+    enabled: dealInfoTab === 'deal-writeup' && !isLoadingWriteup,
+  });
   
   // Initialize deal write-up data from saved writeup or existing deal data
   useEffect(() => {
@@ -2392,9 +2401,10 @@ export default function DealDetail() {
                   <DealWriteUp
                     data={dealWriteUpData}
                     onChange={setDealWriteUpData}
-                    onSave={() => saveWriteup(dealWriteUpData)}
+                    onSave={saveWriteupNow}
                     onCancel={() => setDealInfoTab('deal-info')}
                     isSaving={isSavingWriteup}
+                    autoSaveStatus={autoSaveStatus}
                   />
                 </TabsContent>
               </Tabs>
