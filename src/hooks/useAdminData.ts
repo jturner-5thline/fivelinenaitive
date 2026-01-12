@@ -371,3 +371,115 @@ export const useAuditLogs = (limit = 50) => {
     },
   });
 };
+
+export interface ExternalProfile {
+  id: string;
+  external_id: string;
+  user_id: string | null;
+  email: string | null;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  external_created_at: string | null;
+  onboarding_completed: boolean | null;
+  source_project_id: string;
+  synced_at: string;
+}
+
+export const useExternalProfiles = () => {
+  return useQuery({
+    queryKey: ["admin-external-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("external_profiles")
+        .select("*")
+        .order("synced_at", { ascending: false });
+      if (error) throw error;
+      return data as ExternalProfile[];
+    },
+  });
+};
+
+export interface ConsolidatedUser {
+  id: string;
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  onboarding_completed: boolean;
+  source: 'local' | 'external';
+  source_project_id?: string;
+  external_id?: string;
+}
+
+export const useConsolidatedUsers = () => {
+  const localProfiles = useAllProfiles();
+  const externalProfiles = useExternalProfiles();
+
+  const isLoading = localProfiles.isLoading || externalProfiles.isLoading;
+  const isError = localProfiles.isError || externalProfiles.isError;
+
+  const consolidatedUsers: ConsolidatedUser[] = [];
+
+  // Add local profiles
+  if (localProfiles.data) {
+    for (const p of localProfiles.data) {
+      consolidatedUsers.push({
+        id: p.id,
+        user_id: p.user_id,
+        email: p.email,
+        display_name: p.display_name,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        avatar_url: p.avatar_url,
+        created_at: p.created_at,
+        onboarding_completed: p.onboarding_completed,
+        source: 'local',
+      });
+    }
+  }
+
+  // Add external profiles (exclude duplicates based on email)
+  if (externalProfiles.data) {
+    const localEmails = new Set(consolidatedUsers.map(u => u.email?.toLowerCase()).filter(Boolean));
+    
+    for (const p of externalProfiles.data) {
+      // Skip if same email exists locally
+      if (p.email && localEmails.has(p.email.toLowerCase())) {
+        continue;
+      }
+      
+      consolidatedUsers.push({
+        id: p.id,
+        user_id: p.user_id || p.external_id,
+        email: p.email,
+        display_name: p.display_name,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        avatar_url: p.avatar_url,
+        created_at: p.external_created_at || p.synced_at,
+        onboarding_completed: p.onboarding_completed ?? false,
+        source: 'external',
+        source_project_id: p.source_project_id,
+        external_id: p.external_id,
+      });
+    }
+  }
+
+  // Sort by created_at descending
+  consolidatedUsers.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  return {
+    data: consolidatedUsers,
+    isLoading,
+    isError,
+    refetch: () => {
+      localProfiles.refetch();
+      externalProfiles.refetch();
+    },
+  };
+};
