@@ -153,8 +153,10 @@ export const ExternalDataTab = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>User</TableHead>
+                        <TableHead>First Name</TableHead>
+                        <TableHead>Last Name</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Source Project</TableHead>
+                        <TableHead>Source</TableHead>
                         <TableHead>Synced</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -165,15 +167,21 @@ export const ExternalDataTab = () => {
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8">
                                 <AvatarImage src={profile.avatar_url ?? undefined} />
-                                <AvatarFallback>{getInitials(profile.display_name)}</AvatarFallback>
+                                <AvatarFallback>
+                                  {profile.first_name && profile.last_name 
+                                    ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
+                                    : getInitials(profile.display_name)}
+                                </AvatarFallback>
                               </Avatar>
                               <span className="font-medium">{profile.display_name || "Unknown"}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">{profile.email || "-"}</TableCell>
+                          <TableCell>{profile.first_name || "-"}</TableCell>
+                          <TableCell>{profile.last_name || "-"}</TableCell>
+                          <TableCell className="font-medium">{profile.email || "-"}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">
-                              {profile.source_project_id.slice(0, 8)}...
+                              {profile.source_project_id}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
