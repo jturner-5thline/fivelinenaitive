@@ -187,6 +187,26 @@ export const useBulkAddUserRole = () => {
   });
 };
 
+export const useDeleteUser = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("admin_delete_user", { _user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-user-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-system-stats"] });
+      toast.success("User deleted successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to delete user: " + error.message);
+    },
+  });
+};
+
 export const useRemoveUserRole = () => {
   const queryClient = useQueryClient();
   
