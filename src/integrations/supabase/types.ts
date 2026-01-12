@@ -52,6 +52,42 @@ export type Database = {
           },
         ]
       }
+      admin_audit_logs: {
+        Row: {
+          action_type: string
+          admin_user_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_id: string | null
+          target_name: string | null
+          target_type: string
+        }
+        Insert: {
+          action_type: string
+          admin_user_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_name?: string | null
+          target_type: string
+        }
+        Update: {
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_id?: string | null
+          target_name?: string | null
+          target_type?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           address: string | null
@@ -991,6 +1027,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_get_audit_logs: {
+        Args: { _limit?: number; _offset?: number }
+        Returns: {
+          action_type: string
+          admin_email: string
+          admin_name: string
+          admin_user_id: string
+          created_at: string
+          details: Json
+          id: string
+          target_id: string
+          target_name: string
+          target_type: string
+        }[]
+      }
       admin_get_company_activity: {
         Args: { _company_id: string; _limit?: number }
         Returns: {
@@ -1063,6 +1114,16 @@ export type Database = {
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
         Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          _action_type: string
+          _details?: Json
+          _target_id?: string
+          _target_name?: string
+          _target_type: string
+        }
+        Returns: string
       }
     }
     Enums: {

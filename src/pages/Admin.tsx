@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, Building2, ListTodo, Mail, Activity } from "lucide-react";
+import { Shield, Users, Building2, ListTodo, Mail, ClipboardList } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
 import { AdminStatsCards } from "@/components/admin/AdminStatsCards";
@@ -10,6 +10,7 @@ import { UsersTable } from "@/components/admin/UsersTable";
 import { CompaniesTable } from "@/components/admin/CompaniesTable";
 import { WaitlistTable } from "@/components/admin/WaitlistTable";
 import { InvitationsTable } from "@/components/admin/InvitationsTable";
+import { AuditLogTable } from "@/components/admin/AuditLogTable";
 
 const Admin = () => {
   const { isAdmin, isLoading: roleLoading } = useAdminRole();
@@ -62,7 +63,7 @@ const Admin = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-3xl grid-cols-5">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Users
@@ -78,6 +79,10 @@ const Admin = () => {
           <TabsTrigger value="invitations" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
             Invitations
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            Audit Log
           </TabsTrigger>
         </TabsList>
 
@@ -144,7 +149,24 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <InvitationsTable />
+          <InvitationsTable />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Audit Log
+              </CardTitle>
+              <CardDescription>
+                Track admin actions like deletions, suspensions, and role changes
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AuditLogTable />
             </CardContent>
           </Card>
         </TabsContent>
