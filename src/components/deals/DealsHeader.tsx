@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar, RotateCcw, BookOpen } from 'lucide-react';
+import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar, RotateCcw, BookOpen, Shield } from 'lucide-react';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,7 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 import { useDefaultMilestones } from '@/contexts/DefaultMilestonesContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
 
@@ -56,6 +57,7 @@ export function DealsHeader() {
   const { stages: dealStages } = useDealStages();
   const { defaultMilestones } = useDefaultMilestones();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
+  const { isAdmin } = useAdminRole();
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
@@ -407,6 +409,14 @@ export function DealsHeader() {
                     Account
                   </Link>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
+                      <Shield className="h-4 w-4" />
+                      Admin Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/help" className="flex items-center gap-2 cursor-pointer">
