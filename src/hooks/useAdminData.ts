@@ -63,6 +63,19 @@ interface CompanyActivity {
   user_name: string;
 }
 
+interface AuditLogEntry {
+  id: string;
+  admin_user_id: string;
+  admin_name: string;
+  admin_email: string;
+  action_type: string;
+  target_type: string;
+  target_id: string | null;
+  target_name: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
 interface AdminInvitation {
   id: string;
   company_id: string;
@@ -344,6 +357,17 @@ export const useRemoveUserRole = () => {
     },
     onError: (error) => {
       toast.error("Failed to remove role: " + error.message);
+    },
+  });
+};
+
+export const useAuditLogs = (limit = 50) => {
+  return useQuery({
+    queryKey: ["admin-audit-logs", limit],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("admin_get_audit_logs", { _limit: limit, _offset: 0 });
+      if (error) throw error;
+      return data as AuditLogEntry[];
     },
   });
 };
