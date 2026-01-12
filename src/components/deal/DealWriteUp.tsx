@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { AutoSaveStatus } from '@/hooks/useAutoSave';
 
 export interface KeyItem {
   id: string;
@@ -91,7 +91,41 @@ interface DealWriteUpProps {
   onSave: () => void;
   onCancel: () => void;
   isSaving?: boolean;
+  autoSaveStatus?: AutoSaveStatus;
 }
+
+const AutoSaveIndicator = ({ status }: { status: AutoSaveStatus }) => {
+  if (status === 'idle') return null;
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      {status === 'pending' && (
+        <>
+          <Clock className="h-3 w-3 text-muted-foreground" />
+          <span className="text-muted-foreground">Unsaved changes</span>
+        </>
+      )}
+      {status === 'saving' && (
+        <>
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+          <span className="text-muted-foreground">Saving...</span>
+        </>
+      )}
+      {status === 'saved' && (
+        <>
+          <Check className="h-3 w-3 text-green-600" />
+          <span className="text-green-600">Saved</span>
+        </>
+      )}
+      {status === 'error' && (
+        <>
+          <AlertCircle className="h-3 w-3 text-destructive" />
+          <span className="text-destructive">Save failed</span>
+        </>
+      )}
+    </div>
+  );
+};
 
 const INDUSTRY_OPTIONS = [
   'Technology',
@@ -161,7 +195,7 @@ const STATUS_OPTIONS = [
   'Closed',
 ];
 
-export const DealWriteUp = ({ data, onChange, onSave, onCancel, isSaving }: DealWriteUpProps) => {
+export const DealWriteUp = ({ data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
   const updateField = <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => {
     onChange({ ...data, [field]: value });
   };
@@ -191,8 +225,13 @@ export const DealWriteUp = ({ data, onChange, onSave, onCancel, isSaving }: Deal
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Deal Management</CardTitle>
-        <CardDescription>Create, edit, and manage deal listings</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Deal Management</CardTitle>
+            <CardDescription>Create, edit, and manage deal listings</CardDescription>
+          </div>
+          <AutoSaveIndicator status={autoSaveStatus} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Edit Deal Section */}
@@ -517,13 +556,22 @@ export const DealWriteUp = ({ data, onChange, onSave, onCancel, isSaving }: Deal
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button onClick={onSave} disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Update Deal'}
-            </Button>
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="text-xs text-muted-foreground">
+              Changes are saved automatically
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={onCancel}>
+                Done
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={onSave} 
+                disabled={isSaving || autoSaveStatus === 'saving'}
+              >
+                {isSaving || autoSaveStatus === 'saving' ? 'Saving...' : 'Save Now'}
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>
