@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.export-data]
 verify_jwt = false
+
+[functions.webhook-sync]
+verify_jwt = false
+
+[functions.import-data]
+verify_jwt = false
