@@ -37,6 +37,7 @@ import Notifications from "./pages/Notifications";
 import Help from "./pages/Help";
 import WaitlistAdmin from "./pages/WaitlistAdmin";
 import MigrationTool from "./pages/MigrationTool";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -113,6 +114,9 @@ const App = () => (
                           } />
                           <Route path="/accept-invite" element={<AcceptInvite />} />
                           <Route path="/migrate" element={<MigrationTool />} />
+                          <Route path="/admin" element={
+                            <ProtectedRoute><Admin /></ProtectedRoute>
+                          } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
                         </Routes>
