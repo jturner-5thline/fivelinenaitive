@@ -158,7 +158,7 @@ export const UsersTable = () => {
           </div>
           <div className="flex items-center gap-1.5">
             <Globe className="h-4 w-4" />
-            <span>{externalUsersCount} external</span>
+            <span>{externalUsersCount} FLEx</span>
           </div>
           <span className="text-foreground font-medium">
             {(localUsersCount + externalUsersCount)} total users
@@ -183,7 +183,7 @@ export const UsersTable = () => {
             <SelectContent>
               <SelectItem value="all">All Sources</SelectItem>
               <SelectItem value="local">Local Only</SelectItem>
-              <SelectItem value="external">External Only</SelectItem>
+              <SelectItem value="external">FLEx Only</SelectItem>
             </SelectContent>
           </Select>
 
@@ -272,13 +272,13 @@ export const UsersTable = () => {
                         />
                       ) : (
                         <Tooltip>
-                          <TooltipTrigger asChild>
+                        <TooltipTrigger asChild>
                             <div className="w-4 h-4 flex items-center justify-center">
                               <Globe className="h-3 w-3 text-muted-foreground" />
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>External users are read-only</p>
+                            <p>FLEx users are read-only</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -310,7 +310,7 @@ export const UsersTable = () => {
                         {isExternal ? (
                           <>
                             <Globe className="h-3 w-3" />
-                            External
+                            FLEx
                           </>
                         ) : (
                           <>
@@ -415,9 +415,9 @@ export const UsersTable = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete User</DialogTitle>
-              <DialogDescription>
+            <DialogDescription>
                 {userToDelete?.isExternal ? (
-                  <>External users cannot be deleted from this project. Manage them in their source project.</>
+                  <>FLEx users cannot be deleted from this project. Manage them in FLEx.</>
                 ) : (
                   <>Are you sure you want to delete <strong>{userToDelete?.name}</strong>? This action cannot be undone and will permanently remove all their data.</>
                 )}
