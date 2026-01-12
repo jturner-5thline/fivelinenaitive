@@ -430,6 +430,101 @@ export type Database = {
           },
         ]
       }
+      deal_writeups: {
+        Row: {
+          accounting_system: string | null
+          billing_model: string | null
+          capital_ask: string | null
+          company_name: string
+          company_url: string | null
+          created_at: string
+          data_room_url: string | null
+          deal_id: string
+          deal_type: string | null
+          description: string | null
+          existing_debt_details: string | null
+          financial_data_as_of: string | null
+          gross_margins: string | null
+          id: string
+          industry: string | null
+          key_items: Json | null
+          last_year_revenue: string | null
+          linkedin_url: string | null
+          location: string | null
+          profitability: string | null
+          publish_as_anonymous: boolean | null
+          status: string | null
+          this_year_revenue: string | null
+          updated_at: string
+          use_of_funds: string | null
+          user_id: string
+        }
+        Insert: {
+          accounting_system?: string | null
+          billing_model?: string | null
+          capital_ask?: string | null
+          company_name?: string
+          company_url?: string | null
+          created_at?: string
+          data_room_url?: string | null
+          deal_id: string
+          deal_type?: string | null
+          description?: string | null
+          existing_debt_details?: string | null
+          financial_data_as_of?: string | null
+          gross_margins?: string | null
+          id?: string
+          industry?: string | null
+          key_items?: Json | null
+          last_year_revenue?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          profitability?: string | null
+          publish_as_anonymous?: boolean | null
+          status?: string | null
+          this_year_revenue?: string | null
+          updated_at?: string
+          use_of_funds?: string | null
+          user_id: string
+        }
+        Update: {
+          accounting_system?: string | null
+          billing_model?: string | null
+          capital_ask?: string | null
+          company_name?: string
+          company_url?: string | null
+          created_at?: string
+          data_room_url?: string | null
+          deal_id?: string
+          deal_type?: string | null
+          description?: string | null
+          existing_debt_details?: string | null
+          financial_data_as_of?: string | null
+          gross_margins?: string | null
+          id?: string
+          industry?: string | null
+          key_items?: Json | null
+          last_year_revenue?: string | null
+          linkedin_url?: string | null
+          location?: string | null
+          profitability?: string | null
+          publish_as_anonymous?: boolean | null
+          status?: string | null
+          this_year_revenue?: string | null
+          updated_at?: string
+          use_of_funds?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_writeups_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           company: string

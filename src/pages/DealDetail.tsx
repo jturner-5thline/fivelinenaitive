@@ -35,6 +35,7 @@ import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
+import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import {
@@ -359,9 +360,16 @@ export default function DealDetail() {
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'deal-writeup'>('deal-info');
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   
-  // Initialize deal write-up data from existing deal
+  // Deal writeup persistence hook
+  const { writeupData: savedWriteupData, isLoading: isLoadingWriteup, isSaving: isSavingWriteup, saveWriteup } = useDealWriteup(id);
+  
+  // Initialize deal write-up data from saved writeup or existing deal data
   useEffect(() => {
-    if (deal) {
+    if (savedWriteupData) {
+      // Use saved writeup data if available
+      setDealWriteUpData(savedWriteupData);
+    } else if (deal) {
+      // Otherwise, pre-populate from deal data
       const dealData: DealDataForWriteUp = {
         company: deal.company,
         dealTypes: deal.dealTypes,
@@ -371,7 +379,7 @@ export default function DealDetail() {
       };
       setDealWriteUpData(getEmptyDealWriteUpData(dealData));
     }
-  }, [deal?.id]); // Only re-initialize when deal ID changes, not on every deal update
+  }, [savedWriteupData, deal?.id]); // Re-initialize when writeup loads or deal ID changes
   
   // Save operation tracking for loading indicators
   const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
@@ -2384,13 +2392,9 @@ export default function DealDetail() {
                   <DealWriteUp
                     data={dealWriteUpData}
                     onChange={setDealWriteUpData}
-                    onSave={() => {
-                      toast({
-                        title: "Deal updated",
-                        description: "Deal write-up has been saved successfully.",
-                      });
-                    }}
+                    onSave={() => saveWriteup(dealWriteUpData)}
                     onCancel={() => setDealInfoTab('deal-info')}
+                    isSaving={isSavingWriteup}
                   />
                 </TabsContent>
               </Tabs>
