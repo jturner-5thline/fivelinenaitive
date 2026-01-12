@@ -34,6 +34,8 @@ import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
+import { useSaveOperation } from '@/hooks/useSaveOperation';
+import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import {
   Select,
   SelectContent,
@@ -353,8 +355,10 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
+  
+  // Save operation tracking for loading indicators
+  const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
 
-  // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -704,6 +708,11 @@ export default function DealDetail() {
     // Store this as the committed note
     setCommittedNotes(prev => ({ ...prev, [lenderId]: currentNote }));
     
+    // Persist to database with loading indicator
+    withSavingAsync(`lender-notes-${lenderId}`, async () => {
+      await updateLenderInDb(lenderId, { notes: currentNote });
+    });
+    
     // Trigger visual feedback
     setSavedNotesFlash(prev => new Set(prev).add(lenderId));
     setTimeout(() => {
@@ -714,10 +723,7 @@ export default function DealDetail() {
       });
     }, 1500);
     
-    // Persist to database
-    updateLenderInDb(lenderId, { notes: currentNote });
-    
-    // Log activity for lender notes update
+    // Log activity for lender notes update (fire-and-forget)
     logActivity('lender_notes_updated', `${lender?.name} notes updated`, {
       lender_name: lender?.name,
     });
@@ -726,7 +732,7 @@ export default function DealDetail() {
       title: "Note saved",
       description: "Your note has been saved successfully.",
     });
-  }, [deal?.lenders, updateLenderInDb, logActivity]);
+  }, [deal?.lenders, updateLenderInDb, logActivity, withSavingAsync]);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
     // Find the first stage in the target group
@@ -737,13 +743,15 @@ export default function DealDetail() {
     const lender = deal?.lenders?.find(l => l.id === lenderId);
     const oldStage = lender?.stage ? configuredStages.find(s => s.id === lender.stage) : undefined;
     
-    // Persist to database
-    updateLenderInDb(lenderId, { 
-      stage: targetStage.id, 
-      passReason: newGroup === 'passed' ? passReason : undefined 
+    // Persist to database with loading indicator
+    withSavingAsync(`lender-stage-${lenderId}`, async () => {
+      await updateLenderInDb(lenderId, { 
+        stage: targetStage.id, 
+        passReason: newGroup === 'passed' ? passReason : undefined 
+      });
     });
     
-    // Log activity
+    // Log activity (fire-and-forget)
     if (lender) {
       logActivity('lender_stage_change', `${lender.name} stage changed`, {
         lender_name: lender.name,
@@ -761,7 +769,7 @@ export default function DealDetail() {
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
-  }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity]);
+  }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity, withSavingAsync]);
 
   const addMilestone = useCallback(async (milestone: Omit<DealMilestone, 'id'>) => {
     if (!deal) return;
@@ -1099,8 +1107,10 @@ export default function DealDetail() {
         });
       }
       
-      // Persist to database
-      updateDealInDb(prev.id, { [field]: value } as Partial<Deal>);
+      // Persist to database with loading indicator
+      withSavingAsync(`deal-${field}`, async () => {
+        await updateDealInDb(prev.id, { [field]: value } as Partial<Deal>);
+      });
       
       return updated;
     });
@@ -1185,7 +1195,8 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background relative">
+        <GlobalSaveBar isAnySaving={isAnySaving} />
         <DealsHeader />
 
         <main className="container mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
@@ -1876,7 +1887,7 @@ export default function DealDetail() {
                                         {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
                                       </span>
                                     )}
-                                    <div className="flex-1">
+                                    <div className="flex-1 relative">
                                       <Textarea
                                         placeholder="Add notes... (Press Enter to save)"
                                         value={lender.notes || ''}
@@ -1888,12 +1899,18 @@ export default function DealDetail() {
                                           }
                                         }}
                                         className={cn(
-                                          "text-xs resize-none py-1.5 transition-all",
+                                          "text-xs resize-none py-1.5 transition-all pr-8",
                                           expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
                                           savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                         )}
                                         rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
                                       />
+                                      <div className="absolute right-2 top-1.5">
+                                        <SaveIndicator 
+                                          isSaving={isSaving(`lender-notes-${lender.id}`)} 
+                                          showSuccess={savedNotesFlash.has(lender.id)}
+                                        />
+                                      </div>
                                     </div>
                                     <button
                                       onClick={() => {
@@ -2152,7 +2169,7 @@ export default function DealDetail() {
                                                 {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
                                               </span>
                                             )}
-                                            <div className="flex-1">
+                                            <div className="flex-1 relative">
                                               <Textarea
                                                 placeholder="Add notes... (Press Enter to save)"
                                                 value={lender.notes || ''}
@@ -2164,12 +2181,18 @@ export default function DealDetail() {
                                                   }
                                                 }}
                                                 className={cn(
-                                                  "text-xs resize-none py-1.5 transition-all",
+                                                  "text-xs resize-none py-1.5 transition-all pr-8",
                                                   expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
                                                   savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                                 )}
                                                 rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
                                               />
+                                              <div className="absolute right-2 top-1.5">
+                                                <SaveIndicator 
+                                                  isSaving={isSaving(`lender-notes-${lender.id}`)} 
+                                                  showSuccess={savedNotesFlash.has(lender.id)}
+                                                />
+                                              </div>
                                             </div>
                                             <button
                                               onClick={() => {
