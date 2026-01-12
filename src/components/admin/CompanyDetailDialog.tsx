@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Building2, Users, Activity, TrendingUp, Ban, CheckCircle,
-  DollarSign, Briefcase, Clock, AlertTriangle
+  DollarSign, Briefcase, Clock, AlertTriangle, Trash2
 } from "lucide-react";
-import { useCompanyMembers, useCompanyStats, useCompanyActivity, useToggleCompanySuspension } from "@/hooks/useAdminData";
+import { useCompanyMembers, useCompanyStats, useCompanyActivity, useToggleCompanySuspension, useDeleteCompany } from "@/hooks/useAdminData";
 
 interface Company {
   id: string;
@@ -37,11 +37,13 @@ interface CompanyDetailDialogProps {
 export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDetailDialogProps) => {
   const [suspendReason, setSuspendReason] = useState("");
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const { data: members, isLoading: membersLoading } = useCompanyMembers(company?.id || null);
   const { data: stats, isLoading: statsLoading } = useCompanyStats(company?.id || null);
   const { data: activity, isLoading: activityLoading } = useCompanyActivity(company?.id || null);
   const toggleSuspension = useToggleCompanySuspension();
+  const deleteCompany = useDeleteCompany();
 
   if (!company) return null;
 
@@ -61,6 +63,15 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
 
   const handleUnsuspend = () => {
     toggleSuspension.mutate({ companyId: company.id, suspend: false });
+  };
+
+  const handleDelete = () => {
+    deleteCompany.mutate(company.id, {
+      onSuccess: () => {
+        setShowDeleteConfirm(false);
+        onOpenChange(false);
+      },
+    });
   };
 
   const formatCurrency = (value: number) => {
@@ -274,8 +285,40 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
                 </Button>
               </div>
             </div>
+          ) : showDeleteConfirm ? (
+            <div className="flex-1 space-y-3">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                <p className="text-sm font-medium text-destructive">
+                  Are you sure you want to delete "{company.name}"?
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This will permanently delete the company and all associated data including deals, lenders, and member associations. This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDelete}
+                  disabled={deleteCompany.isPending}
+                >
+                  {deleteCompany.isPending ? "Deleting..." : "Delete Company"}
+                </Button>
+              </div>
+            </div>
           ) : (
             <>
+              <Button 
+                variant="ghost" 
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+              <div className="flex-1" />
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
