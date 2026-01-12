@@ -8,18 +8,23 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Shield, ShieldCheck, Trash2, UserPlus } from "lucide-react";
-import { useAllProfiles, useUserRoles, useAddUserRole, useRemoveUserRole } from "@/hooks/useAdminData";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
+import { useAllProfiles, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole } from "@/hooks/useAdminData";
 
 export const UsersTable = () => {
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<"admin" | "moderator" | "user">("user");
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [bulkRole, setBulkRole] = useState<"admin" | "moderator" | "user">("admin");
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   
   const { data: profiles, isLoading: profilesLoading } = useAllProfiles();
   const { data: roles, isLoading: rolesLoading } = useUserRoles();
   const addRole = useAddUserRole();
   const removeRole = useRemoveUserRole();
+  const bulkAddRole = useBulkAddUserRole();
 
   const isLoading = profilesLoading || rolesLoading;
 
@@ -39,6 +44,38 @@ export const UsersTable = () => {
     if (selectedUserId && selectedRole) {
       addRole.mutate({ userId: selectedUserId, role: selectedRole });
       setSelectedUserId(null);
+    }
+  };
+
+  const handleToggleUser = (userId: string) => {
+    const newSet = new Set(selectedUserIds);
+    if (newSet.has(userId)) {
+      newSet.delete(userId);
+    } else {
+      newSet.add(userId);
+    }
+    setSelectedUserIds(newSet);
+  };
+
+  const handleSelectAll = () => {
+    if (filteredProfiles && selectedUserIds.size === filteredProfiles.length) {
+      setSelectedUserIds(new Set());
+    } else if (filteredProfiles) {
+      setSelectedUserIds(new Set(filteredProfiles.map(p => p.user_id)));
+    }
+  };
+
+  const handleBulkAddRole = () => {
+    if (selectedUserIds.size > 0 && bulkRole) {
+      bulkAddRole.mutate(
+        { userIds: Array.from(selectedUserIds), role: bulkRole },
+        {
+          onSuccess: () => {
+            setSelectedUserIds(new Set());
+            setBulkDialogOpen(false);
+          },
+        }
+      );
     }
   };
 
@@ -86,12 +123,55 @@ export const UsersTable = () => {
             className="pl-9"
           />
         </div>
+        {selectedUserIds.size > 0 && (
+          <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="default" size="sm" className="gap-2">
+                <Users className="h-4 w-4" />
+                Assign Role to {selectedUserIds.size} User{selectedUserIds.size !== 1 ? 's' : ''}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Bulk Role Assignment</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Assign a role to {selectedUserIds.size} selected user{selectedUserIds.size !== 1 ? 's' : ''}.
+                </p>
+                <Select value={bulkRole} onValueChange={(v) => setBulkRole(v as typeof bulkRole)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="moderator">Moderator</SelectItem>
+                    <SelectItem value="user">User</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  onClick={handleBulkAddRole} 
+                  className="w-full"
+                  disabled={bulkAddRole.isPending}
+                >
+                  {bulkAddRole.isPending ? "Adding..." : `Add ${bulkRole} Role`}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Checkbox 
+                  checked={filteredProfiles && filteredProfiles.length > 0 && selectedUserIds.size === filteredProfiles.length}
+                  onCheckedChange={handleSelectAll}
+                />
+              </TableHead>
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Roles</TableHead>
@@ -104,6 +184,12 @@ export const UsersTable = () => {
               const userRoles = getUserRoles(profile.user_id);
               return (
                 <TableRow key={profile.id}>
+                  <TableCell>
+                    <Checkbox 
+                      checked={selectedUserIds.has(profile.user_id)}
+                      onCheckedChange={() => handleToggleUser(profile.user_id)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
