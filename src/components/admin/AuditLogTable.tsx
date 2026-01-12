@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
-  UserX, Building2, Ban, CheckCircle, Shield, UserPlus, Trash2, Search, X, CalendarIcon
+  UserX, Building2, Ban, CheckCircle, Shield, UserPlus, Trash2, Search, X, CalendarIcon, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuditLogs } from "@/hooks/useAdminData";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const actionConfig: Record<string, { icon: React.ElementType; label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   user_deleted: { icon: UserX, label: "User Deleted", variant: "destructive" },
@@ -41,12 +43,14 @@ const targetOptions = [
 ];
 
 export const AuditLogTable = () => {
-  const { data: logs, isLoading } = useAuditLogs(100);
+  const { data: logs, isLoading } = useAuditLogs(500);
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [targetFilter, setTargetFilter] = useState("all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const filteredLogs = useMemo(() => {
     if (!logs) return [];
@@ -84,6 +88,17 @@ export const AuditLogTable = () => {
     });
   }, [logs, search, actionFilter, targetFilter, startDate, endDate]);
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredLogs.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+  };
+
   const hasActiveFilters = search || actionFilter !== "all" || targetFilter !== "all" || startDate || endDate;
 
   const clearFilters = () => {
@@ -92,6 +107,12 @@ export const AuditLogTable = () => {
     setTargetFilter("all");
     setStartDate(undefined);
     setEndDate(undefined);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setCurrentPage(1);
   };
 
   if (isLoading) {
@@ -145,11 +166,11 @@ export const AuditLogTable = () => {
             <Input
               placeholder="Search by name, admin, or details..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); handleFilterChange(); }}
               className="pl-9"
             />
           </div>
-          <Select value={actionFilter} onValueChange={setActionFilter}>
+          <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); handleFilterChange(); }}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Action type" />
             </SelectTrigger>
@@ -161,7 +182,7 @@ export const AuditLogTable = () => {
               ))}
             </SelectContent>
           </Select>
-          <Select value={targetFilter} onValueChange={setTargetFilter}>
+          <Select value={targetFilter} onValueChange={(v) => { setTargetFilter(v); handleFilterChange(); }}>
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Target type" />
             </SelectTrigger>
@@ -194,7 +215,7 @@ export const AuditLogTable = () => {
                 <Calendar
                   mode="single"
                   selected={startDate}
-                  onSelect={setStartDate}
+                  onSelect={(date) => { setStartDate(date); handleFilterChange(); }}
                   disabled={(date) => (endDate ? date > endDate : false) || date > new Date()}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
@@ -221,7 +242,7 @@ export const AuditLogTable = () => {
                 <Calendar
                   mode="single"
                   selected={endDate}
-                  onSelect={setEndDate}
+                  onSelect={(date) => { setEndDate(date); handleFilterChange(); }}
                   disabled={(date) => (startDate ? date < startDate : false) || date > new Date()}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
@@ -238,89 +259,149 @@ export const AuditLogTable = () => {
         </div>
       </div>
 
-      {/* Results count */}
-      <p className="text-sm text-muted-foreground">
-        Showing {filteredLogs.length} of {logs.length} entries
-      </p>
+      {/* Results count and page size */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <p className="text-sm text-muted-foreground">
+          Showing {startIndex + 1}-{Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} entries
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Rows per page:</span>
+          <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+            <SelectTrigger className="w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
-          <TableRow>
-            <TableHead>Action</TableHead>
-            <TableHead>Target</TableHead>
-            <TableHead>Admin</TableHead>
-            <TableHead>Details</TableHead>
-            <TableHead>Time</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredLogs.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                No matching entries found
-              </TableCell>
+              <TableHead>Action</TableHead>
+              <TableHead>Target</TableHead>
+              <TableHead>Admin</TableHead>
+              <TableHead>Details</TableHead>
+              <TableHead>Time</TableHead>
             </TableRow>
-          ) : (
-            filteredLogs.map((log) => {
-              const config = actionConfig[log.action_type] || { 
-                icon: Shield, 
-                label: log.action_type.replace(/_/g, " "), 
-                variant: "secondary" as const
-              };
-              const Icon = config.icon;
+          </TableHeader>
+          <TableBody>
+            {paginatedLogs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  No matching entries found
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedLogs.map((log) => {
+                const config = actionConfig[log.action_type] || { 
+                  icon: Shield, 
+                  label: log.action_type.replace(/_/g, " "), 
+                  variant: "secondary" as const
+                };
+                const Icon = config.icon;
 
-              return (
-                <TableRow key={log.id}>
-                  <TableCell>
-                    <Badge variant={config.variant} className="flex items-center gap-1.5 w-fit">
-                      <Icon className="h-3 w-3" />
-                      {config.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {log.target_type === "company" ? (
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                return (
+                  <TableRow key={log.id}>
+                    <TableCell>
+                      <Badge variant={config.variant} className="flex items-center gap-1.5 w-fit">
+                        <Icon className="h-3 w-3" />
+                        {config.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {log.target_type === "company" ? (
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <UserX className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="font-medium">{log.target_name || "-"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-xs">
+                            {log.admin_name?.[0] || log.admin_email?.[0] || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{log.admin_name || log.admin_email}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm max-w-xs truncate">
+                      {log.details && Object.keys(log.details).length > 0 ? (
+                        <span title={JSON.stringify(log.details, null, 2)}>
+                          {Object.entries(log.details)
+                            .filter(([, v]) => v !== null)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join(", ") || "-"}
+                        </span>
                       ) : (
-                        <UserX className="h-4 w-4 text-muted-foreground" />
+                        "-"
                       )}
-                      <span className="font-medium">{log.target_name || "-"}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs">
-                          {log.admin_name?.[0] || log.admin_email?.[0] || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">{log.admin_name || log.admin_email}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm max-w-xs truncate">
-                    {log.details && Object.keys(log.details).length > 0 ? (
-                      <span title={JSON.stringify(log.details, null, 2)}>
-                        {Object.entries(log.details)
-                          .filter(([, v]) => v !== null)
-                          .map(([k, v]) => `${k}: ${v}`)
-                          .join(", ") || "-"}
-                      </span>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </div>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+            >
+              First
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              Last
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
