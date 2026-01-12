@@ -165,6 +165,28 @@ export const useAddUserRole = () => {
   });
 };
 
+export const useBulkAddUserRole = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ userIds, role }: { userIds: string[]; role: "admin" | "moderator" | "user" }) => {
+      const inserts = userIds.map(userId => ({ user_id: userId, role }));
+      const { error } = await supabase
+        .from("user_roles")
+        .upsert(inserts, { onConflict: "user_id,role", ignoreDuplicates: true });
+      if (error) throw error;
+      return userIds.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-user-roles"] });
+      toast.success(`Role added to ${count} user${count !== 1 ? 's' : ''}`);
+    },
+    onError: (error) => {
+      toast.error("Failed to add roles: " + error.message);
+    },
+  });
+};
+
 export const useRemoveUserRole = () => {
   const queryClient = useQueryClient();
   
