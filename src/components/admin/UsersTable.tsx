@@ -6,11 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
-import { useAllProfiles, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole } from "@/hooks/useAdminData";
+import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users, UserX } from "lucide-react";
+import { useAllProfiles, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole, useDeleteUser } from "@/hooks/useAdminData";
 
 export const UsersTable = () => {
   const [search, setSearch] = useState("");
@@ -19,12 +19,15 @@ export const UsersTable = () => {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [bulkRole, setBulkRole] = useState<"admin" | "moderator" | "user">("admin");
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
   
   const { data: profiles, isLoading: profilesLoading } = useAllProfiles();
   const { data: roles, isLoading: rolesLoading } = useUserRoles();
   const addRole = useAddUserRole();
   const removeRole = useRemoveUserRole();
   const bulkAddRole = useBulkAddUserRole();
+  const deleteUser = useDeleteUser();
 
   const isLoading = profilesLoading || rolesLoading;
 
@@ -77,6 +80,22 @@ export const UsersTable = () => {
         }
       );
     }
+  };
+
+  const handleDeleteUser = () => {
+    if (userToDelete) {
+      deleteUser.mutate(userToDelete.id, {
+        onSuccess: () => {
+          setDeleteDialogOpen(false);
+          setUserToDelete(null);
+        },
+      });
+    }
+  };
+
+  const openDeleteDialog = (userId: string, displayName: string) => {
+    setUserToDelete({ id: userId, name: displayName });
+    setDeleteDialogOpen(true);
   };
 
   if (isLoading) {
@@ -237,37 +256,47 @@ export const UsersTable = () => {
                     {format(new Date(profile.created_at), "MMM d, yyyy")}
                   </TableCell>
                   <TableCell>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setSelectedUserId(profile.user_id)}
-                        >
-                          <UserPlus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Add Role to {profile.display_name}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 pt-4">
-                          <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as typeof selectedRole)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="moderator">Moderator</SelectItem>
-                              <SelectItem value="user">User</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Button onClick={handleAddRole} className="w-full">
-                            Add Role
+                    <div className="flex items-center gap-1">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setSelectedUserId(profile.user_id)}
+                          >
+                            <UserPlus className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Add Role to {profile.display_name}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4 pt-4">
+                            <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as typeof selectedRole)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="moderator">Moderator</SelectItem>
+                                <SelectItem value="user">User</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button onClick={handleAddRole} className="w-full">
+                              Add Role
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => openDeleteDialog(profile.user_id, profile.display_name || profile.email || "User")}
+                      >
+                        <UserX className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -275,6 +304,30 @@ export const UsersTable = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete User Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{userToDelete?.name}</strong>? This action cannot be undone and will permanently remove all their data.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteUser}
+              disabled={deleteUser.isPending}
+            >
+              {deleteUser.isPending ? "Deleting..." : "Delete User"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
