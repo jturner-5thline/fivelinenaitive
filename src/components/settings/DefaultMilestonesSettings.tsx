@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { useDefaultMilestones, DefaultMilestone } from '@/contexts/DefaultMilestonesContext';
+import { useDefaultMilestones, DefaultMilestone, MilestoneTimingType } from '@/contexts/DefaultMilestonesContext';
 import {
   DndContext,
   closestCenter,
@@ -45,12 +46,14 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface SortableMilestoneItemProps {
   milestone: DefaultMilestone;
+  index: number;
+  previousMilestone?: DefaultMilestone;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   isAdmin: boolean;
 }
 
-function SortableMilestoneItem({ milestone, onEdit, onDelete, isAdmin }: SortableMilestoneItemProps) {
+function SortableMilestoneItem({ milestone, index, previousMilestone, onEdit, onDelete, isAdmin }: SortableMilestoneItemProps) {
   const {
     attributes,
     listeners,
@@ -63,6 +66,16 @@ function SortableMilestoneItem({ milestone, onEdit, onDelete, isAdmin }: Sortabl
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  const getTimingDescription = () => {
+    if (milestone.timingType === 'after_previous') {
+      if (index === 0) {
+        return `${milestone.daysFromCreation} days after deal creation (first milestone)`;
+      }
+      return `${milestone.daysFromCreation} days after "${previousMilestone?.title || 'previous milestone'}" is completed`;
+    }
+    return `${milestone.daysFromCreation} days after deal creation`;
   };
 
   return (
@@ -84,7 +97,7 @@ function SortableMilestoneItem({ milestone, onEdit, onDelete, isAdmin }: Sortabl
         <div>
           <span className="font-medium">{milestone.title}</span>
           <p className="text-sm text-muted-foreground">
-            {milestone.daysFromCreation} days after deal creation
+            {getTimingDescription()}
           </p>
         </div>
       </div>
@@ -150,6 +163,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [daysFromCreation, setDaysFromCreation] = useState(7);
+  const [timingType, setTimingType] = useState<MilestoneTimingType>('from_creation');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -165,6 +179,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
     setEditingId(null);
     setTitle('');
     setDaysFromCreation(7);
+    setTimingType('from_creation');
     setIsDialogOpen(true);
   };
 
@@ -174,6 +189,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
       setEditingId(id);
       setTitle(milestone.title);
       setDaysFromCreation(milestone.daysFromCreation);
+      setTimingType(milestone.timingType || 'from_creation');
       setIsDialogOpen(true);
     }
   };
@@ -190,16 +206,17 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
     }
 
     if (editingId) {
-      updateDefaultMilestone(editingId, { title: title.trim(), daysFromCreation });
+      updateDefaultMilestone(editingId, { title: title.trim(), daysFromCreation, timingType });
       toast({ title: 'Default milestone updated' });
     } else {
-      addDefaultMilestone({ title: title.trim(), daysFromCreation });
+      addDefaultMilestone({ title: title.trim(), daysFromCreation, timingType });
       toast({ title: 'Default milestone added' });
     }
 
     setIsDialogOpen(false);
     setTitle('');
     setDaysFromCreation(7);
+    setTimingType('from_creation');
     setEditingId(null);
   };
 
@@ -256,10 +273,12 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="space-y-2">
-                    {sortedMilestones.map((milestone) => (
+                    {sortedMilestones.map((milestone, index) => (
                       <SortableMilestoneItem
                         key={milestone.id}
                         milestone={milestone}
+                        index={index}
+                        previousMilestone={index > 0 ? sortedMilestones[index - 1] : undefined}
                         onEdit={openEditDialog}
                         onDelete={handleDelete}
                         isAdmin={isAdmin}
@@ -295,7 +314,30 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="daysFromCreation">Days After Deal Creation *</Label>
+              <Label>Timing Based On *</Label>
+              <RadioGroup
+                value={timingType}
+                onValueChange={(value) => setTimingType(value as MilestoneTimingType)}
+                className="flex flex-col gap-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="from_creation" id="from_creation" />
+                  <Label htmlFor="from_creation" className="font-normal cursor-pointer">
+                    Days after deal creation
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="after_previous" id="after_previous" />
+                  <Label htmlFor="after_previous" className="font-normal cursor-pointer">
+                    Days after previous milestone is completed
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="daysFromCreation">
+                {timingType === 'from_creation' ? 'Days After Deal Creation' : 'Days After Previous Milestone'} *
+              </Label>
               <Input
                 id="daysFromCreation"
                 type="number"
@@ -304,7 +346,9 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
                 onChange={(e) => setDaysFromCreation(parseInt(e.target.value) || 0)}
               />
               <p className="text-xs text-muted-foreground">
-                The due date will be set this many days after the deal is created
+                {timingType === 'from_creation' 
+                  ? 'The due date will be set this many days after the deal is created'
+                  : 'The due date will be set this many days after the previous milestone is marked complete'}
               </p>
             </div>
           </div>

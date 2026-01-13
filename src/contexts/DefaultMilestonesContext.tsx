@@ -1,9 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+export type MilestoneTimingType = 'from_creation' | 'after_previous';
+
 export interface DefaultMilestone {
   id: string;
   title: string;
   daysFromCreation: number;
+  timingType: MilestoneTimingType;
   position: number;
 }
 
@@ -20,9 +23,9 @@ const DefaultMilestonesContext = createContext<DefaultMilestonesContextType | un
 const STORAGE_KEY = 'default-deal-milestones';
 
 const DEFAULT_MILESTONES: DefaultMilestone[] = [
-  { id: 'kick-off', title: 'Kick-off Call', daysFromCreation: 3, position: 0 },
-  { id: 'due-diligence', title: 'Due Diligence Complete', daysFromCreation: 14, position: 1 },
-  { id: 'term-sheet', title: 'Term Sheet Received', daysFromCreation: 30, position: 2 },
+  { id: 'kick-off', title: 'Kick-off Call', daysFromCreation: 3, timingType: 'from_creation', position: 0 },
+  { id: 'due-diligence', title: 'Due Diligence Complete', daysFromCreation: 14, timingType: 'from_creation', position: 1 },
+  { id: 'term-sheet', title: 'Term Sheet Received', daysFromCreation: 30, timingType: 'from_creation', position: 2 },
 ];
 
 export function DefaultMilestonesProvider({ children }: { children: ReactNode }) {
@@ -30,7 +33,12 @@ export function DefaultMilestonesProvider({ children }: { children: ReactNode })
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        // Migrate old milestones without timingType
+        return parsed.map((m: any) => ({
+          ...m,
+          timingType: m.timingType || 'from_creation'
+        }));
       }
     } catch (error) {
       console.error('Failed to load default milestones:', error);
@@ -51,7 +59,7 @@ export function DefaultMilestonesProvider({ children }: { children: ReactNode })
     const maxPosition = Math.max(...defaultMilestones.map(m => m.position), -1);
     setDefaultMilestones(prev => [
       ...prev,
-      { ...milestone, id: newId, position: maxPosition + 1 }
+      { ...milestone, id: newId, position: maxPosition + 1, timingType: milestone.timingType || 'from_creation' }
     ]);
   };
 

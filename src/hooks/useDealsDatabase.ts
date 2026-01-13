@@ -5,10 +5,13 @@ import { toast } from '@/hooks/use-toast';
 import type { TriggerType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { addDays } from 'date-fns';
 
+type MilestoneTimingType = 'from_creation' | 'after_previous';
+
 interface DefaultMilestone {
   id: string;
   title: string;
   daysFromCreation: number;
+  timingType?: MilestoneTimingType;
   position: number;
 }
 
@@ -31,16 +34,40 @@ async function createDefaultMilestones(dealId: string, userId: string) {
   if (defaultMilestones.length === 0) return;
 
   const now = new Date();
-  const milestonesToInsert = defaultMilestones
-    .sort((a, b) => a.position - b.position)
-    .map((m, index) => ({
+  const sortedMilestones = [...defaultMilestones].sort((a, b) => a.position - b.position);
+  
+  // Calculate due dates based on timing type
+  let previousDueDate = now;
+  const milestonesToInsert = sortedMilestones.map((m, index) => {
+    const timingType = m.timingType || 'from_creation';
+    let dueDate: Date;
+    
+    if (timingType === 'after_previous' && index > 0) {
+      // For "after previous" milestones, set due date as null initially
+      // The due date will be set when the previous milestone is completed
+      return {
+        deal_id: dealId,
+        user_id: userId,
+        title: m.title,
+        due_date: null, // Will be set when previous milestone completes
+        completed: false,
+        position: index,
+      };
+    } else {
+      // For "from creation" or first milestone, calculate from deal creation
+      dueDate = addDays(now, m.daysFromCreation);
+      previousDueDate = dueDate;
+    }
+    
+    return {
       deal_id: dealId,
       user_id: userId,
       title: m.title,
-      due_date: addDays(now, m.daysFromCreation).toISOString(),
+      due_date: dueDate.toISOString(),
       completed: false,
       position: index,
-    }));
+    };
+  });
 
   try {
     await supabase.from('deal_milestones').insert(milestonesToInsert);
