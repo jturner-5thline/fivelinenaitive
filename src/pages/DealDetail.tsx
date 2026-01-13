@@ -81,6 +81,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from '@/hooks/use-toast';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
+import { useAdminRole } from '@/hooks/useAdminRole';
 // Helper to calculate business days between two dates
 const getBusinessDaysDiff = (date: Date) => {
   const now = new Date();
@@ -275,6 +276,7 @@ export default function DealDetail() {
   const { user } = useAuth();
   const { members } = useCompany();
   const { profile } = useProfile();
+  const { isAdmin } = useAdminRole();
   const lenderNames = getLenderNames();
   
   // Get member options for manager/owner dropdowns - always include current user
@@ -1174,7 +1176,7 @@ export default function DealDetail() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete or Archive Deal?</AlertDialogTitle>
+            <AlertDialogTitle>{isAdmin ? 'Delete or Archive Deal?' : 'Archive Deal?'}</AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
                 What would you like to do with <strong>{deal.company}</strong>?
@@ -1186,13 +1188,20 @@ export default function DealDetail() {
                     <span className="font-medium">Archive</span> - Hide from active deals but keep all data. You can restore it later.
                   </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <Trash2 className="h-4 w-4 mt-0.5 text-destructive" />
-                  <div>
-                    <span className="font-medium">Delete</span> - Permanently remove the deal and all associated data. Cannot be undone.
+                {isAdmin && (
+                  <div className="flex items-start gap-2">
+                    <Trash2 className="h-4 w-4 mt-0.5 text-destructive" />
+                    <div>
+                      <span className="font-medium">Delete</span> - Permanently remove the deal and all associated data. Cannot be undone.
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
+              {!isAdmin && (
+                <p className="text-xs text-muted-foreground">
+                  Only administrators can permanently delete deals.
+                </p>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
@@ -1208,23 +1217,25 @@ export default function DealDetail() {
                 Archive
               </Button>
             )}
-            <AlertDialogAction 
-              onClick={handleDeleteDeal}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </>
-              )}
-            </AlertDialogAction>
+            {isAdmin && (
+              <AlertDialogAction 
+                onClick={handleDeleteDeal}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
