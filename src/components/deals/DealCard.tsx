@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
+  const { isAdmin } = useAdminRole();
   const dynamicStageConfig = getStageConfig();
   
   const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
@@ -213,17 +215,19 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag }:
                     Archive
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    navigate(`/deal/${deal.id}?action=delete`);
-                  }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate(`/deal/${deal.id}?action=delete`);
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
