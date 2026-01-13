@@ -76,6 +76,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/hooks/use-toast';
@@ -2481,38 +2482,50 @@ export default function DealDetail() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Client Contact</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-auto p-0 px-1 font-medium hover:bg-muted/50 rounded max-w-[200px] justify-end text-right"
-                        >
-                          <span className="truncate">
-                            {deal.contact || <span className="text-muted-foreground italic text-sm">Add contact</span>}
-                          </span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-72 p-4 bg-popover" align="end">
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Contact Name</label>
-                            <Input
-                              value={deal.contact || ''}
-                              onChange={(e) => updateDeal('contact', e.target.value)}
-                              placeholder="Enter contact name"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Contact Info</label>
-                            <Input
-                              value={deal.contactInfo || ''}
-                              onChange={(e) => updateDeal('contactInfo', e.target.value)}
-                              placeholder="Email or phone number"
-                            />
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <Popover>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="h-auto p-0 px-1 font-medium hover:bg-muted/50 rounded max-w-[200px] justify-end text-right"
+                              >
+                                <span className="truncate">
+                                  {deal.contact || <span className="text-muted-foreground italic text-sm">Add contact</span>}
+                                </span>
+                              </Button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          {deal.contact && deal.contactInfo && (
+                            <TooltipContent side="left" className="max-w-[200px]">
+                              <p className="font-medium">{deal.contact}</p>
+                              <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
+                            </TooltipContent>
+                          )}
+                          <PopoverContent className="w-72 p-4 bg-popover" align="end">
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Contact Name</label>
+                                <Input
+                                  value={deal.contact || ''}
+                                  onChange={(e) => updateDeal('contact', e.target.value)}
+                                  placeholder="Enter contact name"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Contact Info</label>
+                                <Input
+                                  value={deal.contactInfo || ''}
+                                  onChange={(e) => updateDeal('contactInfo', e.target.value)}
+                                  placeholder="Email or phone number"
+                                />
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Engagement Type</span>
