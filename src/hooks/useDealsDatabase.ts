@@ -262,6 +262,21 @@ export function useDealsDatabase() {
           };
         };
 
+        // Parse deal_type from JSON string or single value to array
+        const parseDealTypes = (dealType: string | null): string[] | undefined => {
+          if (!dealType) return undefined;
+          try {
+            // Try to parse as JSON array
+            const parsed = JSON.parse(dealType);
+            if (Array.isArray(parsed)) return parsed;
+            // If it's a string after parsing, wrap in array
+            return [parsed];
+          } catch {
+            // If not valid JSON, treat as single value
+            return [dealType];
+          }
+        };
+
         return {
           id: dbDeal.id,
           name: dbDeal.company,
@@ -270,6 +285,7 @@ export function useDealsDatabase() {
           status: dbDeal.status as DealStatus,
           engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
           exclusivity: (dbDeal.exclusivity || undefined) as ExclusivityType | undefined,
+          dealTypes: parseDealTypes(dbDeal.deal_type),
           manager: dbDeal.manager || '',
           dealOwner: dbDeal.deal_owner || undefined,
           isFlagged: dbDeal.is_flagged || false,
@@ -425,6 +441,10 @@ export function useDealsDatabase() {
       if (updates.flagNotes !== undefined) dbUpdates.flag_notes = updates.flagNotes;
       if (Object.prototype.hasOwnProperty.call(updates, 'referredBy')) {
         dbUpdates.referred_by = updates.referredBy?.name ?? null;
+      }
+      if (updates.dealTypes !== undefined) {
+        // Store as JSON array string
+        dbUpdates.deal_type = updates.dealTypes.length > 0 ? JSON.stringify(updates.dealTypes) : null;
       }
       if (updates.preSigningHours !== undefined) dbUpdates.pre_signing_hours = updates.preSigningHours;
       if (updates.postSigningHours !== undefined) dbUpdates.post_signing_hours = updates.postSigningHours;
