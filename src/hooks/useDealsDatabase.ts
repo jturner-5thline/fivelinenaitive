@@ -635,19 +635,37 @@ export function useDealsDatabase() {
     setDeals(prev => prev.filter(d => d.id !== dealId));
 
     try {
+      // First check if the deal exists and we can see it
+      const { data: existingDeal } = await supabase
+        .from('deals')
+        .select('id')
+        .eq('id', dealId)
+        .maybeSingle();
+
       const { error } = await supabase
         .from('deals')
         .delete()
         .eq('id', dealId);
 
       if (error) throw error;
-    } catch (err) {
+      
+      // If the deal still exists after delete, permission was denied
+      const { data: stillExists } = await supabase
+        .from('deals')
+        .select('id')
+        .eq('id', dealId)
+        .maybeSingle();
+      
+      if (stillExists && existingDeal) {
+        throw new Error('You do not have permission to delete this deal');
+      }
+    } catch (err: any) {
       // Rollback on error
       setDeals(previousDeals);
       console.error('Error deleting deal:', err);
       toast({
         title: "Error",
-        description: "Failed to delete deal",
+        description: err.message || "Failed to delete deal. You may not have permission.",
         variant: "destructive",
       });
     }
