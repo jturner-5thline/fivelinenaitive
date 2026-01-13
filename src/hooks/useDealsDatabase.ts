@@ -37,28 +37,24 @@ async function createDefaultMilestones(dealId: string, userId: string) {
   const sortedMilestones = [...defaultMilestones].sort((a, b) => a.position - b.position);
   
   // Calculate due dates based on timing type
-  let previousDueDate = now;
   const milestonesToInsert = sortedMilestones.map((m, index) => {
     const timingType = m.timingType || 'from_creation';
-    let dueDate: Date;
     
+    // For "after previous" milestones (except the first one), set due date as null
+    // The due date will be set when the previous milestone is completed
     if (timingType === 'after_previous' && index > 0) {
-      // For "after previous" milestones, set due date as null initially
-      // The due date will be set when the previous milestone is completed
       return {
         deal_id: dealId,
         user_id: userId,
         title: m.title,
-        due_date: null, // Will be set when previous milestone completes
+        due_date: null as string | null,
         completed: false,
         position: index,
       };
-    } else {
-      // For "from creation" or first milestone, calculate from deal creation
-      dueDate = addDays(now, m.daysFromCreation);
-      previousDueDate = dueDate;
     }
     
+    // For "from creation" or first milestone, calculate from deal creation
+    const dueDate = addDays(now, m.daysFromCreation);
     return {
       deal_id: dealId,
       user_id: userId,
