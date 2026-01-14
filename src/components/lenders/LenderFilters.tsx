@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,50 @@ interface LenderFiltersProps {
   filters: LenderFilters;
   onFiltersChange: (filters: LenderFilters) => void;
   lenders: MasterLender[];
+}
+
+// Debounced input component for number fields
+function DebouncedInput({ 
+  value, 
+  onChange, 
+  debounceMs = 400,
+  ...props 
+}: { 
+  value: string; 
+  onChange: (value: string) => void; 
+  debounceMs?: number;
+} & Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'>) {
+  const [localValue, setLocalValue] = useState(value);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync local value when external value changes (e.g., clear all)
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = setTimeout(() => {
+      onChange(newValue);
+    }, debounceMs);
+  }, [onChange, debounceMs]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  return <Input {...props} value={localValue} onChange={handleChange} />;
 }
 
 export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: LenderFiltersProps) {
@@ -203,13 +247,14 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                 <Label htmlFor="minDealSize" className="text-xs">
                   Min Deal Size ($)
                 </Label>
-                <Input
+                <DebouncedInput
                   id="minDealSize"
                   type="number"
                   placeholder="e.g. 1000000"
                   value={filters.minDealSize}
-                  onChange={(e) => handleFilterChange('minDealSize', e.target.value)}
+                  onChange={(value) => handleFilterChange('minDealSize', value)}
                   className="h-9"
+                  debounceMs={400}
                 />
               </div>
 
@@ -218,13 +263,14 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                 <Label htmlFor="maxDealSize" className="text-xs">
                   Max Deal Size ($)
                 </Label>
-                <Input
+                <DebouncedInput
                   id="maxDealSize"
                   type="number"
                   placeholder="e.g. 50000000"
                   value={filters.maxDealSize}
-                  onChange={(e) => handleFilterChange('maxDealSize', e.target.value)}
+                  onChange={(value) => handleFilterChange('maxDealSize', value)}
                   className="h-9"
+                  debounceMs={400}
                 />
               </div>
 
