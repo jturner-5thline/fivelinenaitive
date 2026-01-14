@@ -65,6 +65,7 @@ export function DealsHeader() {
   const [dealOwner, setDealOwner] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
+  const [dealStatusNote, setDealStatusNote] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
 
@@ -110,6 +111,11 @@ export function DealsHeader() {
       return;
     }
 
+    if (!dealStatusNote.trim()) {
+      toast.error('Please fill in the deal status');
+      return;
+    }
+
     // Get display names for the selected users
     const managerName = memberOptions.find(m => m.value === dealManager)?.label || dealManager;
     const ownerName = memberOptions.find(m => m.value === dealOwner)?.label || dealOwner;
@@ -123,6 +129,7 @@ export function DealsHeader() {
         dealOwner: ownerName || undefined,
         contact: contactName.trim(),
         contactInfo: contactInfo.trim(),
+        notes: dealStatusNote.trim(),
         status: 'on-track',
         stage: dealStages[0]?.id || 'final-credit-items',
         engagementType: 'guided',
@@ -137,6 +144,7 @@ export function DealsHeader() {
         setDealOwner('');
         setContactName('');
         setContactInfo('');
+        setDealStatusNote('');
         navigate(`/deal/${newDeal.id}`);
       }
     } catch (error) {
@@ -321,6 +329,16 @@ export function DealsHeader() {
                       value={contactInfo}
                       onChange={(e) => setContactInfo(e.target.value)}
                       placeholder="Email or phone number"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dealStatusNote">Deal Status <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="dealStatusNote"
+                      value={dealStatusNote}
+                      onChange={(e) => setDealStatusNote(e.target.value)}
+                      placeholder="e.g., Client kickoff call to intro lenders"
                       required
                     />
                   </div>
