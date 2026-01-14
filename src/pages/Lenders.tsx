@@ -157,6 +157,7 @@ export default function Lenders() {
   const { 
     lenders: masterLenders, 
     loading: isLoading, 
+    loadingMore,
     addLender: addMasterLender, 
     updateLender: updateMasterLender, 
     deleteLender: deleteMasterLender,
@@ -725,10 +726,17 @@ export default function Lenders() {
                     components={{
                       Footer: () => (
                         <div className="py-4 text-center text-sm text-muted-foreground border-t border-border/50 mt-2">
-                          <span className="inline-flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            Showing all {sortedLenders.length.toLocaleString()} lenders
-                          </span>
+                          {loadingMore ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading more lenders... ({sortedLenders.length.toLocaleString()} loaded)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              Showing all {sortedLenders.length.toLocaleString()} lenders
+                            </span>
+                          )}
                         </div>
                       ),
                     }}
@@ -762,10 +770,17 @@ export default function Lenders() {
                     components={{
                       Footer: () => (
                         <div className="col-span-full py-4 text-center text-sm text-muted-foreground border-t border-border/50 mt-2">
-                          <span className="inline-flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            Showing all {sortedLenders.length.toLocaleString()} lenders
-                          </span>
+                          {loadingMore ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading more lenders... ({sortedLenders.length.toLocaleString()} loaded)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              Showing all {sortedLenders.length.toLocaleString()} lenders
+                            </span>
+                          )}
                         </div>
                       ),
                     }}
