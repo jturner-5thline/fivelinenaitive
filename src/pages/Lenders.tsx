@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { useLenders } from '@/contexts/LendersContext';
@@ -51,7 +52,9 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
+import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
+import { useMasterLenders } from '@/hooks/useMasterLenders';
 
 type SortOption = 'name-asc' | 'name-desc' | 'prefs-desc' | 'prefs-asc';
 type ViewMode = 'list' | 'grid';
@@ -93,6 +96,7 @@ export default function Lenders() {
   const { deals } = useDealsContext();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
+  const { importLenders, lenders: masterLenders } = useMasterLenders();
   const quickUploadRef = useRef<HTMLInputElement>(null);
   const [quickUploadTarget, setQuickUploadTarget] = useState<{ lenderName: string; category: 'nda' | 'marketing_materials' } | null>(null);
   const [isQuickUploading, setIsQuickUploading] = useState(false);
@@ -106,6 +110,7 @@ export default function Lenders() {
     const saved = localStorage.getItem('lenders-view-mode');
     return (saved === 'grid' || saved === 'list') ? saved : 'list';
   });
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
@@ -408,24 +413,37 @@ export default function Lenders() {
                 <p className="text-muted-foreground">Manage your lender directory</p>
               </div>
               <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <Upload className="h-4 w-4" />
+                      Import
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleImport}
+                        className="hidden"
+                      />
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import to Directory
+                      </DropdownMenuItem>
+                    </label>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
+                      <Database className="h-4 w-4 mr-2" />
+                      Import Master Database
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline" onClick={handleExport} size="sm" className="gap-1">
                   <Download className="h-4 w-4" />
                   Export
                 </Button>
-                <label>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleImport}
-                    className="hidden"
-                  />
-                  <Button variant="outline" size="sm" className="gap-1" asChild>
-                    <span>
-                      <Upload className="h-4 w-4" />
-                      Import
-                    </span>
-                  </Button>
-                </label>
                 <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
                   <Plus className="h-4 w-4" />
                   Add Lender
@@ -922,6 +940,12 @@ export default function Lenders() {
         onOpenChange={setIsDetailOpen}
         onEdit={openEditDialog}
         onDelete={handleDelete}
+      />
+
+      <ImportLendersDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onImport={importLenders}
       />
     </>
   );

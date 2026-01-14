@@ -922,6 +922,134 @@ export type Database = {
         }
         Relationships: []
       }
+      master_lenders: {
+        Row: {
+          b2b_b2c: string | null
+          cash_burn: string | null
+          company_id: string | null
+          company_requirements: string | null
+          contact_name: string | null
+          contact_title: string | null
+          created_at: string
+          deal_structure_notes: string | null
+          ebitda_min: number | null
+          email: string | null
+          external_created_by: string | null
+          external_last_modified: string | null
+          geo: string | null
+          gift_address: string | null
+          id: string
+          industries: string[] | null
+          industries_to_avoid: string[] | null
+          lender_one_pager_url: string | null
+          lender_type: string | null
+          loan_types: string[] | null
+          max_deal: number | null
+          min_deal: number | null
+          min_revenue: number | null
+          name: string
+          nda: string | null
+          onboarded_to_flex: string | null
+          post_term_sheet_checklist: string | null
+          referral_agreement: string | null
+          referral_fee_offered: string | null
+          referral_lender: string | null
+          refinancing: string | null
+          relationship_owners: string | null
+          sponsorship: string | null
+          sub_debt: string | null
+          updated_at: string
+          upfront_checklist: string | null
+          user_id: string
+        }
+        Insert: {
+          b2b_b2c?: string | null
+          cash_burn?: string | null
+          company_id?: string | null
+          company_requirements?: string | null
+          contact_name?: string | null
+          contact_title?: string | null
+          created_at?: string
+          deal_structure_notes?: string | null
+          ebitda_min?: number | null
+          email?: string | null
+          external_created_by?: string | null
+          external_last_modified?: string | null
+          geo?: string | null
+          gift_address?: string | null
+          id?: string
+          industries?: string[] | null
+          industries_to_avoid?: string[] | null
+          lender_one_pager_url?: string | null
+          lender_type?: string | null
+          loan_types?: string[] | null
+          max_deal?: number | null
+          min_deal?: number | null
+          min_revenue?: number | null
+          name: string
+          nda?: string | null
+          onboarded_to_flex?: string | null
+          post_term_sheet_checklist?: string | null
+          referral_agreement?: string | null
+          referral_fee_offered?: string | null
+          referral_lender?: string | null
+          refinancing?: string | null
+          relationship_owners?: string | null
+          sponsorship?: string | null
+          sub_debt?: string | null
+          updated_at?: string
+          upfront_checklist?: string | null
+          user_id: string
+        }
+        Update: {
+          b2b_b2c?: string | null
+          cash_burn?: string | null
+          company_id?: string | null
+          company_requirements?: string | null
+          contact_name?: string | null
+          contact_title?: string | null
+          created_at?: string
+          deal_structure_notes?: string | null
+          ebitda_min?: number | null
+          email?: string | null
+          external_created_by?: string | null
+          external_last_modified?: string | null
+          geo?: string | null
+          gift_address?: string | null
+          id?: string
+          industries?: string[] | null
+          industries_to_avoid?: string[] | null
+          lender_one_pager_url?: string | null
+          lender_type?: string | null
+          loan_types?: string[] | null
+          max_deal?: number | null
+          min_deal?: number | null
+          min_revenue?: number | null
+          name?: string
+          nda?: string | null
+          onboarded_to_flex?: string | null
+          post_term_sheet_checklist?: string | null
+          referral_agreement?: string | null
+          referral_fee_offered?: string | null
+          referral_lender?: string | null
+          refinancing?: string | null
+          relationship_owners?: string | null
+          sponsorship?: string | null
+          sub_debt?: string | null
+          updated_at?: string
+          upfront_checklist?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_lenders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_reads: {
         Row: {
           id: string
