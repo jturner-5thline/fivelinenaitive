@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
@@ -697,44 +698,58 @@ export default function Lenders() {
                 )}
 
                 {/* List View */}
-                {!isLoading && viewMode === 'list' && (
-                  <div className="space-y-3">
-                    {sortedLenders.map((lender) => (
-                      <LenderListCard
-                        key={lender.id}
-                        lender={lender}
-                        activeDealCount={activeDealCounts[lender.name] || 0}
-                        summary={getLenderSummary(lender.name)}
-                        isQuickUploading={isQuickUploading}
-                        quickUploadLenderName={quickUploadTarget?.lenderName || null}
-                        onOpenDetail={openLenderDetailStable}
-                        onEdit={openEditDialogStable}
-                        onDelete={handleDeleteStable}
-                        onQuickUpload={handleQuickUploadStable}
-                      />
-                    ))}
-                  </div>
+                {/* List View - Virtualized */}
+                {!isLoading && viewMode === 'list' && sortedLenders.length > 0 && (
+                  <Virtuoso
+                    style={{ height: 'calc(100vh - 280px)' }}
+                    totalCount={sortedLenders.length}
+                    itemContent={(index) => {
+                      const lender = sortedLenders[index];
+                      return (
+                        <div className="pb-3">
+                          <LenderListCard
+                            key={lender.id}
+                            lender={lender}
+                            activeDealCount={activeDealCounts[lender.name] || 0}
+                            summary={getLenderSummary(lender.name)}
+                            isQuickUploading={isQuickUploading}
+                            quickUploadLenderName={quickUploadTarget?.lenderName || null}
+                            onOpenDetail={openLenderDetailStable}
+                            onEdit={openEditDialogStable}
+                            onDelete={handleDeleteStable}
+                            onQuickUpload={handleQuickUploadStable}
+                          />
+                        </div>
+                      );
+                    }}
+                  />
                 )}
 
-                {/* Grid View */}
-                {!isLoading && viewMode === 'grid' && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {sortedLenders.map((lender) => (
-                      <LenderGridCard
-                        key={lender.id}
-                        lender={lender}
-                        activeDealCount={activeDealCounts[lender.name] || 0}
-                        tileDisplaySettings={tileDisplaySettings}
-                        summary={getLenderSummary(lender.name)}
-                        isQuickUploading={isQuickUploading}
-                        quickUploadLenderName={quickUploadTarget?.lenderName || null}
-                        onOpenDetail={openLenderDetailStable}
-                        onEdit={openEditDialogStable}
-                        onDelete={handleDeleteStable}
-                        onQuickUpload={handleQuickUploadStable}
-                      />
-                    ))}
-                  </div>
+                {/* Grid View - Virtualized */}
+                {!isLoading && viewMode === 'grid' && sortedLenders.length > 0 && (
+                  <VirtuosoGrid
+                    style={{ height: 'calc(100vh - 280px)' }}
+                    totalCount={sortedLenders.length}
+                    listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+                    itemContent={(index) => {
+                      const lender = sortedLenders[index];
+                      return (
+                        <LenderGridCard
+                          key={lender.id}
+                          lender={lender}
+                          activeDealCount={activeDealCounts[lender.name] || 0}
+                          tileDisplaySettings={tileDisplaySettings}
+                          summary={getLenderSummary(lender.name)}
+                          isQuickUploading={isQuickUploading}
+                          quickUploadLenderName={quickUploadTarget?.lenderName || null}
+                          onOpenDetail={openLenderDetailStable}
+                          onEdit={openEditDialogStable}
+                          onDelete={handleDeleteStable}
+                          onQuickUpload={handleQuickUploadStable}
+                        />
+                      );
+                    }}
+                  />
                 )}
 
                 {!isLoading && sortedLenders.length === 0 && masterLenders.length > 0 && (
