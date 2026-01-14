@@ -154,16 +154,19 @@ function formatCurrency(value: number | null | undefined): string {
 
 export default function Lenders() {
   const navigate = useNavigate();
-  const { 
-    lenders: masterLenders, 
-    loading: isLoading, 
+  const {
+    lenders: masterLenders,
+    loading: isLoading,
     loadingMore,
-    addLender: addMasterLender, 
-    updateLender: updateMasterLender, 
+    hasMore,
+    totalCount,
+    loadMore,
+    addLender: addMasterLender,
+    updateLender: updateMasterLender,
     deleteLender: deleteMasterLender,
     importLenders,
     mergeLenders,
-  } = useMasterLenders();
+  } = useMasterLenders({ mode: 'paged', pageSize: 100, orderBy: { column: 'name', ascending: true } });
   const { deals } = useDealsContext();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
@@ -299,12 +302,12 @@ export default function Lenders() {
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
+    // We already fetch lenders ordered by name asc, so avoid expensive sorts when possible.
+    if (sortOption === 'name-asc') return filteredLenders;
+    if (sortOption === 'name-desc') return [...filteredLenders].reverse();
+
     return [...filteredLenders].sort((a, b) => {
       switch (sortOption) {
-        case 'name-asc':
-          return a.name.localeCompare(b.name);
-        case 'name-desc':
-          return b.name.localeCompare(a.name);
         case 'deals-desc':
           return (activeDealCounts[b.name] || 0) - (activeDealCounts[a.name] || 0);
         case 'deals-asc':
@@ -704,6 +707,7 @@ export default function Lenders() {
                   <Virtuoso
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
+                    endReached={() => loadMore()}
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
                       return (
@@ -729,7 +733,12 @@ export default function Lenders() {
                           {loadingMore ? (
                             <span className="inline-flex items-center gap-2">
                               <Loader2 className="h-4 w-4 animate-spin" />
-                              Loading more lenders... ({sortedLenders.length.toLocaleString()} loaded)
+                              Loading more lenders... ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
+                            </span>
+                          ) : hasMore ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              Scroll to load more ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-2">
@@ -748,6 +757,7 @@ export default function Lenders() {
                   <VirtuosoGrid
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
+                    endReached={() => loadMore()}
                     listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
@@ -773,7 +783,12 @@ export default function Lenders() {
                           {loadingMore ? (
                             <span className="inline-flex items-center gap-2">
                               <Loader2 className="h-4 w-4 animate-spin" />
-                              Loading more lenders... ({sortedLenders.length.toLocaleString()} loaded)
+                              Loading more lenders... ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
+                            </span>
+                          ) : hasMore ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              Scroll to load more ({sortedLenders.length.toLocaleString()}{totalCount ? ` / ${totalCount.toLocaleString()}` : ''})
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-2">
