@@ -115,11 +115,12 @@ export function useMasterLenders() {
         
         // Use requestIdleCallback or setTimeout to not block main thread
         const loadRemaining = async () => {
-          const allLenders: MasterLender[] = [...(initialData || [])];
+          const remainingLenders: MasterLender[] = [];
           const pageSize = 1000;
           let page = 1; // Start from page 1 since we already have page 0
           let hasMore = true;
           
+          // Collect all remaining lenders first without updating state
           while (hasMore) {
             const from = page * pageSize;
             const to = from + pageSize - 1;
@@ -136,14 +137,17 @@ export function useMasterLenders() {
             }
             
             if (data && data.length > 0) {
-              allLenders.push(...data);
-              // Update state progressively so UI stays responsive
-              setLenders([...allLenders]);
+              remainingLenders.push(...data);
               hasMore = data.length === pageSize;
               page++;
             } else {
               hasMore = false;
             }
+          }
+          
+          // Single state update with all lenders to prevent flickering
+          if (remainingLenders.length > 0) {
+            setLenders(prev => [...prev, ...remainingLenders]);
           }
           
           setLoadingMore(false);
