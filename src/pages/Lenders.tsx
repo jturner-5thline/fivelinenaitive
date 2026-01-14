@@ -626,9 +626,14 @@ export default function Lenders() {
                       const displayTags = [
                         lender.lender_type,
                         ...(lender.loan_types || []),
-                        lender.min_deal && lender.max_deal ? `${formatCurrency(lender.min_deal)}-${formatCurrency(lender.max_deal)}` : null,
+                        ...(lender.industries || []),
                         lender.geo,
                       ].filter(Boolean) as string[];
+                      
+                      // Format deal size range
+                      const dealSizeRange = (lender.min_deal || lender.max_deal) 
+                        ? `${formatCurrency(lender.min_deal)} - ${formatCurrency(lender.max_deal)}`
+                        : null;
                       
                       return (
                         <div
@@ -682,21 +687,30 @@ export default function Lenders() {
                                 </Badge>
                               )}
                             </div>
-                            {(lender.contact_name || lender.email) && (
-                              <p className="text-sm text-muted-foreground truncate">
-                                {[lender.contact_name, lender.email].filter(Boolean).join(' • ')}
-                              </p>
-                            )}
+                            {/* Contact and deal size info */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                              {lender.contact_name && (
+                                <span>{lender.contact_name}{lender.contact_title && ` (${lender.contact_title})`}</span>
+                              )}
+                              {lender.email && <span>{lender.email}</span>}
+                              {dealSizeRange && (
+                                <span className="font-medium text-foreground">Deal Size: {dealSizeRange}</span>
+                              )}
+                              {lender.min_revenue && (
+                                <span>Min Revenue: {formatCurrency(lender.min_revenue)}</span>
+                              )}
+                              {lender.geo && <span>📍 {lender.geo}</span>}
+                            </div>
                             {displayTags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {displayTags.slice(0, 3).map((tag, idx) => (
+                                {displayTags.slice(0, 5).map((tag, idx) => (
                                   <Badge key={idx} variant="secondary" className="text-xs">
                                     {tag}
                                   </Badge>
                                 ))}
-                                {displayTags.length > 3 && (
+                                {displayTags.length > 5 && (
                                   <Badge variant="outline" className="text-xs">
-                                    +{displayTags.length - 3} more
+                                    +{displayTags.length - 5} more
                                   </Badge>
                                 )}
                               </div>
@@ -777,6 +791,11 @@ export default function Lenders() {
                         lender.lender_type,
                         ...(lender.loan_types?.slice(0, 1) || []),
                       ].filter(Boolean) as string[];
+                      
+                      // Format deal size range for grid view
+                      const dealSizeRange = (lender.min_deal || lender.max_deal) 
+                        ? `${formatCurrency(lender.min_deal)} - ${formatCurrency(lender.max_deal)}`
+                        : null;
                       
                       return (
                         <div
@@ -895,6 +914,11 @@ export default function Lenders() {
                             {lender.contact_name && (
                               <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
                                 {lender.contact_name}
+                              </p>
+                            )}
+                            {dealSizeRange && (
+                              <p className="text-xs font-medium text-foreground mt-1">
+                                {dealSizeRange}
                               </p>
                             )}
                           </div>
