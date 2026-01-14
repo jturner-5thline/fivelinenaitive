@@ -191,7 +191,7 @@ const Auth = () => {
         options: {
           redirectTo: `${window.location.origin}/auth`,
           queryParams: {
-            prompt: 'select_account',
+            prompt: 'consent select_account',
           },
         },
       });
