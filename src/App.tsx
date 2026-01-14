@@ -26,6 +26,7 @@ import DealDetail from "./pages/DealDetail";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
 import Lenders from "./pages/Lenders";
+import LenderDatabaseConfig from "./pages/LenderDatabaseConfig";
 import Preferences from "./pages/Preferences";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
@@ -90,6 +91,9 @@ const App = () => (
                           } />
                           <Route path="/lenders" element={
                             <ProtectedRoute><Lenders /></ProtectedRoute>
+                          } />
+                          <Route path="/lenders/config" element={
+                            <ProtectedRoute><LenderDatabaseConfig /></ProtectedRoute>
                           } />
                           <Route path="/preferences" element={
                             <ProtectedRoute><Preferences /></ProtectedRoute>

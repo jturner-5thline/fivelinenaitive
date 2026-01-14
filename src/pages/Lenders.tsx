@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
@@ -132,6 +133,7 @@ function formatCurrency(value: number | null | undefined): string {
 }
 
 export default function Lenders() {
+  const navigate = useNavigate();
   const { 
     lenders: masterLenders, 
     loading: isLoading, 
@@ -517,7 +519,7 @@ export default function Lenders() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" size="sm" className="gap-1">
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
                   Lender Database Configuration
                 </Button>
