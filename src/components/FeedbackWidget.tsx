@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { MessageSquarePlus, X, Send, Loader2 } from 'lucide-react';
+import { MessageSquarePlus, X, Send, Loader2, Bug, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Popover,
   PopoverContent,
@@ -11,10 +14,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+type FeedbackType = 'bug' | 'feature';
+
 export function FeedbackWidget() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [type, setType] = useState<FeedbackType>('feature');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Only show for @5thline.co users
@@ -25,13 +32,15 @@ export function FeedbackWidget() {
   }
 
   const handleSubmit = async () => {
-    if (!message.trim() || !user) return;
+    if (!title.trim() || !message.trim() || !user) return;
 
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from('feedback').insert({
         user_id: user.id,
+        title: title.trim(),
         message: message.trim(),
+        type,
         page_url: window.location.pathname,
       });
 
@@ -41,7 +50,9 @@ export function FeedbackWidget() {
         title: 'Feedback submitted',
         description: 'Thank you for your feedback!',
       });
+      setTitle('');
       setMessage('');
+      setType('feature');
       setOpen(false);
     } catch (error) {
       console.error('Error submitting feedback:', error);
@@ -83,16 +94,54 @@ export function FeedbackWidget() {
                 Help us improve the platform
               </p>
             </div>
-            <Textarea
-              placeholder="What's on your mind?"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="min-h-[100px] resize-none"
-            />
+
+            {/* Type Toggle */}
+            <div className="space-y-2">
+              <Label className="text-xs">Type</Label>
+              <ToggleGroup
+                type="single"
+                value={type}
+                onValueChange={(value) => value && setType(value as FeedbackType)}
+                className="justify-start"
+              >
+                <ToggleGroupItem value="feature" aria-label="Feature request" className="gap-2">
+                  <Lightbulb className="h-4 w-4" />
+                  Feature
+                </ToggleGroupItem>
+                <ToggleGroupItem value="bug" aria-label="Bug report" className="gap-2">
+                  <Bug className="h-4 w-4" />
+                  Bug
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            {/* Title */}
+            <div className="space-y-2">
+              <Label htmlFor="feedback-title" className="text-xs">Title</Label>
+              <Input
+                id="feedback-title"
+                placeholder={type === 'bug' ? 'Brief bug summary...' : 'Feature idea...'}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="feedback-desc" className="text-xs">Description</Label>
+              <Textarea
+                id="feedback-desc"
+                placeholder={type === 'bug' ? 'Steps to reproduce, expected vs actual behavior...' : 'Describe the feature and why it would help...'}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+
             <div className="flex justify-end">
               <Button
                 onClick={handleSubmit}
-                disabled={!message.trim() || isSubmitting}
+                disabled={!title.trim() || !message.trim() || isSubmitting}
                 size="sm"
               >
                 {isSubmitting ? (

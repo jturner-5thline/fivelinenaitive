@@ -821,6 +821,8 @@ export type Database = {
           id: string
           message: string
           page_url: string | null
+          title: string | null
+          type: string | null
           user_id: string
         }
         Insert: {
@@ -828,6 +830,8 @@ export type Database = {
           id?: string
           message: string
           page_url?: string | null
+          title?: string | null
+          type?: string | null
           user_id: string
         }
         Update: {
@@ -835,6 +839,8 @@ export type Database = {
           id?: string
           message?: string
           page_url?: string | null
+          title?: string | null
+          type?: string | null
           user_id?: string
         }
         Relationships: []
