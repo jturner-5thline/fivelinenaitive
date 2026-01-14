@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, Plus, Search, Building2, Mail, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X } from 'lucide-react';
+import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -21,17 +22,20 @@ interface LenderSuggestionsContentProps {
   criteria: DealCriteria;
   existingLenderNames: string[];
   onAddLender: (lenderName: string) => void;
+  onAddMultipleLenders?: (lenderNames: string[]) => void;
 }
 
 export function LenderSuggestionsContent({
   criteria,
   existingLenderNames,
   onAddLender,
+  onAddMultipleLenders,
 }: LenderSuggestionsContentProps) {
   const { lenders: masterLenders, loading } = useMasterLenders();
   const [searchQuery, setSearchQuery] = useState('');
   const [lenderTypeFilter, setLenderTypeFilter] = useState<string>('all');
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
+  const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
   
   const { matches } = useLenderMatching(masterLenders, criteria, {
     minScore: -10,
@@ -95,6 +99,40 @@ export function LenderSuggestionsContent({
   }, [filteredMatches]);
   
   const totalMatches = groupedMatches.excellent.length + groupedMatches.good.length + groupedMatches.possible.length;
+
+  const handleToggleLender = (lenderId: string) => {
+    setSelectedLenders(prev => {
+      const next = new Set(prev);
+      if (next.has(lenderId)) {
+        next.delete(lenderId);
+      } else {
+        next.add(lenderId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allIds = filteredMatches.map(m => m.lender.id);
+    setSelectedLenders(new Set(allIds));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedLenders(new Set());
+  };
+
+  const handleAddSelected = () => {
+    const selectedNames = filteredMatches
+      .filter(m => selectedLenders.has(m.lender.id))
+      .map(m => m.lender.name);
+    
+    if (onAddMultipleLenders) {
+      onAddMultipleLenders(selectedNames);
+    } else {
+      selectedNames.forEach(name => onAddLender(name));
+    }
+    setSelectedLenders(new Set());
+  };
   
   if (loading) {
     return (
@@ -191,6 +229,47 @@ export function LenderSuggestionsContent({
           </Button>
         </div>
       </div>
+
+      {/* Selection Actions Bar */}
+      {selectedLenders.size > 0 && (
+        <div className="flex items-center gap-2 mb-3 p-2 bg-primary/10 rounded-lg border border-primary/20">
+          <CheckSquare className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium flex-1">
+            {selectedLenders.size} selected
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={handleClearSelection}
+          >
+            Clear
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 text-xs"
+            onClick={handleAddSelected}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Add Selected
+          </Button>
+        </div>
+      )}
+
+      {/* Select All / Clear All buttons */}
+      {totalMatches > 0 && selectedLenders.size === 0 && (
+        <div className="flex items-center gap-2 mb-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={handleSelectAll}
+          >
+            <CheckSquare className="h-3 w-3 mr-1" />
+            Select All ({totalMatches})
+          </Button>
+        </div>
+      )}
       
       <ScrollArea className="flex-1 -mx-6 px-6">
         <div className="space-y-4 pb-4">
@@ -201,6 +280,8 @@ export function LenderSuggestionsContent({
               icon={<CheckCircle2 className="h-4 w-4 text-success" />}
               matches={groupedMatches.excellent}
               onAddLender={onAddLender}
+              selectedLenders={selectedLenders}
+              onToggleLender={handleToggleLender}
               badgeVariant="default"
             />
           )}
@@ -212,6 +293,8 @@ export function LenderSuggestionsContent({
               icon={<CheckCircle2 className="h-4 w-4 text-primary" />}
               matches={groupedMatches.good}
               onAddLender={onAddLender}
+              selectedLenders={selectedLenders}
+              onToggleLender={handleToggleLender}
               badgeVariant="default"
             />
           )}
@@ -223,6 +306,8 @@ export function LenderSuggestionsContent({
               icon={<Info className="h-4 w-4 text-muted-foreground" />}
               matches={groupedMatches.possible}
               onAddLender={onAddLender}
+              selectedLenders={selectedLenders}
+              onToggleLender={handleToggleLender}
               badgeVariant="secondary"
               defaultCollapsed
             />
@@ -244,12 +329,15 @@ interface MatchGroupProps {
   icon: React.ReactNode;
   matches: LenderMatch[];
   onAddLender: (name: string) => void;
+  selectedLenders: Set<string>;
+  onToggleLender: (lenderId: string) => void;
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
   defaultCollapsed?: boolean;
 }
 
-function MatchGroup({ title, icon, matches, onAddLender, badgeVariant = 'default', defaultCollapsed = false }: MatchGroupProps) {
+function MatchGroup({ title, icon, matches, onAddLender, selectedLenders, onToggleLender, badgeVariant = 'default', defaultCollapsed = false }: MatchGroupProps) {
   const [isOpen, setIsOpen] = useState(!defaultCollapsed);
+  const selectedCount = matches.filter(m => selectedLenders.has(m.lender.id)).length;
   
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -258,7 +346,7 @@ function MatchGroup({ title, icon, matches, onAddLender, badgeVariant = 'default
           {icon}
           <span className="text-sm font-medium">{title}</span>
           <Badge variant="secondary" className="text-xs">
-            {matches.length}
+            {selectedCount > 0 ? `${selectedCount}/${matches.length}` : matches.length}
           </Badge>
         </div>
         <ChevronDown className={cn(
@@ -272,6 +360,8 @@ function MatchGroup({ title, icon, matches, onAddLender, badgeVariant = 'default
           <LenderMatchCard
             key={match.lender.id}
             match={match}
+            isSelected={selectedLenders.has(match.lender.id)}
+            onToggle={() => onToggleLender(match.lender.id)}
             onAdd={() => onAddLender(match.lender.name)}
             badgeVariant={badgeVariant}
           />
@@ -283,16 +373,26 @@ function MatchGroup({ title, icon, matches, onAddLender, badgeVariant = 'default
 
 interface LenderMatchCardProps {
   match: LenderMatch;
+  isSelected: boolean;
+  onToggle: () => void;
   onAdd: () => void;
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
 }
 
-function LenderMatchCard({ match, onAdd, badgeVariant }: LenderMatchCardProps) {
+function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant }: LenderMatchCardProps) {
   const { lender, matchReasons, warnings } = match;
   
   return (
-    <div className="border rounded-lg p-3 bg-card hover:bg-muted/30 transition-colors group">
-      <div className="flex items-start justify-between gap-2">
+    <div className={cn(
+      "border rounded-lg p-3 bg-card hover:bg-muted/30 transition-colors group",
+      isSelected && "ring-2 ring-primary border-primary bg-primary/5"
+    )}>
+      <div className="flex items-start gap-3">
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={onToggle}
+          className="mt-0.5"
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-medium text-sm truncate">{lender.name}</span>
