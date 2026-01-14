@@ -56,6 +56,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
+import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 
@@ -163,6 +164,7 @@ export default function Lenders() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<LenderFilters>(emptyFilters);
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
@@ -225,25 +227,31 @@ export default function Lenders() {
     setIsDetailOpen(true);
   };
 
-  // Filter lenders based on search query and active deals filter
-  const filteredLenders = masterLenders.filter(lender => {
-    // Filter by active deals if enabled
-    if (showActiveDealsOnly && !activeDealCounts[lender.name]) {
-      return false;
-    }
+  // Filter lenders based on search query, active deals filter, and advanced filters
+  const filteredLenders = useMemo(() => {
+    // First apply advanced filters
+    const advancedFiltered = applyLenderFilters(masterLenders, advancedFilters);
     
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      lender.name.toLowerCase().includes(query) ||
-      (lender.contact_name?.toLowerCase().includes(query) ?? false) ||
-      (lender.email?.toLowerCase().includes(query) ?? false) ||
-      (lender.lender_type?.toLowerCase().includes(query) ?? false) ||
-      (lender.industries?.some(ind => ind.toLowerCase().includes(query)) ?? false) ||
-      (lender.loan_types?.some(lt => lt.toLowerCase().includes(query)) ?? false) ||
-      (lender.geo?.toLowerCase().includes(query) ?? false)
-    );
-  });
+    // Then apply search and active deals filters
+    return advancedFiltered.filter(lender => {
+      // Filter by active deals if enabled
+      if (showActiveDealsOnly && !activeDealCounts[lender.name]) {
+        return false;
+      }
+      
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        lender.name.toLowerCase().includes(query) ||
+        (lender.contact_name?.toLowerCase().includes(query) ?? false) ||
+        (lender.email?.toLowerCase().includes(query) ?? false) ||
+        (lender.lender_type?.toLowerCase().includes(query) ?? false) ||
+        (lender.industries?.some(ind => ind.toLowerCase().includes(query)) ?? false) ||
+        (lender.loan_types?.some(lt => lt.toLowerCase().includes(query)) ?? false) ||
+        (lender.geo?.toLowerCase().includes(query) ?? false)
+      );
+    });
+  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, searchQuery]);
 
   // Sort filtered lenders
   const sortedLenders = [...filteredLenders].sort((a, b) => {
@@ -541,7 +549,13 @@ export default function Lenders() {
               </div>
             </div>
 
-            <div>
+            <div className="space-y-4">
+                {/* Advanced Filters Panel */}
+                <LenderFiltersPanel
+                  filters={advancedFilters}
+                  onFiltersChange={setAdvancedFilters}
+                  lenders={masterLenders}
+                />
                 {/* Search and Sort Controls */}
                 <div className="flex flex-col sm:flex-row gap-3 mb-4">
                   <div className="relative flex-1">
