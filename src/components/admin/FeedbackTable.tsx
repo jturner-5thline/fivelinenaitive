@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { Bug, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
@@ -15,7 +16,9 @@ import { Badge } from "@/components/ui/badge";
 interface FeedbackItem {
   id: string;
   user_id: string;
+  title: string | null;
   message: string;
+  type: string | null;
   page_url: string | null;
   created_at: string;
   user_email?: string;
@@ -79,8 +82,10 @@ export function FeedbackTable() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[100px]">Type</TableHead>
+            <TableHead>Title</TableHead>
+            <TableHead>Description</TableHead>
             <TableHead>User</TableHead>
-            <TableHead>Message</TableHead>
             <TableHead>Page</TableHead>
             <TableHead>Date</TableHead>
           </TableRow>
@@ -89,19 +94,35 @@ export function FeedbackTable() {
           {feedback.map((item) => (
             <TableRow key={item.id}>
               <TableCell>
+                {item.type === 'bug' ? (
+                  <Badge variant="destructive" className="gap-1">
+                    <Bug className="h-3 w-3" />
+                    Bug
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="gap-1">
+                    <Lightbulb className="h-3 w-3" />
+                    Feature
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="font-medium">
+                {item.title || <span className="text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell className="max-w-xs">
+                <p className="whitespace-pre-wrap break-words line-clamp-2">
+                  {item.message}
+                </p>
+              </TableCell>
+              <TableCell>
                 <div className="flex flex-col">
-                  <span className="font-medium">
+                  <span className="font-medium text-sm">
                     {item.user_name || "Unknown"}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {item.user_email}
                   </span>
                 </div>
-              </TableCell>
-              <TableCell className="max-w-md">
-                <p className="whitespace-pre-wrap break-words">
-                  {item.message}
-                </p>
               </TableCell>
               <TableCell>
                 {item.page_url ? (
@@ -112,7 +133,7 @@ export function FeedbackTable() {
                   <span className="text-muted-foreground">—</span>
                 )}
               </TableCell>
-              <TableCell className="whitespace-nowrap">
+              <TableCell className="whitespace-nowrap text-sm">
                 {format(new Date(item.created_at), "MMM d, yyyy h:mm a")}
               </TableCell>
             </TableRow>
