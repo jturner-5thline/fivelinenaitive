@@ -2650,48 +2650,150 @@ export default function DealDetail() {
                   </Collapsible>
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-muted-foreground shrink-0">Referred by</span>
-                    <Input
-                      value={deal.referredBy?.name || ''}
-                      onChange={(e) => {
-                        const newName = e.target.value;
-                        setDeal(prev => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            referredBy: newName
-                              ? { id: prev.referredBy?.id || `ref-${Date.now()}`, name: newName }
-                              : undefined,
-                            updatedAt: new Date().toISOString(),
-                          };
-                        });
-                      }}
-                      onBlur={(e) => {
-                        const name = e.currentTarget.value.trim();
-                        const ref = name
-                          ? {
-                              id: deal.referredBy?.id || `ref-${name.toLowerCase().replace(/\s+/g, '-')}`,
-                              name,
-                            }
-                          : undefined;
-
-                        // Normalize trimmed value in local state
-                        setDeal(prev => {
-                          if (!prev) return prev;
-                          return {
-                            ...prev,
-                            referredBy: ref,
-                            updatedAt: new Date().toISOString(),
-                          };
-                        });
-
-                        // Persist to database on blur
-                        if (deal.id) {
-                          updateDealInDb(deal.id, { referredBy: ref } as any);
-                        }
-                      }}
-                      placeholder="Enter referral source..."
-                      className="flex-1 max-w-[180px] h-8 text-right"
-                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <Popover>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="h-auto p-0 px-1 font-medium hover:bg-muted/50 rounded max-w-[200px] justify-end text-right"
+                              >
+                                <span className="truncate">
+                                  {deal.referredBy?.name || <span className="text-muted-foreground italic text-sm">Add referral</span>}
+                                </span>
+                              </Button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          {deal.referredBy?.name && deal.referredBy?.company && (
+                            <TooltipContent side="left" className="max-w-[200px]">
+                              <p className="font-medium">{deal.referredBy.name}</p>
+                              <p className="text-xs text-muted-foreground">{deal.referredBy.company}</p>
+                            </TooltipContent>
+                          )}
+                          <PopoverContent className="w-72 p-4 bg-popover" align="end">
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Referrer Name</label>
+                                <Input
+                                  value={deal.referredBy?.name || ''}
+                                  onChange={(e) => {
+                                    const newName = e.target.value;
+                                    setDeal(prev => {
+                                      if (!prev) return prev;
+                                      return {
+                                        ...prev,
+                                        referredBy: {
+                                          id: prev.referredBy?.id || `ref-${Date.now()}`,
+                                          name: newName,
+                                          company: prev.referredBy?.company,
+                                          email: prev.referredBy?.email,
+                                          phone: prev.referredBy?.phone,
+                                        },
+                                        updatedAt: new Date().toISOString(),
+                                      };
+                                    });
+                                  }}
+                                  onBlur={() => {
+                                    if (deal.id && deal.referredBy) {
+                                      updateDealInDb(deal.id, { referredBy: deal.referredBy } as any);
+                                    }
+                                  }}
+                                  placeholder="Enter referrer name"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Company</label>
+                                <Input
+                                  value={deal.referredBy?.company || ''}
+                                  onChange={(e) => {
+                                    const newCompany = e.target.value;
+                                    setDeal(prev => {
+                                      if (!prev) return prev;
+                                      return {
+                                        ...prev,
+                                        referredBy: {
+                                          id: prev.referredBy?.id || `ref-${Date.now()}`,
+                                          name: prev.referredBy?.name || '',
+                                          company: newCompany,
+                                          email: prev.referredBy?.email,
+                                          phone: prev.referredBy?.phone,
+                                        },
+                                        updatedAt: new Date().toISOString(),
+                                      };
+                                    });
+                                  }}
+                                  onBlur={() => {
+                                    if (deal.id && deal.referredBy) {
+                                      updateDealInDb(deal.id, { referredBy: deal.referredBy } as any);
+                                    }
+                                  }}
+                                  placeholder="Enter company name"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Email</label>
+                                <Input
+                                  value={deal.referredBy?.email || ''}
+                                  onChange={(e) => {
+                                    const newEmail = e.target.value;
+                                    setDeal(prev => {
+                                      if (!prev) return prev;
+                                      return {
+                                        ...prev,
+                                        referredBy: {
+                                          id: prev.referredBy?.id || `ref-${Date.now()}`,
+                                          name: prev.referredBy?.name || '',
+                                          company: prev.referredBy?.company,
+                                          email: newEmail,
+                                          phone: prev.referredBy?.phone,
+                                        },
+                                        updatedAt: new Date().toISOString(),
+                                      };
+                                    });
+                                  }}
+                                  onBlur={() => {
+                                    if (deal.id && deal.referredBy) {
+                                      updateDealInDb(deal.id, { referredBy: deal.referredBy } as any);
+                                    }
+                                  }}
+                                  placeholder="Enter email"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Phone</label>
+                                <Input
+                                  value={deal.referredBy?.phone || ''}
+                                  onChange={(e) => {
+                                    const newPhone = e.target.value;
+                                    setDeal(prev => {
+                                      if (!prev) return prev;
+                                      return {
+                                        ...prev,
+                                        referredBy: {
+                                          id: prev.referredBy?.id || `ref-${Date.now()}`,
+                                          name: prev.referredBy?.name || '',
+                                          company: prev.referredBy?.company,
+                                          email: prev.referredBy?.email,
+                                          phone: newPhone,
+                                        },
+                                        updatedAt: new Date().toISOString(),
+                                      };
+                                    });
+                                  }}
+                                  onBlur={() => {
+                                    if (deal.id && deal.referredBy) {
+                                      updateDealInDb(deal.id, { referredBy: deal.referredBy } as any);
+                                    }
+                                  }}
+                                  placeholder="Enter phone number"
+                                />
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   
                   {/* Hours Section */}
