@@ -19,6 +19,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -59,6 +69,8 @@ export function DealsHeader() {
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const { isAdmin } = useAdminRole();
   const [open, setOpen] = useState(false);
+  const [confirmBlankOpen, setConfirmBlankOpen] = useState(false);
+  const [blankFields, setBlankFields] = useState<string[]>([]);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
   const [dealStage, setDealStage] = useState(defaultStageId || '');
@@ -67,6 +79,8 @@ export function DealsHeader() {
   const [contactName, setContactName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
   const [dealStatusNote, setDealStatusNote] = useState('');
+  const [referralName, setReferralName] = useState('');
+  const [referralEmail, setReferralEmail] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
 
@@ -98,6 +112,15 @@ export function DealsHeader() {
     setDealAmount(formatted);
   };
 
+  const getBlankOptionalFields = () => {
+    const blank: string[] = [];
+    if (!dealManager) blank.push('Deal Manager');
+    if (!dealOwner) blank.push('Deal Owner');
+    if (!referralName.trim()) blank.push('Referral Source Name');
+    if (!referralEmail.trim()) blank.push('Referral Source Email');
+    return blank;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -122,6 +145,20 @@ export function DealsHeader() {
       return;
     }
 
+    // Check for blank optional fields
+    const blank = getBlankOptionalFields();
+    if (blank.length > 0) {
+      setBlankFields(blank);
+      setConfirmBlankOpen(true);
+      return;
+    }
+
+    await createDealFinal();
+  };
+
+  const createDealFinal = async () => {
+    const parsedAmount = parseAmountToNumber(dealAmount);
+    
     // Get display names for the selected users
     const managerName = memberOptions.find(m => m.value === dealManager)?.label || dealManager;
     const ownerName = memberOptions.find(m => m.value === dealOwner)?.label || dealOwner;
@@ -139,19 +176,18 @@ export function DealsHeader() {
         status: 'on-track',
         stage: dealStage,
         engagementType: 'guided',
+        referredBy: referralName.trim() ? {
+          id: '',
+          name: referralName.trim(),
+          email: referralEmail.trim() || undefined,
+        } : undefined,
       });
 
       if (newDeal) {
         toast.success(`Deal "${dealName}" created successfully!`);
         setOpen(false);
-        setDealName('');
-        setDealAmount('');
-        setDealStage('');
-        setDealManager('');
-        setDealOwner('');
-        setContactName('');
-        setContactInfo('');
-        setDealStatusNote('');
+        setConfirmBlankOpen(false);
+        resetForm();
         navigate(`/deal/${newDeal.id}`);
       }
     } catch (error) {
@@ -159,6 +195,20 @@ export function DealsHeader() {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const resetForm = () => {
+    setDealName('');
+    setDealAmount('');
+    setDealStage(defaultStageId || '');
+    setDealManager('');
+    setDealOwner('');
+    setContactName('');
+    setContactInfo('');
+    setDealStatusNote('');
+    setReferralName('');
+    setReferralEmail('');
+    setBlankFields([]);
   };
 
   const handleSignOut = async () => {
@@ -364,6 +414,27 @@ export function DealsHeader() {
                       required
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="referralName">Referral Source Name</Label>
+                      <Input
+                        id="referralName"
+                        value={referralName}
+                        onChange={(e) => setReferralName(e.target.value)}
+                        placeholder="e.g., John Smith"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="referralEmail">Referral Source Email</Label>
+                      <Input
+                        id="referralEmail"
+                        type="email"
+                        value={referralEmail}
+                        onChange={(e) => setReferralEmail(e.target.value)}
+                        placeholder="e.g., john@example.com"
+                      />
+                    </div>
+                  </div>
                   {sortedMilestones.length > 0 && (
                     <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
                       <CollapsibleTrigger asChild>
@@ -399,6 +470,29 @@ export function DealsHeader() {
               </form>
             </DialogContent>
           </Dialog>
+          
+          <AlertDialog open={confirmBlankOpen} onOpenChange={setConfirmBlankOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm blank fields</AlertDialogTitle>
+                <AlertDialogDescription>
+                  The following optional fields are blank:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    {blankFields.map(field => (
+                      <li key={field}>{field}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-3">Are you sure you want to create this deal without filling in these fields?</p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Go Back</AlertDialogCancel>
+                <AlertDialogAction onClick={createDealFinal} disabled={isCreating}>
+                  {isCreating ? 'Creating...' : 'Yes, Create Deal'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           </HintTooltip>
           <HintTooltip
             hint="Access settings to customize stages, deal types, and your preferences."
