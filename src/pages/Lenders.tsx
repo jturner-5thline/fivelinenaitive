@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,7 @@ import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary
 import { useAuth } from '@/contexts/AuthContext';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
+import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 
@@ -141,6 +142,7 @@ export default function Lenders() {
     updateLender: updateMasterLender, 
     deleteLender: deleteMasterLender,
     importLenders,
+    mergeLenders,
   } = useMasterLenders();
   const { deals } = useDealsContext();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
@@ -159,6 +161,7 @@ export default function Lenders() {
     return (saved === 'grid' || saved === 'list') ? saved : 'list';
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleViewModeChange = (mode: ViewMode) => {
@@ -519,9 +522,13 @@ export default function Lenders() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => setIsDuplicatesDialogOpen(true)}>
+                  <Users className="h-4 w-4" />
+                  Find Duplicates
+                </Button>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
-                  Lender Database Configuration
+                  Configuration
                 </Button>
                 <Button variant="outline" onClick={handleExport} size="sm" className="gap-1">
                   <Download className="h-4 w-4" />
@@ -1105,6 +1112,18 @@ export default function Lenders() {
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         onImport={importLenders}
+      />
+
+      <DuplicateLendersDialog
+        open={isDuplicatesDialogOpen}
+        onOpenChange={setIsDuplicatesDialogOpen}
+        lenders={masterLenders}
+        onMergeLenders={async (keepId, mergeIds, mergedData) => {
+          await mergeLenders(keepId, mergeIds, mergedData);
+        }}
+        onDeleteLender={async (id) => {
+          await deleteMasterLender(id);
+        }}
       />
     </>
   );
