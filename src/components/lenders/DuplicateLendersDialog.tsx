@@ -106,11 +106,15 @@ function MergeField({
 function DuplicateGroupCard({
   group,
   onMerge,
+  onQuickMerge,
   onDelete,
+  isProcessing,
 }: {
   group: DuplicateGroup;
   onMerge: (keepId: string, mergeIds: string[], mergedData: Partial<MasterLenderInsert>) => void;
+  onQuickMerge: (group: DuplicateGroup) => void;
   onDelete: (id: string) => void;
+  isProcessing: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
@@ -288,10 +292,19 @@ function DuplicateGroupCard({
                   ))}
                 </div>
 
-                <div className="flex justify-end mt-4">
-                  <Button onClick={handleStartMerge} className="gap-2">
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => onQuickMerge(group)} 
+                    disabled={isProcessing}
+                    className="gap-2"
+                  >
                     <Merge className="h-4 w-4" />
-                    Merge All
+                    Quick Merge
+                  </Button>
+                  <Button onClick={handleStartMerge} disabled={isProcessing} className="gap-2">
+                    <Merge className="h-4 w-4" />
+                    Merge with Options
                   </Button>
                 </div>
               </>
@@ -466,8 +479,6 @@ export function DuplicateLendersDialog({
   onDeleteLender,
 }: DuplicateLendersDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isBulkMerging, setIsBulkMerging] = useState(false);
-  const [showBulkMergeConfirm, setShowBulkMergeConfirm] = useState(false);
 
   // Find duplicate groups
   const duplicateGroups = useMemo(() => {
@@ -497,41 +508,23 @@ export function DuplicateLendersDialog({
 
   const totalDuplicates = duplicateGroups.reduce((sum, g) => sum + g.lenders.length - 1, 0);
 
-  const handleBulkMerge = async () => {
-    if (duplicateGroups.length === 0) return;
-    
-    setShowBulkMergeConfirm(false);
-    setIsBulkMerging(true);
+  const handleQuickMerge = async (group: DuplicateGroup) => {
     setIsProcessing(true);
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    for (const group of duplicateGroups) {
-      try {
-        const { keepId, mergeIds, mergedData } = buildAutoMergedData(group);
-        await onMergeLenders(keepId, mergeIds, mergedData);
-        successCount++;
-      } catch (error) {
-        console.error('Failed to merge group:', group.normalizedName, error);
-        failCount++;
-      }
-    }
-    
-    setIsProcessing(false);
-    setIsBulkMerging(false);
-    
-    if (failCount === 0) {
+    try {
+      const { keepId, mergeIds, mergedData } = buildAutoMergedData(group);
+      await onMergeLenders(keepId, mergeIds, mergedData);
       toast({ 
-        title: 'All duplicates merged', 
-        description: `Successfully merged ${successCount} duplicate groups.` 
+        title: 'Lenders merged', 
+        description: `Successfully merged ${mergeIds.length + 1} "${group.lenders[0].name}" entries into one.` 
       });
-    } else {
+    } catch (error) {
       toast({ 
-        title: 'Bulk merge completed with errors', 
-        description: `Merged ${successCount} groups, ${failCount} failed.`,
+        title: 'Merge failed', 
+        description: 'An error occurred while merging lenders.',
         variant: 'destructive'
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -587,36 +580,20 @@ export function DuplicateLendersDialog({
           </DialogHeader>
 
           {duplicateGroups.length > 0 ? (
-            <>
-              {/* Bulk merge button */}
-              <div className="flex items-center justify-between py-2 px-1 border-b mb-2">
-                <p className="text-sm text-muted-foreground">
-                  Merge all duplicates using the first entry as the primary record
-                </p>
-                <Button 
-                  onClick={() => setShowBulkMergeConfirm(true)} 
-                  disabled={isProcessing || isBulkMerging}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Merge className="h-4 w-4" />
-                  {isBulkMerging ? 'Merging...' : `Merge All (${duplicateGroups.length} groups)`}
-                </Button>
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <div className="space-y-3 pb-4">
+                {duplicateGroups.map((group) => (
+                  <DuplicateGroupCard
+                    key={group.normalizedName}
+                    group={group}
+                    onMerge={handleMerge}
+                    onQuickMerge={handleQuickMerge}
+                    onDelete={handleDelete}
+                    isProcessing={isProcessing}
+                  />
+                ))}
               </div>
-              
-              <ScrollArea className="flex-1 -mx-6 px-6">
-                <div className="space-y-3 pb-4">
-                  {duplicateGroups.map((group) => (
-                    <DuplicateGroupCard
-                      key={group.normalizedName}
-                      group={group}
-                      onMerge={handleMerge}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              </ScrollArea>
-            </>
+            </ScrollArea>
           ) : (
             <div className="py-12 text-center">
               <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
@@ -636,34 +613,6 @@ export function DuplicateLendersDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Bulk merge confirmation dialog */}
-      <AlertDialog open={showBulkMergeConfirm} onOpenChange={setShowBulkMergeConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Merge all duplicate lenders?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                This will automatically merge <strong>{duplicateGroups.length} groups</strong> containing{' '}
-                <strong>{totalDuplicates} duplicate entries</strong>.
-              </p>
-              <p>
-                For each group, the first (oldest) entry will be kept as the primary record, 
-                and data from duplicates will be combined.
-              </p>
-              <p className="text-destructive font-medium">
-                This action cannot be undone.
-              </p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkMerge}>
-              Merge All Duplicates
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
