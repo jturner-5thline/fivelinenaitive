@@ -32,7 +32,8 @@ import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
-import { OutstandingItems, OutstandingItem } from '@/components/deal/OutstandingItems';
+import { OutstandingItems } from '@/components/deal/OutstandingItems';
+import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
@@ -356,7 +357,6 @@ export default function DealDetail() {
   const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
-  const [outstandingItems, setOutstandingItems] = useState<OutstandingItem[]>([]);
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
@@ -395,6 +395,9 @@ export default function DealDetail() {
   
   // Save operation tracking for loading indicators
   const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
+  
+  // Outstanding items persistence
+  const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb } = useOutstandingItems(id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -784,6 +787,7 @@ export default function DealDetail() {
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
       await updateLenderInDb(lenderId, { 
         stage: targetStage.id, 
+        trackingStatus: newGroup,
         passReason: newGroup === 'passed' ? passReason : undefined 
       });
     });
@@ -801,7 +805,7 @@ export default function DealDetail() {
       if (!prev) return prev;
       const updatedLenders = prev.lenders?.map(l => 
         l.id === lenderId 
-          ? { ...l, stage: targetStage.id as any, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() } 
+          ? { ...l, stage: targetStage.id as any, trackingStatus: newGroup, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() } 
           : l
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
@@ -851,18 +855,8 @@ export default function DealDetail() {
     }
   }, [deleteMilestoneFromDb]);
 
-  const addOutstandingItem = useCallback((text: string, requestedBy: string[]) => {
-    const newItem: OutstandingItem = {
-      id: `oi${Date.now()}`,
-      text,
-      completed: false,
-      received: false,
-      approved: false,
-      deliveredToLenders: [],
-      createdAt: new Date().toISOString(),
-      requestedBy,
-    };
-    setOutstandingItems(prev => [...prev, newItem]);
+  const addOutstandingItem = useCallback(async (text: string, requestedBy: string[]) => {
+    await addOutstandingItemDb(text, requestedBy);
     
     // Log activity for adding requested item
     logActivity('requested_item_added', `Requested item added: "${text}"`, {
@@ -873,68 +867,52 @@ export default function DealDetail() {
     toast({
       title: "Item added",
     });
-  }, [logActivity]);
+  }, [logActivity, addOutstandingItemDb]);
 
-  const updateOutstandingItem = useCallback((id: string, updates: Partial<OutstandingItem>) => {
-    setOutstandingItems(prev => {
-      const updatedItems = prev.map(item => {
-        if (item.id !== id) return item;
-        const updatedItem = { ...item, ...updates };
-        // Set completedAt when both received and approved become true
-        const wasCompleted = item.received && item.approved;
-        const isNowCompleted = updatedItem.received && updatedItem.approved;
-        if (!wasCompleted && isNowCompleted) {
-          updatedItem.completedAt = new Date().toISOString();
-        } else if (wasCompleted && !isNowCompleted) {
-          updatedItem.completedAt = undefined;
-        }
-        return updatedItem;
-      });
-      
-      // Log activity for significant status changes
-      const originalItem = prev.find(item => item.id === id);
-      if (originalItem) {
-        // Log when item status changes (received, approved, delivered)
-        if (updates.received !== undefined && updates.received !== originalItem.received) {
-          logActivity('requested_item_updated', `Requested item "${originalItem.text}" marked as ${updates.received ? 'received' : 'not received'}`, {
+  const updateOutstandingItem = useCallback(async (id: string, updates: Partial<OutstandingItem>) => {
+    // Get the original item for activity logging before updating
+    const originalItem = outstandingItems.find(item => item.id === id);
+    
+    // Log activity for significant status changes
+    if (originalItem) {
+      if (updates.received !== undefined && updates.received !== originalItem.received) {
+        logActivity('requested_item_updated', `Requested item "${originalItem.text}" marked as ${updates.received ? 'received' : 'not received'}`, {
+          item_text: originalItem.text,
+          status: updates.received ? 'received' : 'not received',
+        });
+      }
+      if (updates.approved !== undefined && updates.approved !== originalItem.approved) {
+        logActivity('requested_item_updated', `Requested item "${originalItem.text}" marked as ${updates.approved ? 'approved' : 'not approved'}`, {
+          item_text: originalItem.text,
+          status: updates.approved ? 'approved' : 'not approved',
+        });
+      }
+      if (updates.deliveredToLenders !== undefined && JSON.stringify(updates.deliveredToLenders) !== JSON.stringify(originalItem.deliveredToLenders)) {
+        const newDeliveries = updates.deliveredToLenders.filter(l => !originalItem.deliveredToLenders.includes(l));
+        if (newDeliveries.length > 0) {
+          logActivity('requested_item_updated', `Requested item "${originalItem.text}" delivered to ${newDeliveries.join(', ')}`, {
             item_text: originalItem.text,
-            status: updates.received ? 'received' : 'not received',
-          });
-        }
-        if (updates.approved !== undefined && updates.approved !== originalItem.approved) {
-          logActivity('requested_item_updated', `Requested item "${originalItem.text}" marked as ${updates.approved ? 'approved' : 'not approved'}`, {
-            item_text: originalItem.text,
-            status: updates.approved ? 'approved' : 'not approved',
-          });
-        }
-        if (updates.deliveredToLenders !== undefined && JSON.stringify(updates.deliveredToLenders) !== JSON.stringify(originalItem.deliveredToLenders)) {
-          const newDeliveries = updates.deliveredToLenders.filter(l => !originalItem.deliveredToLenders.includes(l));
-          if (newDeliveries.length > 0) {
-            logActivity('requested_item_updated', `Requested item "${originalItem.text}" delivered to ${newDeliveries.join(', ')}`, {
-              item_text: originalItem.text,
-              delivered_to: newDeliveries.join(', '),
-            });
-          }
-        }
-        // Log when item text is edited
-        if (updates.text !== undefined && updates.text !== originalItem.text) {
-          logActivity('requested_item_updated', `Requested item updated: "${updates.text}"`, {
-            old_text: originalItem.text,
-            new_text: updates.text,
+            delivered_to: newDeliveries.join(', '),
           });
         }
       }
-      
-      return updatedItems;
-    });
-  }, [logActivity]);
+      if (updates.text !== undefined && updates.text !== originalItem.text) {
+        logActivity('requested_item_updated', `Requested item updated: "${updates.text}"`, {
+          old_text: originalItem.text,
+          new_text: updates.text,
+        });
+      }
+    }
+    
+    await updateOutstandingItemDb(id, updates);
+  }, [logActivity, outstandingItems, updateOutstandingItemDb]);
 
-  const deleteOutstandingItem = useCallback((id: string) => {
-    setOutstandingItems(prev => prev.filter(item => item.id !== id));
+  const deleteOutstandingItem = useCallback(async (id: string) => {
+    await deleteOutstandingItemDb(id);
     toast({
       title: "Item removed",
     });
-  }, []);
+  }, [deleteOutstandingItemDb]);
 
   const getTimeAgoData = (dateString: string) => {
     const date = new Date(dateString);
