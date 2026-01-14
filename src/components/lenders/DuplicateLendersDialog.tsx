@@ -414,6 +414,50 @@ function DuplicateGroupCard({
   );
 }
 
+// Helper to build merged data for a group using first entry as primary
+function buildAutoMergedData(group: DuplicateGroup): { 
+  keepId: string; 
+  mergeIds: string[]; 
+  mergedData: Partial<MasterLenderInsert>; 
+} {
+  const primaryLender = group.lenders[0]; // First (oldest) entry as primary
+  const mergeIds = group.lenders.slice(1).map(l => l.id);
+
+  const mergedData: Partial<MasterLenderInsert> = {
+    name: primaryLender.name,
+  };
+
+  // Take first non-null value for each field
+  const fields = ['lender_type', 'geo', 'min_deal', 'max_deal', 'min_revenue', 'contact_name', 'contact_title', 'email'] as const;
+  fields.forEach(field => {
+    const lenderWithValue = group.lenders.find(l => l[field]);
+    if (lenderWithValue) {
+      (mergedData as any)[field] = (lenderWithValue as any)[field];
+    }
+  });
+
+  // Merge arrays (loan_types, industries)
+  const allLoanTypes = new Set<string>();
+  const allIndustries = new Set<string>();
+  group.lenders.forEach(l => {
+    l.loan_types?.forEach(t => allLoanTypes.add(t));
+    l.industries?.forEach(i => allIndustries.add(i));
+  });
+  mergedData.loan_types = allLoanTypes.size > 0 ? Array.from(allLoanTypes) : null;
+  mergedData.industries = allIndustries.size > 0 ? Array.from(allIndustries) : null;
+
+  // Take notes from any that have them
+  const allNotes = group.lenders
+    .map(l => l.deal_structure_notes)
+    .filter(Boolean)
+    .join('\n\n---\n\n');
+  if (allNotes) {
+    mergedData.deal_structure_notes = allNotes;
+  }
+
+  return { keepId: primaryLender.id, mergeIds, mergedData };
+}
+
 export function DuplicateLendersDialog({
   open,
   onOpenChange,
@@ -422,6 +466,7 @@ export function DuplicateLendersDialog({
   onDeleteLender,
 }: DuplicateLendersDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isBulkMerging, setIsBulkMerging] = useState(false);
 
   // Find duplicate groups
   const duplicateGroups = useMemo(() => {
@@ -450,6 +495,43 @@ export function DuplicateLendersDialog({
   }, [lenders]);
 
   const totalDuplicates = duplicateGroups.reduce((sum, g) => sum + g.lenders.length - 1, 0);
+
+  const handleBulkMerge = async () => {
+    if (duplicateGroups.length === 0) return;
+    
+    setIsBulkMerging(true);
+    setIsProcessing(true);
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const group of duplicateGroups) {
+      try {
+        const { keepId, mergeIds, mergedData } = buildAutoMergedData(group);
+        await onMergeLenders(keepId, mergeIds, mergedData);
+        successCount++;
+      } catch (error) {
+        console.error('Failed to merge group:', group.normalizedName, error);
+        failCount++;
+      }
+    }
+    
+    setIsProcessing(false);
+    setIsBulkMerging(false);
+    
+    if (failCount === 0) {
+      toast({ 
+        title: 'All duplicates merged', 
+        description: `Successfully merged ${successCount} duplicate groups.` 
+      });
+    } else {
+      toast({ 
+        title: 'Bulk merge completed with errors', 
+        description: `Merged ${successCount} groups, ${failCount} failed.`,
+        variant: 'destructive'
+      });
+    }
+  };
 
   const handleMerge = async (keepId: string, mergeIds: string[], mergedData: Partial<MasterLenderInsert>) => {
     setIsProcessing(true);
@@ -498,18 +580,36 @@ export function DuplicateLendersDialog({
         </DialogHeader>
 
         {duplicateGroups.length > 0 ? (
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="space-y-3 pb-4">
-              {duplicateGroups.map((group) => (
-                <DuplicateGroupCard
-                  key={group.normalizedName}
-                  group={group}
-                  onMerge={handleMerge}
-                  onDelete={handleDelete}
-                />
-              ))}
+          <>
+            {/* Bulk merge button */}
+            <div className="flex items-center justify-between py-2 px-1 border-b mb-2">
+              <p className="text-sm text-muted-foreground">
+                Merge all duplicates using the first entry as the primary record
+              </p>
+              <Button 
+                onClick={handleBulkMerge} 
+                disabled={isProcessing || isBulkMerging}
+                size="sm"
+                className="gap-2"
+              >
+                <Merge className="h-4 w-4" />
+                {isBulkMerging ? 'Merging...' : `Merge All (${duplicateGroups.length} groups)`}
+              </Button>
             </div>
-          </ScrollArea>
+            
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <div className="space-y-3 pb-4">
+                {duplicateGroups.map((group) => (
+                  <DuplicateGroupCard
+                    key={group.normalizedName}
+                    group={group}
+                    onMerge={handleMerge}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </>
         ) : (
           <div className="py-12 text-center">
             <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
