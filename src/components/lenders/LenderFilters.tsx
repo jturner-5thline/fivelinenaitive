@@ -16,24 +16,25 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { MasterLender } from '@/hooks/useMasterLenders';
 
 export interface LenderFilters {
   minDealSize: string;
   maxDealSize: string;
   sponsorship: string;
-  loanType: string;
+  loanTypes: string[];
   cashBurn: string;
-  industry: string;
+  industries: string[];
 }
 
 const emptyFilters: LenderFilters = {
   minDealSize: '',
   maxDealSize: '',
   sponsorship: '',
-  loanType: '',
+  loanTypes: [],
   cashBurn: '',
-  industry: '',
+  industries: [],
 };
 
 interface LenderFiltersProps {
@@ -110,21 +111,39 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     [lenders]
   );
 
-  const activeFilterCount = useMemo(() => 
-    Object.values(filters).filter(v => v !== '').length,
-    [filters]
+  // Options for multi-select filters
+  const loanTypeOptions = useMemo(() => 
+    uniqueLoanTypes.map(lt => ({ value: lt, label: lt })),
+    [uniqueLoanTypes]
   );
+
+  const industryOptions = useMemo(() => 
+    uniqueIndustries.map(ind => ({ value: ind, label: ind })),
+    [uniqueIndustries]
+  );
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.minDealSize) count++;
+    if (filters.maxDealSize) count++;
+    if (filters.sponsorship) count++;
+    if (filters.cashBurn) count++;
+    if (filters.loanTypes.length > 0) count++;
+    if (filters.industries.length > 0) count++;
+    return count;
+  }, [filters]);
 
   const handleClearAll = useCallback(() => {
     onFiltersChange(emptyFilters);
   }, [onFiltersChange]);
 
-  const handleFilterChange = useCallback((key: keyof LenderFilters, value: string) => {
+  const handleFilterChange = useCallback((key: keyof LenderFilters, value: string | string[]) => {
     onFiltersChange({ ...filters, [key]: value });
   }, [filters, onFiltersChange]);
 
   const clearFilter = useCallback((key: keyof LenderFilters) => {
-    onFiltersChange({ ...filters, [key]: '' });
+    const isArrayField = key === 'loanTypes' || key === 'industries';
+    onFiltersChange({ ...filters, [key]: isArrayField ? [] : '' });
   }, [filters, onFiltersChange]);
 
   return (
@@ -193,12 +212,12 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                     </button>
                   </Badge>
                 )}
-                {filters.loanType && (
+                {filters.loanTypes.length > 0 && (
                   <Badge variant="outline" className="gap-1 pr-1">
-                    Loan Type: {filters.loanType}
+                    Loan Types: {filters.loanTypes.length === 1 ? filters.loanTypes[0] : `${filters.loanTypes.length} selected`}
                     <button
                       type="button"
-                      onClick={() => clearFilter('loanType')}
+                      onClick={() => clearFilter('loanTypes')}
                       className="ml-1 rounded-full hover:bg-muted p-0.5"
                     >
                       <X className="h-3 w-3" />
@@ -217,12 +236,12 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                     </button>
                   </Badge>
                 )}
-                {filters.industry && (
+                {filters.industries.length > 0 && (
                   <Badge variant="outline" className="gap-1 pr-1">
-                    Industry: {filters.industry}
+                    Industries: {filters.industries.length === 1 ? filters.industries[0] : `${filters.industries.length} selected`}
                     <button
                       type="button"
-                      onClick={() => clearFilter('industry')}
+                      onClick={() => clearFilter('industries')}
                       className="ml-1 rounded-full hover:bg-muted p-0.5"
                     >
                       <X className="h-3 w-3" />
@@ -295,25 +314,16 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                 </Select>
               </div>
 
-              {/* Loan Type */}
+              {/* Loan Type - Multi-select */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Loan Type</Label>
-                <Select
-                  value={filters.loanType}
-                  onValueChange={(value) => handleFilterChange('loanType', value)}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Any" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {uniqueLoanTypes.map((lt) => (
-                      <SelectItem key={lt} value={lt}>
-                        {lt}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelectFilter
+                  label="Any"
+                  options={loanTypeOptions}
+                  selected={filters.loanTypes}
+                  onChange={(selected) => handleFilterChange('loanTypes', selected)}
+                  className="h-9 w-full"
+                />
               </div>
 
               {/* Cash Burn */}
@@ -337,25 +347,16 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                 </Select>
               </div>
 
-              {/* Industry */}
+              {/* Industry - Multi-select */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Industry</Label>
-                <Select
-                  value={filters.industry}
-                  onValueChange={(value) => handleFilterChange('industry', value)}
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Any" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {uniqueIndustries.map((ind) => (
-                      <SelectItem key={ind} value={ind}>
-                        {ind}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelectFilter
+                  label="Any"
+                  options={industryOptions}
+                  selected={filters.industries}
+                  onChange={(selected) => handleFilterChange('industries', selected)}
+                  className="h-9 w-full"
+                />
               </div>
             </div>
           </div>
@@ -391,9 +392,12 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
       }
     }
 
-    // Loan Type filter
-    if (filters.loanType && filters.loanType !== 'all') {
-      if (!lender.loan_types?.includes(filters.loanType)) {
+    // Loan Types filter (multi-select - lender must have at least one matching type)
+    if (filters.loanTypes.length > 0) {
+      const hasMatchingLoanType = filters.loanTypes.some(lt => 
+        lender.loan_types?.includes(lt)
+      );
+      if (!hasMatchingLoanType) {
         return false;
       }
     }
@@ -405,9 +409,12 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
       }
     }
 
-    // Industry filter
-    if (filters.industry && filters.industry !== 'all') {
-      if (!lender.industries?.includes(filters.industry)) {
+    // Industries filter (multi-select - lender must have at least one matching industry)
+    if (filters.industries.length > 0) {
+      const hasMatchingIndustry = filters.industries.some(ind => 
+        lender.industries?.includes(ind)
+      );
+      if (!hasMatchingIndustry) {
         return false;
       }
     }
