@@ -2459,53 +2459,6 @@ export default function DealDetail() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Client Contact</span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <Popover>
-                          <TooltipTrigger asChild>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                className="h-auto p-0 px-1 font-medium hover:bg-muted/50 rounded max-w-[200px] justify-end text-right"
-                              >
-                                <span className="truncate">
-                                  {deal.contact || <span className="text-muted-foreground italic text-sm">Add contact</span>}
-                                </span>
-                              </Button>
-                            </PopoverTrigger>
-                          </TooltipTrigger>
-                          {deal.contact && deal.contactInfo && (
-                            <TooltipContent side="left" className="max-w-[200px]">
-                              <p className="font-medium">{deal.contact}</p>
-                              <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
-                            </TooltipContent>
-                          )}
-                          <PopoverContent className="w-72 p-4 bg-popover" align="end">
-                            <div className="space-y-4">
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Contact Name</label>
-                                <Input
-                                  value={deal.contact || ''}
-                                  onChange={(e) => updateDeal('contact', e.target.value)}
-                                  placeholder="Enter contact name"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Contact Info</label>
-                                <Input
-                                  value={deal.contactInfo || ''}
-                                  onChange={(e) => updateDeal('contactInfo', e.target.value)}
-                                  placeholder="Email or phone number"
-                                />
-                              </div>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Engagement Type</span>
                     <Select
                       value={deal.engagementType}
@@ -2812,13 +2765,52 @@ export default function DealDetail() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm text-muted-foreground">Contact Name & Information</label>
-                    <Textarea
-                      value={deal.contactInfo || ''}
-                      onChange={(e) => updateDeal('contactInfo', e.target.value)}
-                      placeholder="Enter contact details..."
-                      className="min-h-[60px] resize-none"
-                    />
+                    <label className="text-sm text-muted-foreground">Client Contact</label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <Popover>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start h-auto py-2 px-3 font-normal"
+                              >
+                                <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                                <span className="truncate">
+                                  {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
+                                </span>
+                              </Button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          {deal.contact && deal.contactInfo && (
+                            <TooltipContent side="left" className="max-w-[200px]">
+                              <p className="font-medium">{deal.contact}</p>
+                              <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
+                            </TooltipContent>
+                          )}
+                          <PopoverContent className="w-72 p-4 bg-popover" align="start">
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Contact Name</label>
+                                <Input
+                                  value={deal.contact || ''}
+                                  onChange={(e) => updateDeal('contact', e.target.value)}
+                                  placeholder="Enter contact name"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Contact Info</label>
+                                <Input
+                                  value={deal.contactInfo || ''}
+                                  onChange={(e) => updateDeal('contactInfo', e.target.value)}
+                                  placeholder="Email or phone number"
+                                />
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </CardContent>
               </Card>
