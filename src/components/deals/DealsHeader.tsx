@@ -61,6 +61,7 @@ export function DealsHeader() {
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
+  const [dealStage, setDealStage] = useState('');
   const [dealManager, setDealManager] = useState('');
   const [dealOwner, setDealOwner] = useState('');
   const [contactName, setContactName] = useState('');
@@ -105,6 +106,11 @@ export function DealsHeader() {
       toast.error('Please fill in deal name and amount');
       return;
     }
+
+    if (!dealStage) {
+      toast.error('Please select a deal stage');
+      return;
+    }
     
     if (!contactName.trim() || !contactInfo.trim()) {
       toast.error('Please fill in contact name and contact info');
@@ -131,7 +137,7 @@ export function DealsHeader() {
         contactInfo: contactInfo.trim(),
         notes: dealStatusNote.trim(),
         status: 'on-track',
-        stage: dealStages[0]?.id || 'final-credit-items',
+        stage: dealStage,
         engagementType: 'guided',
       });
 
@@ -140,6 +146,7 @@ export function DealsHeader() {
         setOpen(false);
         setDealName('');
         setDealAmount('');
+        setDealStage('');
         setDealManager('');
         setDealOwner('');
         setContactName('');
@@ -279,6 +286,21 @@ export function DealsHeader() {
                         className="pl-7"
                       />
                     </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="dealStage">Deal Stage <span className="text-destructive">*</span></Label>
+                    <Select value={dealStage} onValueChange={setDealStage} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dealStages.map(stage => (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            {stage.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
