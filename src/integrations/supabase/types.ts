@@ -815,6 +815,30 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          page_url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          page_url?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          page_url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       lender_attachments: {
         Row: {
           category: string
@@ -1520,6 +1544,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_5thline_user: { Args: { _user_id: string }; Returns: boolean }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
