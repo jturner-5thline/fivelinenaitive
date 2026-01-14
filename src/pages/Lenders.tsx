@@ -172,6 +172,8 @@ export default function Lenders() {
   const [editingLenderId, setEditingLenderId] = useState<string | null>(null);
   const [form, setForm] = useState<LenderForm>(emptyForm);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showActiveDealsOnly, setShowActiveDealsOnly] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -182,6 +184,21 @@ export default function Lenders() {
   const [isSaving, setIsSaving] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<LenderFilters>(emptyFilters);
   const [tileDisplaySettings, setTileDisplaySettings] = useState<LenderTileDisplaySettings>(DEFAULT_TILE_DISPLAY_SETTINGS);
+
+  // Debounce search query to prevent filtering on every keystroke
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   // Load tile display settings from localStorage
   useEffect(() => {
@@ -264,8 +281,8 @@ export default function Lenders() {
         return false;
       }
       
-      if (!searchQuery.trim()) return true;
-      const query = searchQuery.toLowerCase();
+      if (!debouncedSearchQuery.trim()) return true;
+      const query = debouncedSearchQuery.toLowerCase();
       return (
         lender.name.toLowerCase().includes(query) ||
         (lender.contact_name?.toLowerCase().includes(query) ?? false) ||
@@ -276,7 +293,7 @@ export default function Lenders() {
         (lender.geo?.toLowerCase().includes(query) ?? false)
       );
     });
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, searchQuery]);
+  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, debouncedSearchQuery]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
