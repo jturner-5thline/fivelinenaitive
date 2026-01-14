@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,36 +45,43 @@ interface LenderFiltersProps {
 export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: LenderFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Extract unique values for dropdowns
-  const uniqueLoanTypes = Array.from(
-    new Set(lenders.flatMap(l => l.loan_types || []).filter(Boolean))
-  ).sort();
+  // Memoize unique values extraction to avoid recalculating on every render
+  const uniqueLoanTypes = useMemo(() => 
+    Array.from(new Set(lenders.flatMap(l => l.loan_types || []).filter(Boolean))).sort(),
+    [lenders]
+  );
 
-  const uniqueIndustries = Array.from(
-    new Set(lenders.flatMap(l => l.industries || []).filter(Boolean))
-  ).sort();
+  const uniqueIndustries = useMemo(() => 
+    Array.from(new Set(lenders.flatMap(l => l.industries || []).filter(Boolean))).sort(),
+    [lenders]
+  );
 
-  const uniqueSponsorships = Array.from(
-    new Set(lenders.map(l => l.sponsorship).filter(Boolean))
-  ).sort() as string[];
+  const uniqueSponsorships = useMemo(() => 
+    Array.from(new Set(lenders.map(l => l.sponsorship).filter(Boolean))).sort() as string[],
+    [lenders]
+  );
 
-  const uniqueCashBurn = Array.from(
-    new Set(lenders.map(l => l.cash_burn).filter(Boolean))
-  ).sort() as string[];
+  const uniqueCashBurn = useMemo(() => 
+    Array.from(new Set(lenders.map(l => l.cash_burn).filter(Boolean))).sort() as string[],
+    [lenders]
+  );
 
-  const activeFilterCount = Object.values(filters).filter(v => v !== '').length;
+  const activeFilterCount = useMemo(() => 
+    Object.values(filters).filter(v => v !== '').length,
+    [filters]
+  );
 
-  const handleClearAll = () => {
+  const handleClearAll = useCallback(() => {
     onFiltersChange(emptyFilters);
-  };
+  }, [onFiltersChange]);
 
-  const handleFilterChange = (key: keyof LenderFilters, value: string) => {
+  const handleFilterChange = useCallback((key: keyof LenderFilters, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
-  };
+  }, [filters, onFiltersChange]);
 
-  const clearFilter = (key: keyof LenderFilters) => {
+  const clearFilter = useCallback((key: keyof LenderFilters) => {
     onFiltersChange({ ...filters, [key]: '' });
-  };
+  }, [filters, onFiltersChange]);
 
   return (
     <div className="border rounded-lg bg-card">
@@ -107,57 +114,75 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap gap-2">
                 {filters.minDealSize && (
-                  <Badge variant="outline" className="gap-1">
+                  <Badge variant="outline" className="gap-1 pr-1">
                     Min Deal: ${filters.minDealSize}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
+                    <button
+                      type="button"
                       onClick={() => clearFilter('minDealSize')}
-                    />
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 {filters.maxDealSize && (
-                  <Badge variant="outline" className="gap-1">
+                  <Badge variant="outline" className="gap-1 pr-1">
                     Max Deal: ${filters.maxDealSize}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
+                    <button
+                      type="button"
                       onClick={() => clearFilter('maxDealSize')}
-                    />
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 {filters.sponsorship && (
-                  <Badge variant="outline" className="gap-1">
+                  <Badge variant="outline" className="gap-1 pr-1">
                     Sponsorship: {filters.sponsorship}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
+                    <button
+                      type="button"
                       onClick={() => clearFilter('sponsorship')}
-                    />
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 {filters.loanType && (
-                  <Badge variant="outline" className="gap-1">
+                  <Badge variant="outline" className="gap-1 pr-1">
                     Loan Type: {filters.loanType}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
+                    <button
+                      type="button"
                       onClick={() => clearFilter('loanType')}
-                    />
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 {filters.cashBurn && (
-                  <Badge variant="outline" className="gap-1">
+                  <Badge variant="outline" className="gap-1 pr-1">
                     Cash Burn: {filters.cashBurn}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
+                    <button
+                      type="button"
                       onClick={() => clearFilter('cashBurn')}
-                    />
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 {filters.industry && (
-                  <Badge variant="outline" className="gap-1">
+                  <Badge variant="outline" className="gap-1 pr-1">
                     Industry: {filters.industry}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
+                    <button
+                      type="button"
                       onClick={() => clearFilter('industry')}
-                    />
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </Badge>
                 )}
                 <Button
