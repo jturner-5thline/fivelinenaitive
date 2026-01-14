@@ -350,6 +350,8 @@ export function useDealsDatabase() {
           manager: dealData.manager || null,
           deal_owner: dealData.dealOwner || null,
           referred_by: dealData.referredBy?.name || null,
+          notes: dealData.notes || null,
+          notes_updated_at: dealData.notes ? new Date().toISOString() : null,
           user_id: userId,
           company_id: memberData?.company_id || null,
         })
@@ -384,6 +386,8 @@ export function useDealsDatabase() {
         successFeePercent: Number(data.success_fee_percent || 0),
         preSigningHours: Number(data.pre_signing_hours || 0),
         postSigningHours: Number(data.post_signing_hours || 0),
+        notes: data.notes || undefined,
+        notesUpdatedAt: data.notes_updated_at || undefined,
         contact: '',
         createdAt: data.created_at,
         updatedAt: data.updated_at,
