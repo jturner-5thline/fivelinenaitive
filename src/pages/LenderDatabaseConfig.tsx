@@ -12,7 +12,8 @@ import {
   CreditCard,
   GripVertical,
   Loader2,
-  Users
+  Users,
+  LayoutGrid
 } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -42,7 +45,34 @@ interface ConfigItem {
   isDefault?: boolean;
 }
 
+export interface LenderTileDisplaySettings {
+  showLenderType: boolean;
+  showDealRange: boolean;
+  showIndustries: boolean;
+  showContactName: boolean;
+  showGeography: boolean;
+  showLoanTypes: boolean;
+  showNdaStatus: boolean;
+  showMarketingStatus: boolean;
+  showActiveDealCount: boolean;
+  maxIndustriesToShow: number;
+}
+
+const DEFAULT_TILE_DISPLAY_SETTINGS: LenderTileDisplaySettings = {
+  showLenderType: true,
+  showDealRange: true,
+  showIndustries: true,
+  showContactName: false,
+  showGeography: false,
+  showLoanTypes: false,
+  showNdaStatus: true,
+  showMarketingStatus: true,
+  showActiveDealCount: true,
+  maxIndustriesToShow: 2,
+};
+
 const STORAGE_KEY_PREFIX = 'lender-config-';
+const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
 // Default values for each category
 const defaultLenderTypes: ConfigItem[] = [
@@ -228,6 +258,7 @@ export default function LenderDatabaseConfig() {
   const [industries, setIndustries] = useState<ConfigItem[]>([]);
   const [loanTypes, setLoanTypes] = useState<ConfigItem[]>([]);
   const [geographies, setGeographies] = useState<ConfigItem[]>([]);
+  const [tileDisplaySettings, setTileDisplaySettings] = useState<LenderTileDisplaySettings>(DEFAULT_TILE_DISPLAY_SETTINGS);
 
   // Load saved configurations from localStorage on mount
   useEffect(() => {
@@ -235,11 +266,13 @@ export default function LenderDatabaseConfig() {
     const savedIndustries = localStorage.getItem(`${STORAGE_KEY_PREFIX}industries`);
     const savedLoanTypes = localStorage.getItem(`${STORAGE_KEY_PREFIX}loan-types`);
     const savedGeographies = localStorage.getItem(`${STORAGE_KEY_PREFIX}geographies`);
+    const savedTileSettings = localStorage.getItem(TILE_DISPLAY_STORAGE_KEY);
 
     setLenderTypes(savedLenderTypes ? JSON.parse(savedLenderTypes) : defaultLenderTypes);
     setIndustries(savedIndustries ? JSON.parse(savedIndustries) : defaultIndustries);
     setLoanTypes(savedLoanTypes ? JSON.parse(savedLoanTypes) : defaultLoanTypes);
     setGeographies(savedGeographies ? JSON.parse(savedGeographies) : defaultGeographies);
+    setTileDisplaySettings(savedTileSettings ? JSON.parse(savedTileSettings) : DEFAULT_TILE_DISPLAY_SETTINGS);
   }, []);
 
   // Save all configurations
@@ -250,6 +283,7 @@ export default function LenderDatabaseConfig() {
       localStorage.setItem(`${STORAGE_KEY_PREFIX}industries`, JSON.stringify(industries));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}loan-types`, JSON.stringify(loanTypes));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}geographies`, JSON.stringify(geographies));
+      localStorage.setItem(TILE_DISPLAY_STORAGE_KEY, JSON.stringify(tileDisplaySettings));
       
       toast({ title: 'Configuration saved', description: 'All changes have been saved.' });
     } catch (error) {
@@ -265,13 +299,23 @@ export default function LenderDatabaseConfig() {
     setIndustries(defaultIndustries);
     setLoanTypes(defaultLoanTypes);
     setGeographies(defaultGeographies);
+    setTileDisplaySettings(DEFAULT_TILE_DISPLAY_SETTINGS);
     
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}lender-types`);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}industries`);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}loan-types`);
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}geographies`);
+    localStorage.removeItem(TILE_DISPLAY_STORAGE_KEY);
     
     toast({ title: 'Reset complete', description: 'All configurations have been reset to defaults.' });
+  };
+
+  // Helper to update tile display settings
+  const updateTileSetting = <K extends keyof LenderTileDisplaySettings>(
+    key: K, 
+    value: LenderTileDisplaySettings[K]
+  ) => {
+    setTileDisplaySettings(prev => ({ ...prev, [key]: value }));
   };
 
   // Helper functions for each category
@@ -373,7 +417,7 @@ export default function LenderDatabaseConfig() {
 
             {/* Configuration Tabs */}
             <Tabs defaultValue="lender-types" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="lender-types" className="gap-1">
                   <Building2 className="h-4 w-4" />
                   <span className="hidden sm:inline">Lender Types</span>
@@ -393,6 +437,11 @@ export default function LenderDatabaseConfig() {
                   <Globe className="h-4 w-4" />
                   <span className="hidden sm:inline">Geographies</span>
                   <span className="sm:hidden">Geo</span>
+                </TabsTrigger>
+                <TabsTrigger value="tile-display" className="gap-1">
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden sm:inline">Tile Display</span>
+                  <span className="sm:hidden">Display</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -446,6 +495,149 @@ export default function LenderDatabaseConfig() {
                   onUpdate={geographiesHelpers.update}
                   storageKey="geographies"
                 />
+              </TabsContent>
+
+              <TabsContent value="tile-display">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <LayoutGrid className="h-5 w-5 text-primary" />
+                      Lender Tile Display
+                    </CardTitle>
+                    <CardDescription>
+                      Choose which information to display on lender cards in the grid view
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid gap-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showActiveDealCount" className="font-medium">Active Deal Count</Label>
+                          <p className="text-sm text-muted-foreground">Show badge with number of active deals</p>
+                        </div>
+                        <Switch
+                          id="showActiveDealCount"
+                          checked={tileDisplaySettings.showActiveDealCount}
+                          onCheckedChange={(checked) => updateTileSetting('showActiveDealCount', checked)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showLenderType" className="font-medium">Lender Type</Label>
+                          <p className="text-sm text-muted-foreground">Display lender type badge (e.g., Bank, Private Credit)</p>
+                        </div>
+                        <Switch
+                          id="showLenderType"
+                          checked={tileDisplaySettings.showLenderType}
+                          onCheckedChange={(checked) => updateTileSetting('showLenderType', checked)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showDealRange" className="font-medium">Deal Size Range</Label>
+                          <p className="text-sm text-muted-foreground">Show min/max deal size range</p>
+                        </div>
+                        <Switch
+                          id="showDealRange"
+                          checked={tileDisplaySettings.showDealRange}
+                          onCheckedChange={(checked) => updateTileSetting('showDealRange', checked)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showIndustries" className="font-medium">Industries</Label>
+                          <p className="text-sm text-muted-foreground">Display industry tags on cards</p>
+                        </div>
+                        <Switch
+                          id="showIndustries"
+                          checked={tileDisplaySettings.showIndustries}
+                          onCheckedChange={(checked) => updateTileSetting('showIndustries', checked)}
+                        />
+                      </div>
+
+                      {tileDisplaySettings.showIndustries && (
+                        <div className="flex items-center justify-between ml-6 pb-2 border-b">
+                          <div>
+                            <Label htmlFor="maxIndustries" className="font-medium">Max Industries to Show</Label>
+                            <p className="text-sm text-muted-foreground">Number of industry tags visible (others shown as +X)</p>
+                          </div>
+                          <Input
+                            id="maxIndustries"
+                            type="number"
+                            min={1}
+                            max={5}
+                            value={tileDisplaySettings.maxIndustriesToShow}
+                            onChange={(e) => updateTileSetting('maxIndustriesToShow', Math.min(5, Math.max(1, parseInt(e.target.value) || 2)))}
+                            className="w-20"
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showContactName" className="font-medium">Contact Name</Label>
+                          <p className="text-sm text-muted-foreground">Show primary contact name</p>
+                        </div>
+                        <Switch
+                          id="showContactName"
+                          checked={tileDisplaySettings.showContactName}
+                          onCheckedChange={(checked) => updateTileSetting('showContactName', checked)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showGeography" className="font-medium">Geography</Label>
+                          <p className="text-sm text-muted-foreground">Display geographic coverage</p>
+                        </div>
+                        <Switch
+                          id="showGeography"
+                          checked={tileDisplaySettings.showGeography}
+                          onCheckedChange={(checked) => updateTileSetting('showGeography', checked)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showLoanTypes" className="font-medium">Loan Types</Label>
+                          <p className="text-sm text-muted-foreground">Show available loan types</p>
+                        </div>
+                        <Switch
+                          id="showLoanTypes"
+                          checked={tileDisplaySettings.showLoanTypes}
+                          onCheckedChange={(checked) => updateTileSetting('showLoanTypes', checked)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showNdaStatus" className="font-medium">NDA Status</Label>
+                          <p className="text-sm text-muted-foreground">Show NDA checkbox indicator</p>
+                        </div>
+                        <Switch
+                          id="showNdaStatus"
+                          checked={tileDisplaySettings.showNdaStatus}
+                          onCheckedChange={(checked) => updateTileSetting('showNdaStatus', checked)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="showMarketingStatus" className="font-medium">Marketing Materials Status</Label>
+                          <p className="text-sm text-muted-foreground">Show marketing materials checkbox indicator</p>
+                        </div>
+                        <Switch
+                          id="showMarketingStatus"
+                          checked={tileDisplaySettings.showMarketingStatus}
+                          onCheckedChange={(checked) => updateTileSetting('showMarketingStatus', checked)}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
 
