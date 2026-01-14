@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { DebouncedTextarea } from '@/components/ui/debounced-textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -2409,11 +2410,12 @@ export default function DealDetail() {
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-sm text-muted-foreground">Narrative</label>
-                    <Textarea
+                    <DebouncedTextarea
                       value={deal.narrative || ''}
-                      onChange={(e) => updateDeal('narrative', e.target.value)}
+                      onValueChange={(value) => updateDeal('narrative', value)}
                       placeholder="Enter deal narrative..."
                       className="w-full min-h-[80px] resize-none"
+                      debounceMs={800}
                     />
                   </div>
                   <div className="flex items-center justify-between">
