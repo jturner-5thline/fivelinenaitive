@@ -121,6 +121,7 @@ function DuplicateGroupCard({
   const [primaryLenderId, setPrimaryLenderId] = useState(group.lenders[0].id);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set([group.lenders[0].id]));
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showQuickMergeConfirm, setShowQuickMergeConfirm] = useState(false);
 
   // Field selections for merge
   const [fieldSelections, setFieldSelections] = useState<Record<string, string>>({});
@@ -295,7 +296,7 @@ function DuplicateGroupCard({
                 <div className="flex justify-end gap-2 mt-4">
                   <Button 
                     variant="outline" 
-                    onClick={() => onQuickMerge(group)} 
+                    onClick={() => setShowQuickMergeConfirm(true)} 
                     disabled={isProcessing}
                     className="gap-2"
                   >
@@ -419,6 +420,33 @@ function DuplicateGroupCard({
               }
             }}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Quick merge confirmation */}
+      <AlertDialog open={showQuickMergeConfirm} onOpenChange={setShowQuickMergeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Quick merge "{group.lenders[0].name}"?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will merge <strong>{group.lenders.length} entries</strong> into one, 
+                using the first entry as the primary record.
+              </p>
+              <p>
+                Data from all entries will be combined automatically. This action cannot be undone.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowQuickMergeConfirm(false);
+              onQuickMerge(group);
+            }}>
+              Merge
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
