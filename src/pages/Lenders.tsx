@@ -802,20 +802,18 @@ export default function Lenders() {
                 {!isLoading && viewMode === 'grid' && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {sortedLenders.map((lender) => {
-                      const displayTags = [
-                        lender.lender_type,
-                        ...(lender.loan_types?.slice(0, 1) || []),
-                      ].filter(Boolean) as string[];
-                      
                       // Format deal size range for grid view
                       const dealSizeRange = (lender.min_deal || lender.max_deal) 
                         ? `${formatCurrency(lender.min_deal)} - ${formatCurrency(lender.max_deal)}`
                         : null;
                       
+                      // Get top industries to display
+                      const topIndustries = lender.industries?.slice(0, 2) || [];
+                      
                       return (
                         <div
                           key={lender.id}
-                          className="relative aspect-square bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer"
+                          className="relative bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer min-h-[180px]"
                           onClick={() => openLenderDetail(lender)}
                         >
                           {/* Active deal count - top left corner */}
@@ -885,72 +883,82 @@ export default function Lenders() {
                               </AlertDialogContent>
                             </AlertDialog>
                           </div>
-                          <div className="flex-1 flex flex-col justify-center items-center text-center">
-                            <p className="font-medium text-xl line-clamp-2">{lender.name}</p>
-                            <div className="flex items-center gap-3 mt-2">
-                              {(() => {
-                                const summary = getLenderSummary(lender.name);
-                                return (
-                                  <>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="flex items-center">
-                                          <Checkbox
-                                            checked={summary.hasNda}
-                                            disabled
-                                            className="h-3.5 w-3.5 data-[state=checked]:bg-success data-[state=checked]:border-success"
-                                          />
-                                          <span className="ml-1 text-xs text-muted-foreground">NDA</span>
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        {summary.hasNda ? 'NDA on file' : 'No NDA attached'}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="flex items-center">
-                                          <Checkbox
-                                            checked={summary.hasMarketingMaterials}
-                                            disabled
-                                            className="h-3.5 w-3.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                          />
-                                          <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        {summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials attached'}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </>
-                                );
-                              })()}
-                            </div>
-                            {lender.contact_name && (
-                              <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
-                                {lender.contact_name}
-                              </p>
+                          
+                          {/* Main content */}
+                          <div className="flex-1 flex flex-col items-center text-center mt-1">
+                            <p className="font-semibold text-base line-clamp-2 leading-tight">{lender.name}</p>
+                            
+                            {/* Lender type badge */}
+                            {lender.lender_type && (
+                              <Badge variant="outline" className="text-xs mt-1.5">
+                                {lender.lender_type}
+                              </Badge>
                             )}
+                            
+                            {/* Deal range - prominent display */}
                             {dealSizeRange && (
-                              <p className="text-xs font-medium text-foreground mt-1">
+                              <p className="text-sm font-medium text-primary mt-2">
                                 {dealSizeRange}
                               </p>
                             )}
+                            
+                            {/* Industries */}
+                            {topIndustries.length > 0 && (
+                              <div className="flex flex-wrap gap-1 justify-center mt-2">
+                                {topIndustries.map((industry, idx) => (
+                                  <Badge key={idx} variant="secondary" className="text-xs">
+                                    {industry}
+                                  </Badge>
+                                ))}
+                                {(lender.industries?.length || 0) > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{(lender.industries?.length || 0) - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          {displayTags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 justify-center mt-2">
-                              {displayTags.slice(0, 2).map((tag, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                              {displayTags.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{displayTags.length - 2}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
+                          
+                          {/* Footer with NDA/Marketing checkboxes */}
+                          <div className="flex items-center justify-center gap-3 mt-2 pt-2 border-t border-border/50">
+                            {(() => {
+                              const summary = getLenderSummary(lender.name);
+                              return (
+                                <>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center">
+                                        <Checkbox
+                                          checked={summary.hasNda}
+                                          disabled
+                                          className="h-3.5 w-3.5 data-[state=checked]:bg-success data-[state=checked]:border-success"
+                                        />
+                                        <span className="ml-1 text-xs text-muted-foreground">NDA</span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {summary.hasNda ? 'NDA on file' : 'No NDA attached'}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center">
+                                        <Checkbox
+                                          checked={summary.hasMarketingMaterials}
+                                          disabled
+                                          className="h-3.5 w-3.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                        />
+                                        <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials attached'}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </>
+                              );
+                            })()}
+                          </div>
                         </div>
                       );
                     })}
