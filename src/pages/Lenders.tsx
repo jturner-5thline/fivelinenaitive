@@ -56,6 +56,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
+import { LenderGridCard } from '@/components/lenders/LenderGridCard';
+import { LenderListCard } from '@/components/lenders/LenderListCard';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
@@ -276,21 +278,40 @@ export default function Lenders() {
     });
   }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, searchQuery]);
 
-  // Sort filtered lenders
-  const sortedLenders = [...filteredLenders].sort((a, b) => {
-    switch (sortOption) {
-      case 'name-asc':
-        return a.name.localeCompare(b.name);
-      case 'name-desc':
-        return b.name.localeCompare(a.name);
-      case 'deals-desc':
-        return (activeDealCounts[b.name] || 0) - (activeDealCounts[a.name] || 0);
-      case 'deals-asc':
-        return (activeDealCounts[a.name] || 0) - (activeDealCounts[b.name] || 0);
-      default:
-        return 0;
-    }
-  });
+  // Sort filtered lenders - memoized to prevent re-sorting on every render
+  const sortedLenders = useMemo(() => {
+    return [...filteredLenders].sort((a, b) => {
+      switch (sortOption) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'deals-desc':
+          return (activeDealCounts[b.name] || 0) - (activeDealCounts[a.name] || 0);
+        case 'deals-asc':
+          return (activeDealCounts[a.name] || 0) - (activeDealCounts[b.name] || 0);
+        default:
+          return 0;
+      }
+    });
+  }, [filteredLenders, sortOption, activeDealCounts]);
+
+  // Memoize callbacks to prevent unnecessary re-renders
+  const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
+    handleQuickUpload(lenderName, category);
+  }, [user]);
+
+  const handleDeleteStable = useCallback((id: string, name: string) => {
+    handleDelete(id, name);
+  }, [deleteMasterLender]);
+
+  const openEditDialogStable = useCallback((lenderName: string) => {
+    openEditDialog(lenderName);
+  }, [masterLenders]);
+
+  const openLenderDetailStable = useCallback((lender: MasterLender) => {
+    openLenderDetail(lender);
+  }, []);
 
   const openAddDialog = () => {
     setEditingLenderId(null);
@@ -661,366 +682,41 @@ export default function Lenders() {
                 {/* List View */}
                 {!isLoading && viewMode === 'list' && (
                   <div className="space-y-3">
-                    {sortedLenders.map((lender) => {
-                      // Build preferences-like array from lender data
-                      const displayTags = [
-                        lender.lender_type,
-                        ...(lender.loan_types || []),
-                        ...(lender.industries || []),
-                        lender.geo,
-                      ].filter(Boolean) as string[];
-                      
-                      // Format deal size range
-                      const dealSizeRange = (lender.min_deal || lender.max_deal) 
-                        ? `${formatCurrency(lender.min_deal)} - ${formatCurrency(lender.max_deal)}`
-                        : null;
-                      
-                      return (
-                        <div
-                          key={lender.id}
-                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer transition-colors hover:bg-muted"
-                          onClick={() => openLenderDetail(lender)}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-2xl">{lender.name}</p>
-                              {(() => {
-                                const summary = getLenderSummary(lender.name);
-                                return (
-                                  <>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="flex items-center">
-                                          <Checkbox
-                                            checked={summary.hasNda}
-                                            disabled
-                                            className="h-4 w-4 data-[state=checked]:bg-success data-[state=checked]:border-success"
-                                          />
-                                          <span className="ml-1 text-xs text-muted-foreground">NDA</span>
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        {summary.hasNda ? 'NDA on file' : 'No NDA attached'}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="flex items-center">
-                                          <Checkbox
-                                            checked={summary.hasMarketingMaterials}
-                                            disabled
-                                            className="h-4 w-4 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                          />
-                                          <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        {summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials attached'}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </>
-                                );
-                              })()}
-                              {activeDealCounts[lender.name] > 0 && (
-                                <Badge variant="default" className="text-xs">
-                                  {activeDealCounts[lender.name]} active
-                                </Badge>
-                              )}
-                            </div>
-                            {/* Contact and deal size info */}
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                              {lender.contact_name && (
-                                <span>{lender.contact_name}{lender.contact_title && ` (${lender.contact_title})`}</span>
-                              )}
-                              {lender.email && <span>{lender.email}</span>}
-                              {dealSizeRange && (
-                                <span className="font-medium text-foreground">Deal Size: {dealSizeRange}</span>
-                              )}
-                              {lender.min_revenue && (
-                                <span>Min Revenue: {formatCurrency(lender.min_revenue)}</span>
-                              )}
-                              {lender.geo && <span>📍 {lender.geo}</span>}
-                            </div>
-                            {displayTags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {displayTags.slice(0, 5).map((tag, idx) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                                {displayTags.length > 5 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{displayTags.length - 5} more
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  disabled={isQuickUploading && quickUploadTarget?.lenderName === lender.name}
-                                >
-                                  {isQuickUploading && quickUploadTarget?.lenderName === lender.name ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleQuickUpload(lender.name, 'nda')}>
-                                  <FileCheck className="h-4 w-4 mr-2" />
-                                  Upload NDA
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleQuickUpload(lender.name, 'marketing_materials')}>
-                                  <Megaphone className="h-4 w-4 mr-2" />
-                                  Upload Marketing Materials
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => openEditDialog(lender.name)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete {lender.name}?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will remove the lender from the available options. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(lender.id, lender.name)}>
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {sortedLenders.map((lender) => (
+                      <LenderListCard
+                        key={lender.id}
+                        lender={lender}
+                        activeDealCount={activeDealCounts[lender.name] || 0}
+                        summary={getLenderSummary(lender.name)}
+                        isQuickUploading={isQuickUploading}
+                        quickUploadLenderName={quickUploadTarget?.lenderName || null}
+                        onOpenDetail={openLenderDetailStable}
+                        onEdit={openEditDialogStable}
+                        onDelete={handleDeleteStable}
+                        onQuickUpload={handleQuickUploadStable}
+                      />
+                    ))}
                   </div>
                 )}
 
                 {/* Grid View */}
                 {!isLoading && viewMode === 'grid' && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {sortedLenders.map((lender) => {
-                      // Format deal size range for grid view
-                      const dealSizeRange = (lender.min_deal || lender.max_deal) 
-                        ? `${formatCurrency(lender.min_deal)} - ${formatCurrency(lender.max_deal)}`
-                        : null;
-                      
-                      // Get top industries to display based on settings
-                      const maxIndustries = tileDisplaySettings.maxIndustriesToShow;
-                      const topIndustries = lender.industries?.slice(0, maxIndustries) || [];
-                      const topLoanTypes = lender.loan_types?.slice(0, 2) || [];
-                      
-                      const summary = getLenderSummary(lender.name);
-                      const showFooter = tileDisplaySettings.showNdaStatus || tileDisplaySettings.showMarketingStatus;
-                      
-                      return (
-                        <div
-                          key={lender.id}
-                          className="relative bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer min-h-[180px]"
-                          onClick={() => openLenderDetail(lender)}
-                        >
-                          {/* Active deal count - top left corner */}
-                          {tileDisplaySettings.showActiveDealCount && activeDealCounts[lender.name] > 0 && (
-                            <Badge variant="default" className="absolute top-0 left-0 text-xs rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none">
-                              {activeDealCounts[lender.name]} active
-                            </Badge>
-                          )}
-                          <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  disabled={isQuickUploading && quickUploadTarget?.lenderName === lender.name}
-                                >
-                                  {isQuickUploading && quickUploadTarget?.lenderName === lender.name ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Upload className="h-3.5 w-3.5" />
-                                  )}
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleQuickUpload(lender.name, 'nda')}>
-                                  <FileCheck className="h-4 w-4 mr-2" />
-                                  Upload NDA
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleQuickUpload(lender.name, 'marketing_materials')}>
-                                  <Megaphone className="h-4 w-4 mr-2" />
-                                  Upload Marketing Materials
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => openEditDialog(lender.name)}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete {lender.name}?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will remove the lender from the available options. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(lender.id, lender.name)}>
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                          
-                          {/* Main content */}
-                          <div className="flex-1 flex flex-col items-center text-center mt-1">
-                            <p className="font-semibold text-base line-clamp-2 leading-tight">{lender.name}</p>
-                            
-                            {/* Lender type badge */}
-                            {tileDisplaySettings.showLenderType && lender.lender_type && (
-                              <Badge variant="outline" className="text-xs mt-1.5">
-                                {lender.lender_type}
-                              </Badge>
-                            )}
-                            
-                            {/* Deal range - prominent display */}
-                            {tileDisplaySettings.showDealRange && dealSizeRange && (
-                              <p className="text-sm font-medium text-primary mt-2">
-                                {dealSizeRange}
-                              </p>
-                            )}
-                            
-                            {/* Contact name */}
-                            {tileDisplaySettings.showContactName && lender.contact_name && (
-                              <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
-                                {lender.contact_name}
-                              </p>
-                            )}
-                            
-                            {/* Geography */}
-                            {tileDisplaySettings.showGeography && lender.geo && (
-                              <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
-                                📍 {lender.geo}
-                              </p>
-                            )}
-                            
-                            {/* Industries */}
-                            {tileDisplaySettings.showIndustries && topIndustries.length > 0 && (
-                              <div className="flex flex-wrap gap-1 justify-center mt-2">
-                                {topIndustries.map((industry, idx) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
-                                    {industry}
-                                  </Badge>
-                                ))}
-                                {(lender.industries?.length || 0) > maxIndustries && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{(lender.industries?.length || 0) - maxIndustries}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                            
-                            {/* Loan Types */}
-                            {tileDisplaySettings.showLoanTypes && topLoanTypes.length > 0 && (
-                              <div className="flex flex-wrap gap-1 justify-center mt-2">
-                                {topLoanTypes.map((loanType, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
-                                    {loanType}
-                                  </Badge>
-                                ))}
-                                {(lender.loan_types?.length || 0) > 2 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{(lender.loan_types?.length || 0) - 2}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Footer with NDA/Marketing checkboxes */}
-                          {showFooter && (
-                            <div className="flex items-center justify-center gap-3 mt-2 pt-2 border-t border-border/50">
-                              {tileDisplaySettings.showNdaStatus && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="flex items-center">
-                                      <Checkbox
-                                        checked={summary.hasNda}
-                                        disabled
-                                        className="h-3.5 w-3.5 data-[state=checked]:bg-success data-[state=checked]:border-success"
-                                      />
-                                      <span className="ml-1 text-xs text-muted-foreground">NDA</span>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {summary.hasNda ? 'NDA on file' : 'No NDA attached'}
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-                              {tileDisplaySettings.showMarketingStatus && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="flex items-center">
-                                      <Checkbox
-                                        checked={summary.hasMarketingMaterials}
-                                        disabled
-                                        className="h-3.5 w-3.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                      />
-                                      <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    {summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials attached'}
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {sortedLenders.map((lender) => (
+                      <LenderGridCard
+                        key={lender.id}
+                        lender={lender}
+                        activeDealCount={activeDealCounts[lender.name] || 0}
+                        tileDisplaySettings={tileDisplaySettings}
+                        summary={getLenderSummary(lender.name)}
+                        isQuickUploading={isQuickUploading}
+                        quickUploadLenderName={quickUploadTarget?.lenderName || null}
+                        onOpenDetail={openLenderDetailStable}
+                        onEdit={openEditDialogStable}
+                        onDelete={handleDeleteStable}
+                        onQuickUpload={handleQuickUploadStable}
+                      />
+                    ))}
                   </div>
                 )}
 
