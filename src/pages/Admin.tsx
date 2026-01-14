@@ -12,6 +12,7 @@ import { WaitlistTable } from "@/components/admin/WaitlistTable";
 import { InvitationsTable } from "@/components/admin/InvitationsTable";
 import { AuditLogTable } from "@/components/admin/AuditLogTable";
 import { ExternalDataTab } from "@/components/admin/ExternalDataTab";
+import { DealsHeader } from "@/components/deals/DealsHeader";
 
 const Admin = () => {
   const { isAdmin, isLoading: roleLoading } = useAdminRole();
@@ -19,22 +20,25 @@ const Admin = () => {
 
   if (roleLoading) {
     return (
-      <div className="container mx-auto py-8 px-4 space-y-8">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-8 w-8" />
-          <Skeleton className="h-8 w-48" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-20" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
-              </CardContent>
-            </Card>
-          ))}
+      <div className="min-h-screen bg-background">
+        <DealsHeader />
+        <div className="container mx-auto py-8 px-4 space-y-8">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-48" />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-4 w-20" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -45,7 +49,9 @@ const Admin = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 space-y-8">
+    <div className="min-h-screen bg-background">
+      <DealsHeader />
+      <div className="container mx-auto py-8 px-4 space-y-8">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-primary/10">
@@ -180,6 +186,7 @@ const Admin = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 };
