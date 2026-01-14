@@ -183,20 +183,16 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
       toast.error('You must have at least one stage');
       return;
     }
-    // Clear default if we're deleting the default stage
-    if (defaultStageId === id) {
-      setDefaultStageId(null);
-    }
     deleteStage(id);
     toast.success('Stage deleted');
   };
 
-  const handleSetDefault = (stageId: string) => {
+  const handleSetDefault = async (stageId: string) => {
     if (defaultStageId === stageId) {
-      setDefaultStageId(null);
+      await setDefaultStageId(null);
       toast.success('Default stage cleared');
     } else {
-      setDefaultStageId(stageId);
+      await setDefaultStageId(stageId);
       const stage = stages.find(s => s.id === stageId);
       toast.success(`"${stage?.label}" set as default stage`);
     }
