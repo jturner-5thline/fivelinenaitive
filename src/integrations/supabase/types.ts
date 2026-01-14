@@ -311,6 +311,7 @@ export type Database = {
           quote_term: string | null
           stage: string
           substage: string | null
+          tracking_status: string | null
           updated_at: string
         }
         Insert: {
@@ -325,6 +326,7 @@ export type Database = {
           quote_term?: string | null
           stage?: string
           substage?: string | null
+          tracking_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -339,6 +341,7 @@ export type Database = {
           quote_term?: string | null
           stage?: string
           substage?: string | null
+          tracking_status?: string | null
           updated_at?: string
         }
         Relationships: [

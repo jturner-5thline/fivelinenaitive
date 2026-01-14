@@ -23,18 +23,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { OutstandingItem } from '@/hooks/useOutstandingItems';
 
-export interface OutstandingItem {
-  id: string;
-  text: string;
-  completed: boolean;
-  received: boolean;
-  approved: boolean;
-  deliveredToLenders: string[]; // Array of lender names who received this item
-  createdAt: string;
-  completedAt?: string;
-  requestedBy: string[];
-}
+export type { OutstandingItem };
 
 // Helper to check if item is delivered to all requesters
 export const isFullyDelivered = (item: OutstandingItem): boolean => {

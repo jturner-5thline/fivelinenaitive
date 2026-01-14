@@ -108,6 +108,7 @@ interface DbDealLender {
   substage: string | null;
   notes: string | null;
   pass_reason: string | null;
+  tracking_status: string | null;
   quote_amount: number | null;
   quote_rate: number | null;
   quote_term: string | null;
@@ -247,7 +248,7 @@ export function useDealsDatabase() {
             status: 'in-review' as const,
             stage: l.stage,
             substage: l.substage || undefined,
-            trackingStatus: 'active' as const,
+            trackingStatus: (l.tracking_status || 'active') as 'active' | 'on-hold' | 'on-deck' | 'passed',
             notes: l.notes || undefined,
             passReason: l.pass_reason || undefined,
             updatedAt: l.updated_at,
@@ -606,6 +607,7 @@ export function useDealsDatabase() {
       if (updates.substage !== undefined) dbUpdates.substage = updates.substage;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
       if (updates.passReason !== undefined) dbUpdates.pass_reason = updates.passReason;
+      if (updates.trackingStatus !== undefined) dbUpdates.tracking_status = updates.trackingStatus;
 
       const { error } = await supabase
         .from('deal_lenders')
