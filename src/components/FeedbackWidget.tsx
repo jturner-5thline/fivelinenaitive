@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MessageSquarePlus, X, Send, Loader2, Bug, Lightbulb } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { MessageSquarePlus, X, Send, Loader2, Bug, Lightbulb, Camera, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import html2canvas from 'html2canvas';
 
 type FeedbackType = 'bug' | 'feature';
 
@@ -23,6 +24,9 @@ export function FeedbackWidget() {
   const [message, setMessage] = useState('');
   const [type, setType] = useState<FeedbackType>('feature');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [screenshot, setScreenshot] = useState<Blob | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
 
   // Only show for @5thline.co users
   const is5thlineUser = user?.email?.endsWith('@5thline.co');
@@ -31,17 +35,93 @@ export function FeedbackWidget() {
     return null;
   }
 
+  const captureScreenshot = async () => {
+    setIsCapturing(true);
+    // Temporarily close the popover to capture the actual page
+    setOpen(false);
+    
+    try {
+      // Small delay to let the popover close
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(document.body, {
+        useCORS: true,
+        logging: false,
+        scale: 1,
+        windowWidth: document.documentElement.scrollWidth,
+        windowHeight: document.documentElement.scrollHeight,
+      });
+      
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Failed to create blob'));
+          },
+          'image/png',
+          0.9
+        );
+      });
+      
+      setScreenshot(blob);
+      setScreenshotPreview(URL.createObjectURL(blob));
+      
+      toast({
+        title: 'Screenshot captured',
+        description: 'Screenshot attached to your feedback.',
+      });
+    } catch (error) {
+      console.error('Error capturing screenshot:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to capture screenshot.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCapturing(false);
+      setOpen(true);
+    }
+  };
+
+  const removeScreenshot = () => {
+    if (screenshotPreview) {
+      URL.revokeObjectURL(screenshotPreview);
+    }
+    setScreenshot(null);
+    setScreenshotPreview(null);
+  };
+
   const handleSubmit = async () => {
     if (!title.trim() || !message.trim() || !user) return;
 
     setIsSubmitting(true);
     try {
+      let screenshotUrl: string | null = null;
+
+      // Upload screenshot if exists
+      if (screenshot) {
+        const fileName = `${user.id}/${Date.now()}-feedback-screenshot.png`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('feedback-screenshots')
+          .upload(fileName, screenshot, {
+            contentType: 'image/png',
+          });
+
+        if (uploadError) {
+          console.error('Error uploading screenshot:', uploadError);
+          // Continue without screenshot
+        } else {
+          screenshotUrl = uploadData.path;
+        }
+      }
+
       const { error } = await supabase.from('feedback').insert({
         user_id: user.id,
         title: title.trim(),
         message: message.trim(),
         type,
         page_url: window.location.pathname,
+        screenshot_url: screenshotUrl,
       });
 
       if (error) throw error;
@@ -53,6 +133,7 @@ export function FeedbackWidget() {
       setTitle('');
       setMessage('');
       setType('feature');
+      removeScreenshot();
       setOpen(false);
     } catch (error) {
       console.error('Error submitting feedback:', error);
@@ -136,6 +217,43 @@ export function FeedbackWidget() {
                 onChange={(e) => setMessage(e.target.value)}
                 className="min-h-[80px] resize-none"
               />
+            </div>
+
+            {/* Screenshot Section */}
+            <div className="space-y-2">
+              <Label className="text-xs">Screenshot (optional)</Label>
+              {screenshotPreview ? (
+                <div className="relative">
+                  <img
+                    src={screenshotPreview}
+                    alt="Screenshot preview"
+                    className="w-full h-20 object-cover rounded-md border"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6"
+                    onClick={removeScreenshot}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={captureScreenshot}
+                  disabled={isCapturing}
+                >
+                  {isCapturing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4 mr-2" />
+                  )}
+                  {isCapturing ? 'Capturing...' : 'Take Screenshot'}
+                </Button>
+              )}
             </div>
 
             <div className="flex justify-end">
