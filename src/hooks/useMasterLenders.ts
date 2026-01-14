@@ -93,6 +93,8 @@ export interface UseMasterLendersOptions {
     column: 'name' | 'created_at' | 'updated_at';
     ascending: boolean;
   };
+  /** Server-side search query (searches name, contact_name, email, lender_type, geo) */
+  searchQuery?: string;
 }
 
 export function useMasterLenders(options: UseMasterLendersOptions = {}) {
@@ -102,6 +104,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const pageSize = options.pageSize ?? 100;
   const orderColumn = options.orderBy?.column ?? 'name';
   const orderAscending = options.orderBy?.ascending ?? true;
+  const searchQuery = options.searchQuery?.trim() ?? '';
 
   const [lenders, setLenders] = useState<MasterLender[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,15 +115,25 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPage = useCallback(
-    async (pageIndex: number, withCount = false) => {
+    async (pageIndex: number, withCount = false, query = '') => {
       const from = pageIndex * pageSize;
       const to = from + pageSize - 1;
 
-      const { data, error: fetchError, count } = await supabase
+      let builder = supabase
         .from('master_lenders')
-        .select('*', withCount ? { count: 'exact' } : undefined)
-        .order(orderColumn, { ascending: orderAscending })
-        .range(from, to);
+        .select('*', withCount ? { count: 'exact' } : undefined);
+
+      // Apply server-side search filter using OR across multiple columns
+      if (query) {
+        const pattern = `%${query}%`;
+        builder = builder.or(
+          `name.ilike.${pattern},contact_name.ilike.${pattern},email.ilike.${pattern},lender_type.ilike.${pattern},geo.ilike.${pattern}`
+        );
+      }
+
+      builder = builder.order(orderColumn, { ascending: orderAscending }).range(from, to);
+
+      const { data, error: fetchError, count } = await builder;
 
       return {
         data: (data as MasterLender[] | null) ?? null,
@@ -149,7 +162,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setPage(0);
       setTotalCount(null);
 
-      const { data: initialData, error: initialError, count } = await fetchPage(0, true);
+      const { data: initialData, error: initialError, count } = await fetchPage(0, true, searchQuery);
       if (initialError) throw initialError;
 
       const firstPage = initialData ?? [];
@@ -159,8 +172,9 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setLoading(false);
       setError(null);
 
-      // In "all" mode, continue loading the remainder in the background.
-      if (mode === 'all' && (count == null ? firstPage.length === pageSize : firstPage.length < count)) {
+      // In "all" mode AND no search query, continue loading the remainder in the background.
+      // When searching, we always stay in paged mode to avoid loading too much data.
+      if (mode === 'all' && !searchQuery && (count == null ? firstPage.length === pageSize : firstPage.length < count)) {
         setLoadingMore(true);
 
         const loadRemaining = async () => {
@@ -217,14 +231,15 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setLoadingMore(false);
       setHasMore(false);
     }
-  }, [fetchPage, mode, pageSize, orderAscending, orderColumn, user]);
+  }, [fetchPage, mode, pageSize, orderAscending, orderColumn, searchQuery, user]);
 
   useEffect(() => {
     fetchLenders();
   }, [fetchLenders]);
 
   const loadMore = useCallback(async () => {
-    if (mode !== 'paged') return;
+    // Allow loadMore even in 'all' mode when searching (search forces paged behavior)
+    if (mode !== 'paged' && !searchQuery) return;
     if (!user) return;
     if (loadingMore || !hasMore) return;
 
@@ -232,7 +247,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setLoadingMore(true);
       const nextPage = page + 1;
 
-      const { data, error: moreError } = await fetchPage(nextPage, false);
+      const { data, error: moreError } = await fetchPage(nextPage, false, searchQuery);
       if (moreError) throw moreError;
 
       const batch = data ?? [];
@@ -249,7 +264,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
     } finally {
       setLoadingMore(false);
     }
-  }, [fetchPage, hasMore, lenders.length, loadingMore, mode, page, pageSize, totalCount, user]);
+  }, [fetchPage, hasMore, lenders.length, loadingMore, mode, page, pageSize, searchQuery, totalCount, user]);
 
   const importLenders = async (lendersToImport: MasterLenderInsert[]): Promise<{ success: number; failed: number; errors: string[] }> => {
     if (!user) {

@@ -154,19 +154,6 @@ function formatCurrency(value: number | null | undefined): string {
 
 export default function Lenders() {
   const navigate = useNavigate();
-  const {
-    lenders: masterLenders,
-    loading: isLoading,
-    loadingMore,
-    hasMore,
-    totalCount,
-    loadMore,
-    addLender: addMasterLender,
-    updateLender: updateMasterLender,
-    deleteLender: deleteMasterLender,
-    importLenders,
-    mergeLenders,
-  } = useMasterLenders({ mode: 'paged', pageSize: 100, orderBy: { column: 'name', ascending: true } });
   const { deals } = useDealsContext();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
@@ -190,20 +177,40 @@ export default function Lenders() {
   const [advancedFilters, setAdvancedFilters] = useState<LenderFilters>(emptyFilters);
   const [tileDisplaySettings, setTileDisplaySettings] = useState<LenderTileDisplaySettings>(DEFAULT_TILE_DISPLAY_SETTINGS);
 
-  // Debounce search query to prevent filtering on every keystroke
+  // Debounce search query for server-side search
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 300);
+    }, 400); // Slightly longer debounce for server queries
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
     };
   }, [searchQuery]);
+
+  // Use the hook with server-side search
+  const {
+    lenders: masterLenders,
+    loading: isLoading,
+    loadingMore,
+    hasMore,
+    totalCount,
+    loadMore,
+    addLender: addMasterLender,
+    updateLender: updateMasterLender,
+    deleteLender: deleteMasterLender,
+    importLenders,
+    mergeLenders,
+  } = useMasterLenders({
+    mode: 'paged',
+    pageSize: 100,
+    orderBy: { column: 'name', ascending: true },
+    searchQuery: debouncedSearchQuery,
+  });
 
   // Load tile display settings from localStorage
   useEffect(() => {
@@ -274,31 +281,17 @@ export default function Lenders() {
     setIsDetailOpen(true);
   };
 
-  // Filter lenders based on search query, active deals filter, and advanced filters
+  // Filter lenders based on active deals filter and advanced filters
+  // Note: text search is now handled server-side via the hook's searchQuery option
   const filteredLenders = useMemo(() => {
-    // First apply advanced filters
+    // First apply advanced filters (client-side for complex logic)
     const advancedFiltered = applyLenderFilters(masterLenders, advancedFilters);
     
-    // Then apply search and active deals filters
-    return advancedFiltered.filter(lender => {
-      // Filter by active deals if enabled
-      if (showActiveDealsOnly && !activeDealCounts[lender.name]) {
-        return false;
-      }
-      
-      if (!debouncedSearchQuery.trim()) return true;
-      const query = debouncedSearchQuery.toLowerCase();
-      return (
-        lender.name.toLowerCase().includes(query) ||
-        (lender.contact_name?.toLowerCase().includes(query) ?? false) ||
-        (lender.email?.toLowerCase().includes(query) ?? false) ||
-        (lender.lender_type?.toLowerCase().includes(query) ?? false) ||
-        (lender.industries?.some(ind => ind.toLowerCase().includes(query)) ?? false) ||
-        (lender.loan_types?.some(lt => lt.toLowerCase().includes(query)) ?? false) ||
-        (lender.geo?.toLowerCase().includes(query) ?? false)
-      );
-    });
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, debouncedSearchQuery]);
+    // Then apply active deals filter only (search is server-side now)
+    if (!showActiveDealsOnly) return advancedFiltered;
+    
+    return advancedFiltered.filter(lender => activeDealCounts[lender.name]);
+  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
