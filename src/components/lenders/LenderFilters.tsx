@@ -26,6 +26,7 @@ export interface LenderFilters {
   loanTypes: string[];
   cashBurn: string;
   industries: string[];
+  geographies: string[];
 }
 
 const emptyFilters: LenderFilters = {
@@ -35,6 +36,7 @@ const emptyFilters: LenderFilters = {
   loanTypes: [],
   cashBurn: '',
   industries: [],
+  geographies: [],
 };
 
 interface LenderFiltersProps {
@@ -111,6 +113,11 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     [lenders]
   );
 
+  const uniqueGeographies = useMemo(() => 
+    Array.from(new Set(lenders.map(l => l.geo).filter(Boolean))).sort() as string[],
+    [lenders]
+  );
+
   // Options for multi-select filters
   const loanTypeOptions = useMemo(() => 
     uniqueLoanTypes.map(lt => ({ value: lt, label: lt })),
@@ -122,6 +129,11 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     [uniqueIndustries]
   );
 
+  const geographyOptions = useMemo(() => 
+    uniqueGeographies.map(geo => ({ value: geo, label: geo })),
+    [uniqueGeographies]
+  );
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.minDealSize) count++;
@@ -130,6 +142,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     if (filters.cashBurn) count++;
     if (filters.loanTypes.length > 0) count++;
     if (filters.industries.length > 0) count++;
+    if (filters.geographies.length > 0) count++;
     return count;
   }, [filters]);
 
@@ -142,7 +155,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
   }, [filters, onFiltersChange]);
 
   const clearFilter = useCallback((key: keyof LenderFilters) => {
-    const isArrayField = key === 'loanTypes' || key === 'industries';
+    const isArrayField = key === 'loanTypes' || key === 'industries' || key === 'geographies';
     onFiltersChange({ ...filters, [key]: isArrayField ? [] : '' });
   }, [filters, onFiltersChange]);
 
@@ -248,6 +261,18 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                     </button>
                   </Badge>
                 )}
+                {filters.geographies.length > 0 && (
+                  <Badge variant="outline" className="gap-1 pr-1">
+                    Geography: {filters.geographies.length === 1 ? filters.geographies[0] : `${filters.geographies.length} selected`}
+                    <button
+                      type="button"
+                      onClick={() => clearFilter('geographies')}
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -260,7 +285,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
             )}
 
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
               {/* Min Deal Size */}
               <div className="space-y-1.5">
                 <Label htmlFor="minDealSize" className="text-xs">
@@ -358,6 +383,18 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                   className="h-9 w-full"
                 />
               </div>
+
+              {/* Geography - Multi-select */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Geography</Label>
+                <MultiSelectFilter
+                  label="Any"
+                  options={geographyOptions}
+                  selected={filters.geographies}
+                  onChange={(selected) => handleFilterChange('geographies', selected)}
+                  className="h-9 w-full"
+                />
+              </div>
             </div>
           </div>
         </CollapsibleContent>
@@ -415,6 +452,16 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
         lender.industries?.includes(ind)
       );
       if (!hasMatchingIndustry) {
+        return false;
+      }
+    }
+
+    // Geography filter (multi-select - lender must match at least one geography)
+    if (filters.geographies.length > 0) {
+      const hasMatchingGeo = filters.geographies.some(geo => 
+        lender.geo === geo
+      );
+      if (!hasMatchingGeo) {
         return false;
       }
     }
