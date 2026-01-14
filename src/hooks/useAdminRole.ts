@@ -10,6 +10,8 @@ export const useAdminRole = () => {
     queryFn: async () => {
       if (!user?.id) return false;
       
+      console.log("Checking admin role for user:", user.id);
+      
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
@@ -22,9 +24,12 @@ export const useAdminRole = () => {
         return false;
       }
       
+      console.log("Admin role query result:", data);
       return !!data;
     },
     enabled: !!user?.id,
+    staleTime: 0, // Always refetch to ensure fresh data
+    refetchOnMount: true,
   });
 
   return { isAdmin: isAdmin ?? false, isLoading };
