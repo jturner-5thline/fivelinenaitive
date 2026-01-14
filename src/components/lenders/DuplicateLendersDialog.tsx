@@ -467,6 +467,7 @@ export function DuplicateLendersDialog({
 }: DuplicateLendersDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isBulkMerging, setIsBulkMerging] = useState(false);
+  const [showBulkMergeConfirm, setShowBulkMergeConfirm] = useState(false);
 
   // Find duplicate groups
   const duplicateGroups = useMemo(() => {
@@ -499,6 +500,7 @@ export function DuplicateLendersDialog({
   const handleBulkMerge = async () => {
     if (duplicateGroups.length === 0) return;
     
+    setShowBulkMergeConfirm(false);
     setIsBulkMerging(true);
     setIsProcessing(true);
     
@@ -544,8 +546,8 @@ export function DuplicateLendersDialog({
     } catch (error) {
       toast({ 
         title: 'Merge failed', 
-        description: 'Could not merge lenders. Please try again.',
-        variant: 'destructive' 
+        description: 'An error occurred while merging lenders.',
+        variant: 'destructive'
       });
     } finally {
       setIsProcessing(false);
@@ -556,78 +558,112 @@ export function DuplicateLendersDialog({
     setIsProcessing(true);
     try {
       await onDeleteLender(id);
-      toast({ title: 'Entry deleted', description: 'Duplicate entry has been removed.' });
+      toast({ title: 'Lender deleted' });
     } catch (error) {
-      toast({ title: 'Delete failed', variant: 'destructive' });
+      toast({ 
+        title: 'Delete failed', 
+        description: 'An error occurred while deleting the lender.',
+        variant: 'destructive'
+      });
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Duplicate Lenders
-          </DialogTitle>
-          <DialogDescription>
-            {duplicateGroups.length > 0 
-              ? `Found ${duplicateGroups.length} group${duplicateGroups.length !== 1 ? 's' : ''} with ${totalDuplicates} duplicate entries`
-              : 'No duplicate lenders found in your database'}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Duplicate Lenders
+            </DialogTitle>
+            <DialogDescription>
+              {duplicateGroups.length > 0 
+                ? `Found ${duplicateGroups.length} group${duplicateGroups.length !== 1 ? 's' : ''} with ${totalDuplicates} duplicate entries`
+                : 'No duplicate lenders found in your database'}
+            </DialogDescription>
+          </DialogHeader>
 
-        {duplicateGroups.length > 0 ? (
-          <>
-            {/* Bulk merge button */}
-            <div className="flex items-center justify-between py-2 px-1 border-b mb-2">
-              <p className="text-sm text-muted-foreground">
-                Merge all duplicates using the first entry as the primary record
-              </p>
-              <Button 
-                onClick={handleBulkMerge} 
-                disabled={isProcessing || isBulkMerging}
-                size="sm"
-                className="gap-2"
-              >
-                <Merge className="h-4 w-4" />
-                {isBulkMerging ? 'Merging...' : `Merge All (${duplicateGroups.length} groups)`}
-              </Button>
-            </div>
-            
-            <ScrollArea className="flex-1 -mx-6 px-6">
-              <div className="space-y-3 pb-4">
-                {duplicateGroups.map((group) => (
-                  <DuplicateGroupCard
-                    key={group.normalizedName}
-                    group={group}
-                    onMerge={handleMerge}
-                    onDelete={handleDelete}
-                  />
-                ))}
+          {duplicateGroups.length > 0 ? (
+            <>
+              {/* Bulk merge button */}
+              <div className="flex items-center justify-between py-2 px-1 border-b mb-2">
+                <p className="text-sm text-muted-foreground">
+                  Merge all duplicates using the first entry as the primary record
+                </p>
+                <Button 
+                  onClick={() => setShowBulkMergeConfirm(true)} 
+                  disabled={isProcessing || isBulkMerging}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Merge className="h-4 w-4" />
+                  {isBulkMerging ? 'Merging...' : `Merge All (${duplicateGroups.length} groups)`}
+                </Button>
               </div>
-            </ScrollArea>
-          </>
-        ) : (
-          <div className="py-12 text-center">
-            <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
-              <Check className="h-8 w-8 text-success" />
+              
+              <ScrollArea className="flex-1 -mx-6 px-6">
+                <div className="space-y-3 pb-4">
+                  {duplicateGroups.map((group) => (
+                    <DuplicateGroupCard
+                      key={group.normalizedName}
+                      group={group}
+                      onMerge={handleMerge}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
+            </>
+          ) : (
+            <div className="py-12 text-center">
+              <div className="h-16 w-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
+                <Check className="h-8 w-8 text-success" />
+              </div>
+              <p className="text-lg font-medium">No duplicates found</p>
+              <p className="text-muted-foreground mt-1">
+                Your lender database is clean with no duplicate entries.
+              </p>
             </div>
-            <p className="text-lg font-medium">No duplicates found</p>
-            <p className="text-muted-foreground mt-1">
-              Your lender database is clean with no duplicate entries.
-            </p>
-          </div>
-        )}
+          )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk merge confirmation dialog */}
+      <AlertDialog open={showBulkMergeConfirm} onOpenChange={setShowBulkMergeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Merge all duplicate lenders?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will automatically merge <strong>{duplicateGroups.length} groups</strong> containing{' '}
+                <strong>{totalDuplicates} duplicate entries</strong>.
+              </p>
+              <p>
+                For each group, the first (oldest) entry will be kept as the primary record, 
+                and data from duplicates will be combined.
+              </p>
+              <p className="text-destructive font-medium">
+                This action cannot be undone.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkMerge}>
+              Merge All Duplicates
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
