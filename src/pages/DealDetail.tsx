@@ -2416,6 +2416,7 @@ export default function DealDetail() {
                       placeholder="Enter deal narrative..."
                       className="w-full min-h-[80px] resize-none"
                       debounceMs={800}
+                      showSaveIndicator
                     />
                   </div>
                   <div className="flex items-center justify-between">
