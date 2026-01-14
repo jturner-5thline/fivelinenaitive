@@ -93,13 +93,35 @@ export function useMasterLenders() {
 
     try {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('master_lenders')
-        .select('*')
-        .order('name', { ascending: true });
+      
+      // Fetch all lenders using pagination to bypass 1000 row limit
+      const allLenders: MasterLender[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data, error: fetchError } = await supabase
+          .from('master_lenders')
+          .select('*')
+          .order('name', { ascending: true })
+          .range(from, to);
 
-      if (fetchError) throw fetchError;
-      setLenders(data || []);
+        if (fetchError) throw fetchError;
+        
+        if (data && data.length > 0) {
+          allLenders.push(...data);
+          hasMore = data.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      setLenders(allLenders);
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch lenders';
