@@ -82,6 +82,7 @@ export function useMasterLenders() {
   const { user } = useAuth();
   const [lenders, setLenders] = useState<MasterLender[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchLenders = useCallback(async () => {
@@ -94,40 +95,73 @@ export function useMasterLenders() {
     try {
       setLoading(true);
       
-      // Fetch all lenders using pagination to bypass 1000 row limit
-      const allLenders: MasterLender[] = [];
-      const pageSize = 1000;
-      let page = 0;
-      let hasMore = true;
-      
-      while (hasMore) {
-        const from = page * pageSize;
-        const to = from + pageSize - 1;
-        
-        const { data, error: fetchError } = await supabase
-          .from('master_lenders')
-          .select('*')
-          .order('name', { ascending: true })
-          .range(from, to);
+      // First, fetch initial batch quickly (first 100 lenders for fast UI)
+      const initialPageSize = 100;
+      const { data: initialData, error: initialError } = await supabase
+        .from('master_lenders')
+        .select('*')
+        .order('name', { ascending: true })
+        .range(0, initialPageSize - 1);
 
-        if (fetchError) throw fetchError;
+      if (initialError) throw initialError;
+      
+      // Show initial batch immediately for responsive UI
+      setLenders(initialData || []);
+      setLoading(false);
+      
+      // Then fetch remaining lenders in background without blocking UI
+      if (initialData && initialData.length === initialPageSize) {
+        setLoadingMore(true);
         
-        if (data && data.length > 0) {
-          allLenders.push(...data);
-          hasMore = data.length === pageSize;
-          page++;
+        // Use requestIdleCallback or setTimeout to not block main thread
+        const loadRemaining = async () => {
+          const allLenders: MasterLender[] = [...(initialData || [])];
+          const pageSize = 1000;
+          let page = 1; // Start from page 1 since we already have page 0
+          let hasMore = true;
+          
+          while (hasMore) {
+            const from = page * pageSize;
+            const to = from + pageSize - 1;
+            
+            const { data, error: fetchError } = await supabase
+              .from('master_lenders')
+              .select('*')
+              .order('name', { ascending: true })
+              .range(from, to);
+
+            if (fetchError) {
+              console.error('Error fetching additional lenders:', fetchError);
+              break;
+            }
+            
+            if (data && data.length > 0) {
+              allLenders.push(...data);
+              // Update state progressively so UI stays responsive
+              setLenders([...allLenders]);
+              hasMore = data.length === pageSize;
+              page++;
+            } else {
+              hasMore = false;
+            }
+          }
+          
+          setLoadingMore(false);
+        };
+        
+        // Defer background loading to not block initial render
+        if ('requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(loadRemaining, { timeout: 1000 });
         } else {
-          hasMore = false;
+          setTimeout(loadRemaining, 50);
         }
       }
       
-      setLenders(allLenders);
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch lenders';
       setError(message);
       console.error('Error fetching master lenders:', err);
-    } finally {
       setLoading(false);
     }
   }, [user]);
@@ -287,6 +321,7 @@ export function useMasterLenders() {
   return {
     lenders,
     loading,
+    loadingMore,
     error,
     fetchLenders,
     importLenders,
