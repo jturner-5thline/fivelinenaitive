@@ -722,6 +722,16 @@ export default function Lenders() {
                         </div>
                       );
                     }}
+                    components={{
+                      Footer: () => (
+                        <div className="py-4 text-center text-sm text-muted-foreground border-t border-border/50 mt-2">
+                          <span className="inline-flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            Showing all {sortedLenders.length.toLocaleString()} lenders
+                          </span>
+                        </div>
+                      ),
+                    }}
                   />
                 )}
 
@@ -748,6 +758,16 @@ export default function Lenders() {
                           onQuickUpload={handleQuickUploadStable}
                         />
                       );
+                    }}
+                    components={{
+                      Footer: () => (
+                        <div className="col-span-full py-4 text-center text-sm text-muted-foreground border-t border-border/50 mt-2">
+                          <span className="inline-flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            Showing all {sortedLenders.length.toLocaleString()} lenders
+                          </span>
+                        </div>
+                      ),
                     }}
                   />
                 )}
