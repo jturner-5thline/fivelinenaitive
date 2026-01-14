@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, X, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,7 @@ import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { MasterLender } from '@/hooks/useMasterLenders';
 
 export interface LenderFilters {
+  searchQuery: string;
   minDealSize: string;
   maxDealSize: string;
   sponsorship: string;
@@ -30,6 +31,7 @@ export interface LenderFilters {
 }
 
 const emptyFilters: LenderFilters = {
+  searchQuery: '',
   minDealSize: '',
   maxDealSize: '',
   sponsorship: '',
@@ -136,6 +138,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
+    if (filters.searchQuery) count++;
     if (filters.minDealSize) count++;
     if (filters.maxDealSize) count++;
     if (filters.sponsorship) count++;
@@ -189,6 +192,18 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
             {/* Active Filters */}
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap gap-2">
+                {filters.searchQuery && (
+                  <Badge variant="outline" className="gap-1 pr-1">
+                    Search: "{filters.searchQuery}"
+                    <button
+                      type="button"
+                      onClick={() => clearFilter('searchQuery')}
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
                 {filters.minDealSize && (
                   <Badge variant="outline" className="gap-1 pr-1">
                     Min Deal: ${filters.minDealSize}
@@ -285,7 +300,26 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
             )}
 
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+              {/* Search by Name */}
+              <div className="space-y-1.5">
+                <Label htmlFor="searchQuery" className="text-xs">
+                  Search Name
+                </Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <DebouncedInput
+                    id="searchQuery"
+                    type="text"
+                    placeholder="Lender or contact..."
+                    value={filters.searchQuery}
+                    onChange={(value) => handleFilterChange('searchQuery', value)}
+                    className="h-9 pl-8"
+                    debounceMs={300}
+                  />
+                </div>
+              </div>
+
               {/* Min Deal Size */}
               <div className="space-y-1.5">
                 <Label htmlFor="minDealSize" className="text-xs">
@@ -406,6 +440,16 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
 // Filter function to apply filters to lenders
 export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilters): MasterLender[] {
   return lenders.filter((lender) => {
+    // Search query filter - matches lender name or contact name
+    if (filters.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      const nameMatch = lender.name?.toLowerCase().includes(query);
+      const contactMatch = lender.contact_name?.toLowerCase().includes(query);
+      if (!nameMatch && !contactMatch) {
+        return false;
+      }
+    }
+
     // Min Deal Size filter - lender's max_deal should be >= user's min requirement
     if (filters.minDealSize) {
       const minRequired = parseFloat(filters.minDealSize);
