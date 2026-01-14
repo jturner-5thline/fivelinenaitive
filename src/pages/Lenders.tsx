@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings } from 'lucide-react';
@@ -58,6 +58,22 @@ import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
+import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
+
+const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
+
+const DEFAULT_TILE_DISPLAY_SETTINGS: LenderTileDisplaySettings = {
+  showLenderType: true,
+  showDealRange: true,
+  showIndustries: true,
+  showContactName: false,
+  showGeography: false,
+  showLoanTypes: false,
+  showNdaStatus: true,
+  showMarketingStatus: true,
+  showActiveDealCount: true,
+  maxIndustriesToShow: 2,
+};
 
 type SortOption = 'name-asc' | 'name-desc' | 'deals-desc' | 'deals-asc';
 type ViewMode = 'list' | 'grid';
@@ -163,6 +179,15 @@ export default function Lenders() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<LenderFilters>(emptyFilters);
+  const [tileDisplaySettings, setTileDisplaySettings] = useState<LenderTileDisplaySettings>(DEFAULT_TILE_DISPLAY_SETTINGS);
+
+  // Load tile display settings from localStorage
+  useEffect(() => {
+    const savedSettings = localStorage.getItem(TILE_DISPLAY_STORAGE_KEY);
+    if (savedSettings) {
+      setTileDisplaySettings(JSON.parse(savedSettings));
+    }
+  }, []);
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
@@ -807,8 +832,13 @@ export default function Lenders() {
                         ? `${formatCurrency(lender.min_deal)} - ${formatCurrency(lender.max_deal)}`
                         : null;
                       
-                      // Get top industries to display
-                      const topIndustries = lender.industries?.slice(0, 2) || [];
+                      // Get top industries to display based on settings
+                      const maxIndustries = tileDisplaySettings.maxIndustriesToShow;
+                      const topIndustries = lender.industries?.slice(0, maxIndustries) || [];
+                      const topLoanTypes = lender.loan_types?.slice(0, 2) || [];
+                      
+                      const summary = getLenderSummary(lender.name);
+                      const showFooter = tileDisplaySettings.showNdaStatus || tileDisplaySettings.showMarketingStatus;
                       
                       return (
                         <div
@@ -817,7 +847,7 @@ export default function Lenders() {
                           onClick={() => openLenderDetail(lender)}
                         >
                           {/* Active deal count - top left corner */}
-                          {activeDealCounts[lender.name] > 0 && (
+                          {tileDisplaySettings.showActiveDealCount && activeDealCounts[lender.name] > 0 && (
                             <Badge variant="default" className="absolute top-0 left-0 text-xs rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none">
                               {activeDealCounts[lender.name]} active
                             </Badge>
@@ -889,30 +919,60 @@ export default function Lenders() {
                             <p className="font-semibold text-base line-clamp-2 leading-tight">{lender.name}</p>
                             
                             {/* Lender type badge */}
-                            {lender.lender_type && (
+                            {tileDisplaySettings.showLenderType && lender.lender_type && (
                               <Badge variant="outline" className="text-xs mt-1.5">
                                 {lender.lender_type}
                               </Badge>
                             )}
                             
                             {/* Deal range - prominent display */}
-                            {dealSizeRange && (
+                            {tileDisplaySettings.showDealRange && dealSizeRange && (
                               <p className="text-sm font-medium text-primary mt-2">
                                 {dealSizeRange}
                               </p>
                             )}
                             
+                            {/* Contact name */}
+                            {tileDisplaySettings.showContactName && lender.contact_name && (
+                              <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
+                                {lender.contact_name}
+                              </p>
+                            )}
+                            
+                            {/* Geography */}
+                            {tileDisplaySettings.showGeography && lender.geo && (
+                              <p className="text-xs text-muted-foreground mt-1 truncate max-w-full">
+                                📍 {lender.geo}
+                              </p>
+                            )}
+                            
                             {/* Industries */}
-                            {topIndustries.length > 0 && (
+                            {tileDisplaySettings.showIndustries && topIndustries.length > 0 && (
                               <div className="flex flex-wrap gap-1 justify-center mt-2">
                                 {topIndustries.map((industry, idx) => (
                                   <Badge key={idx} variant="secondary" className="text-xs">
                                     {industry}
                                   </Badge>
                                 ))}
-                                {(lender.industries?.length || 0) > 2 && (
+                                {(lender.industries?.length || 0) > maxIndustries && (
                                   <Badge variant="outline" className="text-xs">
-                                    +{(lender.industries?.length || 0) - 2}
+                                    +{(lender.industries?.length || 0) - maxIndustries}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Loan Types */}
+                            {tileDisplaySettings.showLoanTypes && topLoanTypes.length > 0 && (
+                              <div className="flex flex-wrap gap-1 justify-center mt-2">
+                                {topLoanTypes.map((loanType, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {loanType}
+                                  </Badge>
+                                ))}
+                                {(lender.loan_types?.length || 0) > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{(lender.loan_types?.length || 0) - 2}
                                   </Badge>
                                 )}
                               </div>
@@ -920,45 +980,44 @@ export default function Lenders() {
                           </div>
                           
                           {/* Footer with NDA/Marketing checkboxes */}
-                          <div className="flex items-center justify-center gap-3 mt-2 pt-2 border-t border-border/50">
-                            {(() => {
-                              const summary = getLenderSummary(lender.name);
-                              return (
-                                <>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="flex items-center">
-                                        <Checkbox
-                                          checked={summary.hasNda}
-                                          disabled
-                                          className="h-3.5 w-3.5 data-[state=checked]:bg-success data-[state=checked]:border-success"
-                                        />
-                                        <span className="ml-1 text-xs text-muted-foreground">NDA</span>
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      {summary.hasNda ? 'NDA on file' : 'No NDA attached'}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="flex items-center">
-                                        <Checkbox
-                                          checked={summary.hasMarketingMaterials}
-                                          disabled
-                                          className="h-3.5 w-3.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                        />
-                                        <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      {summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials attached'}
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </>
-                              );
-                            })()}
-                          </div>
+                          {showFooter && (
+                            <div className="flex items-center justify-center gap-3 mt-2 pt-2 border-t border-border/50">
+                              {tileDisplaySettings.showNdaStatus && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center">
+                                      <Checkbox
+                                        checked={summary.hasNda}
+                                        disabled
+                                        className="h-3.5 w-3.5 data-[state=checked]:bg-success data-[state=checked]:border-success"
+                                      />
+                                      <span className="ml-1 text-xs text-muted-foreground">NDA</span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {summary.hasNda ? 'NDA on file' : 'No NDA attached'}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              {tileDisplaySettings.showMarketingStatus && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center">
+                                      <Checkbox
+                                        checked={summary.hasMarketingMaterials}
+                                        disabled
+                                        className="h-3.5 w-3.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                      />
+                                      <span className="ml-1 text-xs text-muted-foreground">Marketing</span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials attached'}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
