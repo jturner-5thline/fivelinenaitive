@@ -23,6 +23,7 @@ export interface LenderFilters {
   searchQuery: string;
   minDealSize: string;
   maxDealSize: string;
+  minRevenue: string;
   sponsorship: string;
   loanTypes: string[];
   cashBurn: string;
@@ -34,6 +35,7 @@ const emptyFilters: LenderFilters = {
   searchQuery: '',
   minDealSize: '',
   maxDealSize: '',
+  minRevenue: '',
   sponsorship: '',
   loanTypes: [],
   cashBurn: '',
@@ -141,6 +143,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     if (filters.searchQuery) count++;
     if (filters.minDealSize) count++;
     if (filters.maxDealSize) count++;
+    if (filters.minRevenue) count++;
     if (filters.sponsorship) count++;
     if (filters.cashBurn) count++;
     if (filters.loanTypes.length > 0) count++;
@@ -228,6 +231,18 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                     </button>
                   </Badge>
                 )}
+                {filters.minRevenue && (
+                  <Badge variant="outline" className="gap-1 pr-1">
+                    Min Revenue: ${filters.minRevenue}
+                    <button
+                      type="button"
+                      onClick={() => clearFilter('minRevenue')}
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
                 {filters.sponsorship && (
                   <Badge variant="outline" className="gap-1 pr-1">
                     Sponsorship: {filters.sponsorship}
@@ -300,7 +315,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
             )}
 
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {/* Search by Name */}
               <div className="space-y-1.5">
                 <Label htmlFor="searchQuery" className="text-xs">
@@ -347,6 +362,22 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                   placeholder="e.g. 50000000"
                   value={filters.maxDealSize}
                   onChange={(value) => handleFilterChange('maxDealSize', value)}
+                  className="h-9"
+                  debounceMs={400}
+                />
+              </div>
+
+              {/* Min Revenue */}
+              <div className="space-y-1.5">
+                <Label htmlFor="minRevenue" className="text-xs">
+                  Your Revenue ($)
+                </Label>
+                <DebouncedInput
+                  id="minRevenue"
+                  type="number"
+                  placeholder="e.g. 5000000"
+                  value={filters.minRevenue}
+                  onChange={(value) => handleFilterChange('minRevenue', value)}
                   className="h-9"
                   debounceMs={400}
                 />
@@ -462,6 +493,14 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
     if (filters.maxDealSize) {
       const maxLimit = parseFloat(filters.maxDealSize);
       if (lender.min_deal !== null && lender.min_deal > maxLimit) {
+        return false;
+      }
+    }
+
+    // Min Revenue filter - lender's min_revenue should be <= user's revenue
+    if (filters.minRevenue) {
+      const userRevenue = parseFloat(filters.minRevenue);
+      if (lender.min_revenue !== null && lender.min_revenue > userRevenue) {
         return false;
       }
     }
