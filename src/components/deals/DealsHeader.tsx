@@ -54,14 +54,14 @@ export function DealsHeader() {
   const { createDeal } = useDealsContext();
   const { company, members } = useCompany();
   const { profile } = useProfile();
-  const { stages: dealStages } = useDealStages();
+  const { stages: dealStages, defaultStageId } = useDealStages();
   const { defaultMilestones } = useDefaultMilestones();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const { isAdmin } = useAdminRole();
   const [open, setOpen] = useState(false);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
-  const [dealStage, setDealStage] = useState('');
+  const [dealStage, setDealStage] = useState(defaultStageId || '');
   const [dealManager, setDealManager] = useState('');
   const [dealOwner, setDealOwner] = useState('');
   const [contactName, setContactName] = useState('');

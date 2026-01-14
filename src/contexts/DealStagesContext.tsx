@@ -9,10 +9,12 @@ export interface DealStageOption {
 
 interface DealStagesContextType {
   stages: DealStageOption[];
+  defaultStageId: string | null;
   addStage: (stage: Omit<DealStageOption, 'id'>) => void;
   updateStage: (id: string, stage: Partial<Omit<DealStageOption, 'id'>>) => void;
   deleteStage: (id: string) => void;
   reorderStages: (stages: DealStageOption[]) => void;
+  setDefaultStageId: (id: string | null) => void;
   getStageConfig: () => Record<string, { label: string; color: string }>;
 }
 
@@ -38,9 +40,22 @@ export function DealStagesProvider({ children }: { children: ReactNode }) {
     return defaultStages;
   });
 
+  const [defaultStageId, setDefaultStageIdState] = useState<string | null>(() => {
+    return localStorage.getItem('defaultDealStageId');
+  });
+
   const saveStages = (newStages: DealStageOption[]) => {
     setStages(newStages);
     localStorage.setItem('dealStages', JSON.stringify(newStages));
+  };
+
+  const setDefaultStageId = (id: string | null) => {
+    setDefaultStageIdState(id);
+    if (id) {
+      localStorage.setItem('defaultDealStageId', id);
+    } else {
+      localStorage.removeItem('defaultDealStageId');
+    }
   };
 
   const addStage = (stage: Omit<DealStageOption, 'id'>) => {
@@ -74,10 +89,12 @@ export function DealStagesProvider({ children }: { children: ReactNode }) {
   return (
     <DealStagesContext.Provider value={{
       stages,
+      defaultStageId,
       addStage,
       updateStage,
       deleteStage,
       reorderStages,
+      setDefaultStageId,
       getStageConfig,
     }}>
       {children}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GripVertical, Plus, Pencil, Trash2, GitBranch } from 'lucide-react';
+import { GripVertical, Plus, Pencil, Trash2, GitBranch, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -46,10 +47,12 @@ interface SortableStageItemProps {
   stage: DealStageOption;
   onEdit: (stage: DealStageOption) => void;
   onDelete: (id: string) => void;
+  onSetDefault: (id: string) => void;
+  isDefault: boolean;
   isAdmin: boolean;
 }
 
-function SortableStageItem({ stage, onEdit, onDelete, isAdmin }: SortableStageItemProps) {
+function SortableStageItem({ stage, onEdit, onDelete, onSetDefault, isDefault, isAdmin }: SortableStageItemProps) {
   const {
     attributes,
     listeners,
@@ -81,8 +84,22 @@ function SortableStageItem({ stage, onEdit, onDelete, isAdmin }: SortableStageIt
       )}
       <div className={`w-3 h-3 rounded-full ${stage.color}`} />
       <span className="flex-1 text-sm">{stage.label}</span>
+      {isDefault && (
+        <Badge variant="secondary" className="text-xs">
+          Default
+        </Badge>
+      )}
       {isAdmin && (
         <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-7 w-7 ${isDefault ? 'text-primary' : ''}`}
+            onClick={() => onSetDefault(stage.id)}
+            title={isDefault ? 'Clear default' : 'Set as default'}
+          >
+            <Star className={`h-3 w-3 ${isDefault ? 'fill-current' : ''}`} />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -110,7 +127,7 @@ interface DealStagesSettingsProps {
 }
 
 export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) {
-  const { stages, addStage, updateStage, deleteStage, reorderStages } = useDealStages();
+  const { stages, defaultStageId, setDefaultStageId, addStage, updateStage, deleteStage, reorderStages } = useDealStages();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<DealStageOption | null>(null);
   const [label, setLabel] = useState('');
@@ -166,8 +183,23 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
       toast.error('You must have at least one stage');
       return;
     }
+    // Clear default if we're deleting the default stage
+    if (defaultStageId === id) {
+      setDefaultStageId(null);
+    }
     deleteStage(id);
     toast.success('Stage deleted');
+  };
+
+  const handleSetDefault = (stageId: string) => {
+    if (defaultStageId === stageId) {
+      setDefaultStageId(null);
+      toast.success('Default stage cleared');
+    } else {
+      setDefaultStageId(stageId);
+      const stage = stages.find(s => s.id === stageId);
+      toast.success(`"${stage?.label}" set as default stage`);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -219,6 +251,8 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
                         stage={stage}
                         onEdit={openEditDialog}
                         onDelete={handleDelete}
+                        onSetDefault={handleSetDefault}
+                        isDefault={defaultStageId === stage.id}
                         isAdmin={isAdmin}
                       />
                     ))}
