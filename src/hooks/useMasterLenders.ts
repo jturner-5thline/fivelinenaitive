@@ -223,6 +223,45 @@ export function useMasterLenders() {
     }
   };
 
+  const mergeLenders = async (
+    keepId: string, 
+    mergeIds: string[], 
+    mergedData: Partial<MasterLenderInsert>
+  ): Promise<boolean> => {
+    try {
+      // Update the primary lender with merged data
+      const { error: updateError } = await supabase
+        .from('master_lenders')
+        .update(mergedData)
+        .eq('id', keepId);
+
+      if (updateError) throw updateError;
+
+      // Delete the duplicate lenders
+      const { error: deleteError } = await supabase
+        .from('master_lenders')
+        .delete()
+        .in('id', mergeIds);
+
+      if (deleteError) throw deleteError;
+
+      // Update local state
+      setLenders(prev => {
+        const updatedPrimary = prev.find(l => l.id === keepId);
+        if (updatedPrimary) {
+          Object.assign(updatedPrimary, mergedData);
+        }
+        return prev.filter(l => !mergeIds.includes(l.id));
+      });
+
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to merge lenders';
+      toast.error(message);
+      return false;
+    }
+  };
+
   return {
     lenders,
     loading,
@@ -233,5 +272,6 @@ export function useMasterLenders() {
     updateLender,
     deleteLender,
     clearAllLenders,
+    mergeLenders,
   };
 }
