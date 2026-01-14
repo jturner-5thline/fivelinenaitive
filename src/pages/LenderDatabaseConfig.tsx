@@ -11,7 +11,8 @@ import {
   Globe, 
   CreditCard,
   GripVertical,
-  Loader2
+  Loader2,
+  Users
 } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
+import { useMasterLenders } from '@/hooks/useMasterLenders';
 
 interface ConfigItem {
   id: string;
@@ -211,6 +214,14 @@ function ConfigSection({
 export default function LenderDatabaseConfig() {
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
+  const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
+  
+  // Get master lenders for duplicates dialog
+  const { 
+    lenders: masterLenders, 
+    mergeLenders, 
+    deleteLender: deleteMasterLender 
+  } = useMasterLenders();
   
   // State for each configuration category
   const [lenderTypes, setLenderTypes] = useState<ConfigItem[]>([]);
@@ -319,6 +330,15 @@ export default function LenderDatabaseConfig() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1"
+                  onClick={() => setIsDuplicatesDialogOpen(true)}
+                >
+                  <Users className="h-4 w-4" />
+                  Find Duplicates
+                </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -441,6 +461,18 @@ export default function LenderDatabaseConfig() {
           </div>
         </main>
       </div>
+
+      <DuplicateLendersDialog
+        open={isDuplicatesDialogOpen}
+        onOpenChange={setIsDuplicatesDialogOpen}
+        lenders={masterLenders}
+        onMergeLenders={async (keepId, mergeIds, mergedData) => {
+          await mergeLenders(keepId, mergeIds, mergedData);
+        }}
+        onDeleteLender={async (id) => {
+          await deleteMasterLender(id);
+        }}
+      />
     </>
   );
 }
