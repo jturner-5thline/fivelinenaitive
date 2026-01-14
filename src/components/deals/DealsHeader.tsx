@@ -406,8 +406,25 @@ export function DealsHeader() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>{user?.email || 'Settings'}</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.display_name || 'User'} />
+                    <AvatarFallback className="text-xs">
+                      {profile?.first_name?.charAt(0) || profile?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col">
+                    <span className="font-medium">
+                      {profile?.first_name && profile?.last_name 
+                        ? `${profile.first_name} ${profile.last_name}`
+                        : profile?.display_name || 'User'}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-normal truncate max-w-[140px]">
+                      {user?.email}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
