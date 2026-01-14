@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud } from "lucide-react";
+import { Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
 import { AdminStatsCards } from "@/components/admin/AdminStatsCards";
@@ -12,6 +12,7 @@ import { WaitlistTable } from "@/components/admin/WaitlistTable";
 import { InvitationsTable } from "@/components/admin/InvitationsTable";
 import { AuditLogTable } from "@/components/admin/AuditLogTable";
 import { ExternalDataTab } from "@/components/admin/ExternalDataTab";
+import { FeedbackTable } from "@/components/admin/FeedbackTable";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 
 const Admin = () => {
@@ -70,7 +71,7 @@ const Admin = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full max-w-4xl grid-cols-6">
+        <TabsList className="grid w-full max-w-4xl grid-cols-7">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Users
@@ -82,6 +83,10 @@ const Admin = () => {
           <TabsTrigger value="external" className="flex items-center gap-2">
             <Cloud className="h-4 w-4" />
             External
+          </TabsTrigger>
+          <TabsTrigger value="feedback" className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Feedback
           </TabsTrigger>
           <TabsTrigger value="waitlist" className="flex items-center gap-2">
             <ListTodo className="h-4 w-4" />
@@ -127,6 +132,23 @@ const Admin = () => {
             </CardHeader>
             <CardContent>
               <CompaniesTable />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="feedback">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                User Feedback
+              </CardTitle>
+              <CardDescription>
+                View feedback submitted by 5thline.co users
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FeedbackTable />
             </CardContent>
           </Card>
         </TabsContent>
