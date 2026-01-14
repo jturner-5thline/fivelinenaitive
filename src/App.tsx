@@ -17,6 +17,7 @@ import { ChartsProvider } from "@/contexts/ChartsContext";
 import { AnalyticsWidgetsProvider } from "@/contexts/AnalyticsWidgetsContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 import Waitlist from "./pages/Waitlist";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -61,6 +62,7 @@ const App = () => (
                     <TooltipProvider>
                       <Toaster />
                       <Sonner />
+                      <FeedbackWidget />
                       <BrowserRouter>
                         <Routes>
                           <Route path="/" element={<Waitlist />} />
