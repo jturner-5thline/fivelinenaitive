@@ -36,6 +36,7 @@ import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
+import { LenderSuggestions } from '@/components/deal/LenderSuggestions';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useAutoSave } from '@/hooks/useAutoSave';
@@ -2386,6 +2387,19 @@ export default function DealDetail() {
                   </CollapsibleContent>
                 </Card>
               </Collapsible>
+
+              {/* AI Lender Suggestions */}
+              <LenderSuggestions
+                criteria={{
+                  industry: dealWriteUpData.industry || undefined,
+                  dealValue: deal.value || undefined,
+                  capitalAsk: dealWriteUpData.capitalAsk || undefined,
+                  dealTypes: deal.dealTypes || (dealWriteUpData.dealType ? [dealWriteUpData.dealType] : undefined),
+                  geo: dealWriteUpData.location || undefined,
+                }}
+                existingLenderNames={deal.lenders?.map(l => l.name) || []}
+                onAddLender={addLender}
+              />
                 </TabsContent>
 
                 <TabsContent value="deal-writeup" className="mt-6">
