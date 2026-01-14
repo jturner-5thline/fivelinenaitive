@@ -36,7 +36,7 @@ import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
-import { LenderSuggestions } from '@/components/deal/LenderSuggestions';
+import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useAutoSave } from '@/hooks/useAutoSave';
@@ -1722,6 +1722,17 @@ export default function DealDetail() {
                               </button>
                             );
                           })}
+                          <LenderSuggestionsPanel
+                            criteria={{
+                              industry: dealWriteUpData.industry || undefined,
+                              dealValue: deal.value || undefined,
+                              capitalAsk: dealWriteUpData.capitalAsk || undefined,
+                              dealTypes: deal.dealTypes || (dealWriteUpData.dealType ? [dealWriteUpData.dealType] : undefined),
+                              geo: dealWriteUpData.location || undefined,
+                            }}
+                            existingLenderNames={deal.lenders?.map(l => l.name) || []}
+                            onAddLender={addLender}
+                          />
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -2306,10 +2317,10 @@ export default function DealDetail() {
                         )}
                       </>
                     )}
-                    <div className={`${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
+                    <div className={`flex items-center gap-2 ${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
                       <Popover open={isLenderDropdownOpen} onOpenChange={setIsLenderDropdownOpen}>
                         <PopoverTrigger asChild>
-                          <div className="w-1/2">
+                          <div className="flex-1 max-w-[50%]">
                             <Input
                               placeholder="Type to add a lender..."
                               value={lenderSearchQuery}
@@ -2381,6 +2392,17 @@ export default function DealDetail() {
                           )}
                         </PopoverContent>
                       </Popover>
+                      <LenderSuggestionsPanel
+                        criteria={{
+                          industry: dealWriteUpData.industry || undefined,
+                          dealValue: deal.value || undefined,
+                          capitalAsk: dealWriteUpData.capitalAsk || undefined,
+                          dealTypes: deal.dealTypes || (dealWriteUpData.dealType ? [dealWriteUpData.dealType] : undefined),
+                          geo: dealWriteUpData.location || undefined,
+                        }}
+                        existingLenderNames={deal.lenders?.map(l => l.name) || []}
+                        onAddLender={addLender}
+                      />
                     </div>
                   </div>
                     </CardContent>
@@ -2388,18 +2410,6 @@ export default function DealDetail() {
                 </Card>
               </Collapsible>
 
-              {/* AI Lender Suggestions */}
-              <LenderSuggestions
-                criteria={{
-                  industry: dealWriteUpData.industry || undefined,
-                  dealValue: deal.value || undefined,
-                  capitalAsk: dealWriteUpData.capitalAsk || undefined,
-                  dealTypes: deal.dealTypes || (dealWriteUpData.dealType ? [dealWriteUpData.dealType] : undefined),
-                  geo: dealWriteUpData.location || undefined,
-                }}
-                existingLenderNames={deal.lenders?.map(l => l.name) || []}
-                onAddLender={addLender}
-              />
                 </TabsContent>
 
                 <TabsContent value="deal-writeup" className="mt-6">
