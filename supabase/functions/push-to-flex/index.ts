@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const FLEX_API_URL = "https://ndbrliydrlgtxcyfgyok.supabase.co/functions/v1/naitive-flex-sync";
+
 interface PushToFlexRequest {
   dealId: string;
   writeUpData: {
@@ -34,27 +36,17 @@ interface PushToFlexRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const FLEX_API_URL = Deno.env.get("FLEX_API_URL");
-    const FLEX_API_KEY = Deno.env.get("FLEX_API_KEY");
+    const NAITIVE_FLEX_SYNC_KEY = Deno.env.get("NAITIVE_FLEX_SYNC_KEY");
 
-    if (!FLEX_API_URL) {
-      console.error("FLEX_API_URL is not configured");
+    if (!NAITIVE_FLEX_SYNC_KEY) {
+      console.error("NAITIVE_FLEX_SYNC_KEY is not configured");
       return new Response(
-        JSON.stringify({ error: "FLEx API URL is not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!FLEX_API_KEY) {
-      console.error("FLEX_API_KEY is not configured");
-      return new Response(
-        JSON.stringify({ error: "FLEx API Key is not configured" }),
+        JSON.stringify({ error: "FLEx sync key is not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -73,7 +65,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify the user's JWT
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
@@ -115,7 +106,6 @@ serve(async (req) => {
 
     // Check if user owns the deal or is in the same company
     if (deal.user_id !== user.id) {
-      // Check company membership
       const { data: membership } = await supabase
         .from("company_members")
         .select("id")
@@ -132,14 +122,29 @@ serve(async (req) => {
       }
     }
 
-    // Prepare the payload for FLEx
+    // Prepare the payload for FLEx API
+    const flexDeal = {
+      company_name: writeUpData.companyName,
+      industry: writeUpData.industry,
+      state: writeUpData.location,
+      deal_type: writeUpData.dealType,
+      billing_model: writeUpData.billingModel || undefined,
+      profitability: writeUpData.profitability || undefined,
+      gross_margins: writeUpData.grossMargins || undefined,
+      capital_ask: writeUpData.capitalAsk || undefined,
+      this_year_revenue: writeUpData.thisYearRevenue || undefined,
+      last_year_revenue: writeUpData.lastYearRevenue || undefined,
+      description: writeUpData.description || undefined,
+      use_of_funds: writeUpData.useOfFunds || undefined,
+      existing_debt: writeUpData.existingDebtDetails || undefined,
+      data_room_url: writeUpData.dataRoomUrl || undefined,
+      key_items: writeUpData.keyItems?.length > 0 ? writeUpData.keyItems : undefined,
+      is_published: !writeUpData.publishAsAnonymous,
+    };
+
     const flexPayload = {
-      source: "5thline-deal-tracker",
-      dealId,
-      dealName: deal.company,
-      writeUp: writeUpData,
-      pushedAt: new Date().toISOString(),
-      pushedBy: user.id,
+      action: "sync_deals",
+      deals: [flexDeal],
     };
 
     console.log(`Pushing deal ${dealId} to FLEx:`, JSON.stringify(flexPayload, null, 2));
@@ -149,8 +154,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-API-Key": FLEX_API_KEY,
-        "Authorization": `Bearer ${FLEX_API_KEY}`,
+        "x-sync-key": NAITIVE_FLEX_SYNC_KEY,
       },
       body: JSON.stringify(flexPayload),
     });
