@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActivityStats';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FlexLenderInterestPanel } from './FlexLenderInterestPanel';
 
 interface DealActivityTabProps {
   dealId: string;
@@ -36,9 +37,11 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const hasActivity = chartData && chartData.some(d => d.views > 0);
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Main activity section */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           icon={<Eye className="h-4 w-4" />}
           label="Activity"
@@ -191,6 +194,12 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
           </CardContent>
         </Card>
       )}
+      </div>
+
+      {/* Lender Interest Panel - Sidebar */}
+      <div className="lg:col-span-1">
+        <FlexLenderInterestPanel dealId={dealId} />
+      </div>
     </div>
   );
 }
