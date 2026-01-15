@@ -43,6 +43,7 @@ import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpDa
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DraggableAttachmentItem } from '@/components/deal/DraggableAttachmentItem';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
+import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
@@ -622,6 +623,8 @@ export default function DealDetail() {
   const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('materials');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [activeAttachment, setActiveAttachment] = useState<typeof attachments[0] | null>(null);
+  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
   const { 
     attachments, 
     isLoading: isLoadingAttachments, 
@@ -646,8 +649,31 @@ export default function DealDetail() {
   }, [uploadMultipleAttachments, uploadCategory]);
 
   // Handle attachment drag between categories
+  const handleAttachmentDragStart = useCallback((event: DragEndEvent) => {
+    const attachmentId = event.active.id as string;
+    const attachment = attachments.find(a => a.id === attachmentId);
+    if (attachment) {
+      setActiveAttachment(attachment);
+    }
+  }, [attachments]);
+
+  const handleAttachmentDragOver = useCallback((event: DragEndEvent) => {
+    const { over } = event;
+    if (over) {
+      const targetCategory = over.data.current?.category || over.id;
+      if (DEAL_ATTACHMENT_CATEGORIES.some(c => c.value === targetCategory)) {
+        setDragOverCategory(targetCategory as string);
+      }
+    } else {
+      setDragOverCategory(null);
+    }
+  }, []);
+
   const handleAttachmentDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
+    
+    setActiveAttachment(null);
+    setDragOverCategory(null);
     
     if (!over) return;
     
@@ -2818,7 +2844,11 @@ export default function DealDetail() {
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
                       ) : attachments.length > 0 ? (
-                        <DndContext onDragEnd={handleAttachmentDragEnd}>
+                        <DndContext 
+                          onDragStart={handleAttachmentDragStart}
+                          onDragOver={handleAttachmentDragOver}
+                          onDragEnd={handleAttachmentDragEnd}
+                        >
                           <div className="space-y-3">
                             {DEAL_ATTACHMENT_CATEGORIES.map((category) => {
                               const categoryAttachments = attachments.filter(a => a.category === category.value);
@@ -2902,6 +2932,11 @@ export default function DealDetail() {
                               );
                             })}
                           </div>
+                          <AttachmentDragOverlay 
+                            activeAttachment={activeAttachment}
+                            targetCategory={dragOverCategory}
+                            formatFileSize={formatFileSize}
+                          />
                         </DndContext>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
