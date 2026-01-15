@@ -883,6 +883,56 @@ export type Database = {
         }
         Relationships: []
       }
+      flex_notifications: {
+        Row: {
+          alert_type: string
+          created_at: string
+          deal_id: string
+          engagement_score: number | null
+          id: string
+          lender_email: string | null
+          lender_name: string | null
+          message: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          deal_id: string
+          engagement_score?: number | null
+          id?: string
+          lender_email?: string | null
+          lender_name?: string | null
+          message: string
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          deal_id?: string
+          engagement_score?: number | null
+          id?: string
+          lender_email?: string | null
+          lender_name?: string | null
+          message?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flex_notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flex_sync_history: {
         Row: {
           created_at: string

@@ -92,6 +92,7 @@ export function useNotificationPreferences() {
     preferences,
     isLoading,
     shouldShowStaleAlerts: preferences.notify_stale_alerts,
+    shouldShowFlexAlerts: preferences.notify_flex_alerts,
     shouldShowActivity,
     refresh: fetchPreferences,
   };

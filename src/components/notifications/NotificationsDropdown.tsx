@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings } from 'lucide-react';
+import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAllActivities } from '@/hooks/useAllActivities';
 import { useNotificationReads } from '@/hooks/useNotificationReads';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { useFlexNotifications } from '@/hooks/useFlexNotifications';
 import { Deal } from '@/types/deal';
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -87,7 +88,14 @@ export function NotificationsDropdown() {
   const { preferences: appPreferences } = usePreferences();
   const { activities, isLoading: activitiesLoading } = useAllActivities(15);
   const { isRead, markAsRead, markAllAsRead, isLoading: readsLoading } = useNotificationReads();
-  const { shouldShowStaleAlerts, shouldShowActivity, isLoading: prefsLoading } = useNotificationPreferences();
+  const { shouldShowStaleAlerts, shouldShowActivity, isLoading: prefsLoading, preferences: notifPrefs } = useNotificationPreferences();
+  const { 
+    notifications: flexNotifications, 
+    isLoading: flexLoading, 
+    unreadCount: flexUnreadCount,
+    markAsRead: markFlexAsRead,
+    markAllAsRead: markAllFlexAsRead
+  } = useFlexNotifications(10);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   
   // Get all stale alerts
@@ -106,13 +114,20 @@ export function NotificationsDropdown() {
     activities.filter(a => shouldShowActivity(a.activity_type)),
     [activities, shouldShowActivity]
   );
+
+  // Filter FLEx notifications based on preference
+  const filteredFlexNotifications = useMemo(() => 
+    (notifPrefs as any).notify_flex_alerts ? flexNotifications : [],
+    [(notifPrefs as any).notify_flex_alerts, flexNotifications]
+  );
   
   // Count unread notifications
   const unreadAlerts = staleAlerts.filter(a => !isRead('stale_alert', a.dealId));
   const unreadActivities = filteredActivities.filter(a => !isRead('activity', a.id));
-  const unreadCount = unreadAlerts.length + unreadActivities.length;
-  const totalNotifications = staleAlerts.length + filteredActivities.length;
-  const hasAlerts = unreadAlerts.length > 0;
+  const unreadFlexCount = filteredFlexNotifications.filter(n => !n.read_at).length;
+  const unreadCount = unreadAlerts.length + unreadActivities.length + unreadFlexCount;
+  const totalNotifications = staleAlerts.length + filteredActivities.length + filteredFlexNotifications.length;
+  const hasAlerts = unreadAlerts.length > 0 || unreadFlexCount > 0;
   
   const handleMarkAllAsRead = async () => {
     setIsMarkingRead(true);
@@ -123,11 +138,12 @@ export function NotificationsDropdown() {
     ];
     
     await markAllAsRead(allNotifications);
+    await markAllFlexAsRead();
     toast.success('All notifications marked as read');
     setIsMarkingRead(false);
   };
   
-  const isLoading = activitiesLoading || readsLoading || prefsLoading;
+  const isLoading = activitiesLoading || readsLoading || prefsLoading || flexLoading;
   
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -244,10 +260,67 @@ export function NotificationsDropdown() {
             </div>
           )}
           
+          {/* FLEx Alerts Section */}
+          {filteredFlexNotifications.length > 0 && (
+            <div>
+              {staleAlerts.length > 0 && <Separator />}
+              <div className="px-4 py-2 bg-amber-500/10 border-b">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
+                  <Zap className="h-4 w-4" />
+                  FLEx Engagement ({filteredFlexNotifications.length})
+                </div>
+              </div>
+              <div className="divide-y">
+                {filteredFlexNotifications.map((notification) => {
+                  const read = !!notification.read_at;
+                  return (
+                    <Link
+                      key={notification.id}
+                      to={`/deal/${notification.deal_id}?tab=deal-management#flex-engagement-section`}
+                      onClick={() => {
+                        if (!read) {
+                          markFlexAsRead([notification.id]);
+                        }
+                        setOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors",
+                        read && "opacity-60"
+                      )}
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/10 text-lg">
+                        {notification.alert_type === 'hot_engagement' ? '🔥' : 
+                         notification.alert_type === 'term_sheet_request' ? '📋' :
+                         notification.alert_type === 'nda_request' ? '📝' : 'ℹ️'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-sm truncate",
+                          !read && "font-medium"
+                        )}>
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {notification.deal_name && <span className="font-medium">{notification.deal_name}</span>}
+                          {notification.deal_name && ' • '}
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      {!read && (
+                        <div className="h-2 w-2 rounded-full bg-amber-500" />
+                      )}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Activity Feed Section */}
           {filteredActivities.length > 0 && (
             <div>
-              {staleAlerts.length > 0 && <Separator />}
+              {(staleAlerts.length > 0 || filteredFlexNotifications.length > 0) && <Separator />}
               <div className="px-4 py-2 bg-muted/30 border-b">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <Activity className="h-4 w-4" />
