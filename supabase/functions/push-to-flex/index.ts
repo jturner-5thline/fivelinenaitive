@@ -190,19 +190,17 @@ serve(async (req) => {
         .limit(1)
         .single();
 
-      // Prepare the data room files payload
+      // Prepare the data room files payload matching FLEx expected format
       const filesPayload = dataRoomFiles!.map(file => ({
         name: file.name,
         category: file.category,
         url: file.url,
-        size_bytes: file.size_bytes,
-        content_type: file.content_type,
       }));
 
       flexPayload = {
-        action: "sync_data_room",
-        deal_id: lastSync?.flex_deal_id || dealId,
+        event: "data_room_sync",
         company_name: deal.company,
+        deal_id: lastSync?.flex_deal_id || dealId,
         files: filesPayload,
       };
       activityDescription = `Data room synced to FLEx (${dataRoomFiles!.length} files)`;
