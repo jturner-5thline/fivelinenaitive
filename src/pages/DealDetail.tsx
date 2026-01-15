@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -535,6 +536,8 @@ export default function DealDetail() {
   const [isFlagPopoverOpen, setIsFlagPopoverOpen] = useState(false);
   const [isDeleteFlagDialogOpen, setIsDeleteFlagDialogOpen] = useState(false);
   const [flagDraftNote, setFlagDraftNote] = useState('');
+  const [isPushingDataRoom, setIsPushingDataRoom] = useState(false);
+
   // Handle delete action from query param
   useEffect(() => {
     if (deleteAction) {
@@ -744,6 +747,67 @@ export default function DealDetail() {
       await updateAttachmentCategory(attachmentId, targetCategory as DealAttachmentCategory, maxPosition);
     }
   }, [attachments, updateAttachmentCategory, reorderAttachments]);
+
+  // Push Data Room to FLEx
+  const handlePushDataRoomToFlex = useCallback(async () => {
+    if (!id || !deal || attachments.length === 0) {
+      toast({
+        title: "No files to push",
+        description: "Add files to the data room before pushing to FLEx.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsPushingDataRoom(true);
+    try {
+      // Get signed URLs for all attachments
+      const attachmentData = await Promise.all(
+        attachments.map(async (att) => {
+          const { data: signedData } = await supabase.storage
+            .from('deal-attachments')
+            .createSignedUrl(att.file_path, 3600); // 1 hour expiry
+          
+          return {
+            name: att.name,
+            category: att.category,
+            url: signedData?.signedUrl || null,
+            size_bytes: att.size_bytes,
+            content_type: att.content_type,
+          };
+        })
+      );
+      
+      // Call the push-to-flex edge function with data room files
+      const { data, error } = await supabase.functions.invoke('push-to-flex', {
+        body: {
+          dealId: id,
+          action: 'sync_data_room',
+          dataRoomFiles: attachmentData.filter(a => a.url !== null),
+        },
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Data Room pushed to FLEx",
+        description: `${attachments.length} file(s) synced successfully.`,
+      });
+      
+      logActivity('flex_data_room_push', `Data room pushed to FLEx (${attachments.length} files)`, {
+        file_count: attachments.length,
+      });
+    } catch (error) {
+      console.error('Error pushing data room to FLEx:', error);
+      toast({
+        title: "Failed to push to FLEx",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPushingDataRoom(false);
+    }
+  }, [id, deal, attachments, logActivity]);
 
   // Convert activity logs to ActivityItem format and combine with local undo actions
   const activities: ActivityItem[] = useMemo(() => {
@@ -2850,6 +2914,20 @@ export default function DealDetail() {
                               ))}
                             </SelectContent>
                           </Select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1"
+                            onClick={handlePushDataRoomToFlex}
+                            disabled={isLoadingAttachments || isUploading || isPushingDataRoom || attachments.length === 0}
+                          >
+                            {isPushingDataRoom ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
+                            Push to FLEx
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
