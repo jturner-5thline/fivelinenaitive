@@ -89,6 +89,45 @@ serve(async (req) => {
       
       console.log('Successfully inserted info notification for deal:', payload.deal_id);
       
+      // Send email notification to deal owner
+      try {
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('company, user_id')
+          .eq('id', payload.deal_id)
+          .single();
+        
+        if (deal && deal.user_id) {
+          console.log('Sending email notification to deal owner:', deal.user_id);
+          
+          const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+          const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-flex-alert`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseAnonKey}`,
+            },
+            body: JSON.stringify({
+              alert_type: 'info_request',
+              deal_id: payload.deal_id,
+              deal_name: deal.company,
+              user_id: deal.user_id,
+              lender_name: resolvedLenderName,
+              lender_email: user_email,
+              message: notification_message,
+            }),
+          });
+          
+          const emailResult = await emailResponse.json();
+          console.log('Email notification result:', emailResult);
+        } else {
+          console.log('Could not find deal owner for email notification');
+        }
+      } catch (emailError) {
+        console.error('Error sending email notification:', emailError);
+        // Don't fail the whole request if email fails
+      }
+      
       return new Response(
         JSON.stringify({ success: true, event: 'info_request' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
