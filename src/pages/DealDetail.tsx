@@ -1628,108 +1628,6 @@ export default function DealDetail() {
                 </TabsList>
 
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
-                  {/* Deal Details Card - Key Information */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Deal Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <label className="text-sm text-muted-foreground">Narrative</label>
-                          <DebouncedTextarea
-                            value={deal.narrative || ''}
-                            onValueChange={(value) => updateDeal('narrative', value)}
-                            placeholder="Enter deal narrative..."
-                            className="w-full min-h-[80px] resize-none"
-                            debounceMs={800}
-                            showSaveIndicator
-                          />
-                        </div>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Deal Manager</span>
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <Select
-                                value={deal.manager}
-                                onValueChange={(value) => updateDeal('manager', value)}
-                              >
-                                <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                                  <SelectValue placeholder="Select manager" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {memberOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Deal Owner</span>
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <Select
-                                value={deal.dealOwner || ''}
-                                onValueChange={(value) => updateDeal('dealOwner', value)}
-                              >
-                                <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                                  <SelectValue placeholder="Select owner" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {memberOptions.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Engagement Type</span>
-                            <Select
-                              value={deal.engagementType}
-                              onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
-                            >
-                              <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
-                                  <SelectItem key={key} value={key}>
-                                    {config.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Exclusivity</span>
-                            <Select
-                              value={deal.exclusivity || ''}
-                              onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
-                            >
-                              <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                                <SelectValue placeholder="Select..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
-                                  <SelectItem key={key} value={key}>
-                                    {config.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
                   {statusNotes.length > 0 && (
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -2549,9 +2447,108 @@ export default function DealDetail() {
               </Tabs>
             </div>
 
-            {/* Right Column - Company, Attachments & Activity */}
+            {/* Right Column - Deal Information, Company, Attachments & Activity */}
             <div className="lg:col-span-1 flex flex-col gap-6">
-              {/* Company Information */}
+              {/* Deal Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Deal Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm text-muted-foreground">Narrative</label>
+                    <DebouncedTextarea
+                      value={deal.narrative || ''}
+                      onValueChange={(value) => updateDeal('narrative', value)}
+                      placeholder="Enter deal narrative..."
+                      className="w-full min-h-[80px] resize-none"
+                      debounceMs={800}
+                      showSaveIndicator
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Deal Manager</span>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <Select
+                          value={deal.manager}
+                          onValueChange={(value) => updateDeal('manager', value)}
+                        >
+                          <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                            <SelectValue placeholder="Select manager" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {memberOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Deal Owner</span>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <Select
+                          value={deal.dealOwner || ''}
+                          onValueChange={(value) => updateDeal('dealOwner', value)}
+                        >
+                          <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                            <SelectValue placeholder="Select owner" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {memberOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Engagement Type</span>
+                      <Select
+                        value={deal.engagementType}
+                        onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
+                      >
+                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                            <SelectItem key={key} value={key}>
+                              {config.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground text-sm">Exclusivity</span>
+                      <Select
+                        value={deal.exclusivity || ''}
+                        onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
+                      >
+                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
+                            <SelectItem key={key} value={key}>
+                              {config.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Company Information */}
               <Card>
                 <CardHeader>
