@@ -2414,6 +2414,7 @@ export default function DealDetail() {
 
                 <TabsContent value="deal-writeup" className="mt-6">
                   <DealWriteUp
+                    dealId={id!}
                     data={dealWriteUpData}
                     onChange={setDealWriteUpData}
                     onSave={saveWriteupNow}
