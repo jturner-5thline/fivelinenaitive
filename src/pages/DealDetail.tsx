@@ -1747,12 +1747,31 @@ export default function DealDetail() {
                                 if (activityType === 'lender_removed') return <Badge variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Removed</Badge>;
                                 if (activityType === 'lender_stage_change') {
                                   const newStage = activity.metadata?.to || activity.metadata?.newValue;
-                                  return <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{newStage || 'Stage Change'}</Badge>;
+                                  const oldStage = activity.metadata?.from || activity.metadata?.oldValue;
+                                  const badge = <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{newStage || 'Stage Change'}</Badge>;
+                                  if (oldStage) {
+                                    return (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+                                        <TooltipContent>Changed from {oldStage}</TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  }
+                                  return badge;
                                 }
                                 if (isMilestoneChange) {
-                                  // Get the new milestone value from metadata
                                   const newMilestone = activity.metadata?.to || activity.metadata?.newValue;
-                                  return <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{newMilestone || 'Milestone'}</Badge>;
+                                  const oldMilestone = activity.metadata?.from || activity.metadata?.oldValue;
+                                  const badge = <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{newMilestone || 'Milestone'}</Badge>;
+                                  if (oldMilestone) {
+                                    return (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+                                        <TooltipContent>Changed from {oldMilestone}</TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  }
+                                  return badge;
                                 }
                                 return null;
                               };
