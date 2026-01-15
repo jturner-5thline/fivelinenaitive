@@ -880,6 +880,50 @@ export type Database = {
         }
         Relationships: []
       }
+      flex_sync_history: {
+        Row: {
+          created_at: string
+          deal_id: string
+          error_message: string | null
+          flex_deal_id: string | null
+          id: string
+          payload: Json | null
+          response: Json | null
+          status: string
+          synced_by: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          error_message?: string | null
+          flex_deal_id?: string | null
+          id?: string
+          payload?: Json | null
+          response?: Json | null
+          status?: string
+          synced_by: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          error_message?: string | null
+          flex_deal_id?: string | null
+          id?: string
+          payload?: Json | null
+          response?: Json | null
+          status?: string
+          synced_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flex_sync_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_attachments: {
         Row: {
           category: string

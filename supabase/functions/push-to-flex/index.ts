@@ -183,6 +183,19 @@ serve(async (req) => {
 
     console.log(`Successfully pushed deal ${dealId} to FLEx`);
 
+    // Get the FLEx deal ID from response
+    const flexDealId = flexData?.results?.[0]?.id || null;
+
+    // Record sync history
+    await supabase.from("flex_sync_history").insert({
+      deal_id: dealId,
+      flex_deal_id: flexDealId,
+      synced_by: user.id,
+      status: "success",
+      payload: flexPayload,
+      response: flexData,
+    });
+
     // Log the activity
     await supabase.from("activity_logs").insert({
       deal_id: dealId,
@@ -196,7 +209,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: "Deal pushed to FLEx successfully",
-        flexResponse: flexData 
+        flexResponse: flexData,
+        flexDealId
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
