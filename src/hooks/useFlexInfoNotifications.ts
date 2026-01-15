@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface FlexInfoNotification {
@@ -16,6 +16,10 @@ export interface FlexInfoNotification {
 export function useFlexInfoNotifications(dealId: string | undefined) {
   const [notifications, setNotifications] = useState<FlexInfoNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Use ref to avoid stale closure issues in callbacks
+  const notificationsRef = useRef<FlexInfoNotification[]>([]);
+  notificationsRef.current = notifications;
 
   const fetchNotifications = useCallback(async () => {
     if (!dealId) {
@@ -72,7 +76,7 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
 
   const notifyFlex = useCallback(async (
     notificationId: string, 
-    dealId: string, 
+    notificationDealId: string, 
     status: 'approved' | 'denied',
     notification: FlexInfoNotification
   ) => {
@@ -80,7 +84,7 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
       const { error } = await supabase.functions.invoke('notify-flex-info-response', {
         body: {
           notification_id: notificationId,
-          deal_id: dealId,
+          deal_id: notificationDealId,
           status,
           user_email: notification.user_email,
           lender_name: notification.lender_name,
@@ -97,7 +101,7 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
   }, []);
 
   const approveAccess = useCallback(async (notificationId: string) => {
-    const notification = notifications.find(n => n.id === notificationId);
+    const notification = notificationsRef.current.find(n => n.id === notificationId);
     if (!notification) return false;
 
     try {
@@ -122,10 +126,10 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
       console.error('Error approving access:', error);
       return false;
     }
-  }, [notifications, notifyFlex]);
+  }, [notifyFlex]);
 
   const denyAccess = useCallback(async (notificationId: string) => {
-    const notification = notifications.find(n => n.id === notificationId);
+    const notification = notificationsRef.current.find(n => n.id === notificationId);
     if (!notification) return false;
 
     try {
@@ -150,10 +154,11 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
       console.error('Error denying access:', error);
       return false;
     }
-  }, [notifications, notifyFlex]);
+  }, [notifyFlex]);
 
   const markAllAsRead = useCallback(async () => {
-    const pendingIds = notifications.filter(n => n.status === 'pending').map(n => n.id);
+    const currentNotifications = notificationsRef.current;
+    const pendingIds = currentNotifications.filter(n => n.status === 'pending').map(n => n.id);
     if (pendingIds.length === 0) return;
 
     try {
@@ -172,7 +177,7 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
     } catch (error) {
       console.error('Error marking notifications as read:', error);
     }
-  }, [notifications]);
+  }, []);
 
   const pendingCount = notifications.filter(n => n.status === 'pending').length;
 
