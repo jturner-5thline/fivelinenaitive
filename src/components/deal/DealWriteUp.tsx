@@ -236,6 +236,44 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     onChange({ ...data, [field]: value });
   };
 
+  // Format currency value (e.g., "2500000" -> "$2,500,000" or "2.5M" -> "$2.5M")
+  const formatCurrency = (value: string): string => {
+    if (!value) return '';
+    // If already formatted with $, just return it
+    if (value.startsWith('$')) return value;
+    // Try to parse as number and format
+    const numericValue = value.replace(/[^0-9.]/g, '');
+    if (numericValue && !isNaN(parseFloat(numericValue))) {
+      const num = parseFloat(numericValue);
+      // Check if original had M/K suffix
+      const upperValue = value.toUpperCase();
+      if (upperValue.includes('M')) {
+        return `$${num}M`;
+      } else if (upperValue.includes('K')) {
+        return `$${num}K`;
+      } else if (num >= 1000000) {
+        return `$${(num / 1000000).toFixed(1)}M`.replace('.0M', 'M');
+      } else if (num >= 1000) {
+        return `$${num.toLocaleString()}`;
+      }
+      return `$${num.toLocaleString()}`;
+    }
+    return value.startsWith('$') ? value : `$${value}`;
+  };
+
+  // Format percentage value (e.g., "75" -> "75%")
+  const formatPercentage = (value: string): string => {
+    if (!value) return '';
+    // If already has %, return it
+    if (value.includes('%')) return value;
+    // Try to parse and format
+    const numericValue = value.replace(/[^0-9.]/g, '');
+    if (numericValue && !isNaN(parseFloat(numericValue))) {
+      return `${numericValue}%`;
+    }
+    return value;
+  };
+
   const getWriteUpPayload = () => ({
     companyName: data.companyName,
     companyUrl: data.companyUrl,
@@ -719,6 +757,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 id="grossMargins"
                 value={data.grossMargins}
                 onChange={(e) => updateField('grossMargins', e.target.value)}
+                onBlur={(e) => updateField('grossMargins', formatPercentage(e.target.value))}
                 placeholder="75%"
               />
             </div>
@@ -732,6 +771,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 id="capitalAsk"
                 value={data.capitalAsk}
                 onChange={(e) => updateField('capitalAsk', e.target.value)}
+                onBlur={(e) => updateField('capitalAsk', formatCurrency(e.target.value))}
                 placeholder="$2.5M"
               />
             </div>
@@ -741,6 +781,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 id="thisYearRevenue"
                 value={data.thisYearRevenue}
                 onChange={(e) => updateField('thisYearRevenue', e.target.value)}
+                onBlur={(e) => updateField('thisYearRevenue', formatCurrency(e.target.value))}
                 placeholder="$6.2M"
               />
             </div>
@@ -754,6 +795,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 id="lastYearRevenue"
                 value={data.lastYearRevenue}
                 onChange={(e) => updateField('lastYearRevenue', e.target.value)}
+                onBlur={(e) => updateField('lastYearRevenue', formatCurrency(e.target.value))}
                 placeholder="$5.1M"
               />
             </div>
