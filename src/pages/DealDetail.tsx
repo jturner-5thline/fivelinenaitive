@@ -48,6 +48,7 @@ import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
 import { FileDropzoneOverlay } from '@/components/deal/FileDropzoneOverlay';
+import { DataRoomBulkActions } from '@/components/deal/DataRoomBulkActions';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
@@ -652,6 +653,8 @@ export default function DealDetail() {
   const [showUploadProgress, setShowUploadProgress] = useState(false);
   const [activeAttachment, setActiveAttachment] = useState<typeof attachments[0] | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
+  const [selectedAttachments, setSelectedAttachments] = useState<Set<string>>(new Set());
+  const selectionMode = selectedAttachments.size > 0;
   const { 
     attachments, 
     isLoading: isLoadingAttachments, 
@@ -769,6 +772,62 @@ export default function DealDetail() {
       toast({ title: `Moved "${attachment.name}" to ${categoryLabel}` });
     }
   }, [attachments, updateAttachmentCategory, reorderAttachments]);
+
+  // Bulk selection handlers for Data Room
+  const toggleAttachmentSelection = useCallback((attachmentId: string) => {
+    setSelectedAttachments(prev => {
+      const next = new Set(prev);
+      if (next.has(attachmentId)) {
+        next.delete(attachmentId);
+      } else {
+        next.add(attachmentId);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearAttachmentSelection = useCallback(() => {
+    setSelectedAttachments(new Set());
+  }, []);
+
+  const selectAllAttachments = useCallback(() => {
+    setSelectedAttachments(new Set(attachments.map(a => a.id)));
+  }, [attachments]);
+
+  const handleBulkDelete = useCallback(async () => {
+    const selectedIds = Array.from(selectedAttachments);
+    const count = selectedIds.length;
+    
+    for (const id of selectedIds) {
+      const attachment = attachments.find(a => a.id === id);
+      if (attachment) {
+        await deleteAttachment(attachment);
+      }
+    }
+    
+    setSelectedAttachments(new Set());
+    toast({ title: `Deleted ${count} file${count !== 1 ? 's' : ''}` });
+  }, [selectedAttachments, attachments, deleteAttachment]);
+
+  const handleBulkMove = useCallback(async (targetCategory: DealAttachmentCategory) => {
+    const selectedIds = Array.from(selectedAttachments);
+    const count = selectedIds.length;
+    const categoryLabel = DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === targetCategory)?.label || targetCategory;
+    
+    for (const id of selectedIds) {
+      const attachment = attachments.find(a => a.id === id);
+      if (attachment && attachment.category !== targetCategory) {
+        const targetCategoryAttachments = attachments.filter(a => a.category === targetCategory);
+        const maxPosition = targetCategoryAttachments.length > 0 
+          ? Math.max(...targetCategoryAttachments.map(a => a.position)) + 1 
+          : 0;
+        await updateAttachmentCategory(id, targetCategory, maxPosition);
+      }
+    }
+    
+    setSelectedAttachments(new Set());
+    toast({ title: `Moved ${count} file${count !== 1 ? 's' : ''} to ${categoryLabel}` });
+  }, [selectedAttachments, attachments, updateAttachmentCategory]);
 
   // State for Data Room push confirmation dialog
   const [showDataRoomPushConfirm, setShowDataRoomPushConfirm] = useState(false);
@@ -3127,6 +3186,16 @@ export default function DealDetail() {
                             }}
                           />
                         </div>
+                        <div className="flex items-center">
+                          <DataRoomBulkActions
+                            selectedCount={selectedAttachments.size}
+                            totalCount={attachments.length}
+                            onClearSelection={clearAttachmentSelection}
+                            onSelectAll={selectAllAttachments}
+                            onDelete={handleBulkDelete}
+                            onMove={handleBulkMove}
+                          />
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -3226,6 +3295,9 @@ export default function DealDetail() {
                                                     window.open(att.url, '_blank');
                                                   }
                                                 }}
+                                                isSelected={selectedAttachments.has(attachment.id)}
+                                                onToggleSelect={toggleAttachmentSelection}
+                                                selectionMode={selectionMode}
                                               />
                                             ))}
                                           </div>
