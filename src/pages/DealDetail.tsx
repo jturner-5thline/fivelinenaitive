@@ -1637,7 +1637,14 @@ export default function DealDetail() {
               <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup')}>
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
-                  <TabsTrigger value="lenders">Lenders</TabsTrigger>
+                  <TabsTrigger value="lenders" className="gap-2">
+                    Lenders
+                    {deal.lenders && deal.lenders.length > 0 && (
+                      <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                        {deal.lenders.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
                   <TabsTrigger value="deal-management">Deal Management</TabsTrigger>
                   <TabsTrigger value="deal-writeup">Deal Write Up</TabsTrigger>
                 </TabsList>
