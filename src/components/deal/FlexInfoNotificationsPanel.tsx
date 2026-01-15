@@ -1,4 +1,4 @@
-import { Bell, Check, Mail, Building2, User } from 'lucide-react';
+import { Bell, Check, Mail, Building2, User, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface FlexInfoNotificationsPanelProps {
   dealId: string | undefined;
@@ -51,6 +52,35 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
     return null;
   }
 
+  const getStatusStyles = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return {
+          container: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 ring-2 ring-amber-300 dark:ring-amber-700',
+          dot: 'bg-amber-500',
+          label: 'New',
+        };
+      case 'read':
+        return {
+          container: 'bg-muted/30 border-border',
+          dot: 'bg-muted-foreground/50',
+          label: 'Viewed',
+        };
+      case 'approved':
+        return {
+          container: 'bg-green-50/50 dark:bg-green-950/10 border-green-200 dark:border-green-800/50',
+          dot: 'bg-green-500',
+          label: 'Approved',
+        };
+      default:
+        return {
+          container: 'bg-muted/50 border-border',
+          dot: 'bg-muted-foreground/50',
+          label: status,
+        };
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -59,70 +89,96 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
           Info Requests
           {pendingCount > 0 && (
             <Badge variant="destructive" className="ml-auto">
-              {pendingCount} pending
+              {pendingCount} new
             </Badge>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`p-3 rounded-lg border ${
-              notification.status === 'pending'
-                ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
-                : 'bg-muted/50 border-border'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                  {notification.message}
-                </p>
-                <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                  {notification.company_name && (
-                    <span className="flex items-center gap-1">
-                      <Building2 className="h-3 w-3" />
-                      {notification.company_name}
-                    </span>
-                  )}
-                  {notification.user_email && (
-                    <span className="flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      {notification.user_email}
-                    </span>
-                  )}
-                  {notification.lender_name && (
-                    <span className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {notification.lender_name}
-                    </span>
+        {notifications.map((notification) => {
+          const styles = getStatusStyles(notification.status);
+          return (
+            <div
+              key={notification.id}
+              className={cn(
+                'p-3 rounded-lg border transition-all relative',
+                styles.container
+              )}
+            >
+              {/* Status indicator dot */}
+              {notification.status === 'pending' && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                </span>
+              )}
+              
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={cn('w-2 h-2 rounded-full flex-shrink-0', styles.dot)} />
+                    <p className={cn(
+                      'text-sm font-medium text-foreground',
+                      notification.status === 'read' && 'text-muted-foreground'
+                    )}>
+                      {notification.message}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted-foreground ml-4">
+                    {notification.company_name && (
+                      <span className="flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {notification.company_name}
+                      </span>
+                    )}
+                    {notification.user_email && (
+                      <span className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        {notification.user_email}
+                      </span>
+                    )}
+                    {notification.lender_name && (
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {notification.lender_name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-4">
+                    {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  {notification.status === 'approved' ? (
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <Check className="h-3 w-3 mr-1" />
+                      Approved
+                    </Badge>
+                  ) : notification.status === 'read' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleApprove(notification.id)}
+                      className="h-8"
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" />
+                      Approve
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => handleApprove(notification.id)}
+                      className="h-8"
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" />
+                      Approve Access
+                    </Button>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                </p>
-              </div>
-              <div className="flex-shrink-0">
-                {notification.status === 'pending' ? (
-                  <Button
-                    size="sm"
-                    onClick={() => handleApprove(notification.id)}
-                    className="h-8"
-                  >
-                    <Check className="h-3.5 w-3.5 mr-1" />
-                    Approve Access
-                  </Button>
-                ) : (
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                    <Check className="h-3 w-3 mr-1" />
-                    Approved
-                  </Badge>
-                )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );
