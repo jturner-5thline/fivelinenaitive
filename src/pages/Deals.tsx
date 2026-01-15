@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { DealsList } from '@/components/deals/DealsList';
 import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
+import { SortField, SortDirection } from '@/hooks/useDeals';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
 import { StageProgression } from '@/components/deals/StageProgression';
@@ -224,6 +225,42 @@ export default function Dashboard() {
 
                 <div className="h-4 w-px bg-border" />
 
+                {/* Sort Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 h-8">
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                      Sort
+                      {sortField === 'flexEngagement' && (
+                        <Flame className="h-3 w-3 text-orange-500" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => toggleSort('updatedAt')} className={sortField === 'updatedAt' ? 'bg-accent' : ''}>
+                      Last Updated {sortField === 'updatedAt' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('createdAt')} className={sortField === 'createdAt' ? 'bg-accent' : ''}>
+                      Created Date {sortField === 'createdAt' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('value')} className={sortField === 'value' ? 'bg-accent' : ''}>
+                      Deal Value {sortField === 'value' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('name')} className={sortField === 'name' ? 'bg-accent' : ''}>
+                      Name {sortField === 'name' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('status')} className={sortField === 'status' ? 'bg-accent' : ''}>
+                      Status {sortField === 'status' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('flexEngagement')} className={`gap-2 ${sortField === 'flexEngagement' ? 'bg-accent' : ''}`}>
+                      <Flame className="h-3.5 w-3.5 text-orange-500" />
+                      FLEx Engagement {sortField === 'flexEngagement' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <div className="h-4 w-px bg-border" />
+
                 <div className="flex items-center gap-2">
                   <Switch
                     id="group-by-status"
@@ -241,7 +278,15 @@ export default function Dashboard() {
             {isLoading ? (
               <DealsListSkeleton groupByStatus={groupByStatus} />
             ) : (
-              <DealsList deals={deals} onStatusChange={updateDealStatus} onMarkReviewed={handleMarkReviewed} onToggleFlag={handleToggleFlag} groupByStatus={groupByStatus} />
+              <DealsList 
+                deals={deals} 
+                onStatusChange={updateDealStatus} 
+                onMarkReviewed={handleMarkReviewed} 
+                onToggleFlag={handleToggleFlag} 
+                groupByStatus={groupByStatus}
+                sortField={sortField}
+                sortDirection={sortDirection}
+              />
             )}
           </div>
         </main>

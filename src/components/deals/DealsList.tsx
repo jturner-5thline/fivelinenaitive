@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
+import { SortField, SortDirection } from '@/hooks/useDeals';
 
 interface DealsListProps {
   deals: Deal[];
@@ -14,17 +15,33 @@ interface DealsListProps {
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean) => void;
   groupByStatus?: boolean;
+  sortField?: SortField;
+  sortDirection?: SortDirection;
 }
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true, sortField, sortDirection }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
   
   // Fetch FLEx engagement scores for all visible deals
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { data: flexEngagementScores } = useFlexEngagementScores(dealIds);
+
+  // Apply FLEx engagement sorting if selected (done here since we have access to engagement scores)
+  const sortedDeals = useMemo(() => {
+    if (sortField !== 'flexEngagement' || !flexEngagementScores) {
+      return deals;
+    }
+    
+    return [...deals].sort((a, b) => {
+      const scoreA = flexEngagementScores.get(a.id)?.score ?? 0;
+      const scoreB = flexEngagementScores.get(b.id)?.score ?? 0;
+      const comparison = scoreA - scoreB;
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [deals, sortField, sortDirection, flexEngagementScores]);
 
   const toggleGroup = (status: DealStatus) => {
     setCollapsedGroups(prev => {
@@ -56,7 +73,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   if (!groupByStatus) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {deals.map((deal, index) => (
+        {sortedDeals.map((deal, index) => (
           index === 0 ? (
             <HintTooltip
               key={deal.id}
@@ -94,7 +111,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
 
   // Group deals by status
   const groupedDeals = STATUS_ORDER.reduce((acc, status) => {
-    const dealsForStatus = deals.filter((deal) => deal.status === status);
+    const dealsForStatus = sortedDeals.filter((deal) => deal.status === status);
     if (dealsForStatus.length > 0) {
       acc.push({ status, deals: dealsForStatus });
     }
