@@ -2773,6 +2773,14 @@ export default function DealDetail() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                            onClick={() => {
+                              logActivity('attachment_viewed', `Viewed attachment: ${attachment.name}`, {
+                                attachment_id: attachment.id,
+                                attachment_name: attachment.name,
+                                attachment_category: attachment.category,
+                                file_size: attachment.size_bytes,
+                              });
+                            }}
                           >
                             <File className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div className="min-w-0">
@@ -2789,6 +2797,12 @@ export default function DealDetail() {
                               className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
                               onClick={() => {
                                 if (attachment.url) {
+                                  logActivity('attachment_downloaded', `Downloaded attachment: ${attachment.name}`, {
+                                    attachment_id: attachment.id,
+                                    attachment_name: attachment.name,
+                                    attachment_category: attachment.category,
+                                    file_size: attachment.size_bytes,
+                                  });
                                   window.open(attachment.url, '_blank');
                                 }
                               }}
