@@ -58,9 +58,7 @@ function getAlertContent(alertType: string, dealName: string, lenderName?: strin
     case 'info_request':
       return {
         title: 'ℹ️ Information Requested',
-        message: message 
-          ? `${lender} is asking about ${dealName}: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`
-          : `${lender} has requested more information about ${dealName}.`,
+        message: `${lender} has requested more information about ${dealName}.`,
       };
     case 'hot_engagement':
       return {
@@ -328,9 +326,7 @@ Deno.serve(async (req) => {
               : `${lenderInfo} downloaded a file from FLEx`;
             break;
           case "info_request":
-            description = event.message
-              ? `${lenderInfo} requested information: "${event.message.substring(0, 100)}${event.message.length > 100 ? '...' : ''}"`
-              : `${lenderInfo} requested more information on FLEx`;
+            description = `${lenderInfo} requested more information on FLEx`;
             break;
           case "save":
             description = `${lenderInfo} saved this deal on FLEx`;
