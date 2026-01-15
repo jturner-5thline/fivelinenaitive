@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { FileX, ChevronDown, ChevronRight } from 'lucide-react';
@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Button } from '@/components/ui/button';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
+import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 
 interface DealsListProps {
   deals: Deal[];
@@ -20,6 +21,10 @@ const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold
 export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
+  
+  // Fetch FLEx engagement scores for all visible deals
+  const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
+  const { data: flexEngagementScores } = useFlexEngagementScores(dealIds);
 
   const toggleGroup = (status: DealStatus) => {
     setCollapsedGroups(prev => {
@@ -63,11 +68,24 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
               showDelay={3500}
             >
               <div>
-                <DealCard deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} onToggleFlag={onToggleFlag} />
+                <DealCard 
+                  deal={deal} 
+                  onStatusChange={onStatusChange} 
+                  onMarkReviewed={onMarkReviewed} 
+                  onToggleFlag={onToggleFlag} 
+                  flexEngagement={flexEngagementScores?.get(deal.id)}
+                />
               </div>
             </HintTooltip>
           ) : (
-            <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} onToggleFlag={onToggleFlag} />
+            <DealCard 
+              key={deal.id} 
+              deal={deal} 
+              onStatusChange={onStatusChange} 
+              onMarkReviewed={onMarkReviewed} 
+              onToggleFlag={onToggleFlag} 
+              flexEngagement={flexEngagementScores?.get(deal.id)}
+            />
           )
         ))}
       </div>
@@ -129,14 +147,27 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                         showDelay={3500}
                       >
                         <div>
-                          <DealCard deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} onToggleFlag={onToggleFlag} />
+                          <DealCard 
+                            deal={deal} 
+                            onStatusChange={onStatusChange} 
+                            onMarkReviewed={onMarkReviewed} 
+                            onToggleFlag={onToggleFlag} 
+                            flexEngagement={flexEngagementScores?.get(deal.id)}
+                          />
                         </div>
                       </HintTooltip>
                     );
                   }
                   
                   return (
-                    <DealCard key={deal.id} deal={deal} onStatusChange={onStatusChange} onMarkReviewed={onMarkReviewed} onToggleFlag={onToggleFlag} />
+                    <DealCard 
+                      key={deal.id} 
+                      deal={deal} 
+                      onStatusChange={onStatusChange} 
+                      onMarkReviewed={onMarkReviewed} 
+                      onToggleFlag={onToggleFlag} 
+                      flexEngagement={flexEngagementScores?.get(deal.id)}
+                    />
                   );
                 })}
               </div>
