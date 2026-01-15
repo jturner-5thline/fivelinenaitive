@@ -379,6 +379,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
 
       toast.success('Deal re-published to FLEx', {
         description: 'The deal is now live on FLEx again',
+        duration: 5000,
         action: {
           label: 'Undo',
           onClick: async () => {
