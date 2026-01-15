@@ -1,4 +1,4 @@
-import { Loader2, Check } from 'lucide-react';
+import { Loader2, Check, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SaveIndicatorProps {
@@ -6,6 +6,7 @@ interface SaveIndicatorProps {
   showSuccess?: boolean;
   className?: string;
   size?: 'sm' | 'md';
+  teamSync?: boolean;
 }
 
 /**
@@ -16,31 +17,47 @@ export function SaveIndicator({
   isSaving, 
   showSuccess = false, 
   className,
-  size = 'sm' 
+  size = 'sm',
+  teamSync = false
 }: SaveIndicatorProps) {
   const sizeClasses = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4';
   
   if (isSaving) {
     return (
-      <Loader2 
-        className={cn(
-          sizeClasses, 
-          'animate-spin text-muted-foreground',
-          className
-        )} 
-      />
+      <span className="inline-flex items-center gap-1.5">
+        <Loader2 
+          className={cn(
+            sizeClasses, 
+            'animate-spin text-muted-foreground',
+            className
+          )} 
+        />
+        {teamSync && (
+          <span className="text-xs text-muted-foreground animate-pulse">
+            Syncing to team...
+          </span>
+        )}
+      </span>
     );
   }
   
   if (showSuccess) {
     return (
-      <Check 
-        className={cn(
-          sizeClasses, 
-          'text-success animate-in fade-in zoom-in duration-200',
-          className
-        )} 
-      />
+      <span className="inline-flex items-center gap-1.5">
+        <Check 
+          className={cn(
+            sizeClasses, 
+            'text-success animate-in fade-in zoom-in duration-200',
+            className
+          )} 
+        />
+        {teamSync && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            Shared
+          </span>
+        )}
+      </span>
     );
   }
   

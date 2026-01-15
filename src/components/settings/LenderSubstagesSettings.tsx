@@ -219,9 +219,9 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Flag className="h-5 w-5" />
                     Lender Milestones
-                    <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} />
+                    <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} teamSync />
                   </CardTitle>
-                  <CardDescription>Configure milestone options for more detailed lender tracking. Drag to reorder.</CardDescription>
+                  <CardDescription>Configure milestone options for detailed lender tracking. Changes sync to your entire team.</CardDescription>
                 </div>
               </button>
             </CollapsibleTrigger>

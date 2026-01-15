@@ -196,9 +196,9 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
                 <CardTitle className="text-lg flex items-center gap-2">
                   <XCircle className="h-5 w-5" />
                   Pass Reasons
-                  <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} />
+                  <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} teamSync />
                 </CardTitle>
-                <CardDescription>Configure the reasons shown when marking a lender as passed</CardDescription>
+                <CardDescription>Configure the reasons shown when marking a lender as passed. Changes sync to your entire team.</CardDescription>
               </div>
             </button>
           </CollapsibleTrigger>
