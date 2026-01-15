@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.push-to-flex]
 verify_jwt = false
+
+[functions.receive-flex-activity]
+verify_jwt = false
