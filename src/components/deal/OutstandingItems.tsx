@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square } from 'lucide-react';
 import { format } from 'date-fns';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -252,6 +252,54 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAllActive = () => {
+    setSelectedIds(new Set(activeItems.map(item => item.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkMarkReceived = () => {
+    selectedIds.forEach(id => {
+      const item = items.find(i => i.id === id);
+      if (item && !item.received) {
+        onUpdate(id, { received: true });
+      }
+    });
+    clearSelection();
+  };
+
+  const handleBulkMarkApproved = () => {
+    selectedIds.forEach(id => {
+      const item = items.find(i => i.id === id);
+      if (item && !item.approved) {
+        onUpdate(id, { approved: true });
+      }
+    });
+    clearSelection();
+  };
+
+  const handleBulkMarkBoth = () => {
+    selectedIds.forEach(id => {
+      onUpdate(id, { received: true, approved: true });
+    });
+    clearSelection();
+  };
 
   const requestedByOptions = ['5th Line', ...lenderNames];
 
@@ -418,6 +466,45 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
           </div>
         </CardHeader>
         <CardContent className="space-y-3 h-full flex-1">
+              {/* Bulk Action Bar */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={handleBulkMarkReceived}>
+                      Mark Received
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleBulkMarkApproved}>
+                      Mark Approved
+                    </Button>
+                    <Button size="sm" variant="gradient" onClick={handleBulkMarkBoth}>
+                      Mark Both
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={clearSelection}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Select All for Active Items */}
+              {activeItems.length > 1 && selectedIds.size === 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                    onClick={selectAllActive}
+                  >
+                    <Square className="h-3.5 w-3.5" />
+                    Select all ({activeItems.length})
+                  </Button>
+                </div>
+              )}
+
               {filteredItems.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   {filterByLender.length > 0 ? 'No items match the filter' : 'No outstanding items'}
@@ -427,15 +514,26 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               {/* Active Items */}
               {activeItems.map((item) => {
                 const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
+                const isSelected = selectedIds.has(item.id);
                 return (
                   <div
                     key={item.id}
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border bg-card",
                       isFullyDelivered(item) && "opacity-60",
-                      hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border"
+                      hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border",
+                      isSelected && "border-primary/50 bg-primary/5"
                     )}
                   >
+                    {/* Selection Checkbox */}
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelection(item.id)}
+                      className={cn(
+                        "shrink-0",
+                        isSelected && "border-primary bg-primary text-primary-foreground"
+                      )}
+                    />
                     {editingId === item.id ? (
                       <div className="flex-1 flex items-center gap-2">
                         <Input
