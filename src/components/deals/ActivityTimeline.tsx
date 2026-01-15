@@ -15,7 +15,14 @@ import {
   Users,
   Filter,
   X,
-  Search
+  Search,
+  Eye,
+  Download,
+  HelpCircle,
+  Bookmark,
+  Share2,
+  FileSignature,
+  ExternalLink
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -60,7 +67,7 @@ interface ActivityTimelineProps {
 }
 
 // Activity type filter options
-const activityTypeFilters: { value: string; label: string }[] = [
+const activityTypeFilters: { value: string; label: string; group?: string }[] = [
   { value: 'status_change', label: 'Status Changes' },
   { value: 'stage_change', label: 'Stage Changes' },
   { value: 'deal_updated', label: 'Field Updates' },
@@ -69,6 +76,13 @@ const activityTypeFilters: { value: string; label: string }[] = [
   { value: 'lender_removed', label: 'Lender Removed' },
   { value: 'lender_stage_change', label: 'Lender Stage Changes' },
   { value: 'deal_created', label: 'Deal Created' },
+  // FLEx activity types
+  { value: 'flex_deal_viewed', label: 'FLEx Views', group: 'flex' },
+  { value: 'flex_file_downloaded', label: 'FLEx Downloads', group: 'flex' },
+  { value: 'flex_info_requested', label: 'FLEx Info Requests', group: 'flex' },
+  { value: 'flex_deal_saved', label: 'FLEx Saves', group: 'flex' },
+  { value: 'flex_nda_requested', label: 'FLEx NDA Requests', group: 'flex' },
+  { value: 'flex_term_sheet_requested', label: 'FLEx Term Sheet Requests', group: 'flex' },
 ];
 
 const activityIcons: Record<string, typeof Clock> = {
@@ -84,6 +98,14 @@ const activityIcons: Record<string, typeof Clock> = {
   lender_stage_change: TrendingUp,
   deal_updated: Edit,
   deal_created: CheckCircle,
+  // FLEx activity icons
+  flex_deal_viewed: Eye,
+  flex_file_downloaded: Download,
+  flex_info_requested: HelpCircle,
+  flex_deal_saved: Bookmark,
+  flex_deal_shared: Share2,
+  flex_nda_requested: FileSignature,
+  flex_term_sheet_requested: FileText,
 };
 
 const activityColors: Record<string, string> = {
@@ -99,7 +121,20 @@ const activityColors: Record<string, string> = {
   lender_stage_change: 'bg-muted-foreground/20',
   deal_updated: 'bg-muted-foreground/20',
   deal_created: 'bg-brand/20',
+  // FLEx activity colors - using a distinct color for external activity
+  flex_deal_viewed: 'bg-blue-500/20',
+  flex_file_downloaded: 'bg-blue-500/20',
+  flex_info_requested: 'bg-amber-500/20',
+  flex_deal_saved: 'bg-blue-500/20',
+  flex_deal_shared: 'bg-blue-500/20',
+  flex_nda_requested: 'bg-amber-500/20',
+  flex_term_sheet_requested: 'bg-green-500/20',
 };
+
+// Check if activity is from FLEx
+function isFlexActivity(type: string): boolean {
+  return type.startsWith('flex_');
+}
 
 // Field name display mapping
 const fieldLabels: Record<string, string> = {
@@ -419,13 +454,19 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
                 )}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <div className="relative flex items-start space-x-3 cursor-pointer hover:bg-muted/30 rounded-lg p-1 -m-1 transition-colors">
+                    <div className={`relative flex items-start space-x-3 cursor-pointer hover:bg-muted/30 rounded-lg p-1 -m-1 transition-colors ${isFlexActivity(activity.type) ? 'border-l-2 border-blue-500 pl-2' : ''}`}>
                       <div className={`relative flex h-6 w-6 items-center justify-center rounded-full ${colorClass}`}>
-                        <Icon className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                        <Icon className={`h-3 w-3 ${isFlexActivity(activity.type) ? 'text-blue-600' : 'text-muted-foreground'}`} aria-hidden="true" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm text-foreground">
+                            {isFlexActivity(activity.type) && (
+                              <span className="inline-flex items-center gap-1 text-blue-600 mr-1">
+                                <ExternalLink className="h-3 w-3" />
+                                <span className="text-[10px] font-medium uppercase">FLEx</span>
+                              </span>
+                            )}
                             {activity.description}
                             {activity.metadata?.from && activity.metadata?.to && (
                               <span className="text-muted-foreground">
