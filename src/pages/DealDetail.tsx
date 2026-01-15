@@ -293,7 +293,7 @@ export default function DealDetail() {
   
   // Real-time FLEx activity notifications
   useFlexActivityNotifications(id);
-  const { pendingCount: infoRequestPendingCount } = useFlexInfoNotifications(id);
+  const { pendingCount: infoRequestPendingCount, markAllAsRead: markInfoRequestsAsRead } = useFlexInfoNotifications(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const { flagNotes, addFlagNote, deleteFlagNote } = useFlagNotes(id || null);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
@@ -393,6 +393,13 @@ export default function DealDetail() {
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
   
+  // Mark info requests as read when Deal Management tab is viewed
+  useEffect(() => {
+    if (dealInfoTab === 'deal-management' && infoRequestPendingCount > 0) {
+      markInfoRequestsAsRead();
+    }
+  }, [dealInfoTab, infoRequestPendingCount, markInfoRequestsAsRead]);
+
   // Scroll to hash element after tab change
   useEffect(() => {
     if (location.hash) {
