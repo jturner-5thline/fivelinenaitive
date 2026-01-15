@@ -271,6 +271,7 @@ export type Database = {
           file_path: string
           id: string
           name: string
+          position: number
           size_bytes: number
           user_id: string | null
         }
@@ -282,6 +283,7 @@ export type Database = {
           file_path: string
           id?: string
           name: string
+          position?: number
           size_bytes?: number
           user_id?: string | null
         }
@@ -293,6 +295,7 @@ export type Database = {
           file_path?: string
           id?: string
           name?: string
+          position?: number
           size_bytes?: number
           user_id?: string | null
         }

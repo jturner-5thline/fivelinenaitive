@@ -21,6 +21,7 @@ export interface DealAttachment {
   size_bytes: number;
   created_at: string;
   category: DealAttachmentCategory;
+  position: number;
   url?: string;
 }
 
@@ -50,6 +51,8 @@ export function useDealAttachments(dealId: string | null) {
         .select('*')
         .eq('user_id', user.id)
         .eq('deal_id', dealId)
+        .order('category')
+        .order('position', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -64,7 +67,8 @@ export function useDealAttachments(dealId: string | null) {
           return { 
             ...att, 
             url: urlError ? undefined : urlData?.signedUrl,
-            category: att.category as DealAttachmentCategory 
+            category: att.category as DealAttachmentCategory,
+            position: att.position ?? 0,
           };
         })
       );
@@ -182,13 +186,18 @@ export function useDealAttachments(dealId: string | null) {
     }
   };
 
-  const updateAttachmentCategory = async (attachmentId: string, newCategory: DealAttachmentCategory) => {
+  const updateAttachmentCategory = async (attachmentId: string, newCategory: DealAttachmentCategory, newPosition?: number) => {
     if (!user) return false;
 
     try {
+      const updateData: { category: DealAttachmentCategory; position?: number } = { category: newCategory };
+      if (newPosition !== undefined) {
+        updateData.position = newPosition;
+      }
+
       const { error } = await supabase
         .from('deal_attachments')
-        .update({ category: newCategory })
+        .update(updateData)
         .eq('id', attachmentId);
 
       if (error) throw error;
@@ -197,7 +206,7 @@ export function useDealAttachments(dealId: string | null) {
       setAttachments(prev => 
         prev.map(att => 
           att.id === attachmentId 
-            ? { ...att, category: newCategory } 
+            ? { ...att, category: newCategory, position: newPosition ?? att.position } 
             : att
         )
       );
@@ -211,6 +220,44 @@ export function useDealAttachments(dealId: string | null) {
     }
   };
 
+  const reorderAttachments = async (reorderedIds: string[], category: DealAttachmentCategory) => {
+    if (!user) return false;
+
+    try {
+      // Update positions in batch
+      const updates = reorderedIds.map((id, index) => 
+        supabase
+          .from('deal_attachments')
+          .update({ position: index })
+          .eq('id', id)
+      );
+
+      await Promise.all(updates);
+
+      // Update local state
+      setAttachments(prev => {
+        const updated = [...prev];
+        reorderedIds.forEach((id, index) => {
+          const att = updated.find(a => a.id === id);
+          if (att) {
+            att.position = index;
+          }
+        });
+        // Sort by position within each category
+        return updated.sort((a, b) => {
+          if (a.category !== b.category) return a.category.localeCompare(b.category);
+          return a.position - b.position;
+        });
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error reordering attachments:', error);
+      toast.error('Failed to save order');
+      return false;
+    }
+  };
+
   return {
     attachments,
     isLoading,
@@ -218,6 +265,7 @@ export function useDealAttachments(dealId: string | null) {
     uploadMultipleAttachments,
     deleteAttachment,
     updateAttachmentCategory,
+    reorderAttachments,
     refetch: fetchAttachments,
     formatFileSize,
   };
