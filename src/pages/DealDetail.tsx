@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -273,6 +273,7 @@ function FlagNotesInput({
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightStale = searchParams.get('highlight') === 'stale';
   const deleteAction = searchParams.get('action') === 'delete';
@@ -387,6 +388,20 @@ export default function DealDetail() {
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room'>(initialTab || 'deal-info');
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
+  
+  // Scroll to hash element after tab change
+  useEffect(() => {
+    if (location.hash) {
+      // Small delay to ensure the tab content is rendered
+      const timeoutId = setTimeout(() => {
+        const element = document.querySelector(location.hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [location.hash, dealInfoTab]);
   
   // Deal writeup persistence hook
   const { writeupData: savedWriteupData, isLoading: isLoadingWriteup, isSaving: isSavingWriteup, saveWriteup } = useDealWriteup(id);
