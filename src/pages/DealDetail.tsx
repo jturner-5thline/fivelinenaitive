@@ -377,11 +377,25 @@ export default function DealDetail() {
     enabled: dealInfoTab === 'deal-writeup' && !isLoadingWriteup,
   });
   
-  // Initialize deal write-up data from saved writeup or existing deal data
+  // Track if writeup has been initialized to prevent overwriting user edits
+  const writeupInitializedRef = useRef<string | null>(null);
+  
+  // Initialize deal write-up data from saved writeup or existing deal data - only once per deal
   useEffect(() => {
+    // Only initialize if this is a different deal than what we've already initialized
+    if (writeupInitializedRef.current === id) {
+      return;
+    }
+    
+    // Wait until loading is complete before initializing
+    if (isLoadingWriteup) {
+      return;
+    }
+    
     if (savedWriteupData) {
       // Use saved writeup data if available
       setDealWriteUpData(savedWriteupData);
+      writeupInitializedRef.current = id || null;
     } else if (deal) {
       // Otherwise, pre-populate from deal data
       const dealData: DealDataForWriteUp = {
@@ -392,8 +406,9 @@ export default function DealDetail() {
         status: deal.status,
       };
       setDealWriteUpData(getEmptyDealWriteUpData(dealData));
+      writeupInitializedRef.current = id || null;
     }
-  }, [savedWriteupData, deal?.id]); // Re-initialize when writeup loads or deal ID changes
+  }, [savedWriteupData, deal?.id, id, isLoadingWriteup]); // Re-initialize only when deal ID changes
   
   // Save operation tracking for loading indicators
   const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
