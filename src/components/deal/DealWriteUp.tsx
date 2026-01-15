@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { FlexSyncStatusBadge, FlexSyncHistory } from '@/components/deal/FlexSyncHistory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -211,6 +213,7 @@ const STATUS_OPTIONS = [
 ];
 
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
+  const queryClient = useQueryClient();
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
   const [showFlexConfirmDialog, setShowFlexConfirmDialog] = useState(false);
 
@@ -272,6 +275,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         return;
       }
 
+      // Invalidate sync history cache
+      await queryClient.invalidateQueries({ queryKey: ['flex-sync-history', dealId] });
+      await queryClient.invalidateQueries({ queryKey: ['flex-sync-latest', dealId] });
+
       toast.success('Deal pushed to FLEx successfully', {
         description: 'The deal data has been synced with FLEx',
       });
@@ -325,10 +332,16 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             <CardTitle>Deal Management</CardTitle>
             <CardDescription>Create, edit, and manage deal listings</CardDescription>
           </div>
-          <AutoSaveIndicator status={autoSaveStatus} />
+          <div className="flex items-center gap-3">
+            <FlexSyncStatusBadge dealId={dealId} />
+            <AutoSaveIndicator status={autoSaveStatus} />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* FLEx Sync History */}
+        <FlexSyncHistory dealId={dealId} />
+        
         {/* Edit Deal Section */}
         <div className="border rounded-lg p-6 space-y-6">
           <h3 className="text-lg font-semibold">Edit Deal</h3>
