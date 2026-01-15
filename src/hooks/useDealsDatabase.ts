@@ -620,8 +620,22 @@ export function useDealsDatabase() {
 
       if (error) throw error;
       
-      // Trigger workflow for lender stage changes
+      // Log activity for lender stage changes
       if (updates.stage && previousLender && previousLender.stage !== updates.stage && dealId) {
+        // Log activity
+        await supabase.from('activity_logs').insert({
+          deal_id: dealId,
+          activity_type: 'lender_stage_change',
+          description: `${previousLender.name} stage changed from ${previousLender.stage} to ${updates.stage}`,
+          metadata: {
+            lender_id: lenderId,
+            lender_name: previousLender.name,
+            from: previousLender.stage,
+            to: updates.stage,
+          },
+        });
+        
+        // Trigger workflow for lender stage changes
         triggerWorkflow('lender_stage_change', {
           dealId,
           dealName,
@@ -629,6 +643,21 @@ export function useDealsDatabase() {
           lenderName: previousLender.name,
           fromStage: previousLender.stage,
           toStage: updates.stage,
+        });
+      }
+      
+      // Log activity for lender substage (milestone) changes
+      if (updates.substage !== undefined && previousLender && previousLender.substage !== updates.substage && dealId) {
+        await supabase.from('activity_logs').insert({
+          deal_id: dealId,
+          activity_type: 'lender_substage_change',
+          description: `${previousLender.name} milestone changed from ${previousLender.substage || 'None'} to ${updates.substage || 'None'}`,
+          metadata: {
+            lender_id: lenderId,
+            lender_name: previousLender.name,
+            from: previousLender.substage || null,
+            to: updates.substage || null,
+          },
         });
       }
     } catch (err) {
