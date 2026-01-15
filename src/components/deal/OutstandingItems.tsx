@@ -250,7 +250,6 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
   const [editingText, setEditingText] = useState('');
   const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
   const [isKanbanOpen, setIsKanbanOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(items.length > 0);
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
 
@@ -336,29 +335,21 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
 
   return (
     <>
-      <Collapsible open={isExpanded} onOpenChange={setIsExpanded} className="h-full">
-        <Card className="h-full flex flex-col">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-2 hover:text-primary transition-colors">
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                )}
-                <CardTitle className="text-lg">Outstanding Items</CardTitle>
-                {items.length > 0 ? (
-                  <span className="text-sm font-normal text-muted-foreground">
-                    ({deliveredCount}/{items.length} delivered)
-                  </span>
-                ) : (
-                  <span className="text-sm font-normal text-muted-foreground italic">
-                    No Outstanding Items
-                  </span>
-                )}
-              </button>
-            </CollapsibleTrigger>
-            {isExpanded && <div className="flex items-center gap-2">
+      <Card className="h-full flex flex-col">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg">Outstanding Items</CardTitle>
+            {items.length > 0 ? (
+              <span className="text-sm font-normal text-muted-foreground">
+                ({deliveredCount}/{items.length} delivered)
+              </span>
+            ) : (
+              <span className="text-sm font-normal text-muted-foreground italic">
+                No Outstanding Items
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -424,10 +415,9 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
-            </div>}
-          </CardHeader>
-          <CollapsibleContent className="flex-1">
-            <CardContent className="space-y-3 h-full">
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 h-full flex-1">
               {filteredItems.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   {filterByLender.length > 0 ? 'No items match the filter' : 'No outstanding items'}
@@ -814,10 +804,8 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               </Popover>
             </div>
           </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+        </CardContent>
+      </Card>
 
       {/* Kanban Board Dialog */}
       <Dialog open={isKanbanOpen} onOpenChange={setIsKanbanOpen}>
