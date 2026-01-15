@@ -1744,8 +1744,17 @@ export default function DealDetail() {
                               const getLabel = () => {
                                 if (activityType === 'lender_added') return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Added</Badge>;
                                 if (activityType === 'lender_removed') return <Badge variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Removed</Badge>;
-                                if (activityType === 'lender_stage_change') return <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Stage Change</Badge>;
-                                if (activity.description.toLowerCase().includes('milestone')) return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Milestone</Badge>;
+                                if (activityType === 'lender_stage_change') {
+                                  const newStage = activity.metadata?.to || activity.metadata?.newValue;
+                                  return <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{newStage || 'Stage Change'}</Badge>;
+                                }
+                                if (activity.description.toLowerCase().includes('milestone')) {
+                                  // Try to extract milestone name from description or metadata
+                                  const milestoneMatch = activity.description.match(/milestone[:\s]+["']?([^"']+)["']?/i) || 
+                                                        activity.description.match(/completed[:\s]+["']?([^"']+)["']?/i);
+                                  const milestoneName = activity.metadata?.value || (milestoneMatch ? milestoneMatch[1].trim() : null);
+                                  return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{milestoneName || 'Milestone'}</Badge>;
+                                }
                                 return null;
                               };
                               
