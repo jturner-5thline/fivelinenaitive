@@ -18,9 +18,22 @@ interface FlexActivityEvent {
   timestamp?: string;
 }
 
+// FLEx's actual webhook payload format
+interface FlexInfoRequest {
+  deal_id: string;
+  company_name?: string;
+  user_email?: string;
+  user_name?: string;
+  requested_at?: string;
+}
+
 interface WebhookPayload {
+  // Original format
   events?: FlexActivityEvent[];
-  event?: FlexActivityEvent; // Single event support
+  event?: FlexActivityEvent | string; // Can be object or string like "info_request"
+  // FLEx's actual format
+  source_project_id?: string;
+  request?: FlexInfoRequest;
 }
 
 // Score weights for calculating engagement
@@ -251,8 +264,74 @@ Deno.serve(async (req) => {
     const payload: WebhookPayload = await req.json();
     console.log("Received FLEx activity webhook:", JSON.stringify(payload));
 
-    // Support both single event and batch events
-    const events = payload.events || (payload.event ? [payload.event] : []);
+    // Handle FLEx's actual payload format: { event: "info_request", source_project_id: "flex", request: {...} }
+    if (typeof payload.event === 'string' && payload.source_project_id === 'flex' && payload.request) {
+      const { deal_id, company_name, user_email, user_name, requested_at } = payload.request;
+      
+      console.log(`Processing FLEx ${payload.event} from ${user_name || user_email || 'unknown'}`);
+
+      // Get deal info
+      const { data: deal } = await supabase
+        .from("deals")
+        .select("company, user_id")
+        .eq("id", deal_id)
+        .maybeSingle();
+
+      if (!deal) {
+        console.error("Deal not found:", deal_id);
+        return new Response(JSON.stringify({ error: "Deal not found", deal_id }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const lenderName = user_name || company_name || user_email || "A lender";
+
+      // Insert activity log
+      await supabase.from("activity_logs").insert({
+        deal_id,
+        activity_type: "flex_info_requested",
+        description: `${lenderName} requested more information on FLEx`,
+        user_id: null,
+        metadata: {
+          source: "flex",
+          company_name,
+          user_email,
+          user_name,
+          requested_at,
+        },
+      });
+
+      // Send alert
+      await sendFlexAlert(
+        supabase,
+        'info_request',
+        deal_id,
+        deal.company,
+        deal.user_id,
+        lenderName,
+        user_email
+      );
+
+      // Check hot engagement
+      await checkAndTriggerHotEngagement(supabase, deal_id, deal.company, deal.user_id);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Info request processed",
+          deal_id,
+          lender: lenderName,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Original format: Support both single event object and batch events
+    const events = payload.events || (payload.event && typeof payload.event === 'object' ? [payload.event] : []);
     
     if (events.length === 0) {
       return new Response(JSON.stringify({ error: "No events provided" }), {
