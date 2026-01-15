@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye } from 'lucide-react';
+import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye, CloudOff } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FlexSyncStatusBadge, FlexSyncHistory } from '@/components/deal/FlexSyncHistory';
+import { useLatestFlexSync } from '@/hooks/useFlexSyncHistory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -215,7 +216,13 @@ const STATUS_OPTIONS = [
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
   const queryClient = useQueryClient();
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
+  const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [showFlexConfirmDialog, setShowFlexConfirmDialog] = useState(false);
+  const [showUnpublishDialog, setShowUnpublishDialog] = useState(false);
+  const { data: latestSync } = useLatestFlexSync(dealId);
+  
+  // Check if currently published on FLEx
+  const isPublishedOnFlex = latestSync?.status === 'success';
 
   const updateField = <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => {
     onChange({ ...data, [field]: value });
@@ -289,6 +296,48 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       });
     } finally {
       setIsPushingToFlex(false);
+    }
+  };
+
+  const handleUnpublishFromFlex = async () => {
+    if (isUnpublishing) return;
+    
+    setIsUnpublishing(true);
+    setShowUnpublishDialog(false);
+    
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast.error('You must be logged in to unpublish from FLEx');
+        return;
+      }
+
+      const { data: result, error } = await supabase.functions.invoke('push-to-flex', {
+        body: { dealId, action: 'unpublish' },
+      });
+
+      if (error) {
+        console.error('Unpublish from FLEx error:', error);
+        toast.error('Failed to unpublish from FLEx', {
+          description: error.message || 'Please try again later',
+        });
+        return;
+      }
+
+      // Invalidate sync history cache
+      await queryClient.invalidateQueries({ queryKey: ['flex-sync-history', dealId] });
+      await queryClient.invalidateQueries({ queryKey: ['flex-sync-latest', dealId] });
+
+      toast.success('Deal unpublished from FLEx', {
+        description: 'The deal has been removed from FLEx',
+      });
+    } catch (error) {
+      console.error('Unpublish from FLEx error:', error);
+      toast.error('Failed to unpublish from FLEx', {
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    } finally {
+      setIsUnpublishing(false);
     }
   };
 
@@ -679,23 +728,63 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               >
                 {isSaving || autoSaveStatus === 'saving' ? 'Saving...' : 'Save Now'}
               </Button>
-              <Button 
-                variant="default"
-                onClick={() => setShowFlexConfirmDialog(true)}
-                disabled={isPushingToFlex}
-              >
-                {isPushingToFlex ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Pushing...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4 mr-2" />
-                    Push to FLEx
-                  </>
-                )}
-              </Button>
+              {isPublishedOnFlex ? (
+                <>
+                  <Button 
+                    variant="default"
+                    onClick={() => setShowFlexConfirmDialog(true)}
+                    disabled={isPushingToFlex || isUnpublishing}
+                  >
+                    {isPushingToFlex ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Update on FLEx
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowUnpublishDialog(true)}
+                    disabled={isUnpublishing || isPushingToFlex}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    {isUnpublishing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Unpublishing...
+                      </>
+                    ) : (
+                      <>
+                        <CloudOff className="h-4 w-4 mr-2" />
+                        Unpublish from FLEx
+                      </>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  variant="default"
+                  onClick={() => setShowFlexConfirmDialog(true)}
+                  disabled={isPushingToFlex}
+                >
+                  {isPushingToFlex ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Pushing...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Push to FLEx
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -819,6 +908,41 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <>
                   <Send className="h-4 w-4 mr-2" />
                   Confirm & Push to FLEx
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unpublish from FLEx Confirmation Dialog */}
+      <AlertDialog open={showUnpublishDialog} onOpenChange={setShowUnpublishDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CloudOff className="h-5 w-5 text-destructive" />
+              Unpublish from FLEx
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unpublish this deal from FLEx? The deal will no longer be visible to lenders on the platform.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleUnpublishFromFlex} 
+              disabled={isUnpublishing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isUnpublishing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Unpublishing...
+                </>
+              ) : (
+                <>
+                  <CloudOff className="h-4 w-4 mr-2" />
+                  Unpublish
                 </>
               )}
             </AlertDialogAction>

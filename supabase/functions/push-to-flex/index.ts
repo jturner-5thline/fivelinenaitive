@@ -8,31 +8,34 @@ const corsHeaders = {
 
 const FLEX_API_URL = "https://ndbrliydrlgtxcyfgyok.supabase.co/functions/v1/naitive-flex-sync";
 
+interface WriteUpData {
+  companyName: string;
+  companyUrl: string;
+  linkedinUrl: string;
+  dataRoomUrl: string;
+  industry: string;
+  location: string;
+  dealType: string;
+  billingModel: string;
+  profitability: string;
+  grossMargins: string;
+  capitalAsk: string;
+  thisYearRevenue: string;
+  lastYearRevenue: string;
+  financialDataAsOf: string | null;
+  accountingSystem: string;
+  status: string;
+  useOfFunds: string;
+  existingDebtDetails: string;
+  description: string;
+  keyItems: Array<{ id: string; title: string; description: string }>;
+  publishAsAnonymous: boolean;
+}
+
 interface PushToFlexRequest {
   dealId: string;
-  writeUpData: {
-    companyName: string;
-    companyUrl: string;
-    linkedinUrl: string;
-    dataRoomUrl: string;
-    industry: string;
-    location: string;
-    dealType: string;
-    billingModel: string;
-    profitability: string;
-    grossMargins: string;
-    capitalAsk: string;
-    thisYearRevenue: string;
-    lastYearRevenue: string;
-    financialDataAsOf: string | null;
-    accountingSystem: string;
-    status: string;
-    useOfFunds: string;
-    existingDebtDetails: string;
-    description: string;
-    keyItems: Array<{ id: string; title: string; description: string }>;
-    publishAsAnonymous: boolean;
-  };
+  action?: "publish" | "unpublish";
+  writeUpData?: WriteUpData;
 }
 
 serve(async (req) => {
@@ -76,15 +79,24 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Push to FLEx request from user: ${user.id}`);
+    console.log(`FLEx request from user: ${user.id}`);
 
     const body: PushToFlexRequest = await req.json();
-    const { dealId, writeUpData } = body;
+    const { dealId, action = "publish", writeUpData } = body;
 
-    if (!dealId || !writeUpData) {
-      console.error("Missing required fields:", { dealId: !!dealId, writeUpData: !!writeUpData });
+    if (!dealId) {
+      console.error("Missing dealId");
       return new Response(
-        JSON.stringify({ error: "dealId and writeUpData are required" }),
+        JSON.stringify({ error: "dealId is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // For publish action, writeUpData is required
+    if (action === "publish" && !writeUpData) {
+      console.error("Missing writeUpData for publish action");
+      return new Response(
+        JSON.stringify({ error: "writeUpData is required for publish action" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -122,32 +134,62 @@ serve(async (req) => {
       }
     }
 
-    // Prepare the payload for FLEx API
-    const flexDeal = {
-      company_name: writeUpData.companyName,
-      industry: writeUpData.industry,
-      state: writeUpData.location,
-      deal_type: writeUpData.dealType,
-      billing_model: writeUpData.billingModel || undefined,
-      profitability: writeUpData.profitability || undefined,
-      gross_margins: writeUpData.grossMargins || undefined,
-      capital_ask: writeUpData.capitalAsk || undefined,
-      this_year_revenue: writeUpData.thisYearRevenue || undefined,
-      last_year_revenue: writeUpData.lastYearRevenue || undefined,
-      description: writeUpData.description || undefined,
-      use_of_funds: writeUpData.useOfFunds || undefined,
-      existing_debt: writeUpData.existingDebtDetails || undefined,
-      data_room_url: writeUpData.dataRoomUrl || undefined,
-      key_items: writeUpData.keyItems?.length > 0 ? writeUpData.keyItems : undefined,
-      is_published: !writeUpData.publishAsAnonymous,
-    };
+    let flexPayload;
+    let activityDescription: string;
 
-    const flexPayload = {
-      action: "sync_deals",
-      deals: [flexDeal],
-    };
+    if (action === "unpublish") {
+      // For unpublish, we need to get the flex_deal_id from the most recent sync
+      const { data: lastSync } = await supabase
+        .from("flex_sync_history")
+        .select("flex_deal_id")
+        .eq("deal_id", dealId)
+        .eq("status", "success")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
 
-    console.log(`Pushing deal ${dealId} to FLEx:`, JSON.stringify(flexPayload, null, 2));
+      if (!lastSync?.flex_deal_id) {
+        console.error("No FLEx deal ID found for unpublish");
+        return new Response(
+          JSON.stringify({ error: "This deal has not been published to FLEx yet" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      flexPayload = {
+        action: "unpublish_deal",
+        deal_id: lastSync.flex_deal_id,
+      };
+      activityDescription = "Deal unpublished from FLEx";
+    } else {
+      // Prepare the payload for FLEx API (publish)
+      const flexDeal = {
+        company_name: writeUpData!.companyName,
+        industry: writeUpData!.industry,
+        state: writeUpData!.location,
+        deal_type: writeUpData!.dealType,
+        billing_model: writeUpData!.billingModel || undefined,
+        profitability: writeUpData!.profitability || undefined,
+        gross_margins: writeUpData!.grossMargins || undefined,
+        capital_ask: writeUpData!.capitalAsk || undefined,
+        this_year_revenue: writeUpData!.thisYearRevenue || undefined,
+        last_year_revenue: writeUpData!.lastYearRevenue || undefined,
+        description: writeUpData!.description || undefined,
+        use_of_funds: writeUpData!.useOfFunds || undefined,
+        existing_debt: writeUpData!.existingDebtDetails || undefined,
+        data_room_url: writeUpData!.dataRoomUrl || undefined,
+        key_items: writeUpData!.keyItems?.length > 0 ? writeUpData!.keyItems : undefined,
+        is_published: !writeUpData!.publishAsAnonymous,
+      };
+
+      flexPayload = {
+        action: "sync_deals",
+        deals: [flexDeal],
+      };
+      activityDescription = "Deal pushed to FLEx";
+    }
+
+    console.log(`${action} deal ${dealId} on FLEx:`, JSON.stringify(flexPayload, null, 2));
 
     // Send to FLEx API
     const flexResponse = await fetch(FLEX_API_URL, {
@@ -164,9 +206,19 @@ serve(async (req) => {
 
     if (!flexResponse.ok) {
       console.error(`FLEx API error: ${flexResponse.status} - ${responseText}`);
+      
+      // Record failed sync
+      await supabase.from("flex_sync_history").insert({
+        deal_id: dealId,
+        synced_by: user.id,
+        status: action === "unpublish" ? "unpublish_failed" : "failed",
+        payload: flexPayload,
+        error_message: responseText,
+      });
+
       return new Response(
         JSON.stringify({ 
-          error: "Failed to push to FLEx", 
+          error: `Failed to ${action} on FLEx`, 
           details: responseText,
           status: flexResponse.status 
         }),
@@ -181,17 +233,17 @@ serve(async (req) => {
       flexData = { message: responseText };
     }
 
-    console.log(`Successfully pushed deal ${dealId} to FLEx`);
+    console.log(`Successfully ${action}ed deal ${dealId} on FLEx`);
 
     // Get the FLEx deal ID from response
-    const flexDealId = flexData?.results?.[0]?.id || null;
+    const flexDealId = flexData?.results?.[0]?.id || flexData?.deal_id || null;
 
     // Record sync history
     await supabase.from("flex_sync_history").insert({
       deal_id: dealId,
       flex_deal_id: flexDealId,
       synced_by: user.id,
-      status: "success",
+      status: action === "unpublish" ? "unpublished" : "success",
       payload: flexPayload,
       response: flexData,
     });
@@ -200,15 +252,15 @@ serve(async (req) => {
     await supabase.from("activity_logs").insert({
       deal_id: dealId,
       user_id: user.id,
-      activity_type: "flex_push",
-      description: `Deal pushed to FLEx`,
+      activity_type: action === "unpublish" ? "flex_unpublish" : "flex_push",
+      description: activityDescription,
       metadata: { flexResponse: flexData },
     });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Deal pushed to FLEx successfully",
+        message: `Deal ${action === "unpublish" ? "unpublished from" : "pushed to"} FLEx successfully`,
         flexResponse: flexData,
         flexDealId
       }),
