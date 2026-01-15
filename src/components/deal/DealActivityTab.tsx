@@ -1,4 +1,4 @@
-import { Eye, FileText, Mail, Users, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle } from 'lucide-react';
+import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActivityStats';
@@ -7,30 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { FlexLenderInterestPanel } from './FlexLenderInterestPanel';
 import { FlexEngagementTrendsChart } from './FlexEngagementTrendsChart';
 import { InfoRequestsPanel } from './InfoRequestsPanel';
+
 interface DealActivityTabProps {
   dealId: string;
 }
-
-interface StatCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  isLoading?: boolean;
-}
-
-const StatCard = ({ icon, label, value, isLoading }: StatCardProps) => (
-  <div className="flex flex-col items-center justify-center p-4 border rounded-lg bg-card">
-    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
-      {icon}
-      <span>{label}</span>
-    </div>
-    {isLoading ? (
-      <Skeleton className="h-8 w-12" />
-    ) : (
-      <span className="text-3xl font-semibold">{value}</span>
-    )}
-  </div>
-);
 
 interface FlexStatCardProps {
   icon: React.ReactNode;
@@ -73,34 +53,6 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Main activity section */}
       <div className="lg:col-span-2 space-y-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          icon={<Eye className="h-4 w-4" />}
-          label="Activity"
-          value={stats?.views ?? 0}
-          isLoading={isLoadingStats}
-        />
-        <StatCard
-          icon={<FileText className="h-4 w-4" />}
-          label="Data Room"
-          value={stats?.dataRoomAccess ?? 0}
-          isLoading={isLoadingStats}
-        />
-        <StatCard
-          icon={<Mail className="h-4 w-4" />}
-          label="Info Requests"
-          value={stats?.infoRequests ?? 0}
-          isLoading={isLoadingStats}
-        />
-        <StatCard
-          icon={<Users className="h-4 w-4" />}
-          label="Unique Users"
-          value={stats?.uniqueUsers ?? 0}
-          isLoading={isLoadingStats}
-        />
-      </div>
-
       {/* FLEx Engagement Stats */}
       <Card id="flex-engagement-section">
         <CardHeader className="pb-3">
