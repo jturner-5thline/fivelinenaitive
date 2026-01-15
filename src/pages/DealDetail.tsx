@@ -34,6 +34,7 @@ import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
+import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
@@ -1092,7 +1093,7 @@ export default function DealDetail() {
   // Fields that should log activity (significant changes only)
   const ACTIVITY_LOG_FIELDS: (keyof Deal)[] = ['status', 'stage', 'value', 'manager', 'dealOwner', 'engagementType', 'exclusivity', 'dealTypes'];
   
-  const updateDeal = (field: keyof Deal, value: string | number | string[] | boolean | undefined) => {
+  const updateDeal = (field: keyof Deal, value: string | number | string[] | boolean | Referrer | null | undefined) => {
     setDeal(prev => {
       if (!prev) return prev;
       // Save current state to history before updating
@@ -1963,8 +1964,16 @@ export default function DealDetail() {
                               </Tooltip>
                             </TooltipProvider>
                           </div>
-                          {/* Empty row for visual alignment with 4 rows on left */}
-                          <div className="h-8" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-sm w-28">Referral Source</span>
+                            <div className="flex-1">
+                              <ReferralSourceInput
+                                value={deal.referredBy || null}
+                                onChange={(referrer) => updateDeal('referredBy', referrer)}
+                                className="[&_input]:h-8 [&_input]:text-sm"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
