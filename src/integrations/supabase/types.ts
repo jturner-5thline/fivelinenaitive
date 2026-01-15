@@ -992,6 +992,47 @@ export type Database = {
           },
         ]
       }
+      lender_stage_configs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          pass_reasons: Json
+          stages: Json
+          substages: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          pass_reasons?: Json
+          stages?: Json
+          substages?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          pass_reasons?: Json
+          stages?: Json
+          substages?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_stage_configs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_history: {
         Row: {
           browser: string | null
