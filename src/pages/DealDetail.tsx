@@ -38,6 +38,7 @@ import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItem
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
+import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
@@ -363,7 +364,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'deal-writeup'>('deal-info');
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'deal-management' | 'deal-writeup'>('deal-info');
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   
   // Deal writeup persistence hook
@@ -1619,13 +1620,116 @@ export default function DealDetail() {
             {/* Left Column - Notes & Actions */}
             <div className="lg:col-span-2 flex flex-col gap-6">
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'deal-writeup')}>
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'deal-management' | 'deal-writeup')}>
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
+                  <TabsTrigger value="deal-management">Deal Management</TabsTrigger>
                   <TabsTrigger value="deal-writeup">Deal Write Up</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
+                  {/* Deal Details Card - Key Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Deal Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-muted-foreground">Narrative</label>
+                          <DebouncedTextarea
+                            value={deal.narrative || ''}
+                            onValueChange={(value) => updateDeal('narrative', value)}
+                            placeholder="Enter deal narrative..."
+                            className="w-full min-h-[80px] resize-none"
+                            debounceMs={800}
+                            showSaveIndicator
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Deal Manager</span>
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <Select
+                                value={deal.manager}
+                                onValueChange={(value) => updateDeal('manager', value)}
+                              >
+                                <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                                  <SelectValue placeholder="Select manager" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {memberOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Deal Owner</span>
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <Select
+                                value={deal.dealOwner || ''}
+                                onValueChange={(value) => updateDeal('dealOwner', value)}
+                              >
+                                <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                                  <SelectValue placeholder="Select owner" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {memberOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Engagement Type</span>
+                            <Select
+                              value={deal.engagementType}
+                              onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
+                            >
+                              <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {config.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Exclusivity</span>
+                            <Select
+                              value={deal.exclusivity || ''}
+                              onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
+                            >
+                              <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {config.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {statusNotes.length > 0 && (
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -2427,6 +2531,10 @@ export default function DealDetail() {
 
                 </TabsContent>
 
+                <TabsContent value="deal-management" className="mt-6">
+                  <DealActivityTab dealId={id!} />
+                </TabsContent>
+
                 <TabsContent value="deal-writeup" className="mt-6">
                   <DealWriteUp
                     dealId={id!}
@@ -2441,450 +2549,9 @@ export default function DealDetail() {
               </Tabs>
             </div>
 
-            {/* Right Column - Deal Info & Activity */}
+            {/* Right Column - Company, Attachments & Activity */}
             <div className="lg:col-span-1 flex flex-col gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Deal Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm text-muted-foreground">Narrative</label>
-                    <DebouncedTextarea
-                      value={deal.narrative || ''}
-                      onValueChange={(value) => updateDeal('narrative', value)}
-                      placeholder="Enter deal narrative..."
-                      className="w-full min-h-[80px] resize-none"
-                      debounceMs={800}
-                      showSaveIndicator
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Deal Manager</span>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <Select
-                        value={deal.manager}
-                        onValueChange={(value) => updateDeal('manager', value)}
-                      >
-                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                          <SelectValue placeholder="Select manager" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {memberOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Deal Owner</span>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <Select
-                        value={deal.dealOwner || ''}
-                        onValueChange={(value) => updateDeal('dealOwner', value)}
-                      >
-                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                          <SelectValue placeholder="Select owner" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {memberOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                    </Select>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Engagement Type</span>
-                    <Select
-                      value={deal.engagementType}
-                      onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
-                    >
-                      <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
-                          <SelectItem key={key} value={key}>
-                            {config.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Exclusivity</span>
-                    <Select
-                      value={deal.exclusivity || ''}
-                      onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
-                    >
-                      <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1">
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
-                          <SelectItem key={key} value={key}>
-                            {config.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-start justify-between">
-                    <span className="text-muted-foreground pt-1">Deal Type</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-auto p-0 px-1 font-medium hover:bg-muted/50 rounded max-w-[200px] justify-end"
-                        >
-                          {deal.dealTypes && deal.dealTypes.length > 0 ? (
-                            <div className="flex flex-wrap gap-1 justify-end">
-                              {deal.dealTypes.map(typeId => {
-                                const dealType = availableDealTypes.find(dt => dt.id === typeId);
-                                return dealType ? (
-                                  <Badge key={typeId} variant="secondary" className="text-xs">
-                                    {dealType.label}
-                                  </Badge>
-                                ) : null;
-                              })}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground italic text-sm">Select types</span>
-                          )}
-                          <ChevronDown className="h-3 w-3 ml-1 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="end">
-                        <div className="max-h-[300px] overflow-auto p-1">
-                          {availableDealTypes.map((dealType) => {
-                            const isSelected = deal.dealTypes?.includes(dealType.id) || false;
-                            return (
-                              <div
-                                key={dealType.id}
-                                className={cn(
-                                  'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                                  isSelected && 'bg-accent/50'
-                                )}
-                                onClick={() => {
-                                  const currentTypes = deal.dealTypes || [];
-                                  const newTypes = isSelected
-                                    ? currentTypes.filter(t => t !== dealType.id)
-                                    : [...currentTypes, dealType.id];
-                                  updateDeal('dealTypes', newTypes);
-                                }}
-                              >
-                                <Checkbox
-                                  checked={isSelected}
-                                  className="pointer-events-none"
-                                />
-                                <span className="flex-1">{dealType.label}</span>
-                              </div>
-                            );
-                          })}
-                          {availableDealTypes.length === 0 && (
-                            <p className="text-xs text-muted-foreground text-center py-4">
-                              No deal types configured. Add them in Settings.
-                            </p>
-                          )}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Total Fee</span>
-                    <span className="font-medium text-purple-600">
-                      ${formatWithCommas(deal.totalFee)}
-                    </span>
-                  </div>
-                  
-                  {/* Fee Breakdown Section */}
-                  <Collapsible className="pl-4 border-l-2 border-border/30">
-                    <CollapsibleTrigger className="flex items-center justify-between w-full hover:bg-muted/50 rounded px-1 py-1 -mx-1">
-                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                        <ChevronRight className="h-3 w-3 transition-transform [[data-state=open]>&]:rotate-90" />
-                        Fee Breakdown
-                      </span>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-3 pt-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-sm">Retainer</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">$</span>
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            value={formatWithCommas(deal.retainerFee)}
-                            onChange={(e) => {
-                              const formatted = formatAmountWithCommas(e.target.value);
-                              const value = parseCurrencyInput(formatted);
-                              setDeal(prev => prev ? { ...prev, retainerFee: value } : prev);
-                            }}
-                            onBlur={(e) => {
-                              const value = parseCurrencyInput(e.target.value);
-                              updateDealInDb(deal.id, { retainerFee: value });
-                            }}
-                            placeholder="0"
-                            className="w-24 h-7 text-right text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-sm">Milestone</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">$</span>
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            value={formatWithCommas(deal.milestoneFee)}
-                            onChange={(e) => {
-                              const formatted = formatAmountWithCommas(e.target.value);
-                              const value = parseCurrencyInput(formatted);
-                              setDeal(prev => prev ? { ...prev, milestoneFee: value } : prev);
-                            }}
-                            onBlur={(e) => {
-                              const value = parseCurrencyInput(e.target.value);
-                              updateDealInDb(deal.id, { milestoneFee: value });
-                            }}
-                            placeholder="0"
-                            className="w-24 h-7 text-right text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-sm">Success Fee</span>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={deal.successFeePercent ?? ''}
-                            onChange={(e) => {
-                              const value = e.target.value ? parseFloat(e.target.value) : undefined;
-                              setDeal(prev => {
-                                if (!prev) return prev;
-                                const totalFee = prev.value && value ? (value / 100) * prev.value : prev.totalFee;
-                                return { ...prev, successFeePercent: value, totalFee };
-                              });
-                            }}
-                            onBlur={(e) => {
-                              const value = e.target.value ? parseFloat(e.target.value) : undefined;
-                              const totalFee = deal.value && value ? (value / 100) * deal.value : deal.totalFee;
-                              updateDealInDb(deal.id, { successFeePercent: value, totalFee });
-                            }}
-                            placeholder="0"
-                            className="w-16 h-7 text-right text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <span className="text-xs text-muted-foreground">%</span>
-                        </div>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-muted-foreground shrink-0">Referred by</span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <Popover>
-                          <TooltipTrigger asChild>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                className="h-auto p-0 px-1 font-medium hover:bg-muted/50 rounded max-w-[200px] justify-end text-right"
-                              >
-                                <span className="truncate">
-                                  {deal.referredBy?.name || <span className="text-muted-foreground italic text-sm">Add referral</span>}
-                                </span>
-                              </Button>
-                            </PopoverTrigger>
-                          </TooltipTrigger>
-                          {deal.referredBy?.name && deal.referredBy?.company && (
-                            <TooltipContent side="left" className="max-w-[200px]">
-                              <p className="font-medium">{deal.referredBy.name}</p>
-                              <p className="text-xs text-muted-foreground">{deal.referredBy.company}</p>
-                            </TooltipContent>
-                          )}
-                          <PopoverContent className="w-72 p-4 bg-popover" align="end">
-                            <div className="space-y-4">
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Referrer Name</label>
-                                <Input
-                                  value={deal.referredBy?.name || ''}
-                                  onChange={(e) => {
-                                    const newName = e.target.value;
-                                    setDeal(prev => {
-                                      if (!prev) return prev;
-                                      return {
-                                        ...prev,
-                                        referredBy: {
-                                          id: prev.referredBy?.id || `ref-${Date.now()}`,
-                                          name: newName,
-                                          company: prev.referredBy?.company,
-                                          email: prev.referredBy?.email,
-                                          phone: prev.referredBy?.phone,
-                                        },
-                                        updatedAt: new Date().toISOString(),
-                                      };
-                                    });
-                                  }}
-                                  onBlur={() => {
-                                    if (deal.id && deal.referredBy) {
-                                      updateDealInDb(deal.id, { referredBy: deal.referredBy } as any);
-                                    }
-                                  }}
-                                  placeholder="Enter referrer name"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Company</label>
-                                <Input
-                                  value={deal.referredBy?.company || ''}
-                                  onChange={(e) => {
-                                    const newCompany = e.target.value;
-                                    setDeal(prev => {
-                                      if (!prev) return prev;
-                                      return {
-                                        ...prev,
-                                        referredBy: {
-                                          id: prev.referredBy?.id || `ref-${Date.now()}`,
-                                          name: prev.referredBy?.name || '',
-                                          company: newCompany,
-                                          email: prev.referredBy?.email,
-                                          phone: prev.referredBy?.phone,
-                                        },
-                                        updatedAt: new Date().toISOString(),
-                                      };
-                                    });
-                                  }}
-                                  onBlur={() => {
-                                    if (deal.id && deal.referredBy) {
-                                      updateDealInDb(deal.id, { referredBy: deal.referredBy } as any);
-                                    }
-                                  }}
-                                  placeholder="Enter company name"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Email</label>
-                                <Input
-                                  value={deal.referredBy?.email || ''}
-                                  onChange={(e) => {
-                                    const newEmail = e.target.value;
-                                    setDeal(prev => {
-                                      if (!prev) return prev;
-                                      return {
-                                        ...prev,
-                                        referredBy: {
-                                          id: prev.referredBy?.id || `ref-${Date.now()}`,
-                                          name: prev.referredBy?.name || '',
-                                          company: prev.referredBy?.company,
-                                          email: newEmail,
-                                          phone: prev.referredBy?.phone,
-                                        },
-                                        updatedAt: new Date().toISOString(),
-                                      };
-                                    });
-                                  }}
-                                  onBlur={() => {
-                                    if (deal.id && deal.referredBy) {
-                                      updateDealInDb(deal.id, { referredBy: deal.referredBy } as any);
-                                    }
-                                  }}
-                                  placeholder="Enter email"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Phone</label>
-                                <Input
-                                  value={deal.referredBy?.phone || ''}
-                                  onChange={(e) => {
-                                    const newPhone = e.target.value;
-                                    setDeal(prev => {
-                                      if (!prev) return prev;
-                                      return {
-                                        ...prev,
-                                        referredBy: {
-                                          id: prev.referredBy?.id || `ref-${Date.now()}`,
-                                          name: prev.referredBy?.name || '',
-                                          company: prev.referredBy?.company,
-                                          email: prev.referredBy?.email,
-                                          phone: newPhone,
-                                        },
-                                        updatedAt: new Date().toISOString(),
-                                      };
-                                    });
-                                  }}
-                                  onBlur={() => {
-                                    if (deal.id && deal.referredBy) {
-                                      updateDealInDb(deal.id, { referredBy: deal.referredBy } as any);
-                                    }
-                                  }}
-                                  placeholder="Enter phone number"
-                                />
-                              </div>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  
-                  {/* Hours Section */}
-                  <Collapsible className="pt-3 border-t border-border/50">
-                    <CollapsibleTrigger className="flex items-center justify-between w-full hover:bg-muted/50 rounded px-1 py-1 -mx-1">
-                      <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                        <ChevronRight className="h-3 w-3 transition-transform [[data-state=open]>&]:rotate-90" />
-                        Hours
-                      </span>
-                      <div className="text-right">
-                        <span className="font-medium text-sm bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
-                          {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toFixed(1)}h
-                        </span>
-                        <p className="text-xs text-muted-foreground">
-                          {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)) > 0 
-                            ? `$${((deal.totalFee || 0) / ((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0))).toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr`
-                            : '-'
-                          }
-                        </p>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-3 pt-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-sm">Pre-Signing</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={deal.preSigningHours ?? ''}
-                          onChange={(e) => updateDeal('preSigningHours', e.target.value ? parseFloat(e.target.value) : undefined)}
-                          placeholder="0"
-                          className="w-20 h-8 text-right"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-sm">Post-Signing</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={deal.postSigningHours ?? ''}
-                          onChange={(e) => updateDeal('postSigningHours', e.target.value ? parseFloat(e.target.value) : undefined)}
-                          placeholder="0"
-                          className="w-20 h-8 text-right"
-                        />
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </CardContent>
-              </Card>
-
+              {/* Company Information */}
               {/* Company Information */}
               <Card>
                 <CardHeader>
