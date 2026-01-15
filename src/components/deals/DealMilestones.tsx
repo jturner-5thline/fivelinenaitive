@@ -123,7 +123,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   };
 
   return (
-    <div className="pt-4 border-t border-border">
+    <div className="pt-1">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <div className="flex items-center justify-between mb-3">
           <CollapsibleTrigger asChild>
