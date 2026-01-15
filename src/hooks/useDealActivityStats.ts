@@ -8,6 +8,13 @@ export interface DealActivityStats {
   dataRoomAccess: number;
   infoRequests: number;
   uniqueUsers: number;
+  // FLEx engagement stats
+  flexViews: number;
+  flexDownloads: number;
+  flexInfoRequests: number;
+  flexNdaRequests: number;
+  flexTermSheetRequests: number;
+  flexUniqueLenders: number;
 }
 
 export interface DailyActivityData {
@@ -34,7 +41,7 @@ export function useDealActivityStats(dealId: string | undefined) {
       // Fetch all activities for this deal
       const { data: activities, error } = await supabase
         .from("activity_logs")
-        .select("activity_type, user_id, created_at")
+        .select("activity_type, user_id, created_at, metadata")
         .eq("deal_id", dealId);
 
       if (error) {
@@ -48,12 +55,21 @@ export function useDealActivityStats(dealId: string | undefined) {
         dataRoomAccess: 0,
         infoRequests: 0,
         uniqueUsers: 0,
+        // FLEx stats
+        flexViews: 0,
+        flexDownloads: 0,
+        flexInfoRequests: 0,
+        flexNdaRequests: 0,
+        flexTermSheetRequests: 0,
+        flexUniqueLenders: 0,
       };
 
       const uniqueUserIds = new Set<string>();
+      const uniqueFlexLenders = new Set<string>();
 
       activities?.forEach((activity) => {
         const type = activity.activity_type;
+        const metadata = activity.metadata as { lender_name?: string; lender_email?: string } | null;
         
         // Count views
         if (ACTIVITY_TYPE_MAPPINGS.views.includes(type)) {
@@ -74,9 +90,36 @@ export function useDealActivityStats(dealId: string | undefined) {
         if (activity.user_id) {
           uniqueUserIds.add(activity.user_id);
         }
+
+        // FLEx-specific activity tracking
+        if (type.startsWith('flex_')) {
+          const lenderKey = metadata?.lender_name || metadata?.lender_email;
+          if (lenderKey) {
+            uniqueFlexLenders.add(lenderKey);
+          }
+          
+          switch (type) {
+            case 'flex_deal_viewed':
+              stats.flexViews++;
+              break;
+            case 'flex_file_downloaded':
+              stats.flexDownloads++;
+              break;
+            case 'flex_info_requested':
+              stats.flexInfoRequests++;
+              break;
+            case 'flex_nda_requested':
+              stats.flexNdaRequests++;
+              break;
+            case 'flex_term_sheet_requested':
+              stats.flexTermSheetRequests++;
+              break;
+          }
+        }
       });
 
       stats.uniqueUsers = uniqueUserIds.size;
+      stats.flexUniqueLenders = uniqueFlexLenders.size;
 
       // For now, count total updates as "views" if no specific view tracking exists
       // This gives meaningful data until proper view tracking is implemented

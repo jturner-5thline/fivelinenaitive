@@ -1,8 +1,9 @@
-import { Eye, FileText, Mail, Users, TrendingUp, Loader2 } from 'lucide-react';
+import { Eye, FileText, Mail, Users, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActivityStats';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { FlexLenderInterestPanel } from './FlexLenderInterestPanel';
 
 interface DealActivityTabProps {
@@ -27,6 +28,30 @@ const StatCard = ({ icon, label, value, isLoading }: StatCardProps) => (
     ) : (
       <span className="text-3xl font-semibold">{value}</span>
     )}
+  </div>
+);
+
+interface FlexStatCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  highlight?: boolean;
+  isLoading?: boolean;
+}
+
+const FlexStatCard = ({ icon, label, value, highlight, isLoading }: FlexStatCardProps) => (
+  <div className={`flex items-center gap-3 p-3 border rounded-lg ${highlight && value > 0 ? 'border-green-500/30 bg-green-500/5' : 'bg-card'}`}>
+    <div className={`flex items-center justify-center h-10 w-10 rounded-lg ${highlight && value > 0 ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+      {icon}
+    </div>
+    <div>
+      {isLoading ? (
+        <Skeleton className="h-6 w-8 mb-1" />
+      ) : (
+        <span className={`text-xl font-semibold ${highlight && value > 0 ? 'text-green-600' : ''}`}>{value}</span>
+      )}
+      <p className="text-xs text-muted-foreground">{label}</p>
+    </div>
   </div>
 );
 
@@ -67,6 +92,58 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
           isLoading={isLoadingStats}
         />
       </div>
+
+      {/* FLEx Engagement Stats */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" />
+              FLEx Engagement
+            </CardTitle>
+            <Badge variant="outline" className="text-xs">
+              {stats?.flexUniqueLenders ?? 0} lender{(stats?.flexUniqueLenders ?? 0) !== 1 ? 's' : ''} engaged
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <FlexStatCard
+              icon={<Eye className="h-4 w-4" />}
+              label="Views"
+              value={stats?.flexViews ?? 0}
+              isLoading={isLoadingStats}
+            />
+            <FlexStatCard
+              icon={<Download className="h-4 w-4" />}
+              label="Downloads"
+              value={stats?.flexDownloads ?? 0}
+              isLoading={isLoadingStats}
+            />
+            <FlexStatCard
+              icon={<HelpCircle className="h-4 w-4" />}
+              label="Info Requests"
+              value={stats?.flexInfoRequests ?? 0}
+              highlight
+              isLoading={isLoadingStats}
+            />
+            <FlexStatCard
+              icon={<FileText className="h-4 w-4" />}
+              label="NDA Requests"
+              value={stats?.flexNdaRequests ?? 0}
+              highlight
+              isLoading={isLoadingStats}
+            />
+            <FlexStatCard
+              icon={<FileSignature className="h-4 w-4" />}
+              label="Term Sheets"
+              value={stats?.flexTermSheetRequests ?? 0}
+              highlight
+              isLoading={isLoadingStats}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Activity Trend Chart */}
       <Card>
