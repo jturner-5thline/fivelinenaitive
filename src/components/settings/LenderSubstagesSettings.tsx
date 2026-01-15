@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { useLenderStages, SubstageOption } from '@/contexts/LenderStagesContext';
+import { SaveIndicator } from '@/components/ui/save-indicator';
 
 interface SortableSubstageItemProps {
   substage: SubstageOption;
@@ -133,7 +134,7 @@ interface LenderSubstagesSettingsProps {
 }
 
 export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSettingsProps) {
-  const { substages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages } = useLenderStages();
+  const { substages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages, isSaving } = useLenderStages();
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-lender-milestones-open');
     return saved !== null ? saved === 'true' : false;
@@ -218,6 +219,7 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Flag className="h-5 w-5" />
                     Lender Milestones
+                    <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} />
                   </CardTitle>
                   <CardDescription>Configure milestone options for more detailed lender tracking. Drag to reorder.</CardDescription>
                 </div>
