@@ -22,6 +22,9 @@ interface FlexActivityEvent {
 interface FlexInfoRequest {
   deal_id: string;
   company_name?: string;
+  industry?: string;
+  capital_ask?: string;
+  user_id?: string;
   user_email?: string;
   user_name?: string;
   requested_at?: string;
@@ -266,62 +269,41 @@ Deno.serve(async (req) => {
 
     // Handle FLEx's actual payload format: { event: "info_request", source_project_id: "flex", request: {...} }
     if (typeof payload.event === 'string' && payload.source_project_id === 'flex' && payload.request) {
-      const { deal_id, company_name, user_email, user_name, requested_at } = payload.request;
+      const { deal_id, company_name, industry, capital_ask, user_id, user_email, user_name, requested_at } = payload.request;
       
-      console.log(`Processing FLEx ${payload.event} from ${user_name || user_email || 'unknown'}`);
+      console.log(`Processing FLEx ${payload.event} from ${user_name || user_email || 'unknown'} for deal ${company_name}`);
 
-      // Get deal info
-      const { data: deal } = await supabase
-        .from("deals")
-        .select("company, user_id")
-        .eq("id", deal_id)
-        .maybeSingle();
+      // Store in deal_info_requests table
+      const { error: insertError } = await supabase
+        .from('deal_info_requests')
+        .insert({
+          external_deal_id: deal_id,
+          company_name,
+          industry,
+          capital_ask,
+          requester_user_id: user_id,
+          requester_email: user_email,
+          requester_name: user_name,
+          requested_at: requested_at ? new Date(requested_at).toISOString() : new Date().toISOString(),
+          source: 'flex',
+        });
 
-      if (!deal) {
-        console.error("Deal not found:", deal_id);
-        return new Response(JSON.stringify({ error: "Deal not found", deal_id }), {
-          status: 404,
+      if (insertError) {
+        console.error('Error storing info request:', insertError);
+        return new Response(JSON.stringify({ error: insertError.message }), { 
+          status: 500, 
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const lenderName = user_name || company_name || user_email || "A lender";
-
-      // Insert activity log
-      await supabase.from("activity_logs").insert({
-        deal_id,
-        activity_type: "flex_info_requested",
-        description: `${lenderName} requested more information on FLEx`,
-        user_id: null,
-        metadata: {
-          source: "flex",
-          company_name,
-          user_email,
-          user_name,
-          requested_at,
-        },
-      });
-
-      // Send alert
-      await sendFlexAlert(
-        supabase,
-        'info_request',
-        deal_id,
-        deal.company,
-        deal.user_id,
-        lenderName,
-        user_email
-      );
-
-      // Check hot engagement
-      await checkAndTriggerHotEngagement(supabase, deal_id, deal.company, deal.user_id);
+      console.log(`Info request stored for deal ${company_name} from ${user_email || user_name}`);
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: "Info request processed",
-          deal_id,
-          lender: lenderName,
+          deal: company_name,
+          requester: user_email || user_name,
         }),
         {
           status: 200,

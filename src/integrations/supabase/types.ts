@@ -333,6 +333,57 @@ export type Database = {
           },
         ]
       }
+      deal_info_requests: {
+        Row: {
+          capital_ask: string | null
+          company_name: string | null
+          created_at: string
+          external_deal_id: string
+          id: string
+          industry: string | null
+          requested_at: string | null
+          requester_email: string | null
+          requester_name: string | null
+          requester_user_id: string | null
+          responded_at: string | null
+          source: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          capital_ask?: string | null
+          company_name?: string | null
+          created_at?: string
+          external_deal_id: string
+          id?: string
+          industry?: string | null
+          requested_at?: string | null
+          requester_email?: string | null
+          requester_name?: string | null
+          requester_user_id?: string | null
+          responded_at?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          capital_ask?: string | null
+          company_name?: string | null
+          created_at?: string
+          external_deal_id?: string
+          id?: string
+          industry?: string | null
+          requested_at?: string | null
+          requester_email?: string | null
+          requester_name?: string | null
+          requester_user_id?: string | null
+          responded_at?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deal_lenders: {
         Row: {
           created_at: string
