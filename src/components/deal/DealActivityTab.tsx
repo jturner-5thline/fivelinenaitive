@@ -38,10 +38,17 @@ interface FlexStatCardProps {
   value: number;
   highlight?: boolean;
   isLoading?: boolean;
+  onClick?: () => void;
 }
 
-const FlexStatCard = ({ icon, label, value, highlight, isLoading }: FlexStatCardProps) => (
-  <div className={`flex items-center gap-3 p-3 border rounded-lg ${highlight && value > 0 ? 'border-green-500/30 bg-green-500/5' : 'bg-card'}`}>
+const FlexStatCard = ({ icon, label, value, highlight, isLoading, onClick }: FlexStatCardProps) => (
+  <div 
+    className={`flex items-center gap-3 p-3 border rounded-lg ${highlight && value > 0 ? 'border-green-500/30 bg-green-500/5' : 'bg-card'} ${onClick ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+    onClick={onClick}
+    role={onClick ? 'button' : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+  >
     <div className={`flex items-center justify-center h-10 w-10 rounded-lg ${highlight && value > 0 ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
       {icon}
     </div>
@@ -127,6 +134,9 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
               value={stats?.flexInfoRequests ?? 0}
               highlight
               isLoading={isLoadingStats}
+              onClick={() => {
+                document.getElementById('info-requests-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
             />
             <FlexStatCard
               icon={<FileText className="h-4 w-4" />}
