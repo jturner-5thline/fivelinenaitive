@@ -468,6 +468,7 @@ export default function DealDetail() {
   const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'term-sheets' | 'credit-file' | 'reports'>(
     savedViewPrefs?.attachmentFilter ?? 'all'
   );
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['term-sheets', 'credit-file', 'reports']));
   
   // Track if view has been modified from saved state
   const [viewModified, setViewModified] = useState(false);
@@ -2810,16 +2811,17 @@ export default function DealDetail() {
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">
-                          Attachments
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <LayoutGrid className="h-5 w-5" />
+                          Data Room
                         </CardTitle>
                         <div className="flex items-center gap-2">
                           <Select 
                             value={uploadCategory} 
                             onValueChange={(v) => setUploadCategory(v as DealAttachmentCategory)}
                           >
-                            <SelectTrigger className="w-[120px] h-8 text-xs">
-                              <SelectValue />
+                            <SelectTrigger className="w-[140px] h-8 text-xs">
+                              <SelectValue placeholder="Select folder" />
                             </SelectTrigger>
                             <SelectContent>
                               {DEAL_ATTACHMENT_CATEGORIES.map((cat) => (
@@ -2830,7 +2832,7 @@ export default function DealDetail() {
                             </SelectContent>
                           </Select>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             className="h-8 gap-1"
                             onClick={() => fileInputRef.current?.click()}
@@ -2863,25 +2865,6 @@ export default function DealDetail() {
                           />
                         </div>
                       </div>
-                      {/* Filter tabs */}
-                      <div className="flex gap-1 mt-3">
-                        {[
-                          { value: 'all', label: 'All' },
-                          { value: 'term-sheets', label: 'Term Sheets' },
-                          { value: 'credit-file', label: 'Credit File' },
-                          { value: 'reports', label: 'Reports' },
-                        ].map((filter) => (
-                          <Button
-                            key={filter.value}
-                            variant={attachmentFilter === filter.value ? 'secondary' : 'ghost'}
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => setAttachmentFilter(filter.value as typeof attachmentFilter)}
-                          >
-                            {filter.label}
-                          </Button>
-                        ))}
-                      </div>
                     </CardHeader>
                     <CardContent className="pt-0">
                       {isDraggingOver ? (
@@ -2899,74 +2882,123 @@ export default function DealDetail() {
                         <div className="flex items-center justify-center py-4">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
-                      ) : filteredAttachments.length > 0 ? (
-                        <div className="space-y-2">
-                          {filteredAttachments.map((attachment) => (
-                            <div
-                              key={attachment.id}
-                              className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group hover:bg-muted transition-colors"
-                            >
-                              <a 
-                                href={attachment.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                                onClick={() => {
-                                  logActivity('attachment_viewed', `Viewed attachment: ${attachment.name}`, {
-                                    attachment_id: attachment.id,
-                                    attachment_name: attachment.name,
-                                    attachment_category: attachment.category,
-                                    file_size: attachment.size_bytes,
+                      ) : attachments.length > 0 ? (
+                        <div className="space-y-3">
+                          {DEAL_ATTACHMENT_CATEGORIES.map((category) => {
+                            const categoryAttachments = attachments.filter(a => a.category === category.value);
+                            const isExpanded = expandedFolders.has(category.value);
+                            
+                            return (
+                              <Collapsible
+                                key={category.value}
+                                open={isExpanded}
+                                onOpenChange={(open) => {
+                                  setExpandedFolders(prev => {
+                                    const next = new Set(prev);
+                                    if (open) {
+                                      next.add(category.value);
+                                    } else {
+                                      next.delete(category.value);
+                                    }
+                                    return next;
                                   });
                                 }}
                               >
-                                <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium truncate hover:underline">{attachment.name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {formatFileSize(attachment.size_bytes)} • {new Date(attachment.created_at).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              </a>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                                  onClick={() => {
-                                    if (attachment.url) {
-                                      logActivity('attachment_downloaded', `Downloaded attachment: ${attachment.name}`, {
-                                        attachment_id: attachment.id,
-                                        attachment_name: attachment.name,
-                                        attachment_category: attachment.category,
-                                        file_size: attachment.size_bytes,
-                                      });
-                                      window.open(attachment.url, '_blank');
-                                    }
-                                  }}
-                                >
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                  onClick={() => deleteAttachment(attachment)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                                <CollapsibleTrigger asChild>
+                                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors">
+                                    <div className="flex items-center gap-3">
+                                      {isExpanded ? (
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                      <Paperclip className="h-4 w-4 text-primary" />
+                                      <span className="font-medium text-sm">{category.label}</span>
+                                    </div>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {categoryAttachments.length} {categoryAttachments.length === 1 ? 'file' : 'files'}
+                                    </Badge>
+                                  </div>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                  {categoryAttachments.length > 0 ? (
+                                    <div className="ml-6 mt-2 space-y-1">
+                                      {categoryAttachments.map((attachment) => (
+                                        <div
+                                          key={attachment.id}
+                                          className="flex items-center justify-between p-2 pl-4 bg-background rounded-lg group hover:bg-muted/30 transition-colors border border-border/50"
+                                        >
+                                          <a 
+                                            href={attachment.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                                            onClick={() => {
+                                              logActivity('attachment_viewed', `Viewed attachment: ${attachment.name}`, {
+                                                attachment_id: attachment.id,
+                                                attachment_name: attachment.name,
+                                                attachment_category: attachment.category,
+                                                file_size: attachment.size_bytes,
+                                              });
+                                            }}
+                                          >
+                                            <File className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-medium truncate hover:underline">{attachment.name}</p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {formatFileSize(attachment.size_bytes)} • {new Date(attachment.created_at).toLocaleDateString()}
+                                              </p>
+                                            </div>
+                                          </a>
+                                          <div className="flex items-center gap-1">
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                              onClick={() => {
+                                                if (attachment.url) {
+                                                  logActivity('attachment_downloaded', `Downloaded attachment: ${attachment.name}`, {
+                                                    attachment_id: attachment.id,
+                                                    attachment_name: attachment.name,
+                                                    attachment_category: attachment.category,
+                                                    file_size: attachment.size_bytes,
+                                                  });
+                                                  window.open(attachment.url, '_blank');
+                                                }
+                                              }}
+                                            >
+                                              <Download className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                              onClick={() => deleteAttachment(attachment)}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="ml-6 mt-2 p-3 text-center text-sm text-muted-foreground bg-background rounded-lg border border-dashed border-border">
+                                      No files in this folder
+                                    </div>
+                                  )}
+                                </CollapsibleContent>
+                              </Collapsible>
+                            );
+                          })}
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center py-6 text-center">
-                          <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                          <p className="text-sm text-muted-foreground">
-                            {attachmentFilter !== 'all' ? 'No attachments in this category' : 'No attachments yet'}
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <Upload className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                          <p className="text-sm font-medium text-muted-foreground">
+                            No attachments yet
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Drag & drop files here or click Upload
+                            Drag & drop files here or click Upload to add files
                           </p>
                         </div>
                       )}
