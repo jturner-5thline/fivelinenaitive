@@ -1,6 +1,6 @@
 import { Eye, FileText, Mail, Users, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActivityStats';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -148,10 +148,10 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
       {/* FLEx Engagement Trends Chart */}
       <FlexEngagementTrendsChart dealId={dealId} />
 
-      {/* Activity Trend Chart */}
+      {/* Activity Trend Chart - External/FLEx Activity Only */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-medium">Activity Trend (Last 14 Days)</CardTitle>
+          <CardTitle className="text-base font-medium">External Activity (Last 14 Days)</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoadingChart ? (
@@ -162,10 +162,10 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
             <div className="h-[250px] flex flex-col items-center justify-center">
               <TrendingUp className="h-8 w-8 text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground text-center">
-                No activity recorded in the last 14 days.
+                No external activity recorded in the last 14 days.
               </p>
               <p className="text-xs text-muted-foreground text-center mt-1">
-                Activity will appear here as users interact with this deal.
+                FLEx engagement and external views will appear here.
               </p>
             </div>
           ) : (
@@ -202,7 +202,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                   />
                   <Bar 
                     dataKey="views" 
-                    name="Total Activity"
+                    name="External Activity"
                     fill="hsl(var(--primary))" 
                     radius={[4, 4, 0, 0]}
                   />
@@ -212,68 +212,6 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
           )}
         </CardContent>
       </Card>
-
-      {/* Activity Breakdown */}
-      {hasActivity && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-medium">Activity Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                    allowDecimals={false}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ paddingTop: '10px' }}
-                    iconType="circle"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="updates" 
-                    name="Deal Updates"
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={2}
-                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }}
-                    activeDot={{ r: 5, strokeWidth: 0 }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="lenderActions" 
-                    name="Lender Actions"
-                    stroke="hsl(var(--chart-2))" 
-                    strokeWidth={2}
-                    dot={{ fill: 'hsl(var(--chart-2))', strokeWidth: 0, r: 3 }}
-                    activeDot={{ r: 5, strokeWidth: 0 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
       </div>
 
       {/* Lender Interest Panel - Sidebar */}
