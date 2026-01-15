@@ -156,7 +156,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
         {!isExpanded && milestones.length > 0 && (
-          <div className="relative py-1 overflow-hidden">
+          <div className="relative py-1 pb-2 overflow-visible">
             {/* Connecting line that spans the full width */}
             <div className="absolute top-[18px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
             
