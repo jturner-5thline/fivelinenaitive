@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useLenderStages, StageOption, StageGroup, STAGE_GROUPS } from '@/contexts/LenderStagesContext';
+import { SaveIndicator } from '@/components/ui/save-indicator';
 
 interface SortableStageItemProps {
   stage: StageOption;
@@ -165,7 +166,7 @@ interface LenderStagesSettingsProps {
 }
 
 export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsProps) {
-  const { stages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup } = useLenderStages();
+  const { stages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup, isSaving } = useLenderStages();
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-lender-stages-open');
     return saved !== null ? saved === 'true' : false;
@@ -258,6 +259,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Layers className="h-5 w-5" />
                     Lender Stages
+                    <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} />
                   </CardTitle>
                   <CardDescription>Configure stages and assign them to groups. Drag to reorder.</CardDescription>
                 </div>

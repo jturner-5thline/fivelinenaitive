@@ -47,6 +47,7 @@ interface LenderStagesContextType {
   reorderPassReasons: (reasons: PassReasonOption[]) => void;
   getStagesByGroup: (group: StageGroup) => StageOption[];
   isLoading: boolean;
+  isSaving: boolean;
 }
 
 const LenderStagesContext = createContext<LenderStagesContextType | undefined>(undefined);
@@ -94,6 +95,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
   const [substages, setSubstages] = useState<SubstageOption[]>(defaultSubstages);
   const [passReasons, setPassReasons] = useState<PassReasonOption[]>(defaultPassReasons);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [configId, setConfigId] = useState<string | null>(null);
 
   // Load config from database
@@ -205,15 +207,8 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
   ) => {
     if (!user) return;
 
+    setIsSaving(true);
     try {
-      const configData = {
-        user_id: user.id,
-        company_id: company?.id || null,
-        stages: newStages,
-        substages: newSubstages,
-        pass_reasons: newPassReasons,
-      };
-
       if (configId) {
         // Update existing config
         const { error } = await supabase
@@ -254,6 +249,8 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('lenderStages', JSON.stringify(newStages));
       localStorage.setItem('lenderSubstages', JSON.stringify(newSubstages));
       localStorage.setItem('lenderPassReasons', JSON.stringify(newPassReasons));
+    } finally {
+      setIsSaving(false);
     }
   }, [user, company?.id, configId]);
 
@@ -349,6 +346,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       reorderPassReasons,
       getStagesByGroup,
       isLoading,
+      isSaving,
     }}>
       {children}
     </LenderStagesContext.Provider>
