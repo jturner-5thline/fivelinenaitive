@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { FlexLenderInterestPanel } from './FlexLenderInterestPanel';
 import { FlexEngagementTrendsChart } from './FlexEngagementTrendsChart';
+import { InfoRequestsPanel } from './InfoRequestsPanel';
 interface DealActivityTabProps {
   dealId: string;
 }
@@ -214,8 +215,9 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
       </Card>
       </div>
 
-      {/* Lender Interest Panel - Sidebar */}
-      <div className="lg:col-span-1">
+      {/* Sidebar - Lender Interest & Info Requests */}
+      <div className="lg:col-span-1 space-y-6">
+        <InfoRequestsPanel dealId={dealId} />
         <FlexLenderInterestPanel dealId={dealId} />
       </div>
     </div>
