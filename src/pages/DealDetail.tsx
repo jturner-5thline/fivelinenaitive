@@ -44,6 +44,7 @@ import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { SortableAttachmentItem } from '@/components/deal/SortableAttachmentItem';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
+import { FileDropzoneOverlay } from '@/components/deal/FileDropzoneOverlay';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
@@ -639,15 +640,19 @@ export default function DealDetail() {
     ? attachments 
     : attachments.filter(a => a.category === attachmentFilter);
 
-  const handleFileDrop = useCallback(async (files: File[]) => {
+  const handleFileDrop = useCallback(async (files: File[], category?: DealAttachmentCategory) => {
     if (files.length === 0) return;
     setIsUploading(true);
     try {
-      await uploadMultipleAttachments(files, uploadCategory);
+      await uploadMultipleAttachments(files, category || uploadCategory);
     } finally {
       setIsUploading(false);
     }
   }, [uploadMultipleAttachments, uploadCategory]);
+
+  const handleFileDropToCategory = useCallback(async (category: DealAttachmentCategory, files: File[]) => {
+    await handleFileDrop(files, category);
+  }, [handleFileDrop]);
 
   // Handle attachment drag between categories and reordering within
   const handleAttachmentDragStart = useCallback((event: DragStartEvent) => {
@@ -2784,8 +2789,8 @@ export default function DealDetail() {
                 <TabsContent value="data-room" className="mt-6">
                   <Card 
                     className={cn(
-                      "transition-all duration-200",
-                      isDraggingOver && "ring-2 ring-primary ring-offset-2 bg-primary/5"
+                      "transition-all duration-200 relative",
+                      isDraggingOver && "ring-2 ring-primary ring-offset-2"
                     )}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -2807,6 +2812,8 @@ export default function DealDetail() {
                     onDrop={async (e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      // Only handle if not caught by category dropzones
+                      if (!isDraggingOver) return;
                       setIsDraggingOver(false);
                       const files = Array.from(e.dataTransfer.files);
                       await handleFileDrop(files);
@@ -2870,13 +2877,13 @@ export default function DealDetail() {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      {isDraggingOver ? (
-                        <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-primary rounded-lg bg-primary/5">
-                          <Upload className="h-8 w-8 text-primary mb-2" />
-                          <p className="text-sm font-medium text-primary">Drop files here</p>
-                          <p className="text-xs text-muted-foreground">Files will be uploaded to {DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === uploadCategory)?.label}</p>
-                        </div>
-                      ) : isUploading ? (
+                      {isDraggingOver && (
+                        <FileDropzoneOverlay
+                          onDropToCategory={handleFileDropToCategory}
+                          onDragEnd={() => setIsDraggingOver(false)}
+                        />
+                      )}
+                      {isUploading ? (
                         <div className="flex flex-col items-center justify-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
                           <p className="text-sm text-muted-foreground">Uploading files...</p>
