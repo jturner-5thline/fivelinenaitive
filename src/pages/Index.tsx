@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-
+import { RateLimitGuard } from "@/components/RateLimitGuard";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -16,7 +16,8 @@ const Index = () => {
   }, [navigate]);
 
   return (
-    <>
+    <RateLimitGuard path="/home">
+      <>
       <Helmet>
         <title>nAItive | Deal Analysis Platform</title>
         <meta 
@@ -60,7 +61,8 @@ const Index = () => {
           </Button>
         </div>
       </div>
-    </>
+      </>
+    </RateLimitGuard>
   );
 };
 
