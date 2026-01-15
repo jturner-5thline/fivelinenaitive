@@ -354,34 +354,55 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       
       // Start the 7-second countdown
       const DELAY_SECONDS = 7;
+      const TOTAL_MS = DELAY_SECONDS * 1000;
+      const startTime = Date.now();
       setIsPendingPublish(true);
       setPublishCountdown(DELAY_SECONDS);
       
-      // Show pending toast with cancel option
-      pendingPublishToastIdRef.current = toast.loading(`Publishing to FLEx in ${DELAY_SECONDS} seconds...`, {
-        duration: Infinity,
-        action: {
-          label: 'Cancel',
-          onClick: cancelPendingPublish,
-        },
-      });
+      const renderToastContent = (remaining: number, progress: number) => () => (
+        <div className="flex flex-col gap-2 w-full min-w-[280px] p-4 bg-background border rounded-lg shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span className="font-medium text-sm">Publishing to FLEx in {remaining}s</span>
+            </div>
+            <button
+              onClick={cancelPendingPublish}
+              className="text-xs font-medium px-2 py-1 rounded bg-muted hover:bg-muted/80 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary transition-all duration-100 ease-linear rounded-full"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      );
+      
+      // Show pending toast with progress bar
+      pendingPublishToastIdRef.current = toast.custom(
+        renderToastContent(DELAY_SECONDS, 0),
+        { duration: Infinity }
+      );
 
-      // Update countdown every second
-      let remaining = DELAY_SECONDS;
+      // Update countdown and progress every 100ms for smooth animation
       countdownIntervalRef.current = setInterval(() => {
-        remaining -= 1;
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, Math.ceil((TOTAL_MS - elapsed) / 1000));
+        const progress = Math.min(100, (elapsed / TOTAL_MS) * 100);
+        
         setPublishCountdown(remaining);
+        
         if (pendingPublishToastIdRef.current && remaining > 0) {
-          toast.loading(`Publishing to FLEx in ${remaining} second${remaining !== 1 ? 's' : ''}...`, {
-            id: pendingPublishToastIdRef.current,
-            duration: Infinity,
-            action: {
-              label: 'Cancel',
-              onClick: cancelPendingPublish,
-            },
-          });
+          toast.custom(
+            renderToastContent(remaining, progress),
+            { id: pendingPublishToastIdRef.current, duration: Infinity }
+          );
         }
-      }, 1000);
+      }, 100);
 
       // Schedule the actual publish
       publishTimeoutRef.current = setTimeout(async () => {
