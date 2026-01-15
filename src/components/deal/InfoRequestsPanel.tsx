@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
-import { HelpCircle, MessageSquare, User, Clock, ExternalLink, CheckCircle } from 'lucide-react';
+import { HelpCircle, MessageSquare, User, Clock, ExternalLink, CheckCircle, FlaskConical, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
+import { useAdminRole } from '@/hooks/useAdminRole';
 
 interface InfoRequest {
   id: string;
@@ -24,6 +26,8 @@ interface InfoRequestsPanelProps {
 }
 
 export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
+  const [isTestingRequest, setIsTestingRequest] = useState(false);
+  const { isAdmin } = useAdminRole();
   const { data: infoRequests, isLoading, refetch } = useQuery({
     queryKey: ['info-requests', dealId],
     queryFn: async () => {
@@ -114,6 +118,61 @@ export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
     }
   };
 
+  const handleTestInfoRequest = async () => {
+    setIsTestingRequest(true);
+    try {
+      const testLenders = [
+        { name: 'Test Capital Partners', email: 'test@testcapital.com' },
+        { name: 'Demo Finance LLC', email: 'demo@demofinance.com' },
+        { name: 'Sample Lending Co', email: 'sample@samplelending.com' },
+      ];
+      const randomLender = testLenders[Math.floor(Math.random() * testLenders.length)];
+      
+      const testMessages = [
+        'Can you provide the most recent audited financials and any projections for the next 12-24 months?',
+        'We would like to see the capitalization table and details on any existing debt facilities.',
+        'Please share the company\'s customer concentration breakdown and top 10 customer list.',
+        'Could you provide information on the management team backgrounds and any planned hires?',
+        'We need details on the current cash runway and monthly burn rate.',
+      ];
+      const randomMessage = testMessages[Math.floor(Math.random() * testMessages.length)];
+
+      const response = await supabase.functions.invoke('receive-flex-activity', {
+        body: {
+          event: {
+            event_type: 'info_request',
+            deal_id: dealId,
+            lender_name: randomLender.name,
+            lender_email: randomLender.email,
+            message: randomMessage,
+            timestamp: new Date().toISOString(),
+          },
+        },
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      toast({
+        title: 'Test info request sent',
+        description: `Simulated request from ${randomLender.name}`,
+      });
+      
+      // Refetch after a short delay to allow the webhook to process
+      setTimeout(() => refetch(), 1000);
+    } catch (error) {
+      console.error('Test request failed:', error);
+      toast({
+        title: 'Test failed',
+        description: error instanceof Error ? error.message : 'Failed to send test request',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTestingRequest(false);
+    }
+  };
+
   const unreadCount = infoRequests?.filter(r => !r.read_at && r.source === 'notification').length || 0;
 
   return (
@@ -124,11 +183,29 @@ export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
             <HelpCircle className="h-4 w-4" />
             Info Requests
           </CardTitle>
-          {unreadCount > 0 && (
-            <Badge variant="default" className="bg-amber-500">
-              {unreadCount} new
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={handleTestInfoRequest}
+                disabled={isTestingRequest}
+              >
+                {isTestingRequest ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <FlaskConical className="h-3 w-3" />
+                )}
+                Test
+              </Button>
+            )}
+            {unreadCount > 0 && (
+              <Badge variant="default" className="bg-amber-500">
+                {unreadCount} new
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
