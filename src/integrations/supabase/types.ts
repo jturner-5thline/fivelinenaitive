@@ -934,6 +934,50 @@ export type Database = {
         }
         Relationships: []
       }
+      flex_info_notifications: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          deal_id: string
+          id: string
+          lender_name: string | null
+          message: string
+          status: string
+          type: string
+          user_email: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          lender_name?: string | null
+          message: string
+          status?: string
+          type?: string
+          user_email?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          lender_name?: string | null
+          message?: string
+          status?: string
+          type?: string
+          user_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flex_info_notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flex_notifications: {
         Row: {
           alert_type: string

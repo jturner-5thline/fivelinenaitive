@@ -39,6 +39,7 @@ import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
+import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
@@ -2212,6 +2213,9 @@ export default function DealDetail() {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* Flex Info Notifications */}
+                    <FlexInfoNotificationsPanel dealId={id} />
 
                     {/* Outstanding Items */}
                     <OutstandingItems

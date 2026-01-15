@@ -13,6 +13,14 @@ interface SyncPayload {
   record?: Record<string, unknown>;
   records?: Record<string, unknown>[];
   old_record?: Record<string, unknown>;
+  // Info request event fields
+  event?: string;
+  deal_id?: string;
+  request?: {
+    notification_message: string;
+    company_name: string;
+    user_email: string;
+  };
 }
 
 serve(async (req) => {
@@ -37,7 +45,44 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const payload: SyncPayload = await req.json();
-    console.log('Received sync payload:', { type: payload.type, table: payload.table, source: payload.source_project_id });
+    console.log('Received sync payload:', JSON.stringify(payload));
+
+    // Handle info_request events from Flex
+    if (payload.event === 'info_request' && payload.deal_id && payload.request) {
+      console.log('Processing info_request event for deal:', payload.deal_id);
+      
+      // Extract lender name from notification message (e.g., "Kate Duquett at Lender Requested...")
+      const message = payload.request.notification_message;
+      let lenderName: string | null = null;
+      const atMatch = message.match(/at\s+(.+?)\s+Requested/i);
+      if (atMatch) {
+        lenderName = atMatch[1];
+      }
+      
+      const { error: insertError } = await supabase
+        .from('flex_info_notifications')
+        .insert({
+          type: 'info_request',
+          deal_id: payload.deal_id,
+          message: message,
+          user_email: payload.request.user_email,
+          lender_name: lenderName,
+          company_name: payload.request.company_name,
+          status: 'pending',
+        });
+      
+      if (insertError) {
+        console.error('Error inserting info notification:', insertError);
+        throw insertError;
+      }
+      
+      console.log('Successfully inserted info notification for deal:', payload.deal_id);
+      
+      return new Response(
+        JSON.stringify({ success: true, event: 'info_request' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { type, table, source_project_id, record, records, old_record } = payload;
 
