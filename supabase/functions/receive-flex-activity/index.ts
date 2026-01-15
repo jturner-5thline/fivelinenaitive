@@ -40,6 +40,41 @@ const ALERT_TRIGGERS = ['term_sheet_request', 'nda_request', 'info_request'];
 // Hot engagement threshold
 const HOT_ENGAGEMENT_THRESHOLD = 30;
 
+// Alert type to title/message mapping
+function getAlertContent(alertType: string, dealName: string, lenderName?: string, message?: string, engagementScore?: number) {
+  const lender = lenderName || 'A lender';
+  
+  switch (alertType) {
+    case 'term_sheet_request':
+      return {
+        title: '📋 Term Sheet Requested!',
+        message: `${lender} has requested a term sheet for ${dealName}. This is a strong signal of interest!`,
+      };
+    case 'nda_request':
+      return {
+        title: '📝 NDA Requested',
+        message: `${lender} has requested an NDA for ${dealName}. They want to proceed with due diligence.`,
+      };
+    case 'info_request':
+      return {
+        title: 'ℹ️ Information Requested',
+        message: message 
+          ? `${lender} is asking about ${dealName}: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`
+          : `${lender} has requested more information about ${dealName}.`,
+      };
+    case 'hot_engagement':
+      return {
+        title: '🔥 Hot Engagement!',
+        message: `${dealName} is getting significant lender interest with an engagement score of ${engagementScore}!`,
+      };
+    default:
+      return {
+        title: '📊 FLEx Activity',
+        message: `New activity on ${dealName} from FLEx.`,
+      };
+  }
+}
+
 async function sendFlexAlert(
   supabase: any,
   alertType: string,
@@ -52,6 +87,29 @@ async function sendFlexAlert(
   engagementScore?: number
 ) {
   try {
+    const { title, message: alertMessage } = getAlertContent(alertType, dealName, lenderName, message, engagementScore);
+
+    // Insert in-app notification
+    const { error: insertError } = await supabase
+      .from('flex_notifications')
+      .insert({
+        user_id: userId,
+        deal_id: dealId,
+        alert_type: alertType,
+        title,
+        message: alertMessage,
+        lender_name: lenderName || null,
+        lender_email: lenderEmail || null,
+        engagement_score: engagementScore || null,
+      });
+
+    if (insertError) {
+      console.error("Failed to insert flex notification:", insertError);
+    } else {
+      console.log(`In-app notification created for ${alertType}`);
+    }
+
+    // Send email alert
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     
@@ -74,7 +132,7 @@ async function sendFlexAlert(
     });
 
     const result = await response.json();
-    console.log(`FLEx alert sent for ${alertType}:`, result);
+    console.log(`FLEx email alert sent for ${alertType}:`, result);
     return result;
   } catch (error) {
     console.error("Failed to send FLEx alert:", error);
