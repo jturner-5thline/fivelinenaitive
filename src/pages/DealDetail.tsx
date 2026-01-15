@@ -748,6 +748,9 @@ export default function DealDetail() {
     }
   }, [attachments, updateAttachmentCategory, reorderAttachments]);
 
+  // State for Data Room push confirmation dialog
+  const [showDataRoomPushConfirm, setShowDataRoomPushConfirm] = useState(false);
+
   // Push Data Room to FLEx
   const handlePushDataRoomToFlex = useCallback(async () => {
     if (!id || !deal || attachments.length === 0) {
@@ -759,6 +762,7 @@ export default function DealDetail() {
       return;
     }
     
+    setShowDataRoomPushConfirm(false);
     setIsPushingDataRoom(true);
     try {
       // Get signed URLs for all attachments
@@ -808,6 +812,18 @@ export default function DealDetail() {
       setIsPushingDataRoom(false);
     }
   }, [id, deal, attachments, logActivity]);
+
+  // Group attachments by category for the confirmation preview
+  const attachmentsByCategory = useMemo(() => {
+    const grouped: Record<string, typeof attachments> = {};
+    attachments.forEach(att => {
+      if (!grouped[att.category]) {
+        grouped[att.category] = [];
+      }
+      grouped[att.category].push(att);
+    });
+    return grouped;
+  }, [attachments]);
 
   // Convert activity logs to ActivityItem format and combine with local undo actions
   const activities: ActivityItem[] = useMemo(() => {
@@ -2914,20 +2930,59 @@ export default function DealDetail() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 gap-1"
-                            onClick={handlePushDataRoomToFlex}
-                            disabled={isLoadingAttachments || isUploading || isPushingDataRoom || attachments.length === 0}
-                          >
-                            {isPushingDataRoom ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Send className="h-4 w-4" />
-                            )}
-                            Push to FLEx
-                          </Button>
+                          <AlertDialog open={showDataRoomPushConfirm} onOpenChange={setShowDataRoomPushConfirm}>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1"
+                                disabled={isLoadingAttachments || isUploading || isPushingDataRoom || attachments.length === 0}
+                              >
+                                {isPushingDataRoom ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Send className="h-4 w-4" />
+                                )}
+                                Push to FLEx
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Push Data Room to FLEx</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  The following {attachments.length} file{attachments.length !== 1 ? 's' : ''} will be synced to FLEx:
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <div className="flex-1 overflow-y-auto py-2 space-y-3">
+                                {Object.entries(attachmentsByCategory).map(([category, files]) => {
+                                  const categoryLabel = DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === category)?.label || category;
+                                  return (
+                                    <div key={category} className="space-y-1">
+                                      <h4 className="text-sm font-medium text-foreground">{categoryLabel}</h4>
+                                      <ul className="space-y-1 pl-2">
+                                        {files.map((file) => (
+                                          <li key={file.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <File className="h-3.5 w-3.5 shrink-0" />
+                                            <span className="truncate">{file.name}</span>
+                                            <span className="text-xs text-muted-foreground/70 shrink-0">
+                                              ({formatFileSize(file.size_bytes)})
+                                            </span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handlePushDataRoomToFlex}>
+                                  <Send className="h-4 w-4 mr-1" />
+                                  Push to FLEx
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                           <Button
                             variant="outline"
                             size="sm"
