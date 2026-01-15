@@ -41,6 +41,8 @@ import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
+import { DraggableAttachmentItem } from '@/components/deal/DraggableAttachmentItem';
+import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
@@ -625,6 +627,7 @@ export default function DealDetail() {
     isLoading: isLoadingAttachments, 
     uploadMultipleAttachments, 
     deleteAttachment,
+    updateAttachmentCategory,
     formatFileSize 
   } = useDealAttachments(id || null);
   
@@ -641,6 +644,27 @@ export default function DealDetail() {
       setIsUploading(false);
     }
   }, [uploadMultipleAttachments, uploadCategory]);
+
+  // Handle attachment drag between categories
+  const handleAttachmentDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over) return;
+    
+    const attachmentId = active.id as string;
+    const attachment = attachments.find(a => a.id === attachmentId);
+    
+    if (!attachment) return;
+    
+    // Check if dropped on a category folder
+    const targetCategory = over.data.current?.category || over.id;
+    
+    // Only update if category changed
+    if (attachment.category !== targetCategory && 
+        DEAL_ATTACHMENT_CATEGORIES.some(c => c.value === targetCategory)) {
+      await updateAttachmentCategory(attachmentId, targetCategory as DealAttachmentCategory);
+    }
+  }, [attachments, updateAttachmentCategory]);
 
   // Convert activity logs to ActivityItem format and combine with local undo actions
   const activities: ActivityItem[] = useMemo(() => {
@@ -2794,114 +2818,91 @@ export default function DealDetail() {
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
                       ) : attachments.length > 0 ? (
-                        <div className="space-y-3">
-                          {DEAL_ATTACHMENT_CATEGORIES.map((category) => {
-                            const categoryAttachments = attachments.filter(a => a.category === category.value);
-                            const isExpanded = expandedFolders.has(category.value);
-                            
-                            return (
-                              <Collapsible
-                                key={category.value}
-                                open={isExpanded}
-                                onOpenChange={(open) => {
-                                  setExpandedFolders(prev => {
-                                    const next = new Set(prev);
-                                    if (open) {
-                                      next.add(category.value);
-                                    } else {
-                                      next.delete(category.value);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                              >
-                                <CollapsibleTrigger asChild>
-                                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors">
-                                    <div className="flex items-center gap-3">
-                                      {isExpanded ? (
-                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                      )}
-                                      <Paperclip className="h-4 w-4 text-primary" />
-                                      <span className="font-medium text-sm">{category.label}</span>
-                                    </div>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {categoryAttachments.length} {categoryAttachments.length === 1 ? 'file' : 'files'}
-                                    </Badge>
-                                  </div>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent>
-                                  {categoryAttachments.length > 0 ? (
-                                    <div className="ml-6 mt-2 space-y-1">
-                                      {categoryAttachments.map((attachment) => (
-                                        <div
-                                          key={attachment.id}
-                                          className="flex items-center justify-between p-2 pl-4 bg-background rounded-lg group hover:bg-muted/30 transition-colors border border-border/50"
-                                        >
-                                          <a 
-                                            href={attachment.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                                            onClick={() => {
-                                              logActivity('attachment_viewed', `Viewed attachment: ${attachment.name}`, {
-                                                attachment_id: attachment.id,
-                                                attachment_name: attachment.name,
-                                                attachment_category: attachment.category,
-                                                file_size: attachment.size_bytes,
-                                              });
-                                            }}
-                                          >
-                                            <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                                            <div className="min-w-0">
-                                              <p className="text-sm font-medium truncate hover:underline">{attachment.name}</p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {formatFileSize(attachment.size_bytes)} • {new Date(attachment.created_at).toLocaleDateString()}
-                                              </p>
-                                            </div>
-                                          </a>
-                                          <div className="flex items-center gap-1">
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                                              onClick={() => {
-                                                if (attachment.url) {
-                                                  logActivity('attachment_downloaded', `Downloaded attachment: ${attachment.name}`, {
-                                                    attachment_id: attachment.id,
-                                                    attachment_name: attachment.name,
-                                                    attachment_category: attachment.category,
-                                                    file_size: attachment.size_bytes,
+                        <DndContext onDragEnd={handleAttachmentDragEnd}>
+                          <div className="space-y-3">
+                            {DEAL_ATTACHMENT_CATEGORIES.map((category) => {
+                              const categoryAttachments = attachments.filter(a => a.category === category.value);
+                              const isExpanded = expandedFolders.has(category.value);
+                              
+                              return (
+                                <DroppableAttachmentFolder 
+                                  key={category.value} 
+                                  id={category.value}
+                                  isExpanded={isExpanded}
+                                >
+                                  <Collapsible
+                                    open={isExpanded}
+                                    onOpenChange={(open) => {
+                                      setExpandedFolders(prev => {
+                                        const next = new Set(prev);
+                                        if (open) {
+                                          next.add(category.value);
+                                        } else {
+                                          next.delete(category.value);
+                                        }
+                                        return next;
+                                      });
+                                    }}
+                                  >
+                                    <CollapsibleTrigger asChild>
+                                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors">
+                                        <div className="flex items-center gap-3">
+                                          {isExpanded ? (
+                                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                          ) : (
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                          )}
+                                          <Paperclip className="h-4 w-4 text-primary" />
+                                          <span className="font-medium text-sm">{category.label}</span>
+                                        </div>
+                                        <Badge variant="secondary" className="text-xs">
+                                          {categoryAttachments.length} {categoryAttachments.length === 1 ? 'file' : 'files'}
+                                        </Badge>
+                                      </div>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                      {categoryAttachments.length > 0 ? (
+                                        <div className="ml-6 mt-2 space-y-1">
+                                          {categoryAttachments.map((attachment) => (
+                                            <DraggableAttachmentItem
+                                              key={attachment.id}
+                                              attachment={attachment}
+                                              formatFileSize={formatFileSize}
+                                              onDelete={deleteAttachment}
+                                              onView={(att) => {
+                                                logActivity('attachment_viewed', `Viewed attachment: ${att.name}`, {
+                                                  attachment_id: att.id,
+                                                  attachment_name: att.name,
+                                                  attachment_category: att.category,
+                                                  file_size: att.size_bytes,
+                                                });
+                                              }}
+                                              onDownload={(att) => {
+                                                if (att.url) {
+                                                  logActivity('attachment_downloaded', `Downloaded attachment: ${att.name}`, {
+                                                    attachment_id: att.id,
+                                                    attachment_name: att.name,
+                                                    attachment_category: att.category,
+                                                    file_size: att.size_bytes,
                                                   });
-                                                  window.open(attachment.url, '_blank');
+                                                  window.open(att.url, '_blank');
                                                 }
                                               }}
-                                            >
-                                              <Download className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                              onClick={() => deleteAttachment(attachment)}
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                          </div>
+                                            />
+                                          ))}
                                         </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="ml-6 mt-2 p-3 text-center text-sm text-muted-foreground bg-background rounded-lg border border-dashed border-border">
-                                      No files in this folder
-                                    </div>
-                                  )}
-                                </CollapsibleContent>
-                              </Collapsible>
-                            );
-                          })}
-                        </div>
+                                      ) : (
+                                        <div className="ml-6 mt-2 p-3 text-center text-sm text-muted-foreground bg-background rounded-lg border border-dashed border-border">
+                                          No files in this folder
+                                        </div>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                </DroppableAttachmentFolder>
+                              );
+                            })}
+                          </div>
+                        </DndContext>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                           <Upload className="h-10 w-10 text-muted-foreground/50 mb-3" />

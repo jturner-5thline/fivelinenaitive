@@ -182,12 +182,42 @@ export function useDealAttachments(dealId: string | null) {
     }
   };
 
+  const updateAttachmentCategory = async (attachmentId: string, newCategory: DealAttachmentCategory) => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('deal_attachments')
+        .update({ category: newCategory })
+        .eq('id', attachmentId);
+
+      if (error) throw error;
+
+      // Update local state optimistically
+      setAttachments(prev => 
+        prev.map(att => 
+          att.id === attachmentId 
+            ? { ...att, category: newCategory } 
+            : att
+        )
+      );
+
+      toast.success('Attachment moved');
+      return true;
+    } catch (error) {
+      console.error('Error updating attachment category:', error);
+      toast.error('Failed to move attachment');
+      return false;
+    }
+  };
+
   return {
     attachments,
     isLoading,
     uploadAttachment,
     uploadMultipleAttachments,
     deleteAttachment,
+    updateAttachmentCategory,
     refetch: fetchAttachments,
     formatFileSize,
   };
