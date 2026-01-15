@@ -20,6 +20,9 @@ interface SyncPayload {
     notification_message: string;
     company_name: string;
     user_email: string;
+    first_name?: string;
+    last_name?: string;
+    lender_name?: string;
   };
 }
 
@@ -51,23 +54,31 @@ serve(async (req) => {
     if (payload.event === 'info_request' && payload.deal_id && payload.request) {
       console.log('Processing info_request event for deal:', payload.deal_id);
       
-      // Extract lender name from notification message (e.g., "Kate Duquett at Lender Requested...")
-      const message = payload.request.notification_message;
-      let lenderName: string | null = null;
-      const atMatch = message.match(/at\s+(.+?)\s+Requested/i);
-      if (atMatch) {
-        lenderName = atMatch[1];
+      const { notification_message, company_name, user_email, first_name, last_name, lender_name } = payload.request;
+      
+      // Use lender_name from payload directly, or extract from message as fallback
+      let resolvedLenderName = lender_name || null;
+      if (!resolvedLenderName && notification_message) {
+        const atMatch = notification_message.match(/at\s+(.+?)\s+Requested/i);
+        if (atMatch) {
+          resolvedLenderName = atMatch[1];
+        }
       }
+      
+      // Build requester name from first/last name if available
+      const requesterName = [first_name, last_name].filter(Boolean).join(' ') || null;
+      
+      console.log('Extracted data:', { resolvedLenderName, requesterName, user_email, company_name });
       
       const { error: insertError } = await supabase
         .from('flex_info_notifications')
         .insert({
           type: 'info_request',
           deal_id: payload.deal_id,
-          message: message,
-          user_email: payload.request.user_email,
-          lender_name: lenderName,
-          company_name: payload.request.company_name,
+          message: notification_message,
+          user_email: user_email,
+          lender_name: resolvedLenderName,
+          company_name: company_name,
           status: 'pending',
         });
       
