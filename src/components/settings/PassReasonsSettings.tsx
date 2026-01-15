@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useLenderStages, PassReasonOption } from '@/contexts/LenderStagesContext';
 import { toast } from '@/hooks/use-toast';
+import { SaveIndicator } from '@/components/ui/save-indicator';
 import {
   DndContext,
   closestCenter,
@@ -128,7 +129,7 @@ interface PassReasonsSettingsProps {
 }
 
 export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps) {
-  const { passReasons, addPassReason, updatePassReason, deletePassReason, reorderPassReasons } = useLenderStages();
+  const { passReasons, addPassReason, updatePassReason, deletePassReason, reorderPassReasons, isSaving } = useLenderStages();
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-pass-reasons-open');
     return saved !== null ? saved === 'true' : false;
@@ -195,6 +196,7 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
                 <CardTitle className="text-lg flex items-center gap-2">
                   <XCircle className="h-5 w-5" />
                   Pass Reasons
+                  <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} />
                 </CardTitle>
                 <CardDescription>Configure the reasons shown when marking a lender as passed</CardDescription>
               </div>
