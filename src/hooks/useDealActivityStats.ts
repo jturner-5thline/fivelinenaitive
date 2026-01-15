@@ -32,6 +32,31 @@ const ACTIVITY_TYPE_MAPPINGS = {
   updates: ['deal_updated', 'stage_change', 'value_updated', 'flex_push'],
 };
 
+// Internal activity types to exclude from charts/widgets (user-initiated actions)
+const INTERNAL_ACTIVITY_TYPES = [
+  'deal_created',
+  'deal_updated',
+  'stage_changed',
+  'status_changed',
+  'lender_added',
+  'lender_updated',
+  'lender_removed',
+  'lender_deleted',
+  'lender_stage_change',
+  'lender_substage_change',
+  'lender_notes_updated',
+  'note_added',
+  'status_note_added',
+  'attachment_added',
+  'attachment_deleted',
+  'document_added',
+  'milestone_added',
+  'milestone_completed',
+  'milestone_deleted',
+  'value_updated',
+  'flex_push',
+];
+
 export function useDealActivityStats(dealId: string | undefined) {
   const query = useQuery({
     queryKey: ["deal-activity-stats", dealId],
@@ -67,11 +92,16 @@ export function useDealActivityStats(dealId: string | undefined) {
       const uniqueUserIds = new Set<string>();
       const uniqueFlexLenders = new Set<string>();
 
-      activities?.forEach((activity) => {
+      // Filter out internal activity for external-facing stats
+      const externalActivities = activities?.filter(
+        (a) => !INTERNAL_ACTIVITY_TYPES.includes(a.activity_type)
+      );
+
+      externalActivities?.forEach((activity) => {
         const type = activity.activity_type;
         const metadata = activity.metadata as { lender_name?: string; lender_email?: string } | null;
         
-        // Count views
+        // Count views (external only)
         if (ACTIVITY_TYPE_MAPPINGS.views.includes(type)) {
           stats.views++;
         }
@@ -120,15 +150,6 @@ export function useDealActivityStats(dealId: string | undefined) {
 
       stats.uniqueUsers = uniqueUserIds.size;
       stats.flexUniqueLenders = uniqueFlexLenders.size;
-
-      // For now, count total updates as "views" if no specific view tracking exists
-      // This gives meaningful data until proper view tracking is implemented
-      if (stats.views === 0) {
-        stats.views = activities?.filter(a => 
-          ACTIVITY_TYPE_MAPPINGS.updates.includes(a.activity_type) ||
-          ACTIVITY_TYPE_MAPPINGS.lenderActions.includes(a.activity_type)
-        ).length || 0;
-      }
 
       return stats;
     },
@@ -181,31 +202,30 @@ export function useDealActivityChart(dealId: string | undefined, days: number = 
         throw error;
       }
 
-      // Group by date
-      const activityByDate = new Map<string, { views: number; updates: number; lenderActions: number }>();
+      // Group by date - only track external views now
+      const activityByDate = new Map<string, { views: number }>();
 
       // Initialize all days
       for (let i = days - 1; i >= 0; i--) {
         const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
-        activityByDate.set(date, { views: 0, updates: 0, lenderActions: 0 });
+        activityByDate.set(date, { views: 0 });
       }
 
-      // Count activities by date
-      activities?.forEach((activity) => {
+      // Filter out internal activity and count by date
+      const externalActivities = activities?.filter(
+        (a) => !INTERNAL_ACTIVITY_TYPES.includes(a.activity_type)
+      );
+
+      externalActivities?.forEach((activity) => {
         const date = format(parseISO(activity.created_at), 'yyyy-MM-dd');
         const existing = activityByDate.get(date);
         
         if (existing) {
           const type = activity.activity_type;
           
-          if (ACTIVITY_TYPE_MAPPINGS.views.includes(type) || ACTIVITY_TYPE_MAPPINGS.updates.includes(type)) {
+          // Only count external/FLEx activity types
+          if (type.startsWith('flex_') || ACTIVITY_TYPE_MAPPINGS.views.includes(type)) {
             existing.views++;
-          }
-          if (ACTIVITY_TYPE_MAPPINGS.updates.includes(type)) {
-            existing.updates++;
-          }
-          if (ACTIVITY_TYPE_MAPPINGS.lenderActions.includes(type)) {
-            existing.lenderActions++;
           }
         }
       });
@@ -215,9 +235,9 @@ export function useDealActivityChart(dealId: string | undefined, days: number = 
       activityByDate.forEach((data, dateStr) => {
         chartData.push({
           date: format(parseISO(dateStr), 'MMM d'),
-          views: data.views + data.updates + data.lenderActions, // Total activity count
-          updates: data.updates,
-          lenderActions: data.lenderActions,
+          views: data.views,
+          updates: 0, // No longer tracking internal updates
+          lenderActions: 0, // No longer tracking internal lender actions
         });
       });
 
