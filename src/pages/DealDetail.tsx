@@ -1715,195 +1715,198 @@ export default function DealDetail() {
                       )}
                     </Card>
                   )}
-                  {/* Deal Information */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Deal Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-1.5">
-                        <label className="text-sm text-muted-foreground">Narrative</label>
-                        <DebouncedTextarea
-                          value={deal.narrative || ''}
-                          onValueChange={(value) => updateDeal('narrative', value)}
-                          placeholder="Enter deal narrative..."
-                          className="w-full min-h-[80px] resize-none"
-                          debounceMs={800}
-                          showSaveIndicator
-                        />
-                      </div>
-                      
-                      {/* Two-column layout for deal details */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Left Column - Deal Management */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm w-28">Deal Manager</span>
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <Select
-                              value={deal.manager}
-                              onValueChange={(value) => updateDeal('manager', value)}
-                            >
-                              <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
-                                <SelectValue placeholder="Select manager" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {memberOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm w-28">Deal Owner</span>
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <Select
-                              value={deal.dealOwner || ''}
-                              onValueChange={(value) => updateDeal('dealOwner', value)}
-                            >
-                              <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
-                                <SelectValue placeholder="Select owner" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {memberOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm w-28">Engagement</span>
-                            <Select
-                              value={deal.engagementType}
-                              onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
-                            >
-                              <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
-                                  <SelectItem key={key} value={key}>
-                                    {config.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm w-28">Exclusivity</span>
-                            <Select
-                              value={deal.exclusivity || ''}
-                              onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
-                            >
-                              <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
-                                <SelectValue placeholder="Select..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
-                                  <SelectItem key={key} value={key}>
-                                    {config.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                  {/* Deal Information and Outstanding Items - Side by Side */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Deal Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Deal Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-1.5">
+                          <label className="text-sm text-muted-foreground">Narrative</label>
+                          <DebouncedTextarea
+                            value={deal.narrative || ''}
+                            onValueChange={(value) => updateDeal('narrative', value)}
+                            placeholder="Enter deal narrative..."
+                            className="w-full min-h-[80px] resize-none"
+                            debounceMs={800}
+                            showSaveIndicator
+                          />
                         </div>
                         
-                        {/* Right Column - Company Info */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm w-28">Company URL</span>
-                            <Input
-                              value={deal.companyUrl || ''}
-                              onChange={(e) => updateDeal('companyUrl', e.target.value)}
-                              placeholder="https://example.com"
-                              className="flex-1 h-8 text-sm"
-                            />
+                        {/* Two-column layout for deal details */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Left Column - Deal Management */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm w-28">Deal Manager</span>
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <Select
+                                value={deal.manager}
+                                onValueChange={(value) => updateDeal('manager', value)}
+                              >
+                                <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                  <SelectValue placeholder="Select manager" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {memberOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm w-28">Deal Owner</span>
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <Select
+                                value={deal.dealOwner || ''}
+                                onValueChange={(value) => updateDeal('dealOwner', value)}
+                              >
+                                <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                  <SelectValue placeholder="Select owner" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {memberOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm w-28">Engagement</span>
+                              <Select
+                                value={deal.engagementType}
+                                onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
+                              >
+                                <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                                    <SelectItem key={key} value={key}>
+                                      {config.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm w-28">Exclusivity</span>
+                              <Select
+                                value={deal.exclusivity || ''}
+                                onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
+                              >
+                                <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                  <SelectValue placeholder="Select..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
+                                    <SelectItem key={key} value={key}>
+                                      {config.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm w-28">Business Model</span>
-                            <Input
-                              value={deal.businessModel || ''}
-                              onChange={(e) => updateDeal('businessModel', e.target.value)}
-                              placeholder="Enter business model..."
-                              className="flex-1 h-8 text-sm"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm w-28">Client Contact</span>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <Popover>
-                                  <TooltipTrigger asChild>
-                                    <PopoverTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        className="flex-1 justify-start h-8 px-3 font-normal text-sm"
-                                      >
-                                        <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
-                                        <span className="truncate">
-                                          {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
-                                        </span>
-                                      </Button>
-                                    </PopoverTrigger>
-                                  </TooltipTrigger>
-                                  {deal.contact && deal.contactInfo && (
-                                    <TooltipContent side="left" className="max-w-[200px]">
-                                      <p className="font-medium">{deal.contact}</p>
-                                      <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
-                                    </TooltipContent>
-                                  )}
-                                  <PopoverContent className="w-72 p-4 bg-popover" align="start">
-                                    <div className="space-y-4">
-                                      <div className="space-y-2">
-                                        <label className="text-sm font-medium">Contact Name</label>
-                                        <Input
-                                          value={deal.contact || ''}
-                                          onChange={(e) => updateDeal('contact', e.target.value)}
-                                          placeholder="Enter contact name"
-                                        />
-                                      </div>
-                                      <div className="space-y-2">
-                                        <label className="text-sm font-medium">Contact Info</label>
-                                        <Input
-                                          value={deal.contactInfo || ''}
-                                          onChange={(e) => updateDeal('contactInfo', e.target.value)}
-                                          placeholder="Email or phone number"
-                                        />
-                                      </div>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm w-28">Referral Source</span>
-                            <div className="flex-1">
-                              <ReferralSourceInput
-                                value={deal.referredBy || null}
-                                onChange={(referrer) => updateDeal('referredBy', referrer)}
-                                className="[&_input]:h-8 [&_input]:text-sm"
+                          
+                          {/* Right Column - Company Info */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm w-28">Company URL</span>
+                              <Input
+                                value={deal.companyUrl || ''}
+                                onChange={(e) => updateDeal('companyUrl', e.target.value)}
+                                placeholder="https://example.com"
+                                className="flex-1 h-8 text-sm"
                               />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm w-28">Business Model</span>
+                              <Input
+                                value={deal.businessModel || ''}
+                                onChange={(e) => updateDeal('businessModel', e.target.value)}
+                                placeholder="Enter business model..."
+                                className="flex-1 h-8 text-sm"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm w-28">Client Contact</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <Popover>
+                                    <TooltipTrigger asChild>
+                                      <PopoverTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          className="flex-1 justify-start h-8 px-3 font-normal text-sm"
+                                        >
+                                          <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                                          <span className="truncate">
+                                            {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
+                                          </span>
+                                        </Button>
+                                      </PopoverTrigger>
+                                    </TooltipTrigger>
+                                    {deal.contact && deal.contactInfo && (
+                                      <TooltipContent side="left" className="max-w-[200px]">
+                                        <p className="font-medium">{deal.contact}</p>
+                                        <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
+                                      </TooltipContent>
+                                    )}
+                                    <PopoverContent className="w-72 p-4 bg-popover" align="start">
+                                      <div className="space-y-4">
+                                        <div className="space-y-2">
+                                          <label className="text-sm font-medium">Contact Name</label>
+                                          <Input
+                                            value={deal.contact || ''}
+                                            onChange={(e) => updateDeal('contact', e.target.value)}
+                                            placeholder="Enter contact name"
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
+                                          <label className="text-sm font-medium">Contact Info</label>
+                                          <Input
+                                            value={deal.contactInfo || ''}
+                                            onChange={(e) => updateDeal('contactInfo', e.target.value)}
+                                            placeholder="Email or phone number"
+                                          />
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground text-sm w-28">Referral Source</span>
+                              <div className="flex-1">
+                                <ReferralSourceInput
+                                  value={deal.referredBy || null}
+                                  onChange={(referrer) => updateDeal('referredBy', referrer)}
+                                  className="[&_input]:h-8 [&_input]:text-sm"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                  {/* Outstanding Items */}
-                  <OutstandingItems
-                    items={outstandingItems}
-                    lenderNames={deal.lenders?.map(l => l.name) || []}
-                    onAdd={addOutstandingItem}
-                    onUpdate={updateOutstandingItem}
-                    onDelete={deleteOutstandingItem}
-                  />
+                    {/* Outstanding Items */}
+                    <OutstandingItems
+                      items={outstandingItems}
+                      lenderNames={deal.lenders?.map(l => l.name) || []}
+                      onAdd={addOutstandingItem}
+                      onUpdate={updateOutstandingItem}
+                      onDelete={deleteOutstandingItem}
+                    />
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="lenders" className="mt-6 space-y-6">
