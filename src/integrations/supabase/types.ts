@@ -1455,6 +1455,7 @@ export type Database = {
           notify_activity_stage_changed: boolean
           notify_activity_status_changed: boolean
           notify_flex_alerts: boolean
+          notify_info_request_emails: boolean
           notify_stale_alerts: boolean
           onboarding_completed: boolean
           phone: string | null
@@ -1490,6 +1491,7 @@ export type Database = {
           notify_activity_stage_changed?: boolean
           notify_activity_status_changed?: boolean
           notify_flex_alerts?: boolean
+          notify_info_request_emails?: boolean
           notify_stale_alerts?: boolean
           onboarding_completed?: boolean
           phone?: string | null
@@ -1525,6 +1527,7 @@ export type Database = {
           notify_activity_stage_changed?: boolean
           notify_activity_status_changed?: boolean
           notify_flex_alerts?: boolean
+          notify_info_request_emails?: boolean
           notify_stale_alerts?: boolean
           onboarding_completed?: boolean
           phone?: string | null

@@ -116,6 +116,18 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Check if info request emails are enabled specifically (default to true if not set)
+    if (payload.alert_type === 'info_request') {
+      const infoRequestEmailsEnabled = profileData.notify_info_request_emails !== false;
+      if (!infoRequestEmailsEnabled) {
+        console.log("Info request emails disabled for user");
+        return new Response(JSON.stringify({ skipped: true, reason: "info_request_emails_disabled" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+    }
+
     const template = alertTemplates[payload.alert_type];
     if (!template) {
       console.log("Unknown alert type:", payload.alert_type);

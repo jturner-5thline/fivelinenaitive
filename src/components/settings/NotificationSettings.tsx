@@ -42,6 +42,7 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
     notify_activity_milestone_missed: true,
     // FLEx alerts
     notify_flex_alerts: true,
+    notify_info_request_emails: true,
   });
 
   useEffect(() => {
@@ -65,6 +66,7 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
         notify_activity_milestone_missed: (profile as any).notify_activity_milestone_missed ?? true,
         // FLEx alerts
         notify_flex_alerts: (profile as any).notify_flex_alerts ?? true,
+        notify_info_request_emails: (profile as any).notify_info_request_emails ?? true,
       });
     }
   }, [profile]);
@@ -252,6 +254,24 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
                 id="notify_flex_alerts"
                 checked={preferences.notify_flex_alerts}
                 onCheckedChange={(checked) => handleToggle('notify_flex_alerts', checked)}
+                disabled={isSaving || !preferences.email_notifications}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_info_request_emails" className="flex flex-col gap-1">
+                <span className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-primary" />
+                  Info request alerts
+                </span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  Get notified when lenders request more information
+                </span>
+              </Label>
+              <Switch
+                id="notify_info_request_emails"
+                checked={preferences.notify_info_request_emails}
+                onCheckedChange={(checked) => handleToggle('notify_info_request_emails', checked)}
                 disabled={isSaving || !preferences.email_notifications}
               />
             </div>
