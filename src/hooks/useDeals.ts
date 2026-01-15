@@ -4,7 +4,7 @@ import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
-export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status';
+export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'flexEngagement';
 export type SortDirection = 'asc' | 'desc';
 
 export interface DealFilters {
