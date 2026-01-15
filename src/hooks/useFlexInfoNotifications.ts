@@ -92,6 +92,28 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
     }
   }, []);
 
+  const denyAccess = useCallback(async (notificationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('flex_info_notifications')
+        .update({ status: 'denied' })
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === notificationId ? { ...n, status: 'denied' } : n
+        )
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Error denying access:', error);
+      return false;
+    }
+  }, []);
+
   const markAllAsRead = useCallback(async () => {
     const pendingIds = notifications.filter(n => n.status === 'pending').map(n => n.id);
     if (pendingIds.length === 0) return;
@@ -121,6 +143,7 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
     isLoading,
     pendingCount,
     approveAccess,
+    denyAccess,
     markAllAsRead,
     refresh: fetchNotifications,
   };
