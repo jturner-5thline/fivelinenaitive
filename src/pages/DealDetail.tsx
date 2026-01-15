@@ -364,7 +364,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'deal-management' | 'deal-writeup'>('deal-info');
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup'>('deal-info');
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   
   // Deal writeup persistence hook
@@ -1634,9 +1634,10 @@ export default function DealDetail() {
             {/* Left Column - Notes & Actions */}
             <div className="lg:col-span-2 flex flex-col gap-6">
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'deal-management' | 'deal-writeup')}>
-                <TabsList className="grid w-full grid-cols-3">
+              <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup')}>
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
+                  <TabsTrigger value="lenders">Lenders</TabsTrigger>
                   <TabsTrigger value="deal-management">Deal Management</TabsTrigger>
                   <TabsTrigger value="deal-writeup">Deal Write Up</TabsTrigger>
                 </TabsList>
@@ -1697,7 +1698,9 @@ export default function DealDetail() {
                     onUpdate={updateOutstandingItem}
                     onDelete={deleteOutstandingItem}
                   />
+                </TabsContent>
 
+                <TabsContent value="lenders" className="mt-6 space-y-6">
               {/* Lenders Card */}
               <Collapsible open={isLendersExpanded} onOpenChange={setIsLendersExpanded}>
                 <Card>
@@ -2441,6 +2444,24 @@ export default function DealDetail() {
                 </Card>
               </Collapsible>
 
+                  {/* Activity Timeline */}
+                  <Collapsible defaultOpen>
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                          <CardTitle className="text-lg">
+                            Activity
+                          </CardTitle>
+                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        </CollapsibleTrigger>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0">
+                          <ActivityTimeline activities={activities} />
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
                 </TabsContent>
 
                 <TabsContent value="deal-management" className="mt-6">
@@ -2835,23 +2856,6 @@ export default function DealDetail() {
                 </CardContent>
               </Card>
 
-              <Collapsible defaultOpen>
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CollapsibleTrigger className="flex items-center justify-between w-full group">
-                      <CardTitle className="text-lg">
-                        Activity
-                      </CardTitle>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                    </CollapsibleTrigger>
-                  </CardHeader>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <ActivityTimeline activities={activities} />
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
             </div>
           </div>
         </main>
