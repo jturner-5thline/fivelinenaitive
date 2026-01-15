@@ -1735,13 +1735,7 @@ export default function DealDetail() {
 
           {/* Milestones Card */}
           <Card className="mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
-                Milestones
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-4">
               <DealMilestones
                 milestones={dbMilestones}
                 onAdd={addMilestone}
