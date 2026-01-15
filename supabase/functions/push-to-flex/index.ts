@@ -32,10 +32,19 @@ interface WriteUpData {
   publishAsAnonymous: boolean;
 }
 
+interface DataRoomFile {
+  name: string;
+  category: string;
+  url: string | null;
+  size_bytes: number;
+  content_type: string | null;
+}
+
 interface PushToFlexRequest {
   dealId: string;
-  action?: "publish" | "unpublish";
+  action?: "publish" | "unpublish" | "sync_data_room";
   writeUpData?: WriteUpData;
+  dataRoomFiles?: DataRoomFile[];
 }
 
 serve(async (req) => {
@@ -82,7 +91,7 @@ serve(async (req) => {
     console.log(`FLEx request from user: ${user.id}`);
 
     const body: PushToFlexRequest = await req.json();
-    const { dealId, action = "publish", writeUpData } = body;
+    const { dealId, action = "publish", writeUpData, dataRoomFiles } = body;
 
     if (!dealId) {
       console.error("Missing dealId");
@@ -97,6 +106,15 @@ serve(async (req) => {
       console.error("Missing writeUpData for publish action");
       return new Response(
         JSON.stringify({ error: "writeUpData is required for publish action" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // For sync_data_room action, dataRoomFiles is required
+    if (action === "sync_data_room" && (!dataRoomFiles || dataRoomFiles.length === 0)) {
+      console.error("Missing dataRoomFiles for sync_data_room action");
+      return new Response(
+        JSON.stringify({ error: "dataRoomFiles is required for sync_data_room action" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -161,6 +179,33 @@ serve(async (req) => {
         deal_id: lastSync.flex_deal_id,
       };
       activityDescription = "Deal unpublished from FLEx";
+    } else if (action === "sync_data_room") {
+      // Get the flex_deal_id from the most recent successful sync
+      const { data: lastSync } = await supabase
+        .from("flex_sync_history")
+        .select("flex_deal_id")
+        .eq("deal_id", dealId)
+        .eq("status", "success")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      // Prepare the data room files payload
+      const filesPayload = dataRoomFiles!.map(file => ({
+        name: file.name,
+        category: file.category,
+        url: file.url,
+        size_bytes: file.size_bytes,
+        content_type: file.content_type,
+      }));
+
+      flexPayload = {
+        action: "sync_data_room",
+        deal_id: lastSync?.flex_deal_id || dealId,
+        company_name: deal.company,
+        files: filesPayload,
+      };
+      activityDescription = `Data room synced to FLEx (${dataRoomFiles!.length} files)`;
     } else {
       // Prepare the payload for FLEx API (publish)
       const flexDeal = {
@@ -208,10 +253,12 @@ serve(async (req) => {
       console.error(`FLEx API error: ${flexResponse.status} - ${responseText}`);
       
       // Record failed sync
+      const failedStatus = action === "unpublish" ? "unpublish_failed" : 
+                          action === "sync_data_room" ? "data_room_failed" : "failed";
       await supabase.from("flex_sync_history").insert({
         deal_id: dealId,
         synced_by: user.id,
-        status: action === "unpublish" ? "unpublish_failed" : "failed",
+        status: failedStatus,
         payload: flexPayload,
         error_message: responseText,
       });
@@ -239,28 +286,34 @@ serve(async (req) => {
     const flexDealId = flexData?.results?.[0]?.id || flexData?.deal_id || null;
 
     // Record sync history
+    const successStatus = action === "unpublish" ? "unpublished" : 
+                         action === "sync_data_room" ? "data_room_synced" : "success";
     await supabase.from("flex_sync_history").insert({
       deal_id: dealId,
       flex_deal_id: flexDealId,
       synced_by: user.id,
-      status: action === "unpublish" ? "unpublished" : "success",
+      status: successStatus,
       payload: flexPayload,
       response: flexData,
     });
 
     // Log the activity
+    const activityType = action === "unpublish" ? "flex_unpublish" : 
+                        action === "sync_data_room" ? "flex_data_room" : "flex_push";
     await supabase.from("activity_logs").insert({
       deal_id: dealId,
       user_id: user.id,
-      activity_type: action === "unpublish" ? "flex_unpublish" : "flex_push",
+      activity_type: activityType,
       description: activityDescription,
       metadata: { flexResponse: flexData },
     });
 
+    const actionMessage = action === "unpublish" ? "unpublished from" : 
+                          action === "sync_data_room" ? "data room synced to" : "pushed to";
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Deal ${action === "unpublish" ? "unpublished from" : "pushed to"} FLEx successfully`,
+        message: `Deal ${actionMessage} FLEx successfully`,
         flexResponse: flexData,
         flexDealId
       }),
