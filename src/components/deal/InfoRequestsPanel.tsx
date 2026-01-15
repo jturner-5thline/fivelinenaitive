@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
-import { HelpCircle, MessageSquare, User, Clock, ExternalLink, CheckCircle, FlaskConical, Loader2 } from 'lucide-react';
+import { HelpCircle, MessageSquare, User, Clock, ExternalLink, CheckCircle, FlaskConical, Loader2, Reply, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface InfoRequest {
   id: string;
@@ -27,7 +37,11 @@ interface InfoRequestsPanelProps {
 
 export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
   const [isTestingRequest, setIsTestingRequest] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<InfoRequest | null>(null);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
   const { isAdmin } = useAdminRole();
+
   const { data: infoRequests, isLoading, refetch } = useQuery({
     queryKey: ['info-requests', dealId],
     queryFn: async () => {
@@ -118,6 +132,68 @@ export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
     }
   };
 
+  const handleOpenReply = (request: InfoRequest) => {
+    setReplyingTo(request);
+    setReplyMessage('');
+  };
+
+  const handleCloseReply = () => {
+    setReplyingTo(null);
+    setReplyMessage('');
+  };
+
+  const handleSendReply = async () => {
+    if (!replyingTo || !replyMessage.trim()) return;
+
+    // Validate message length
+    if (replyMessage.length > 2000) {
+      toast({
+        title: 'Message too long',
+        description: 'Please keep your reply under 2000 characters.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSendingReply(true);
+    try {
+      const response = await supabase.functions.invoke('send-flex-reply', {
+        body: {
+          deal_id: dealId,
+          info_request_id: replyingTo.id,
+          reply_message: replyMessage.trim(),
+          lender_email: replyingTo.lender_email,
+          lender_name: replyingTo.lender_name,
+        },
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      const result = response.data;
+      
+      toast({
+        title: 'Reply sent',
+        description: result.flex_sent 
+          ? `Your reply has been sent to ${replyingTo.lender_name || 'the lender'} via FLEx.`
+          : 'Your reply has been logged.',
+      });
+
+      handleCloseReply();
+      refetch();
+    } catch (error) {
+      console.error('Failed to send reply:', error);
+      toast({
+        title: 'Failed to send reply',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
   const handleTestInfoRequest = async () => {
     setIsTestingRequest(true);
     try {
@@ -176,118 +252,207 @@ export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
   const unreadCount = infoRequests?.filter(r => !r.read_at && r.source === 'notification').length || 0;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <HelpCircle className="h-4 w-4" />
-            Info Requests
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={handleTestInfoRequest}
-                disabled={isTestingRequest}
-              >
-                {isTestingRequest ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <FlaskConical className="h-3 w-3" />
-                )}
-                Test
-              </Button>
-            )}
-            {unreadCount > 0 && (
-              <Badge variant="default" className="bg-amber-500">
-                {unreadCount} new
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="p-3 border rounded-lg">
-                <Skeleton className="h-4 w-1/3 mb-2" />
-                <Skeleton className="h-3 w-full mb-1" />
-                <Skeleton className="h-3 w-2/3" />
-              </div>
-            ))}
-          </div>
-        ) : !infoRequests || infoRequests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">
-              No info requests yet
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              When lenders request information on FLEx, they'll appear here.
-            </p>
-          </div>
-        ) : (
-          <ScrollArea className="h-[400px] pr-2">
-            <div className="space-y-3">
-              {infoRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className={`p-3 border rounded-lg transition-colors ${
-                    !request.read_at && request.source === 'notification'
-                      ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800'
-                      : 'bg-card'
-                  }`}
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <HelpCircle className="h-4 w-4" />
+              Info Requests
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={handleTestInfoRequest}
+                  disabled={isTestingRequest}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {request.lender_name || request.lender_email || 'Unknown Lender'}
-                        </p>
-                        {request.lender_email && request.lender_name && (
-                          <p className="text-xs text-muted-foreground">{request.lender_email}</p>
-                        )}
-                      </div>
-                    </div>
-                    {!request.read_at && request.source === 'notification' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleMarkAsRead(request.id)}
-                      >
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Mark read
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <p className="text-sm text-foreground mb-2">
-                    {request.message}
-                  </p>
-                  
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span title={format(new Date(request.created_at), 'PPpp')}>
-                      {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-                    </span>
-                    <Badge variant="outline" className="text-[10px] h-4">
-                      <ExternalLink className="h-2 w-2 mr-1" />
-                      FLEx
-                    </Badge>
-                  </div>
+                  {isTestingRequest ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <FlaskConical className="h-3 w-3" />
+                  )}
+                  Test
+                </Button>
+              )}
+              {unreadCount > 0 && (
+                <Badge variant="default" className="bg-amber-500">
+                  {unreadCount} new
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-3 border rounded-lg">
+                  <Skeleton className="h-4 w-1/3 mb-2" />
+                  <Skeleton className="h-3 w-full mb-1" />
+                  <Skeleton className="h-3 w-2/3" />
                 </div>
               ))}
             </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-    </Card>
+          ) : !infoRequests || infoRequests.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                No info requests yet
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                When lenders request information on FLEx, they'll appear here.
+              </p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[400px] pr-2">
+              <div className="space-y-3">
+                {infoRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className={`p-3 border rounded-lg transition-colors ${
+                      !request.read_at && request.source === 'notification'
+                        ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800'
+                        : 'bg-card'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {request.lender_name || request.lender_email || 'Unknown Lender'}
+                          </p>
+                          {request.lender_email && request.lender_name && (
+                            <p className="text-xs text-muted-foreground">{request.lender_email}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => handleOpenReply(request)}
+                        >
+                          <Reply className="h-3 w-3" />
+                          Reply
+                        </Button>
+                        {!request.read_at && request.source === 'notification' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleMarkAsRead(request.id)}
+                          >
+                            <CheckCircle className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-foreground mb-2">
+                      {request.message}
+                    </p>
+                    
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span title={format(new Date(request.created_at), 'PPpp')}>
+                        {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] h-4">
+                        <ExternalLink className="h-2 w-2 mr-1" />
+                        FLEx
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Reply Dialog */}
+      <Dialog open={!!replyingTo} onOpenChange={(open) => !open && handleCloseReply()}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Reply className="h-5 w-5" />
+              Reply to Info Request
+            </DialogTitle>
+            <DialogDescription>
+              Send a response to {replyingTo?.lender_name || replyingTo?.lender_email || 'the lender'} via FLEx.
+            </DialogDescription>
+          </DialogHeader>
+
+          {replyingTo && (
+            <div className="space-y-4">
+              {/* Original request */}
+              <div className="bg-muted/50 rounded-lg p-3 border">
+                <div className="flex items-center gap-2 mb-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    {replyingTo.lender_name || replyingTo.lender_email || 'Unknown Lender'}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(replyingTo.created_at), { addSuffix: true })}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground italic">
+                  "{replyingTo.message}"
+                </p>
+              </div>
+
+              {/* Reply input */}
+              <div className="space-y-2">
+                <Label htmlFor="reply-message">Your Reply</Label>
+                <Textarea
+                  id="reply-message"
+                  placeholder="Type your response to the lender's question..."
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  rows={5}
+                  maxLength={2000}
+                  className="resize-none"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Be clear and professional in your response.</span>
+                  <span className={replyMessage.length > 1800 ? 'text-amber-500' : ''}>
+                    {replyMessage.length}/2000
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseReply} disabled={isSendingReply}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendReply} 
+              disabled={!replyMessage.trim() || isSendingReply}
+            >
+              {isSendingReply ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Reply
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

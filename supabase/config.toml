@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.send-flex-alert]
 verify_jwt = false
+
+[functions.send-flex-reply]
+verify_jwt = false
