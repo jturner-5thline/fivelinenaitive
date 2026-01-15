@@ -1298,6 +1298,45 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          blocked_until: string | null
+          created_at: string
+          id: string
+          ip_address: string
+          is_bot: boolean | null
+          path: string
+          request_count: number
+          updated_at: string
+          user_agent: string | null
+          window_start: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          ip_address: string
+          is_bot?: boolean | null
+          path: string
+          request_count?: number
+          updated_at?: string
+          user_agent?: string | null
+          window_start?: string
+        }
+        Update: {
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string
+          is_bot?: boolean | null
+          path?: string
+          request_count?: number
+          updated_at?: string
+          user_agent?: string | null
+          window_start?: string
+        }
+        Relationships: []
+      }
       referral_sources: {
         Row: {
           company: string | null
@@ -1573,6 +1612,7 @@ export type Database = {
         Args: { _company_id: string; _reason?: string; _suspend: boolean }
         Returns: undefined
       }
+      cleanup_old_rate_limits: { Args: never; Returns: undefined }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_company_role: {
         Args: { _company_id: string; _user_id: string }

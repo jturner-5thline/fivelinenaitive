@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.receive-external-sync]
 verify_jwt = false
+
+[functions.rate-limit]
+verify_jwt = false
