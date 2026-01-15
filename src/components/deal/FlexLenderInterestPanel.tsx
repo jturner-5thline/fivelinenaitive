@@ -13,8 +13,11 @@ import {
   ChevronUp,
   ExternalLink,
   Users,
-  TrendingUp
+  TrendingUp,
+  Mail,
+  MessageSquare
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,6 +98,22 @@ function MetricPill({
 
 function LenderCard({ lender }: { lender: LenderEngagement }) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleContactLender = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (lender.lenderEmail) {
+      const subject = encodeURIComponent(`Following up on your interest`);
+      const body = encodeURIComponent(
+        `Hi ${lender.lenderName},\n\nThank you for your interest in our deal. I noticed you've been reviewing our materials and wanted to reach out to discuss next steps.\n\nLooking forward to connecting.\n\nBest regards`
+      );
+      window.open(`mailto:${lender.lenderEmail}?subject=${subject}&body=${body}`, '_blank');
+    } else {
+      toast.info("No email available", {
+        description: `Contact information for ${lender.lenderName} is not available. Reach out through FLEx.`,
+      });
+    }
+  };
   
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
@@ -141,6 +160,29 @@ function LenderCard({ lender }: { lender: LenderEngagement }) {
           <MetricPill icon={Bookmark} value={lender.saves} label="Saves" />
           <MetricPill icon={Eye} value={lender.views} label="Views" />
         </div>
+
+        {/* Contact button for hot lenders */}
+        {lender.engagementLevel === "hot" && (
+          <div className="mt-3">
+            <Button 
+              size="sm" 
+              className="w-full gap-2 bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleContactLender}
+            >
+              {lender.lenderEmail ? (
+                <>
+                  <Mail className="h-3.5 w-3.5" />
+                  Contact Lender
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Reach Out
+                </>
+              )}
+            </Button>
+          </div>
+        )}
 
         <CollapsibleContent>
           <div className="mt-3 pt-3 border-t space-y-2">
