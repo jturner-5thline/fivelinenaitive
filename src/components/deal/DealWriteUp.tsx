@@ -571,6 +571,12 @@ export const DealWriteUp = ({ data, onChange, onSave, onCancel, isSaving, autoSa
               >
                 {isSaving || autoSaveStatus === 'saving' ? 'Saving...' : 'Save Now'}
               </Button>
+              <Button 
+                variant="default"
+                onClick={() => {}}
+              >
+                Push to FLEx
+              </Button>
             </div>
           </div>
         </div>
