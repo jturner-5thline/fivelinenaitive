@@ -70,7 +70,36 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
     };
   }, [dealId, fetchNotifications]);
 
+  const notifyFlex = useCallback(async (
+    notificationId: string, 
+    dealId: string, 
+    status: 'approved' | 'denied',
+    notification: FlexInfoNotification
+  ) => {
+    try {
+      const { error } = await supabase.functions.invoke('notify-flex-info-response', {
+        body: {
+          notification_id: notificationId,
+          deal_id: dealId,
+          status,
+          user_email: notification.user_email,
+          lender_name: notification.lender_name,
+          company_name: notification.company_name,
+        },
+      });
+      
+      if (error) {
+        console.error('Error notifying Flex:', error);
+      }
+    } catch (error) {
+      console.error('Error calling notify-flex-info-response:', error);
+    }
+  }, []);
+
   const approveAccess = useCallback(async (notificationId: string) => {
+    const notification = notifications.find(n => n.id === notificationId);
+    if (!notification) return false;
+
     try {
       const { error } = await supabase
         .from('flex_info_notifications')
@@ -85,14 +114,20 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
         )
       );
 
+      // Notify Flex about the approval
+      notifyFlex(notificationId, notification.deal_id, 'approved', notification);
+
       return true;
     } catch (error) {
       console.error('Error approving access:', error);
       return false;
     }
-  }, []);
+  }, [notifications, notifyFlex]);
 
   const denyAccess = useCallback(async (notificationId: string) => {
+    const notification = notifications.find(n => n.id === notificationId);
+    if (!notification) return false;
+
     try {
       const { error } = await supabase
         .from('flex_info_notifications')
@@ -107,12 +142,15 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
         )
       );
 
+      // Notify Flex about the denial
+      notifyFlex(notificationId, notification.deal_id, 'denied', notification);
+
       return true;
     } catch (error) {
       console.error('Error denying access:', error);
       return false;
     }
-  }, []);
+  }, [notifications, notifyFlex]);
 
   const markAllAsRead = useCallback(async () => {
     const pendingIds = notifications.filter(n => n.status === 'pending').map(n => n.id);
