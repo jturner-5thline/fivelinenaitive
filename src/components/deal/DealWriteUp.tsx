@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye, CloudOff } from 'lucide-react';
+import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye, CloudOff, RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -217,12 +217,15 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const queryClient = useQueryClient();
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
+  const [isRepublishing, setIsRepublishing] = useState(false);
   const [showFlexConfirmDialog, setShowFlexConfirmDialog] = useState(false);
   const [showUnpublishDialog, setShowUnpublishDialog] = useState(false);
   const { data: latestSync } = useLatestFlexSync(dealId);
   
   // Check if currently published on FLEx
   const isPublishedOnFlex = latestSync?.status === 'success';
+  // Check if deal was unpublished (can be re-published)
+  const isUnpublishedFromFlex = latestSync?.status === 'unpublished';
 
   const updateField = <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => {
     onChange({ ...data, [field]: value });
@@ -338,6 +341,52 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       });
     } finally {
       setIsUnpublishing(false);
+    }
+  };
+
+  const handleRepublishToFlex = async () => {
+    if (isRepublishing) return;
+    
+    setIsRepublishing(true);
+    
+    try {
+      // First save any pending changes
+      await onSave();
+      
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast.error('You must be logged in to re-publish to FLEx');
+        return;
+      }
+
+      const writeUpPayload = getWriteUpPayload();
+
+      const { data: result, error } = await supabase.functions.invoke('push-to-flex', {
+        body: { dealId, writeUpData: writeUpPayload },
+      });
+
+      if (error) {
+        console.error('Re-publish to FLEx error:', error);
+        toast.error('Failed to re-publish to FLEx', {
+          description: error.message || 'Please try again later',
+        });
+        return;
+      }
+
+      // Invalidate sync history cache
+      await queryClient.invalidateQueries({ queryKey: ['flex-sync-history', dealId] });
+      await queryClient.invalidateQueries({ queryKey: ['flex-sync-latest', dealId] });
+
+      toast.success('Deal re-published to FLEx', {
+        description: 'The deal is now live on FLEx again',
+      });
+    } catch (error) {
+      console.error('Re-publish to FLEx error:', error);
+      toast.error('Failed to re-publish to FLEx', {
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    } finally {
+      setIsRepublishing(false);
     }
   };
 
@@ -766,6 +815,24 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                     )}
                   </Button>
                 </>
+              ) : isUnpublishedFromFlex ? (
+                <Button 
+                  variant="default"
+                  onClick={handleRepublishToFlex}
+                  disabled={isRepublishing}
+                >
+                  {isRepublishing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Re-publishing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Re-publish to FLEx
+                    </>
+                  )}
+                </Button>
               ) : (
                 <Button 
                   variant="default"
