@@ -127,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const message = template.getMessage(payload);
     const appUrl = "https://fivelinenaitive.lovable.app";
-    const dealUrl = `${appUrl}/deals/${payload.deal_id}?tab=deal-management#flex-engagement-section`;
+    const dealUrl = `${appUrl}/deal/${payload.deal_id}?tab=deal-management`;
     const userName = profileData.first_name || profileData.display_name || 'there';
 
     const emailResponse = await resend.emails.send({
