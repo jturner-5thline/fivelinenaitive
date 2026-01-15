@@ -375,6 +375,7 @@ export default function DealDetail() {
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room'>('deal-info');
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
+  const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
   
   // Deal writeup persistence hook
   const { writeupData: savedWriteupData, isLoading: isLoadingWriteup, isSaving: isSavingWriteup, saveWriteup } = useDealWriteup(id);
@@ -1714,99 +1715,6 @@ export default function DealDetail() {
                       )}
                     </Card>
                   )}
-
-                  {/* Latest Lender Updates */}
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        Latest Updates
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      {(() => {
-                        // Filter for lender-related updates - use string comparison for flexibility
-                        const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
-                        const lenderUpdates = activities.filter(a => 
-                          lenderUpdateTypes.includes(a.type as string) || 
-                          a.description.toLowerCase().includes('milestone changed')
-                        ).slice(0, 5);
-                        
-                        if (lenderUpdates.length === 0) {
-                          return (
-                            <p className="text-sm text-muted-foreground py-2">No recent lender updates</p>
-                          );
-                        }
-                        
-                        return (
-                          <div className="space-y-3">
-                            {lenderUpdates.map((activity) => {
-                              const activityType = activity.type as string;
-                              const isMilestoneChange = activityType === 'lender_substage_change' || activity.description.toLowerCase().includes('milestone changed');
-                              
-                              const getIcon = () => {
-                                if (activityType === 'lender_added') return <UserPlus className="h-3.5 w-3.5 text-green-500" />;
-                                if (activityType === 'lender_removed') return <Trash2 className="h-3.5 w-3.5 text-red-500" />;
-                                if (activityType === 'lender_stage_change') return <ArrowRight className="h-3.5 w-3.5 text-blue-500" />;
-                                if (isMilestoneChange) return <CheckCircle className="h-3.5 w-3.5 text-purple-500" />;
-                                return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
-                              };
-                              
-                              const getLabel = () => {
-                                if (activityType === 'lender_added') return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Added</Badge>;
-                                if (activityType === 'lender_removed') return <Badge variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Removed</Badge>;
-                                if (activityType === 'lender_stage_change') {
-                                  const newStage = activity.metadata?.to || activity.metadata?.newValue;
-                                  const oldStage = activity.metadata?.from || activity.metadata?.oldValue;
-                                  const badge = <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{newStage || 'Stage Change'}</Badge>;
-                                  if (oldStage) {
-                                    return (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>{badge}</TooltipTrigger>
-                                        <TooltipContent>Changed from {oldStage}</TooltipContent>
-                                      </Tooltip>
-                                    );
-                                  }
-                                  return badge;
-                                }
-                                if (isMilestoneChange) {
-                                  const newMilestone = activity.metadata?.to || activity.metadata?.newValue;
-                                  const oldMilestone = activity.metadata?.from || activity.metadata?.oldValue;
-                                  const badge = <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{newMilestone || 'Milestone'}</Badge>;
-                                  if (oldMilestone) {
-                                    return (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>{badge}</TooltipTrigger>
-                                        <TooltipContent>Changed from {oldMilestone}</TooltipContent>
-                                      </Tooltip>
-                                    );
-                                  }
-                                  return badge;
-                                }
-                                return null;
-                              };
-                              
-                              return (
-                                <div key={activity.id} className="flex items-start gap-3 text-sm">
-                                  <div className="mt-0.5">{getIcon()}</div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-foreground truncate">{activity.description}</span>
-                                      {getLabel()}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                      {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })()}
-                    </CardContent>
-                  </Card>
-
                   {/* Deal Information */}
                   <Card>
                     <CardHeader>
@@ -3009,6 +2917,126 @@ export default function DealDetail() {
             </div>
           </div>
         </main>
+      </div>
+
+      {/* Floating Latest Updates Widget */}
+      <div className="fixed bottom-6 left-6 z-50">
+        <Popover open={isUpdatesWidgetOpen} onOpenChange={setIsUpdatesWidgetOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="default"
+              size="sm"
+              className="rounded-full h-12 px-4 shadow-lg gap-2 animate-fade-in"
+            >
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">Latest Updates</span>
+              {(() => {
+                const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
+                const updateCount = activities.filter(a => 
+                  lenderUpdateTypes.includes(a.type as string) || 
+                  a.description.toLowerCase().includes('milestone changed')
+                ).length;
+                return updateCount > 0 ? (
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs bg-background/20 text-primary-foreground">
+                    {updateCount > 99 ? '99+' : updateCount}
+                  </Badge>
+                ) : null;
+              })()}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent 
+            side="top" 
+            align="start" 
+            className="w-96 p-0 animate-scale-in"
+            sideOffset={8}
+          >
+            <div className="p-4 border-b">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Latest Updates
+              </h3>
+            </div>
+            <div className="p-4 max-h-80 overflow-y-auto">
+              {(() => {
+                const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
+                const lenderUpdates = activities.filter(a => 
+                  lenderUpdateTypes.includes(a.type as string) || 
+                  a.description.toLowerCase().includes('milestone changed')
+                ).slice(0, 10);
+                
+                if (lenderUpdates.length === 0) {
+                  return (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No recent updates</p>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-3">
+                    {lenderUpdates.map((activity) => {
+                      const activityType = activity.type as string;
+                      const isMilestoneChange = activityType === 'lender_substage_change' || activity.description.toLowerCase().includes('milestone changed');
+                      
+                      const getIcon = () => {
+                        if (activityType === 'lender_added') return <UserPlus className="h-3.5 w-3.5 text-green-500" />;
+                        if (activityType === 'lender_removed') return <Trash2 className="h-3.5 w-3.5 text-red-500" />;
+                        if (activityType === 'lender_stage_change') return <ArrowRight className="h-3.5 w-3.5 text-blue-500" />;
+                        if (isMilestoneChange) return <CheckCircle className="h-3.5 w-3.5 text-purple-500" />;
+                        return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
+                      };
+                      
+                      const getLabel = () => {
+                        if (activityType === 'lender_added') return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Added</Badge>;
+                        if (activityType === 'lender_removed') return <Badge variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Removed</Badge>;
+                        if (activityType === 'lender_stage_change') {
+                          const newStage = activity.metadata?.to || activity.metadata?.newValue;
+                          return <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{newStage || 'Stage Change'}</Badge>;
+                        }
+                        if (isMilestoneChange) {
+                          const newMilestone = activity.metadata?.to || activity.metadata?.newValue;
+                          return <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{newMilestone || 'Milestone'}</Badge>;
+                        }
+                        return null;
+                      };
+                      
+                      return (
+                        <div key={activity.id} className="flex items-start gap-3 text-sm">
+                          <div className="mt-0.5">{getIcon()}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-foreground truncate">{activity.description}</span>
+                              {getLabel()}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+            {activities.filter(a => {
+              const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
+              return lenderUpdateTypes.includes(a.type as string) || a.description.toLowerCase().includes('milestone changed');
+            }).length > 10 && (
+              <div className="p-3 border-t bg-muted/50">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-xs"
+                  onClick={() => {
+                    setDealInfoTab('deal-management');
+                    setIsUpdatesWidgetOpen(false);
+                  }}
+                >
+                  View all activity →
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Lender Detail Dialog */}
