@@ -34,6 +34,7 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ActivityTimeline, ActivityItem, activityLogToItem } from '@/components/deals/ActivityTimeline';
 import { useActivityLog } from '@/hooks/useActivityLog';
+import { useFlexActivityNotifications } from '@/hooks/useFlexActivityNotifications';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
@@ -284,6 +285,9 @@ export default function DealDetail() {
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
+  
+  // Real-time FLEx activity notifications
+  useFlexActivityNotifications(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const { flagNotes, addFlagNote, deleteFlagNote } = useFlagNotes(id || null);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
