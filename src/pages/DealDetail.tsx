@@ -3149,7 +3149,7 @@ export default function DealDetail() {
                           onDragOver={handleAttachmentDragOver}
                           onDragEnd={handleAttachmentDragEnd}
                         >
-                          <div className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {DEAL_ATTACHMENT_CATEGORIES.map((category) => {
                               const categoryAttachments = attachments
                                 .filter(a => a.category === category.value)
