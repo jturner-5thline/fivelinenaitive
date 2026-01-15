@@ -1,4 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+import { Json } from '@/integrations/supabase/types';
 
 export type StageGroup = 'active' | 'on-deck' | 'passed' | 'on-hold';
 
@@ -42,6 +46,7 @@ interface LenderStagesContextType {
   deletePassReason: (id: string) => void;
   reorderPassReasons: (reasons: PassReasonOption[]) => void;
   getStagesByGroup: (group: StageGroup) => StageOption[];
+  isLoading: boolean;
 }
 
 const LenderStagesContext = createContext<LenderStagesContextType | undefined>(undefined);
@@ -51,8 +56,9 @@ const defaultStages: StageOption[] = [
   { id: 'reviewing-drl', label: 'Reviewing DRL', group: 'active' },
   { id: 'management-call-set', label: 'Management Call Set', group: 'active' },
   { id: 'management-call-completed', label: 'Management Call Completed', group: 'active' },
+  { id: 'dd', label: 'Due Diligence', group: 'active' },
   { id: 'draft-terms', label: 'Draft Terms', group: 'active' },
-  { id: 'term-sheets', label: 'Term Sheets', group: 'active' },
+  { id: 'term-sheet', label: 'Term Sheet', group: 'active' },
   { id: 'passed', label: 'Passed', group: 'passed' },
 ];
 
@@ -82,43 +88,189 @@ const defaultPassReasons: PassReasonOption[] = [
 ];
 
 export function LenderStagesProvider({ children }: { children: ReactNode }) {
-  const [stages, setStages] = useState<StageOption[]>(() => {
-    const saved = localStorage.getItem('lenderStages');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Migrate old stages without group
-      return parsed.map((s: any) => ({
-        ...s,
-        group: s.group || 'active'
-      }));
+  const { user } = useAuth();
+  const { company } = useCompany();
+  const [stages, setStages] = useState<StageOption[]>(defaultStages);
+  const [substages, setSubstages] = useState<SubstageOption[]>(defaultSubstages);
+  const [passReasons, setPassReasons] = useState<PassReasonOption[]>(defaultPassReasons);
+  const [isLoading, setIsLoading] = useState(true);
+  const [configId, setConfigId] = useState<string | null>(null);
+
+  // Load config from database
+  useEffect(() => {
+    const loadConfig = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // First try to get company config, then user config
+        let query = supabase
+          .from('lender_stage_configs')
+          .select('*');
+
+        if (company?.id) {
+          query = query.eq('company_id', company.id);
+        } else {
+          query = query.eq('user_id', user.id);
+        }
+
+        const { data, error } = await query.maybeSingle();
+
+        if (error) {
+          console.error('Error loading lender stage config:', error);
+          // Fall back to localStorage for migration
+          loadFromLocalStorage();
+        } else if (data) {
+          // Load from database - cast through unknown for JSONB columns
+          const dbStages = data.stages as unknown as StageOption[];
+          const dbSubstages = data.substages as unknown as SubstageOption[];
+          const dbPassReasons = data.pass_reasons as unknown as PassReasonOption[];
+          
+          if (dbStages && Array.isArray(dbStages) && dbStages.length > 0) {
+            setStages(dbStages);
+          }
+          if (dbSubstages && Array.isArray(dbSubstages) && dbSubstages.length > 0) {
+            setSubstages(dbSubstages);
+          }
+          if (dbPassReasons && Array.isArray(dbPassReasons) && dbPassReasons.length > 0) {
+            setPassReasons(dbPassReasons);
+          }
+          setConfigId(data.id);
+        } else {
+          // No config in database - try to migrate from localStorage
+          const migratedFromLocal = loadFromLocalStorage();
+          if (migratedFromLocal) {
+            // Save to database
+            await saveToDatabase(stages, substages, passReasons);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading config:', err);
+        loadFromLocalStorage();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadConfig();
+  }, [user, company?.id]);
+
+  const loadFromLocalStorage = (): boolean => {
+    let loaded = false;
+    
+    const savedStages = localStorage.getItem('lenderStages');
+    if (savedStages) {
+      try {
+        const parsed = JSON.parse(savedStages);
+        const migrated = parsed.map((s: any) => ({
+          ...s,
+          group: s.group || 'active'
+        }));
+        setStages(migrated);
+        loaded = true;
+      } catch (e) {
+        console.error('Error parsing localStorage stages:', e);
+      }
     }
-    return defaultStages;
-  });
 
-  const [substages, setSubstages] = useState<SubstageOption[]>(() => {
-    const saved = localStorage.getItem('lenderSubstages');
-    return saved ? JSON.parse(saved) : defaultSubstages;
-  });
+    const savedSubstages = localStorage.getItem('lenderSubstages');
+    if (savedSubstages) {
+      try {
+        setSubstages(JSON.parse(savedSubstages));
+        loaded = true;
+      } catch (e) {
+        console.error('Error parsing localStorage substages:', e);
+      }
+    }
 
-  const [passReasons, setPassReasons] = useState<PassReasonOption[]>(() => {
-    const saved = localStorage.getItem('lenderPassReasons');
-    return saved ? JSON.parse(saved) : defaultPassReasons;
-  });
+    const savedPassReasons = localStorage.getItem('lenderPassReasons');
+    if (savedPassReasons) {
+      try {
+        setPassReasons(JSON.parse(savedPassReasons));
+        loaded = true;
+      } catch (e) {
+        console.error('Error parsing localStorage passReasons:', e);
+      }
+    }
 
-  const saveStages = (newStages: StageOption[]) => {
+    return loaded;
+  };
+
+  const saveToDatabase = useCallback(async (
+    newStages: StageOption[],
+    newSubstages: SubstageOption[],
+    newPassReasons: PassReasonOption[]
+  ) => {
+    if (!user) return;
+
+    try {
+      const configData = {
+        user_id: user.id,
+        company_id: company?.id || null,
+        stages: newStages,
+        substages: newSubstages,
+        pass_reasons: newPassReasons,
+      };
+
+      if (configId) {
+        // Update existing config
+        const { error } = await supabase
+          .from('lender_stage_configs')
+          .update({
+            stages: newStages as unknown as Json,
+            substages: newSubstages as unknown as Json,
+            pass_reasons: newPassReasons as unknown as Json,
+          })
+          .eq('id', configId);
+
+        if (error) throw error;
+      } else {
+        // Insert new config
+        const { data, error } = await supabase
+          .from('lender_stage_configs')
+          .insert({
+            user_id: user.id,
+            company_id: company?.id || null,
+            stages: newStages as unknown as Json,
+            substages: newSubstages as unknown as Json,
+            pass_reasons: newPassReasons as unknown as Json,
+          })
+          .select('id')
+          .single();
+
+        if (error) throw error;
+        if (data) setConfigId(data.id);
+      }
+
+      // Clear localStorage after successful save to database
+      localStorage.removeItem('lenderStages');
+      localStorage.removeItem('lenderSubstages');
+      localStorage.removeItem('lenderPassReasons');
+    } catch (error) {
+      console.error('Error saving lender stage config:', error);
+      // Fall back to localStorage if database save fails
+      localStorage.setItem('lenderStages', JSON.stringify(newStages));
+      localStorage.setItem('lenderSubstages', JSON.stringify(newSubstages));
+      localStorage.setItem('lenderPassReasons', JSON.stringify(newPassReasons));
+    }
+  }, [user, company?.id, configId]);
+
+  const saveStages = useCallback((newStages: StageOption[]) => {
     setStages(newStages);
-    localStorage.setItem('lenderStages', JSON.stringify(newStages));
-  };
+    saveToDatabase(newStages, substages, passReasons);
+  }, [substages, passReasons, saveToDatabase]);
 
-  const saveSubstages = (newSubstages: SubstageOption[]) => {
+  const saveSubstages = useCallback((newSubstages: SubstageOption[]) => {
     setSubstages(newSubstages);
-    localStorage.setItem('lenderSubstages', JSON.stringify(newSubstages));
-  };
+    saveToDatabase(stages, newSubstages, passReasons);
+  }, [stages, passReasons, saveToDatabase]);
 
-  const savePassReasons = (newReasons: PassReasonOption[]) => {
+  const savePassReasons = useCallback((newReasons: PassReasonOption[]) => {
     setPassReasons(newReasons);
-    localStorage.setItem('lenderPassReasons', JSON.stringify(newReasons));
-  };
+    saveToDatabase(stages, substages, newReasons);
+  }, [stages, substages, saveToDatabase]);
 
   const addStage = (stage: Omit<StageOption, 'id'>) => {
     const id = stage.label.toLowerCase().replace(/\s+/g, '-');
@@ -196,6 +348,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       deletePassReason,
       reorderPassReasons,
       getStagesByGroup,
+      isLoading,
     }}>
       {children}
     </LenderStagesContext.Provider>
