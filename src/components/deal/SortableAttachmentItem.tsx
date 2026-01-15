@@ -1,10 +1,10 @@
-import { useDraggable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { File, Download, Trash2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DealAttachment } from '@/hooks/useDealAttachments';
 
-interface DraggableAttachmentItemProps {
+interface SortableAttachmentItemProps {
   attachment: DealAttachment;
   formatFileSize: (bytes: number) => string;
   onDelete: (attachment: DealAttachment) => void;
@@ -12,23 +12,32 @@ interface DraggableAttachmentItemProps {
   onDownload: (attachment: DealAttachment) => void;
 }
 
-export function DraggableAttachmentItem({
+export function SortableAttachmentItem({
   attachment,
   formatFileSize,
   onDelete,
   onView,
   onDownload,
-}: DraggableAttachmentItemProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+}: SortableAttachmentItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: attachment.id,
     data: {
       type: 'attachment',
       attachment,
+      category: attachment.category,
     },
   });
 
   const style = {
-    transform: CSS.Translate.toString(transform),
+    transform: CSS.Transform.toString(transform),
+    transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : 'auto',
   };

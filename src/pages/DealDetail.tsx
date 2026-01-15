@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle } from 'lucide-react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/deals/DealMilestones';
@@ -41,7 +41,7 @@ import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
-import { DraggableAttachmentItem } from '@/components/deal/DraggableAttachmentItem';
+import { SortableAttachmentItem } from '@/components/deal/SortableAttachmentItem';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
@@ -648,8 +648,8 @@ export default function DealDetail() {
     }
   }, [uploadMultipleAttachments, uploadCategory]);
 
-  // Handle attachment drag between categories
-  const handleAttachmentDragStart = useCallback((event: DragEndEvent) => {
+  // Handle attachment drag between categories and reordering within
+  const handleAttachmentDragStart = useCallback((event: DragStartEvent) => {
     const attachmentId = event.active.id as string;
     const attachment = attachments.find(a => a.id === attachmentId);
     if (attachment) {
@@ -657,11 +657,16 @@ export default function DealDetail() {
     }
   }, [attachments]);
 
-  const handleAttachmentDragOver = useCallback((event: DragEndEvent) => {
-    const { over } = event;
+  const handleAttachmentDragOver = useCallback((event: DragOverEvent) => {
+    const { over, active } = event;
     if (over) {
-      const targetCategory = over.data.current?.category || over.id;
-      if (DEAL_ATTACHMENT_CATEGORIES.some(c => c.value === targetCategory)) {
+      // Check if over a category folder or another attachment
+      const overData = over.data.current;
+      const targetCategory = overData?.category || 
+        (overData?.type === 'attachment' ? overData.attachment?.category : null) ||
+        (DEAL_ATTACHMENT_CATEGORIES.some(c => c.value === over.id) ? over.id : null);
+      
+      if (targetCategory && DEAL_ATTACHMENT_CATEGORIES.some(c => c.value === targetCategory)) {
         setDragOverCategory(targetCategory as string);
       }
     } else {
@@ -682,14 +687,33 @@ export default function DealDetail() {
     
     if (!attachment) return;
     
-    // Check if dropped on a category folder
-    const targetCategory = over.data.current?.category || over.id;
+    const overData = over.data.current;
     
-    // Only update if category changed
-    if (attachment.category !== targetCategory && 
-        DEAL_ATTACHMENT_CATEGORIES.some(c => c.value === targetCategory)) {
+    // Determine if dropping on a category or another attachment
+    let targetCategory: string | null = null;
+    let isReordering = false;
+    
+    if (overData?.type === 'attachment') {
+      // Dropping on another attachment - check if same category for reordering
+      const overAttachment = overData.attachment;
+      if (overAttachment?.category === attachment.category && over.id !== active.id) {
+        isReordering = true;
+      } else if (overAttachment?.category !== attachment.category) {
+        targetCategory = overAttachment?.category;
+      }
+    } else if (overData?.category) {
+      targetCategory = overData.category;
+    } else if (DEAL_ATTACHMENT_CATEGORIES.some(c => c.value === over.id)) {
+      targetCategory = over.id as string;
+    }
+    
+    // Handle category change
+    if (targetCategory && attachment.category !== targetCategory) {
       await updateAttachmentCategory(attachmentId, targetCategory as DealAttachmentCategory);
     }
+    
+    // Note: For visual reordering animation, we rely on SortableContext's built-in animations
+    // Persisting order would require a database column for position, which isn't implemented here
   }, [attachments, updateAttachmentCategory]);
 
   // Convert activity logs to ActivityItem format and combine with local undo actions
@@ -2892,35 +2916,40 @@ export default function DealDetail() {
                                     </CollapsibleTrigger>
                                     <CollapsibleContent>
                                       {categoryAttachments.length > 0 ? (
-                                        <div className="ml-6 mt-2 space-y-1">
-                                          {categoryAttachments.map((attachment) => (
-                                            <DraggableAttachmentItem
-                                              key={attachment.id}
-                                              attachment={attachment}
-                                              formatFileSize={formatFileSize}
-                                              onDelete={deleteAttachment}
-                                              onView={(att) => {
-                                                logActivity('attachment_viewed', `Viewed attachment: ${att.name}`, {
-                                                  attachment_id: att.id,
-                                                  attachment_name: att.name,
-                                                  attachment_category: att.category,
-                                                  file_size: att.size_bytes,
-                                                });
-                                              }}
-                                              onDownload={(att) => {
-                                                if (att.url) {
-                                                  logActivity('attachment_downloaded', `Downloaded attachment: ${att.name}`, {
+                                        <SortableContext 
+                                          items={categoryAttachments.map(a => a.id)} 
+                                          strategy={verticalListSortingStrategy}
+                                        >
+                                          <div className="ml-6 mt-2 space-y-1">
+                                            {categoryAttachments.map((attachment) => (
+                                              <SortableAttachmentItem
+                                                key={attachment.id}
+                                                attachment={attachment}
+                                                formatFileSize={formatFileSize}
+                                                onDelete={deleteAttachment}
+                                                onView={(att) => {
+                                                  logActivity('attachment_viewed', `Viewed attachment: ${att.name}`, {
                                                     attachment_id: att.id,
                                                     attachment_name: att.name,
                                                     attachment_category: att.category,
                                                     file_size: att.size_bytes,
                                                   });
-                                                  window.open(att.url, '_blank');
-                                                }
-                                              }}
-                                            />
-                                          ))}
-                                        </div>
+                                                }}
+                                                onDownload={(att) => {
+                                                  if (att.url) {
+                                                    logActivity('attachment_downloaded', `Downloaded attachment: ${att.name}`, {
+                                                      attachment_id: att.id,
+                                                      attachment_name: att.name,
+                                                      attachment_category: att.category,
+                                                      file_size: att.size_bytes,
+                                                    });
+                                                    window.open(att.url, '_blank');
+                                                  }
+                                                }}
+                                              />
+                                            ))}
+                                          </div>
+                                        </SortableContext>
                                       ) : (
                                         <div className="ml-6 mt-2 p-3 text-center text-sm text-muted-foreground bg-background rounded-lg border border-dashed border-border">
                                           No files in this folder
