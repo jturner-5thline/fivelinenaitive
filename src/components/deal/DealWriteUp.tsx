@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send } from 'lucide-react';
+import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { AutoSaveStatus } from '@/hooks/useAutoSave';
@@ -200,15 +212,42 @@ const STATUS_OPTIONS = [
 
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
+  const [showFlexConfirmDialog, setShowFlexConfirmDialog] = useState(false);
 
   const updateField = <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => {
     onChange({ ...data, [field]: value });
   };
 
+  const getWriteUpPayload = () => ({
+    companyName: data.companyName,
+    companyUrl: data.companyUrl,
+    linkedinUrl: data.linkedinUrl,
+    dataRoomUrl: data.dataRoomUrl,
+    industry: data.industry,
+    location: data.location,
+    dealType: data.dealType,
+    billingModel: data.billingModel,
+    profitability: data.profitability,
+    grossMargins: data.grossMargins,
+    capitalAsk: data.capitalAsk,
+    thisYearRevenue: data.thisYearRevenue,
+    lastYearRevenue: data.lastYearRevenue,
+    financialDataAsOf: data.financialDataAsOf?.toISOString() || null,
+    accountingSystem: data.accountingSystem,
+    status: data.status,
+    useOfFunds: data.useOfFunds,
+    existingDebtDetails: data.existingDebtDetails,
+    description: data.description,
+    keyItems: data.keyItems,
+    publishAsAnonymous: data.publishAsAnonymous,
+  });
+
   const handlePushToFlex = async () => {
     if (isPushingToFlex) return;
     
     setIsPushingToFlex(true);
+    setShowFlexConfirmDialog(false);
+    
     try {
       // First save any pending changes
       await onSave();
@@ -219,29 +258,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         return;
       }
 
-      const writeUpPayload = {
-        companyName: data.companyName,
-        companyUrl: data.companyUrl,
-        linkedinUrl: data.linkedinUrl,
-        dataRoomUrl: data.dataRoomUrl,
-        industry: data.industry,
-        location: data.location,
-        dealType: data.dealType,
-        billingModel: data.billingModel,
-        profitability: data.profitability,
-        grossMargins: data.grossMargins,
-        capitalAsk: data.capitalAsk,
-        thisYearRevenue: data.thisYearRevenue,
-        lastYearRevenue: data.lastYearRevenue,
-        financialDataAsOf: data.financialDataAsOf?.toISOString() || null,
-        accountingSystem: data.accountingSystem,
-        status: data.status,
-        useOfFunds: data.useOfFunds,
-        existingDebtDetails: data.existingDebtDetails,
-        description: data.description,
-        keyItems: data.keyItems,
-        publishAsAnonymous: data.publishAsAnonymous,
-      };
+      const writeUpPayload = getWriteUpPayload();
 
       const { data: result, error } = await supabase.functions.invoke('push-to-flex', {
         body: { dealId, writeUpData: writeUpPayload },
@@ -266,6 +283,16 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     } finally {
       setIsPushingToFlex(false);
     }
+  };
+
+  const DataPreviewRow = ({ label, value }: { label: string; value: string | null | undefined }) => {
+    if (!value) return null;
+    return (
+      <div className="flex justify-between py-1.5 border-b border-border/50 last:border-0">
+        <span className="text-muted-foreground text-sm">{label}</span>
+        <span className="text-sm font-medium text-right max-w-[60%] truncate">{value}</span>
+      </div>
+    );
   };
 
   const addKeyItem = () => {
@@ -641,7 +668,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               </Button>
               <Button 
                 variant="default"
-                onClick={handlePushToFlex}
+                onClick={() => setShowFlexConfirmDialog(true)}
                 disabled={isPushingToFlex}
               >
                 {isPushingToFlex ? (
@@ -660,6 +687,131 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           </div>
         </div>
       </CardContent>
+
+      {/* Push to FLEx Confirmation Dialog */}
+      <AlertDialog open={showFlexConfirmDialog} onOpenChange={setShowFlexConfirmDialog}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Preview Data for FLEx
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Review the deal information that will be sent to FLEx. Make sure all details are correct before proceeding.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-4">
+              {/* Company Information */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  Company Information
+                  {data.publishAsAnonymous && (
+                    <Badge variant="secondary" className="text-xs">Anonymous</Badge>
+                  )}
+                </h4>
+                <div className="space-y-1">
+                  <DataPreviewRow label="Company Name" value={data.companyName} />
+                  <DataPreviewRow label="Website" value={data.companyUrl} />
+                  <DataPreviewRow label="LinkedIn" value={data.linkedinUrl} />
+                  <DataPreviewRow label="Data Room" value={data.dataRoomUrl} />
+                  <DataPreviewRow label="Industry" value={data.industry} />
+                  <DataPreviewRow label="Location" value={data.location} />
+                </div>
+              </div>
+
+              {/* Deal Details */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <h4 className="font-semibold text-sm mb-3">Deal Details</h4>
+                <div className="space-y-1">
+                  <DataPreviewRow label="Deal Type" value={data.dealType} />
+                  <DataPreviewRow label="Capital Ask" value={data.capitalAsk} />
+                  <DataPreviewRow label="Status" value={data.status} />
+                  <DataPreviewRow label="Billing Model" value={data.billingModel} />
+                  <DataPreviewRow label="Profitability" value={data.profitability} />
+                  <DataPreviewRow label="Gross Margins" value={data.grossMargins} />
+                </div>
+              </div>
+
+              {/* Financials */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <h4 className="font-semibold text-sm mb-3">Financials</h4>
+                <div className="space-y-1">
+                  <DataPreviewRow label="This Year Revenue" value={data.thisYearRevenue} />
+                  <DataPreviewRow label="Last Year Revenue" value={data.lastYearRevenue} />
+                  <DataPreviewRow 
+                    label="Financial Data As Of" 
+                    value={data.financialDataAsOf ? format(data.financialDataAsOf, 'MMM d, yyyy') : undefined} 
+                  />
+                  <DataPreviewRow label="Accounting System" value={data.accountingSystem} />
+                </div>
+              </div>
+
+              {/* Additional Details */}
+              {(data.useOfFunds || data.existingDebtDetails || data.description) && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <h4 className="font-semibold text-sm mb-3">Additional Details</h4>
+                  <div className="space-y-3">
+                    {data.useOfFunds && (
+                      <div>
+                        <span className="text-muted-foreground text-sm">Use of Funds</span>
+                        <p className="text-sm mt-1">{data.useOfFunds}</p>
+                      </div>
+                    )}
+                    {data.existingDebtDetails && (
+                      <div>
+                        <span className="text-muted-foreground text-sm">Existing Debt</span>
+                        <p className="text-sm mt-1">{data.existingDebtDetails}</p>
+                      </div>
+                    )}
+                    {data.description && (
+                      <div>
+                        <span className="text-muted-foreground text-sm">Description</span>
+                        <p className="text-sm mt-1 line-clamp-3">{data.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Key Items */}
+              {data.keyItems.length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <h4 className="font-semibold text-sm mb-3">Key Items ({data.keyItems.length})</h4>
+                  <div className="space-y-2">
+                    {data.keyItems.map((item, index) => (
+                      <div key={item.id} className="text-sm">
+                        <span className="font-medium">{index + 1}. {item.title || 'Untitled'}</span>
+                        {item.description && (
+                          <p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">{item.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePushToFlex} disabled={isPushingToFlex}>
+              {isPushingToFlex ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Pushing...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Confirm & Push to FLEx
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
