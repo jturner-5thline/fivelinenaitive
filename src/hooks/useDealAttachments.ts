@@ -4,9 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 export const DEAL_ATTACHMENT_CATEGORIES = [
-  { value: 'term-sheets', label: 'Term Sheets' },
-  { value: 'credit-file', label: 'Credit File' },
-  { value: 'reports', label: 'Reports' },
+  { value: 'materials', label: 'Materials' },
+  { value: 'financials', label: 'Financials' },
+  { value: 'agreements', label: 'Agreements' },
+  { value: 'other', label: 'Other' },
 ] as const;
 
 export type DealAttachmentCategory = typeof DEAL_ATTACHMENT_CATEGORIES[number]['value'];
@@ -80,7 +81,7 @@ export function useDealAttachments(dealId: string | null) {
     fetchAttachments();
   }, [fetchAttachments]);
 
-  const uploadAttachment = async (file: File, category: DealAttachmentCategory = 'credit-file') => {
+  const uploadAttachment = async (file: File, category: DealAttachmentCategory = 'materials') => {
     if (!user || !dealId) {
       toast.error('Please log in to upload attachments');
       return null;
@@ -122,7 +123,7 @@ export function useDealAttachments(dealId: string | null) {
     }
   };
 
-  const uploadMultipleAttachments = async (files: File[], category: DealAttachmentCategory = 'credit-file') => {
+  const uploadMultipleAttachments = async (files: File[], category: DealAttachmentCategory = 'materials') => {
     if (!user || !dealId) {
       toast.error('Please log in to upload attachments');
       return [];

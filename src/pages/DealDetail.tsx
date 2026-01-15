@@ -466,10 +466,10 @@ export default function DealDetail() {
   const [lenderGroupFilter, setLenderGroupFilter] = useState<StageGroup | 'all'>(
     savedViewPrefs?.lenderGroupFilter ?? 'all'
   );
-  const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'term-sheets' | 'credit-file' | 'reports'>(
+  const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'materials' | 'financials' | 'agreements' | 'other'>(
     savedViewPrefs?.attachmentFilter ?? 'all'
   );
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['term-sheets', 'credit-file', 'reports']));
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['materials', 'financials', 'agreements', 'other']));
   
   // Track if view has been modified from saved state
   const [viewModified, setViewModified] = useState(false);
@@ -617,7 +617,7 @@ export default function DealDetail() {
 
   // Deal attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('credit-file');
+  const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('materials');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { 
