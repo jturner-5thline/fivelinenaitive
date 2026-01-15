@@ -379,6 +379,27 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
 
       toast.success('Deal re-published to FLEx', {
         description: 'The deal is now live on FLEx again',
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              const { error: undoError } = await supabase.functions.invoke('push-to-flex', {
+                body: { dealId, action: 'unpublish' },
+              });
+              
+              if (undoError) {
+                toast.error('Failed to undo re-publish');
+                return;
+              }
+              
+              await queryClient.invalidateQueries({ queryKey: ['flex-sync-history', dealId] });
+              await queryClient.invalidateQueries({ queryKey: ['flex-sync-latest', dealId] });
+              toast.success('Re-publish undone', { description: 'Deal has been unpublished from FLEx' });
+            } catch {
+              toast.error('Failed to undo re-publish');
+            }
+          },
+        },
       });
     } catch (error) {
       console.error('Re-publish to FLEx error:', error);
