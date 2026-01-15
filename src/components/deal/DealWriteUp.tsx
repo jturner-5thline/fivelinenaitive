@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye, CloudOff, RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -218,8 +218,13 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [isRepublishing, setIsRepublishing] = useState(false);
+  const [isPendingPublish, setIsPendingPublish] = useState(false);
+  const [publishCountdown, setPublishCountdown] = useState(0);
   const [showFlexConfirmDialog, setShowFlexConfirmDialog] = useState(false);
   const [showUnpublishDialog, setShowUnpublishDialog] = useState(false);
+  const publishTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingPublishToastIdRef = useRef<string | number | null>(null);
   const { data: latestSync } = useLatestFlexSync(dealId);
   
   // Check if currently published on FLEx
@@ -255,16 +260,27 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     publishAsAnonymous: data.publishAsAnonymous,
   });
 
-  const handlePushToFlex = async () => {
-    if (isPushingToFlex) return;
-    
-    setIsPushingToFlex(true);
-    setShowFlexConfirmDialog(false);
-    
+  const cancelPendingPublish = () => {
+    if (publishTimeoutRef.current) {
+      clearTimeout(publishTimeoutRef.current);
+      publishTimeoutRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (pendingPublishToastIdRef.current) {
+      toast.dismiss(pendingPublishToastIdRef.current);
+      pendingPublishToastIdRef.current = null;
+    }
+    setIsPendingPublish(false);
+    setPublishCountdown(0);
+    setIsPushingToFlex(false);
+    toast.info('Publish to FLEx cancelled');
+  };
+
+  const executePublishToFlex = async () => {
     try {
-      // First save any pending changes
-      await onSave();
-      
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
         toast.error('You must be logged in to push to FLEx');
@@ -291,6 +307,28 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
 
       toast.success('Deal pushed to FLEx successfully', {
         description: 'The deal data has been synced with FLEx',
+        duration: 5000,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              const { error: undoError } = await supabase.functions.invoke('push-to-flex', {
+                body: { dealId, action: 'unpublish' },
+              });
+              
+              if (undoError) {
+                toast.error('Failed to undo publish');
+                return;
+              }
+              
+              await queryClient.invalidateQueries({ queryKey: ['flex-sync-history', dealId] });
+              await queryClient.invalidateQueries({ queryKey: ['flex-sync-latest', dealId] });
+              toast.success('Publish undone', { description: 'Deal has been unpublished from FLEx' });
+            } catch {
+              toast.error('Failed to undo publish');
+            }
+          },
+        },
       });
     } catch (error) {
       console.error('Push to FLEx error:', error);
@@ -299,6 +337,72 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       });
     } finally {
       setIsPushingToFlex(false);
+      setIsPendingPublish(false);
+      setPublishCountdown(0);
+    }
+  };
+
+  const handlePushToFlex = async () => {
+    if (isPushingToFlex || isPendingPublish) return;
+    
+    setIsPushingToFlex(true);
+    setShowFlexConfirmDialog(false);
+    
+    try {
+      // First save any pending changes
+      await onSave();
+      
+      // Start the 7-second countdown
+      const DELAY_SECONDS = 7;
+      setIsPendingPublish(true);
+      setPublishCountdown(DELAY_SECONDS);
+      
+      // Show pending toast with cancel option
+      pendingPublishToastIdRef.current = toast.loading(`Publishing to FLEx in ${DELAY_SECONDS} seconds...`, {
+        duration: Infinity,
+        action: {
+          label: 'Cancel',
+          onClick: cancelPendingPublish,
+        },
+      });
+
+      // Update countdown every second
+      let remaining = DELAY_SECONDS;
+      countdownIntervalRef.current = setInterval(() => {
+        remaining -= 1;
+        setPublishCountdown(remaining);
+        if (pendingPublishToastIdRef.current && remaining > 0) {
+          toast.loading(`Publishing to FLEx in ${remaining} second${remaining !== 1 ? 's' : ''}...`, {
+            id: pendingPublishToastIdRef.current,
+            duration: Infinity,
+            action: {
+              label: 'Cancel',
+              onClick: cancelPendingPublish,
+            },
+          });
+        }
+      }, 1000);
+
+      // Schedule the actual publish
+      publishTimeoutRef.current = setTimeout(async () => {
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+        if (pendingPublishToastIdRef.current) {
+          toast.dismiss(pendingPublishToastIdRef.current);
+          pendingPublishToastIdRef.current = null;
+        }
+        await executePublishToFlex();
+      }, DELAY_SECONDS * 1000);
+      
+    } catch (error) {
+      console.error('Push to FLEx error:', error);
+      toast.error('Failed to push to FLEx', {
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+      setIsPushingToFlex(false);
+      setIsPendingPublish(false);
     }
   };
 
