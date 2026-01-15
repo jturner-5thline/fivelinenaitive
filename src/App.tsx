@@ -48,7 +48,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="app-theme" disableTransitionOnChange>
         <AuthProvider>
           <PreferencesProvider>
             <DealsProvider>
