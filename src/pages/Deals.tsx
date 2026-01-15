@@ -13,6 +13,7 @@ import { RecentActivityWidget } from '@/components/deals/RecentActivityWidget';
 import { StaleDealsWidget } from '@/components/deals/StaleDealsWidget';
 import { MilestonesWidget } from '@/components/deals/MilestonesWidget';
 import { NotificationsBar } from '@/components/deals/NotificationsBar';
+import { FlexLeaderboardWidget } from '@/components/deals/FlexLeaderboardWidget';
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
 import { DemoBanner } from '@/components/deals/DemoBanner';
 import { DemoTour } from '@/components/deals/DemoTour';
@@ -162,10 +163,11 @@ export default function Dashboard() {
                 <>
                   <WidgetsSection deals={allDeals} />
                   {specialWidgets['stage-progression'] && <StageProgression deals={allDeals} />}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {specialWidgets['recent-activity'] && <RecentActivityWidget />}
                     {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
                     {specialWidgets['milestones'] && <MilestonesWidget />}
+                    {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
                   </div>
                 </>
               )}
