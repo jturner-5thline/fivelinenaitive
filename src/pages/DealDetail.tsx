@@ -631,6 +631,7 @@ export default function DealDetail() {
     uploadMultipleAttachments, 
     deleteAttachment,
     updateAttachmentCategory,
+    reorderAttachments,
     formatFileSize 
   } = useDealAttachments(id || null);
   
@@ -692,10 +693,11 @@ export default function DealDetail() {
     // Determine if dropping on a category or another attachment
     let targetCategory: string | null = null;
     let isReordering = false;
+    let overAttachment: typeof attachment | null = null;
     
     if (overData?.type === 'attachment') {
+      overAttachment = overData.attachment;
       // Dropping on another attachment - check if same category for reordering
-      const overAttachment = overData.attachment;
       if (overAttachment?.category === attachment.category && over.id !== active.id) {
         isReordering = true;
       } else if (overAttachment?.category !== attachment.category) {
@@ -707,14 +709,30 @@ export default function DealDetail() {
       targetCategory = over.id as string;
     }
     
-    // Handle category change
-    if (targetCategory && attachment.category !== targetCategory) {
-      await updateAttachmentCategory(attachmentId, targetCategory as DealAttachmentCategory);
+    // Handle reordering within the same category
+    if (isReordering && overAttachment) {
+      const categoryAttachments = attachments
+        .filter(a => a.category === attachment.category)
+        .sort((a, b) => a.position - b.position);
+      
+      const oldIndex = categoryAttachments.findIndex(a => a.id === attachmentId);
+      const newIndex = categoryAttachments.findIndex(a => a.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const reordered = arrayMove(categoryAttachments, oldIndex, newIndex);
+        await reorderAttachments(reordered.map(a => a.id), attachment.category);
+      }
     }
-    
-    // Note: For visual reordering animation, we rely on SortableContext's built-in animations
-    // Persisting order would require a database column for position, which isn't implemented here
-  }, [attachments, updateAttachmentCategory]);
+    // Handle category change
+    else if (targetCategory && attachment.category !== targetCategory) {
+      // Get the max position in the target category
+      const targetCategoryAttachments = attachments.filter(a => a.category === targetCategory);
+      const maxPosition = targetCategoryAttachments.length > 0 
+        ? Math.max(...targetCategoryAttachments.map(a => a.position)) + 1 
+        : 0;
+      await updateAttachmentCategory(attachmentId, targetCategory as DealAttachmentCategory, maxPosition);
+    }
+  }, [attachments, updateAttachmentCategory, reorderAttachments]);
 
   // Convert activity logs to ActivityItem format and combine with local undo actions
   const activities: ActivityItem[] = useMemo(() => {
@@ -2875,7 +2893,9 @@ export default function DealDetail() {
                         >
                           <div className="space-y-3">
                             {DEAL_ATTACHMENT_CATEGORIES.map((category) => {
-                              const categoryAttachments = attachments.filter(a => a.category === category.value);
+                              const categoryAttachments = attachments
+                                .filter(a => a.category === category.value)
+                                .sort((a, b) => a.position - b.position);
                               const isExpanded = expandedFolders.has(category.value);
                               
                               return (
