@@ -373,7 +373,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup'>('deal-info');
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room'>('deal-info');
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   
   // Deal writeup persistence hook
@@ -1639,12 +1639,12 @@ export default function DealDetail() {
           </Card>
 
           {/* Main Content Grid */}
-          <div className="grid gap-6 lg:grid-cols-3 items-start">
-            {/* Left Column - Notes & Actions */}
-            <div className="lg:col-span-2 flex flex-col gap-6">
+          <div className="grid gap-6">
+            {/* Main Content */}
+            <div className="flex flex-col gap-6">
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup')}>
-                <TabsList className="grid w-full grid-cols-4">
+              <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room')}>
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
                   <TabsTrigger value="lenders" className="gap-2">
                     Lenders
@@ -1656,6 +1656,14 @@ export default function DealDetail() {
                   </TabsTrigger>
                   <TabsTrigger value="deal-management">Deal Management</TabsTrigger>
                   <TabsTrigger value="deal-writeup">Deal Write Up</TabsTrigger>
+                  <TabsTrigger value="data-room" className="gap-2">
+                    Data Room
+                    {attachments.length > 0 && (
+                      <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs">
+                        {attachments.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
@@ -2768,208 +2776,204 @@ export default function DealDetail() {
                     autoSaveStatus={autoSaveStatus}
                   />
                 </TabsContent>
-              </Tabs>
-            </div>
 
-            {/* Right Column - Attachments */}
-            <div className="lg:col-span-1 flex flex-col gap-6">
-              {/* Attachments & Documents */}
-              <Card 
-                className={cn(
-                  "transition-all duration-200",
-                  isDraggingOver && "ring-2 ring-primary ring-offset-2 bg-primary/5"
-                )}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDraggingOver(true);
-                }}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDraggingOver(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Only set to false if we're leaving the card entirely
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    setIsDraggingOver(false);
-                  }
-                }}
-                onDrop={async (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDraggingOver(false);
-                  const files = Array.from(e.dataTransfer.files);
-                  await handleFileDrop(files);
-                }}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">
-                      Attachments
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Select 
-                        value={uploadCategory} 
-                        onValueChange={(v) => setUploadCategory(v as DealAttachmentCategory)}
-                      >
-                        <SelectTrigger className="w-[120px] h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DEAL_ATTACHMENT_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 gap-1"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isLoadingAttachments || isUploading}
-                      >
-                        {(isLoadingAttachments || isUploading) ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Upload className="h-4 w-4" />
-                        )}
-                        Upload
-                      </Button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={async (e) => {
-                          const files = Array.from(e.target.files || []);
-                          if (files.length > 0) {
-                            setIsUploading(true);
-                            try {
-                              await uploadMultipleAttachments(files, uploadCategory);
-                            } finally {
-                              setIsUploading(false);
-                            }
-                          }
-                          e.target.value = '';
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {/* Filter tabs */}
-                  <div className="flex gap-1 mt-3">
-                    {[
-                      { value: 'all', label: 'All' },
-                      { value: 'term-sheets', label: 'Term Sheets' },
-                      { value: 'credit-file', label: 'Credit File' },
-                      { value: 'reports', label: 'Reports' },
-                    ].map((filter) => (
-                      <Button
-                        key={filter.value}
-                        variant={attachmentFilter === filter.value ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => setAttachmentFilter(filter.value as typeof attachmentFilter)}
-                      >
-                        {filter.label}
-                      </Button>
-                    ))}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {isDraggingOver ? (
-                    <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-primary rounded-lg bg-primary/5">
-                      <Upload className="h-8 w-8 text-primary mb-2" />
-                      <p className="text-sm font-medium text-primary">Drop files here</p>
-                      <p className="text-xs text-muted-foreground">Files will be uploaded to {DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === uploadCategory)?.label}</p>
-                    </div>
-                  ) : isUploading ? (
-                    <div className="flex flex-col items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
-                      <p className="text-sm text-muted-foreground">Uploading files...</p>
-                    </div>
-                  ) : isLoadingAttachments ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : filteredAttachments.length > 0 ? (
-                    <div className="space-y-2">
-                      {filteredAttachments.map((attachment) => (
-                        <div
-                          key={attachment.id}
-                          className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group hover:bg-muted transition-colors"
-                        >
-                          <a 
-                            href={attachment.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-                            onClick={() => {
-                              logActivity('attachment_viewed', `Viewed attachment: ${attachment.name}`, {
-                                attachment_id: attachment.id,
-                                attachment_name: attachment.name,
-                                attachment_category: attachment.category,
-                                file_size: attachment.size_bytes,
-                              });
-                            }}
+                <TabsContent value="data-room" className="mt-6">
+                  <Card 
+                    className={cn(
+                      "transition-all duration-200",
+                      isDraggingOver && "ring-2 ring-primary ring-offset-2 bg-primary/5"
+                    )}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(true);
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setIsDraggingOver(false);
+                      }
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(false);
+                      const files = Array.from(e.dataTransfer.files);
+                      await handleFileDrop(files);
+                    }}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">
+                          Attachments
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Select 
+                            value={uploadCategory} 
+                            onValueChange={(v) => setUploadCategory(v as DealAttachmentCategory)}
                           >
-                            <File className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate hover:underline">{attachment.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {formatFileSize(attachment.size_bytes)} • {new Date(attachment.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </a>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                              onClick={() => {
-                                if (attachment.url) {
-                                  logActivity('attachment_downloaded', `Downloaded attachment: ${attachment.name}`, {
+                            <SelectTrigger className="w-[120px] h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DEAL_ATTACHMENT_CATEGORIES.map((cat) => (
+                                <SelectItem key={cat.value} value={cat.value}>
+                                  {cat.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 gap-1"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isLoadingAttachments || isUploading}
+                          >
+                            {(isLoadingAttachments || isUploading) ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Upload className="h-4 w-4" />
+                            )}
+                            Upload
+                          </Button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            className="hidden"
+                            onChange={async (e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (files.length > 0) {
+                                setIsUploading(true);
+                                try {
+                                  await uploadMultipleAttachments(files, uploadCategory);
+                                } finally {
+                                  setIsUploading(false);
+                                }
+                              }
+                              e.target.value = '';
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {/* Filter tabs */}
+                      <div className="flex gap-1 mt-3">
+                        {[
+                          { value: 'all', label: 'All' },
+                          { value: 'term-sheets', label: 'Term Sheets' },
+                          { value: 'credit-file', label: 'Credit File' },
+                          { value: 'reports', label: 'Reports' },
+                        ].map((filter) => (
+                          <Button
+                            key={filter.value}
+                            variant={attachmentFilter === filter.value ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setAttachmentFilter(filter.value as typeof attachmentFilter)}
+                          >
+                            {filter.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      {isDraggingOver ? (
+                        <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-primary rounded-lg bg-primary/5">
+                          <Upload className="h-8 w-8 text-primary mb-2" />
+                          <p className="text-sm font-medium text-primary">Drop files here</p>
+                          <p className="text-xs text-muted-foreground">Files will be uploaded to {DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === uploadCategory)?.label}</p>
+                        </div>
+                      ) : isUploading ? (
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+                          <p className="text-sm text-muted-foreground">Uploading files...</p>
+                        </div>
+                      ) : isLoadingAttachments ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : filteredAttachments.length > 0 ? (
+                        <div className="space-y-2">
+                          {filteredAttachments.map((attachment) => (
+                            <div
+                              key={attachment.id}
+                              className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group hover:bg-muted transition-colors"
+                            >
+                              <a 
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                                onClick={() => {
+                                  logActivity('attachment_viewed', `Viewed attachment: ${attachment.name}`, {
                                     attachment_id: attachment.id,
                                     attachment_name: attachment.name,
                                     attachment_category: attachment.category,
                                     file_size: attachment.size_bytes,
                                   });
-                                  window.open(attachment.url, '_blank');
-                                }
-                              }}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                              onClick={() => deleteAttachment(attachment)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                                }}
+                              >
+                                <File className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate hover:underline">{attachment.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatFileSize(attachment.size_bytes)} • {new Date(attachment.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </a>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                  onClick={() => {
+                                    if (attachment.url) {
+                                      logActivity('attachment_downloaded', `Downloaded attachment: ${attachment.name}`, {
+                                        attachment_id: attachment.id,
+                                        attachment_name: attachment.name,
+                                        attachment_category: attachment.category,
+                                        file_size: attachment.size_bytes,
+                                      });
+                                      window.open(attachment.url, '_blank');
+                                    }
+                                  }}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                  onClick={() => deleteAttachment(attachment)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-6 text-center">
-                      <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        {attachmentFilter !== 'all' ? 'No attachments in this category' : 'No attachments yet'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Drag & drop files here or click Upload
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-6 text-center">
+                          <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            {attachmentFilter !== 'all' ? 'No attachments in this category' : 'No attachments yet'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Drag & drop files here or click Upload
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </main>
