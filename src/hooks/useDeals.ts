@@ -12,6 +12,7 @@ export interface DealFilters {
   stage: DealStage[];
   status: DealStatus[];
   engagementType: EngagementType[];
+  dealType: string[];
   manager: string[];
   lender: string[];
   referredBy: string[];
@@ -27,6 +28,7 @@ export function useDeals() {
     stage: [],
     status: [],
     engagementType: [],
+    dealType: [],
     manager: [],
     lender: [],
     referredBy: [],
@@ -60,6 +62,12 @@ export function useDeals() {
 
     if (filters.engagementType.length > 0) {
       result = result.filter((deal) => filters.engagementType.includes(deal.engagementType));
+    }
+
+    if (filters.dealType.length > 0) {
+      result = result.filter((deal) => 
+        deal.dealTypes && deal.dealTypes.some(dt => filters.dealType.includes(dt))
+      );
     }
 
     if (filters.manager.length > 0) {

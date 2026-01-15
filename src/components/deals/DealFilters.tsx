@@ -17,6 +17,7 @@ import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
+import { useDealTypes } from '@/contexts/DealTypesContext';
 
 interface DealFiltersProps {
   filters: FilterType;
@@ -28,10 +29,13 @@ export function DealFilters({
   onFilterChange,
 }: DealFiltersProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
+  const { dealTypes: availableDealTypes } = useDealTypes();
+  
   const activeFiltersCount = [
     filters.stage.length > 0,
     filters.status.length > 0,
     filters.engagementType.length > 0,
+    filters.dealType.length > 0,
     filters.manager.length > 0,
     filters.lender.length > 0,
     filters.referredBy.length > 0,
@@ -45,6 +49,7 @@ export function DealFilters({
       stage: [],
       status: [],
       engagementType: [],
+      dealType: [],
       manager: [],
       lender: [],
       referredBy: [],
@@ -66,6 +71,11 @@ export function DealFilters({
   const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
+  }));
+
+  const dealTypeOptions = availableDealTypes.map(dt => ({
+    value: dt.id,
+    label: dt.label,
   }));
 
   const managerOptions = MANAGERS.map((manager) => ({
@@ -108,6 +118,11 @@ export function DealFilters({
     filters.engagementType.forEach((value) => {
       const label = ENGAGEMENT_TYPE_CONFIG[value as EngagementType]?.label || value;
       chips.push({ type: 'engagementType', value, label });
+    });
+
+    filters.dealType.forEach((value) => {
+      const dealType = availableDealTypes.find(dt => dt.id === value);
+      chips.push({ type: 'dealType', value, label: dealType?.label || value });
     });
 
     filters.manager.forEach((value) => {
@@ -170,11 +185,19 @@ export function DealFilters({
           />
 
           <MultiSelectFilter
-            label="Type"
+            label="Engagement"
             options={engagementTypeOptions}
             selected={filters.engagementType}
             onChange={(engagementType) => onFilterChange({ engagementType: engagementType as EngagementType[] })}
-            className="w-[170px]"
+            className="w-[150px]"
+          />
+
+          <MultiSelectFilter
+            label="Deal Type"
+            options={dealTypeOptions}
+            selected={filters.dealType}
+            onChange={(dealType) => onFilterChange({ dealType })}
+            className="w-[150px]"
           />
 
           <MultiSelectFilter
