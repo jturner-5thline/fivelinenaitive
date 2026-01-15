@@ -259,9 +259,9 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Layers className="h-5 w-5" />
                     Lender Stages
-                    <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} />
+                    <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} teamSync />
                   </CardTitle>
-                  <CardDescription>Configure stages and assign them to groups. Drag to reorder.</CardDescription>
+                  <CardDescription>Configure stages and assign them to groups. Changes sync to your entire team.</CardDescription>
                 </div>
               </button>
             </CollapsibleTrigger>
