@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -1704,6 +1704,71 @@ export default function DealDetail() {
                       )}
                     </Card>
                   )}
+
+                  {/* Latest Lender Updates */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Latest Updates
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      {(() => {
+                        // Filter for lender-related updates - use string comparison for flexibility
+                        const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed'];
+                        const lenderUpdates = activities.filter(a => 
+                          lenderUpdateTypes.includes(a.type) || 
+                          a.description.toLowerCase().includes('lender') ||
+                          a.description.toLowerCase().includes('milestone')
+                        ).slice(0, 5);
+                        
+                        if (lenderUpdates.length === 0) {
+                          return (
+                            <p className="text-sm text-muted-foreground py-2">No recent lender updates</p>
+                          );
+                        }
+                        
+                        return (
+                          <div className="space-y-3">
+                            {lenderUpdates.map((activity) => {
+                              const activityType = activity.type as string;
+                              const getIcon = () => {
+                                if (activityType === 'lender_added') return <UserPlus className="h-3.5 w-3.5 text-green-500" />;
+                                if (activityType === 'lender_removed') return <Trash2 className="h-3.5 w-3.5 text-red-500" />;
+                                if (activityType === 'lender_stage_change') return <ArrowRight className="h-3.5 w-3.5 text-blue-500" />;
+                                if (activity.description.toLowerCase().includes('milestone')) return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
+                                return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
+                              };
+                              
+                              const getLabel = () => {
+                                if (activityType === 'lender_added') return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Added</Badge>;
+                                if (activityType === 'lender_removed') return <Badge variant="secondary" className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Removed</Badge>;
+                                if (activityType === 'lender_stage_change') return <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Stage Change</Badge>;
+                                if (activity.description.toLowerCase().includes('milestone')) return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Milestone</Badge>;
+                                return null;
+                              };
+                              
+                              return (
+                                <div key={activity.id} className="flex items-start gap-3 text-sm">
+                                  <div className="mt-0.5">{getIcon()}</div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-foreground truncate">{activity.description}</span>
+                                      {getLabel()}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
 
                   {/* Outstanding Items */}
                   <OutstandingItems
