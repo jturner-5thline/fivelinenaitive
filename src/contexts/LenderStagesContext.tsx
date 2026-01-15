@@ -98,7 +98,7 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
   const [isSaving, setIsSaving] = useState(false);
   const [configId, setConfigId] = useState<string | null>(null);
 
-  // Load config from database
+  // Load config from database - prioritize company config for team sharing
   useEffect(() => {
     const loadConfig = async () => {
       if (!user) {
@@ -107,22 +107,34 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // First try to get company config, then user config
-        let query = supabase
-          .from('lender_stage_configs')
-          .select('*');
+        let data = null;
+        let error = null;
 
+        // If user belongs to a company, always use company-level config (shared across team)
         if (company?.id) {
-          query = query.eq('company_id', company.id);
+          const result = await supabase
+            .from('lender_stage_configs')
+            .select('*')
+            .eq('company_id', company.id)
+            .maybeSingle();
+          
+          data = result.data;
+          error = result.error;
         } else {
-          query = query.eq('user_id', user.id);
+          // No company - use personal config
+          const result = await supabase
+            .from('lender_stage_configs')
+            .select('*')
+            .eq('user_id', user.id)
+            .is('company_id', null)
+            .maybeSingle();
+          
+          data = result.data;
+          error = result.error;
         }
-
-        const { data, error } = await query.maybeSingle();
 
         if (error) {
           console.error('Error loading lender stage config:', error);
-          // Fall back to localStorage for migration
           loadFromLocalStorage();
         } else if (data) {
           // Load from database - cast through unknown for JSONB columns
@@ -144,7 +156,6 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
           // No config in database - try to migrate from localStorage
           const migratedFromLocal = loadFromLocalStorage();
           if (migratedFromLocal) {
-            // Save to database
             await saveToDatabase(stages, substages, passReasons);
           }
         }
@@ -210,19 +221,20 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
     setIsSaving(true);
     try {
       if (configId) {
-        // Update existing config
+        // Update existing config (shared across company)
         const { error } = await supabase
           .from('lender_stage_configs')
           .update({
             stages: newStages as unknown as Json,
             substages: newSubstages as unknown as Json,
             pass_reasons: newPassReasons as unknown as Json,
+            updated_at: new Date().toISOString(),
           })
           .eq('id', configId);
 
         if (error) throw error;
       } else {
-        // Insert new config
+        // Insert new config - company-level if user belongs to a company
         const { data, error } = await supabase
           .from('lender_stage_configs')
           .insert({
