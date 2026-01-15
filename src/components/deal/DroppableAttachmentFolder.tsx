@@ -25,13 +25,13 @@ export function DroppableAttachmentFolder({
     <div
       ref={setNodeRef}
       className={cn(
-        'rounded-lg transition-all duration-200',
-        isOver && 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5'
+        'rounded-lg transition-all duration-300 ease-out',
+        isOver && 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5 scale-[1.02]'
       )}
     >
       {children}
       {isOver && !isExpanded && (
-        <div className="mt-1 p-2 text-center text-xs text-primary bg-primary/10 rounded-lg">
+        <div className="mt-1 p-2 text-center text-xs text-primary bg-primary/10 rounded-lg animate-fade-in">
           Drop to move here
         </div>
       )}

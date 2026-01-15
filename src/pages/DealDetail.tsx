@@ -759,12 +759,14 @@ export default function DealDetail() {
     }
     // Handle category change
     else if (targetCategory && attachment.category !== targetCategory) {
+      const categoryLabel = DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === targetCategory)?.label || targetCategory;
       // Get the max position in the target category
       const targetCategoryAttachments = attachments.filter(a => a.category === targetCategory);
       const maxPosition = targetCategoryAttachments.length > 0 
         ? Math.max(...targetCategoryAttachments.map(a => a.position)) + 1 
         : 0;
       await updateAttachmentCategory(attachmentId, targetCategory as DealAttachmentCategory, maxPosition);
+      toast({ title: `Moved "${attachment.name}" to ${categoryLabel}` });
     }
   }, [attachments, updateAttachmentCategory, reorderAttachments]);
 

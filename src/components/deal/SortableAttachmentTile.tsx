@@ -83,7 +83,7 @@ export function SortableAttachmentTile({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition || 'transform 250ms ease, opacity 200ms ease',
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : 'auto',
   };
@@ -92,8 +92,8 @@ export function SortableAttachmentTile({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative flex flex-col items-center p-3 bg-background rounded-lg group hover:bg-muted/30 transition-colors border border-border/50 ${
-        isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''
+      className={`relative flex flex-col items-center p-3 bg-background rounded-lg group hover:bg-muted/30 transition-all duration-200 border border-border/50 animate-fade-in ${
+        isDragging ? 'shadow-lg ring-2 ring-primary/20 scale-105' : ''
       }`}
     >
       {/* Drag handle */}
