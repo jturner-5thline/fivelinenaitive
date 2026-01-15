@@ -1,4 +1,4 @@
-import { Bell, Check, Mail, Building2, User, Eye } from 'lucide-react';
+import { Bell, Check, Mail, Building2, User, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ interface FlexInfoNotificationsPanelProps {
 }
 
 export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPanelProps) {
-  const { notifications, isLoading, pendingCount, approveAccess } = useFlexInfoNotifications(dealId);
+  const { notifications, isLoading, pendingCount, approveAccess, denyAccess } = useFlexInfoNotifications(dealId);
 
   const handleApprove = async (notificationId: string) => {
     const success = await approveAccess(notificationId);
@@ -26,6 +26,22 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
       toast({
         title: 'Error',
         description: 'Failed to approve access. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeny = async (notificationId: string) => {
+    const success = await denyAccess(notificationId);
+    if (success) {
+      toast({
+        title: 'Access Denied',
+        description: 'The lender request has been denied.',
+      });
+    } else {
+      toast({
+        title: 'Error',
+        description: 'Failed to deny access. Please try again.',
         variant: 'destructive',
       });
     }
@@ -71,6 +87,12 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
           container: 'bg-green-50/50 dark:bg-green-950/10 border-green-200 dark:border-green-800/50',
           dot: 'bg-green-500',
           label: 'Approved',
+        };
+      case 'denied':
+        return {
+          container: 'bg-destructive/5 dark:bg-destructive/10 border-destructive/20 dark:border-destructive/30',
+          dot: 'bg-destructive',
+          label: 'Denied',
         };
       default:
         return {
@@ -148,31 +170,58 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
                     {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                   </p>
                 </div>
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 flex items-center gap-2">
                   {notification.status === 'approved' ? (
                     <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                       <Check className="h-3 w-3 mr-1" />
                       Approved
                     </Badge>
+                  ) : notification.status === 'denied' ? (
+                    <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+                      <X className="h-3 w-3 mr-1" />
+                      Denied
+                    </Badge>
                   ) : notification.status === 'read' ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleApprove(notification.id)}
-                      className="h-8"
-                    >
-                      <Check className="h-3.5 w-3.5 mr-1" />
-                      Approve
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeny(notification.id)}
+                        className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" />
+                        Deny
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleApprove(notification.id)}
+                        className="h-8"
+                      >
+                        <Check className="h-3.5 w-3.5 mr-1" />
+                        Approve
+                      </Button>
+                    </>
                   ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => handleApprove(notification.id)}
-                      className="h-8"
-                    >
-                      <Check className="h-3.5 w-3.5 mr-1" />
-                      Approve Access
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeny(notification.id)}
+                        className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" />
+                        Deny
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleApprove(notification.id)}
+                        className="h-8"
+                      >
+                        <Check className="h-3.5 w-3.5 mr-1" />
+                        Approve
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
