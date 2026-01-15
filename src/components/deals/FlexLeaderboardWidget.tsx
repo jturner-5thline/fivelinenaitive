@@ -118,7 +118,7 @@ export function FlexLeaderboardWidget({ deals }: FlexLeaderboardWidgetProps) {
             {topDeals.map(({ deal, engagement }, index) => (
               <Link
                 key={deal.id}
-                to={`/deals/${deal.id}?tab=deal-management`}
+                to={`/deals/${deal.id}?tab=deal-management#flex-engagement-section`}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-background/50 transition-colors group"
               >
                 <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
