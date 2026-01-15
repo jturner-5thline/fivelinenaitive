@@ -43,7 +43,7 @@ export function InfoRequestsPanel() {
   const pendingCount = infoRequests?.filter(r => r.status === 'pending').length || 0;
 
   return (
-    <Card>
+    <Card id="info-requests-panel">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-medium flex items-center gap-2">
