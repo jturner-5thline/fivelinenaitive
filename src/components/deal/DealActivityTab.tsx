@@ -217,7 +217,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
       {/* Sidebar - Lender Interest & Info Requests */}
       <div className="lg:col-span-1 space-y-6">
-        <InfoRequestsPanel dealId={dealId} />
+        <InfoRequestsPanel />
         <FlexLenderInterestPanel dealId={dealId} />
       </div>
     </div>

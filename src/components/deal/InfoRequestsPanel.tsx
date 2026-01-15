@@ -1,118 +1,46 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
-import { HelpCircle, MessageSquare, User, Clock, ExternalLink, CheckCircle } from 'lucide-react';
+import { HelpCircle, MessageSquare, User, Clock, ExternalLink, Building2, DollarSign, Briefcase } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from '@/hooks/use-toast';
 
 interface InfoRequest {
   id: string;
-  lender_name: string | null;
-  lender_email: string | null;
+  external_deal_id: string;
+  company_name: string | null;
+  industry: string | null;
+  capital_ask: string | null;
+  requester_user_id: string | null;
+  requester_email: string | null;
+  requester_name: string | null;
+  requested_at: string | null;
+  status: string;
   created_at: string;
-  read_at: string | null;
-  source: 'notification' | 'activity';
 }
 
-interface InfoRequestsPanelProps {
-  dealId: string;
-}
-
-export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
-
-  const { data: infoRequests, isLoading, refetch } = useQuery({
-    queryKey: ['info-requests', dealId],
+export function InfoRequestsPanel() {
+  const { data: infoRequests, isLoading } = useQuery({
+    queryKey: ['info-requests'],
     queryFn: async () => {
-      // Fetch from flex_notifications
-      const { data: notifications, error: notifError } = await supabase
-        .from('flex_notifications')
+      const { data, error } = await supabase
+        .from('deal_info_requests')
         .select('*')
-        .eq('deal_id', dealId)
-        .eq('alert_type', 'info_request')
+        .eq('source', 'flex')
         .order('created_at', { ascending: false });
 
-      if (notifError) {
-        console.error('Error fetching notifications:', notifError);
+      if (error) {
+        console.error('Error fetching info requests:', error);
+        throw error;
       }
 
-      // Also fetch from activity_logs for info requests
-      const { data: activities, error: actError } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .eq('deal_id', dealId)
-        .eq('activity_type', 'flex_info_requested')
-        .order('created_at', { ascending: false });
-
-      if (actError) {
-        console.error('Error fetching activities:', actError);
-      }
-
-      // Combine and deduplicate based on timestamp and lender
-      const requests: InfoRequest[] = [];
-      const seen = new Set<string>();
-
-      // Add notifications first (they have more detail)
-      notifications?.forEach((n) => {
-        const key = `${n.lender_email || n.lender_name}-${n.created_at}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          requests.push({
-            id: n.id,
-            lender_name: n.lender_name,
-            lender_email: n.lender_email,
-            created_at: n.created_at,
-            read_at: n.read_at,
-            source: 'notification',
-          });
-        }
-      });
-
-      // Add activities that aren't already in notifications
-      activities?.forEach((a) => {
-        const metadata = a.metadata as { lender_name?: string; lender_email?: string } | null;
-        const lenderEmail = metadata?.lender_email;
-        const lenderName = metadata?.lender_name;
-        const key = `${lenderEmail || lenderName}-${a.created_at}`;
-        
-        if (!seen.has(key)) {
-          seen.add(key);
-          requests.push({
-            id: a.id,
-            lender_name: lenderName || null,
-            lender_email: lenderEmail || null,
-            created_at: a.created_at,
-            read_at: null,
-            source: 'activity',
-          });
-        }
-      });
-
-      // Sort by date descending
-      return requests.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      return data as InfoRequest[];
     },
-    enabled: !!dealId,
   });
 
-  const handleMarkAsRead = async (requestId: string) => {
-    const { error } = await supabase
-      .from('flex_notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', requestId);
-
-    if (error) {
-      toast({ title: 'Failed to mark as read', variant: 'destructive' });
-    } else {
-      refetch();
-    }
-  };
-
-  const unreadCount = infoRequests?.filter(r => !r.read_at && r.source === 'notification').length || 0;
+  const pendingCount = infoRequests?.filter(r => r.status === 'pending').length || 0;
 
   return (
     <Card>
@@ -122,9 +50,9 @@ export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
             <HelpCircle className="h-4 w-4" />
             Info Requests
           </CardTitle>
-          {unreadCount > 0 && (
+          {pendingCount > 0 && (
             <Badge variant="default" className="bg-amber-500">
-              {unreadCount} new
+              {pendingCount} pending
             </Badge>
           )}
         </div>
@@ -156,7 +84,7 @@ export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
                 <div
                   key={request.id}
                   className={`p-3 border rounded-lg transition-colors ${
-                    !request.read_at && request.source === 'notification'
+                    request.status === 'pending'
                       ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800'
                       : 'bg-card'
                   }`}
@@ -168,28 +96,49 @@ export function InfoRequestsPanel({ dealId }: InfoRequestsPanelProps) {
                       </div>
                       <div>
                         <p className="text-sm font-medium">
-                          {request.lender_name || request.lender_email || 'Unknown Lender'}
+                          {request.requester_name || request.requester_email || 'Unknown Lender'}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Requested more information
-                        </p>
+                        {request.requester_email && request.requester_name && (
+                          <p className="text-xs text-muted-foreground">
+                            {request.requester_email}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    {!request.read_at && request.source === 'notification' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleMarkAsRead(request.id)}
-                      >
-                        <CheckCircle className="h-3 w-3" />
-                      </Button>
+                    <Badge 
+                      variant={request.status === 'pending' ? 'default' : 'secondary'}
+                      className={request.status === 'pending' ? 'bg-amber-500' : ''}
+                    >
+                      {request.status}
+                    </Badge>
+                  </div>
+                  
+                  {/* Deal info */}
+                  <div className="mt-3 p-2 bg-muted/50 rounded-md space-y-1">
+                    {request.company_name && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <Building2 className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-medium">{request.company_name}</span>
+                      </div>
+                    )}
+                    {request.industry && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Briefcase className="h-3 w-3" />
+                        <span>{request.industry}</span>
+                      </div>
+                    )}
+                    {request.capital_ask && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <DollarSign className="h-3 w-3" />
+                        <span>{request.capital_ask}</span>
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 ml-10">
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
                     <Clock className="h-3 w-3" />
-                    <span title={format(new Date(request.created_at), 'PPpp')}>
-                      {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+                    <span title={format(new Date(request.requested_at || request.created_at), 'PPpp')}>
+                      {formatDistanceToNow(new Date(request.requested_at || request.created_at), { addSuffix: true })}
                     </span>
                     <Badge variant="outline" className="text-[10px] h-4">
                       <ExternalLink className="h-2 w-2 mr-1" />
