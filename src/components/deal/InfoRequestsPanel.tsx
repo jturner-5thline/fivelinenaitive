@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { InfoRequestDetailDialog } from './InfoRequestDetailDialog';
 
 interface InfoRequest {
   id: string;
@@ -22,6 +24,7 @@ interface InfoRequest {
 }
 
 export function InfoRequestsPanel() {
+  const [selectedRequest, setSelectedRequest] = useState<InfoRequest | null>(null);
   const { data: infoRequests, isLoading } = useQuery({
     queryKey: ['info-requests'],
     queryFn: async () => {
@@ -83,11 +86,15 @@ export function InfoRequestsPanel() {
               {infoRequests.map((request) => (
                 <div
                   key={request.id}
-                  className={`p-3 border rounded-lg transition-colors ${
+                  className={`p-3 border rounded-lg transition-colors cursor-pointer hover:shadow-md ${
                     request.status === 'pending'
-                      ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800'
-                      : 'bg-card'
+                      ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-950/30'
+                      : 'bg-card hover:bg-muted/50'
                   }`}
+                  onClick={() => setSelectedRequest(request)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedRequest(request); }}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -151,6 +158,12 @@ export function InfoRequestsPanel() {
           </ScrollArea>
         )}
       </CardContent>
+
+      <InfoRequestDetailDialog
+        request={selectedRequest}
+        open={!!selectedRequest}
+        onOpenChange={(open) => !open && setSelectedRequest(null)}
+      />
     </Card>
   );
 }
