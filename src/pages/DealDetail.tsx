@@ -1897,24 +1897,26 @@ export default function DealDetail() {
                         
                         {/* Right Column - Company Info */}
                         <div className="space-y-3">
-                          <div className="space-y-1.5">
-                            <label className="text-sm text-muted-foreground">Company URL</label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-sm w-28">Company URL</span>
                             <Input
                               value={deal.companyUrl || ''}
                               onChange={(e) => updateDeal('companyUrl', e.target.value)}
                               placeholder="https://example.com"
+                              className="flex-1 h-8 text-sm"
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <label className="text-sm text-muted-foreground">Business Model</label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-sm w-28">Business Model</span>
                             <Input
                               value={deal.businessModel || ''}
                               onChange={(e) => updateDeal('businessModel', e.target.value)}
                               placeholder="Enter business model..."
+                              className="flex-1 h-8 text-sm"
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <label className="text-sm text-muted-foreground">Client Contact</label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-sm w-28">Client Contact</span>
                             <TooltipProvider>
                               <Tooltip>
                                 <Popover>
@@ -1922,7 +1924,7 @@ export default function DealDetail() {
                                     <PopoverTrigger asChild>
                                       <Button
                                         variant="outline"
-                                        className="w-full justify-start h-auto py-2 px-3 font-normal"
+                                        className="flex-1 justify-start h-8 px-3 font-normal text-sm"
                                       >
                                         <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
                                         <span className="truncate">
@@ -1961,6 +1963,8 @@ export default function DealDetail() {
                               </Tooltip>
                             </TooltipProvider>
                           </div>
+                          {/* Empty row for visual alignment with 4 rows on left */}
+                          <div className="h-8" />
                         </div>
                       </div>
                     </CardContent>
