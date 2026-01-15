@@ -113,51 +113,44 @@ Deno.serve(async (req) => {
 
     const responderName = profile?.display_name || profile?.first_name || profile?.email || "Team Member";
 
-    // Get Flex API configuration
-    const flexApiUrl = Deno.env.get("FLEX_API_URL");
-    const flexApiKey = Deno.env.get("FLEX_API_KEY");
+    // Get nAItive Flex sync key
+    const naitiveFlexSyncKey = Deno.env.get("NAITIVE_FLEX_SYNC_KEY");
+    const webhookUrl = "https://ndbrliydrlgtxcyfgyok.supabase.co/functions/v1/handle-info-request-response";
 
     let flexNotified = false;
     let flexResponse = null;
 
-    // Send notification to Flex if configured
-    if (flexApiUrl && flexApiKey) {
+    // Send notification to nAItive Flex webhook
+    if (naitiveFlexSyncKey) {
       try {
-        console.log("Sending info response notification to Flex...");
+        console.log("Sending info response notification to nAItive Flex...");
         
-        const response = await fetch(`${flexApiUrl}/api/info-requests/response`, {
+        const response = await fetch(webhookUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${flexApiKey}`,
+            "x-api-key": naitiveFlexSyncKey,
           },
           body: JSON.stringify({
             event: "info_request_response",
-            naitive_deal_id: payload.deal_id,
-            deal_name: deal.company,
-            status: payload.status,
-            responder_name: responderName,
-            responder_email: profile?.email,
-            lender_name: payload.lender_name,
-            lender_email: payload.user_email,
-            company_name: payload.company_name,
-            responded_at: new Date().toISOString(),
+            deal_id: payload.deal_id,
+            response: payload.status,
           }),
         });
 
         if (response.ok) {
           flexResponse = await response.json();
           flexNotified = true;
-          console.log("Flex notified successfully:", flexResponse);
+          console.log("nAItive Flex notified successfully:", flexResponse);
         } else {
           const errorText = await response.text();
-          console.error("Flex API error:", response.status, errorText);
+          console.error("nAItive Flex webhook error:", response.status, errorText);
         }
       } catch (flexError) {
-        console.error("Error calling Flex API:", flexError);
+        console.error("Error calling nAItive Flex webhook:", flexError);
       }
     } else {
-      console.log("Flex API not configured, skipping notification");
+      console.log("NAITIVE_FLEX_SYNC_KEY not configured, skipping webhook notification");
     }
 
     // Log the response as an activity
