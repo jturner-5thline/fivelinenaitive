@@ -1716,11 +1716,10 @@ export default function DealDetail() {
                     <CardContent className="pt-0">
                       {(() => {
                         // Filter for lender-related updates - use string comparison for flexibility
-                        const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed'];
+                        const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
                         const lenderUpdates = activities.filter(a => 
-                          lenderUpdateTypes.includes(a.type) || 
-                          a.description.toLowerCase().includes('lender') ||
-                          a.description.toLowerCase().includes('milestone')
+                          lenderUpdateTypes.includes(a.type as string) || 
+                          a.description.toLowerCase().includes('milestone changed')
                         ).slice(0, 5);
                         
                         if (lenderUpdates.length === 0) {
@@ -1733,11 +1732,13 @@ export default function DealDetail() {
                           <div className="space-y-3">
                             {lenderUpdates.map((activity) => {
                               const activityType = activity.type as string;
+                              const isMilestoneChange = activityType === 'lender_substage_change' || activity.description.toLowerCase().includes('milestone changed');
+                              
                               const getIcon = () => {
                                 if (activityType === 'lender_added') return <UserPlus className="h-3.5 w-3.5 text-green-500" />;
                                 if (activityType === 'lender_removed') return <Trash2 className="h-3.5 w-3.5 text-red-500" />;
                                 if (activityType === 'lender_stage_change') return <ArrowRight className="h-3.5 w-3.5 text-blue-500" />;
-                                if (activity.description.toLowerCase().includes('milestone')) return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
+                                if (isMilestoneChange) return <CheckCircle className="h-3.5 w-3.5 text-purple-500" />;
                                 return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
                               };
                               
@@ -1748,12 +1749,10 @@ export default function DealDetail() {
                                   const newStage = activity.metadata?.to || activity.metadata?.newValue;
                                   return <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{newStage || 'Stage Change'}</Badge>;
                                 }
-                                if (activity.description.toLowerCase().includes('milestone')) {
-                                  // Try to extract milestone name from description or metadata
-                                  const milestoneMatch = activity.description.match(/milestone[:\s]+["']?([^"']+)["']?/i) || 
-                                                        activity.description.match(/completed[:\s]+["']?([^"']+)["']?/i);
-                                  const milestoneName = activity.metadata?.value || (milestoneMatch ? milestoneMatch[1].trim() : null);
-                                  return <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">{milestoneName || 'Milestone'}</Badge>;
+                                if (isMilestoneChange) {
+                                  // Get the new milestone value from metadata
+                                  const newMilestone = activity.metadata?.to || activity.metadata?.newValue;
+                                  return <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">{newMilestone || 'Milestone'}</Badge>;
                                 }
                                 return null;
                               };
