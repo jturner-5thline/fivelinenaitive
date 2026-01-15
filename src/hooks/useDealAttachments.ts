@@ -25,6 +25,17 @@ export interface DealAttachment {
   url?: string;
 }
 
+export interface UploadProgress {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  progress: number;
+  status: 'pending' | 'uploading' | 'complete' | 'error';
+  error?: string;
+}
+
+export type UploadProgressCallback = (progress: UploadProgress[]) => void;
+
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -127,30 +138,112 @@ export function useDealAttachments(dealId: string | null) {
     }
   };
 
-  const uploadMultipleAttachments = async (files: File[], category: DealAttachmentCategory = 'materials') => {
+  const uploadMultipleAttachments = async (
+    files: File[], 
+    category: DealAttachmentCategory = 'materials',
+    onProgress?: UploadProgressCallback
+  ) => {
     if (!user || !dealId) {
       toast.error('Please log in to upload attachments');
       return [];
     }
 
-    const results: DealAttachment[] = [];
-    const errors: string[] = [];
+    // Initialize progress tracking
+    const progressMap: Map<string, UploadProgress> = new Map();
+    files.forEach((file, index) => {
+      const id = `upload-${Date.now()}-${index}`;
+      progressMap.set(id, {
+        id,
+        fileName: file.name,
+        fileSize: file.size,
+        progress: 0,
+        status: 'pending',
+      });
+    });
 
-    for (const file of files) {
+    const notifyProgress = () => {
+      if (onProgress) {
+        onProgress(Array.from(progressMap.values()));
+      }
+    };
+
+    notifyProgress();
+
+    const results: DealAttachment[] = [];
+    const fileArray = Array.from(files);
+    const progressIds = Array.from(progressMap.keys());
+
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+      const progressId = progressIds[i];
+      const progress = progressMap.get(progressId)!;
+
       try {
-        const result = await uploadAttachment(file, category);
-        if (result) results.push(result as DealAttachment);
+        // Update to uploading status
+        progress.status = 'uploading';
+        progress.progress = 10;
+        notifyProgress();
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `${user.id}/${dealId}/${fileName}`;
+
+        // Simulate progress during upload
+        progress.progress = 30;
+        notifyProgress();
+
+        // Upload to storage
+        const { error: uploadError } = await supabase.storage
+          .from('deal-attachments')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        progress.progress = 70;
+        notifyProgress();
+
+        // Create database record
+        const { data, error: dbError } = await supabase
+          .from('deal_attachments')
+          .insert({
+            user_id: user.id,
+            deal_id: dealId,
+            name: file.name,
+            file_path: filePath,
+            content_type: file.type,
+            size_bytes: file.size,
+            category,
+          })
+          .select()
+          .single();
+
+        if (dbError) throw dbError;
+
+        progress.status = 'complete';
+        progress.progress = 100;
+        notifyProgress();
+
+        if (data) results.push(data as DealAttachment);
       } catch (error) {
-        errors.push(file.name);
+        console.error('Error uploading attachment:', error);
+        progress.status = 'error';
+        progress.error = error instanceof Error ? error.message : 'Upload failed';
+        notifyProgress();
       }
     }
 
-    if (errors.length > 0) {
-      toast.error(`Failed to upload: ${errors.join(', ')}`);
+    const successCount = results.length;
+    const errorCount = fileArray.length - successCount;
+
+    if (errorCount > 0 && successCount === 0) {
+      toast.error('All uploads failed');
+    } else if (errorCount > 0) {
+      toast.warning(`${successCount} uploaded, ${errorCount} failed`);
+    } else if (successCount > 0) {
+      toast.success(`${successCount} attachment${successCount > 1 ? 's' : ''} uploaded`);
     }
-    
+
     if (results.length > 0) {
-      toast.success(`${results.length} attachment${results.length > 1 ? 's' : ''} uploaded`);
       await fetchAttachments();
     }
 

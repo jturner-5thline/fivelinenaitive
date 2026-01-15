@@ -10,7 +10,8 @@ import { differenceInMinutes, differenceInHours, differenceInDays, differenceInW
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
 import { useFlagNotes } from '@/hooks/useFlagNotes';
-import { useDealAttachments, DealAttachmentCategory, DEAL_ATTACHMENT_CATEGORIES } from '@/hooks/useDealAttachments';
+import { useDealAttachments, DealAttachmentCategory, DEAL_ATTACHMENT_CATEGORIES, UploadProgress } from '@/hooks/useDealAttachments';
+import { UploadProgressOverlay } from '@/components/deal/UploadProgressOverlay';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -624,6 +625,8 @@ export default function DealDetail() {
   const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('materials');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
   const [activeAttachment, setActiveAttachment] = useState<typeof attachments[0] | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
   const { 
@@ -643,8 +646,11 @@ export default function DealDetail() {
   const handleFileDrop = useCallback(async (files: File[], category?: DealAttachmentCategory) => {
     if (files.length === 0) return;
     setIsUploading(true);
+    setShowUploadProgress(true);
     try {
-      await uploadMultipleAttachments(files, category || uploadCategory);
+      await uploadMultipleAttachments(files, category || uploadCategory, (progress) => {
+        setUploadProgress(progress);
+      });
     } finally {
       setIsUploading(false);
     }
@@ -2864,8 +2870,11 @@ export default function DealDetail() {
                               const files = Array.from(e.target.files || []);
                               if (files.length > 0) {
                                 setIsUploading(true);
+                                setShowUploadProgress(true);
                                 try {
-                                  await uploadMultipleAttachments(files, uploadCategory);
+                                  await uploadMultipleAttachments(files, uploadCategory, (progress) => {
+                                    setUploadProgress(progress);
+                                  });
                                 } finally {
                                   setIsUploading(false);
                                 }
@@ -3464,6 +3473,17 @@ export default function DealDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Upload Progress Overlay */}
+      {showUploadProgress && uploadProgress.length > 0 && (
+        <UploadProgressOverlay
+          uploads={uploadProgress}
+          onDismiss={() => {
+            setShowUploadProgress(false);
+            setUploadProgress([]);
+          }}
+        />
+      )}
     </>
   );
 }
