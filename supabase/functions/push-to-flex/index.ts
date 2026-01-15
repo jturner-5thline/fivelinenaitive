@@ -41,8 +41,8 @@ interface DataRoomFile {
 }
 
 interface PushToFlexRequest {
-  dealId: string;
-  action?: "publish" | "unpublish" | "sync_data_room";
+  dealId?: string;
+  action?: "publish" | "unpublish" | "sync_data_room" | "bulk_sync";
   writeUpData?: WriteUpData;
   dataRoomFiles?: DataRoomFile[];
 }
@@ -92,6 +92,125 @@ serve(async (req) => {
 
     const body: PushToFlexRequest = await req.json();
     const { dealId, action = "publish", writeUpData, dataRoomFiles } = body;
+
+    // Handle bulk sync - sync all deals to Flex
+    if (action === "bulk_sync") {
+      console.log("Starting bulk sync of all deals to FLEx");
+      
+      // Get all deals with writeups that have been published
+      const { data: allDeals, error: dealsError } = await supabase
+        .from("deal_writeups")
+        .select(`
+          deal_id,
+          company_name,
+          industry,
+          location,
+          deal_type,
+          billing_model,
+          profitability,
+          gross_margins,
+          capital_ask,
+          this_year_revenue,
+          last_year_revenue,
+          description,
+          use_of_funds,
+          existing_debt_details,
+          data_room_url,
+          key_items,
+          publish_as_anonymous,
+          status
+        `)
+        .eq("status", "published");
+      
+      if (dealsError) {
+        console.error("Error fetching deals for bulk sync:", dealsError);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch deals for sync" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      if (!allDeals || allDeals.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, message: "No published deals to sync", synced: 0 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Transform deals for Flex format - include the deal_id as id
+      const flexDeals = allDeals.map(d => ({
+        id: d.deal_id, // Original Naitive deal UUID
+        company_name: d.company_name,
+        industry: d.industry,
+        state: d.location,
+        deal_type: d.deal_type,
+        billing_model: d.billing_model || undefined,
+        profitability: d.profitability || undefined,
+        gross_margins: d.gross_margins || undefined,
+        capital_ask: d.capital_ask || undefined,
+        this_year_revenue: d.this_year_revenue || undefined,
+        last_year_revenue: d.last_year_revenue || undefined,
+        description: d.description || undefined,
+        use_of_funds: d.use_of_funds || undefined,
+        existing_debt: d.existing_debt_details || undefined,
+        data_room_url: d.data_room_url || undefined,
+        key_items: d.key_items || undefined,
+        is_published: !d.publish_as_anonymous,
+      }));
+      
+      const bulkPayload = {
+        event: "sync_deals",
+        deals: flexDeals,
+      };
+      
+      console.log(`Bulk syncing ${flexDeals.length} deals to FLEx`);
+      
+      const flexResponse = await fetch(FLEX_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-sync-key": NAITIVE_FLEX_SYNC_KEY,
+        },
+        body: JSON.stringify(bulkPayload),
+      });
+      
+      const responseText = await flexResponse.text();
+      console.log(`FLEx bulk sync response (${flexResponse.status}):`, responseText);
+      
+      if (!flexResponse.ok) {
+        console.error(`FLEx bulk sync error: ${flexResponse.status} - ${responseText}`);
+        return new Response(
+          JSON.stringify({ error: "Bulk sync failed", details: responseText }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      let flexData;
+      try {
+        flexData = JSON.parse(responseText);
+      } catch {
+        flexData = { message: responseText };
+      }
+      
+      // Log bulk sync activity
+      await supabase.from("activity_logs").insert({
+        deal_id: allDeals[0].deal_id, // Use first deal as reference
+        user_id: user.id,
+        activity_type: "flex_bulk_sync",
+        description: `Bulk synced ${flexDeals.length} deals to FLEx`,
+        metadata: { count: flexDeals.length, flexResponse: flexData },
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: `Bulk synced ${flexDeals.length} deals to FLEx`,
+          synced: flexDeals.length,
+          flexResponse: flexData
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!dealId) {
       console.error("Missing dealId");
@@ -205,8 +324,9 @@ serve(async (req) => {
       };
       activityDescription = `Data room synced to FLEx (${dataRoomFiles!.length} files)`;
     } else {
-      // Prepare the payload for FLEx API (publish)
+      // Prepare the payload for FLEx API (publish) - include deal id
       const flexDeal = {
+        id: dealId, // Original Naitive deal UUID
         company_name: writeUpData!.companyName,
         industry: writeUpData!.industry,
         state: writeUpData!.location,
@@ -226,7 +346,7 @@ serve(async (req) => {
       };
 
       flexPayload = {
-        action: "sync_deals",
+        event: "sync_deals",
         deals: [flexDeal],
       };
       activityDescription = "Deal pushed to FLEx";
