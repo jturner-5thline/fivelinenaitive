@@ -92,6 +92,28 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
     }
   }, []);
 
+  const markAllAsRead = useCallback(async () => {
+    const pendingIds = notifications.filter(n => n.status === 'pending').map(n => n.id);
+    if (pendingIds.length === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('flex_info_notifications')
+        .update({ status: 'read' })
+        .in('id', pendingIds);
+
+      if (error) throw error;
+
+      setNotifications(prev =>
+        prev.map(n =>
+          pendingIds.includes(n.id) ? { ...n, status: 'read' } : n
+        )
+      );
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  }, [notifications]);
+
   const pendingCount = notifications.filter(n => n.status === 'pending').length;
 
   return {
@@ -99,6 +121,7 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
     isLoading,
     pendingCount,
     approveAccess,
+    markAllAsRead,
     refresh: fetchNotifications,
   };
 }
