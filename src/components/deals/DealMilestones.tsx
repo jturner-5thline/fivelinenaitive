@@ -233,7 +233,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                   {/* Label below diamond */}
                   <span
                     className={cn(
-                      "text-[12px] mt-0.5 text-center leading-tight truncate w-full px-0.5",
+                      "text-[12px] mt-0.5 text-center leading-normal truncate w-full px-0.5",
                       milestone.completed
                         ? "text-foreground"
                         : isOverdue(milestone)
