@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -86,6 +88,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
 });
 
 interface DealWriteUpProps {
+  dealId: string;
   data: DealWriteUpData;
   onChange: (data: DealWriteUpData) => void;
   onSave: () => void;
@@ -195,9 +198,74 @@ const STATUS_OPTIONS = [
   'Closed',
 ];
 
-export const DealWriteUp = ({ data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
+export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
+  const [isPushingToFlex, setIsPushingToFlex] = useState(false);
+
   const updateField = <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => {
     onChange({ ...data, [field]: value });
+  };
+
+  const handlePushToFlex = async () => {
+    if (isPushingToFlex) return;
+    
+    setIsPushingToFlex(true);
+    try {
+      // First save any pending changes
+      await onSave();
+      
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast.error('You must be logged in to push to FLEx');
+        return;
+      }
+
+      const writeUpPayload = {
+        companyName: data.companyName,
+        companyUrl: data.companyUrl,
+        linkedinUrl: data.linkedinUrl,
+        dataRoomUrl: data.dataRoomUrl,
+        industry: data.industry,
+        location: data.location,
+        dealType: data.dealType,
+        billingModel: data.billingModel,
+        profitability: data.profitability,
+        grossMargins: data.grossMargins,
+        capitalAsk: data.capitalAsk,
+        thisYearRevenue: data.thisYearRevenue,
+        lastYearRevenue: data.lastYearRevenue,
+        financialDataAsOf: data.financialDataAsOf?.toISOString() || null,
+        accountingSystem: data.accountingSystem,
+        status: data.status,
+        useOfFunds: data.useOfFunds,
+        existingDebtDetails: data.existingDebtDetails,
+        description: data.description,
+        keyItems: data.keyItems,
+        publishAsAnonymous: data.publishAsAnonymous,
+      };
+
+      const { data: result, error } = await supabase.functions.invoke('push-to-flex', {
+        body: { dealId, writeUpData: writeUpPayload },
+      });
+
+      if (error) {
+        console.error('Push to FLEx error:', error);
+        toast.error('Failed to push to FLEx', {
+          description: error.message || 'Please try again later',
+        });
+        return;
+      }
+
+      toast.success('Deal pushed to FLEx successfully', {
+        description: 'The deal data has been synced with FLEx',
+      });
+    } catch (error) {
+      console.error('Push to FLEx error:', error);
+      toast.error('Failed to push to FLEx', {
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    } finally {
+      setIsPushingToFlex(false);
+    }
   };
 
   const addKeyItem = () => {
@@ -573,9 +641,20 @@ export const DealWriteUp = ({ data, onChange, onSave, onCancel, isSaving, autoSa
               </Button>
               <Button 
                 variant="default"
-                onClick={() => {}}
+                onClick={handlePushToFlex}
+                disabled={isPushingToFlex}
               >
-                Push to FLEx
+                {isPushingToFlex ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Pushing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Push to FLEx
+                  </>
+                )}
               </Button>
             </div>
           </div>
