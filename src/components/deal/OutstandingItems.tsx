@@ -336,8 +336,8 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
 
   return (
     <>
-      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <Card>
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded} className="h-full">
+        <Card className="h-full flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CollapsibleTrigger asChild>
               <button className="flex items-center gap-2 hover:text-primary transition-colors">
@@ -426,8 +426,8 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
               </Button>
             </div>}
           </CardHeader>
-          <CollapsibleContent>
-            <CardContent className="space-y-3">
+          <CollapsibleContent className="flex-1">
+            <CardContent className="space-y-3 h-full">
               {filteredItems.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   {filterByLender.length > 0 ? 'No items match the filter' : 'No outstanding items'}
