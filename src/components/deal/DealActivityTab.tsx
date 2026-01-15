@@ -5,7 +5,7 @@ import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActiv
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { FlexLenderInterestPanel } from './FlexLenderInterestPanel';
-
+import { FlexEngagementTrendsChart } from './FlexEngagementTrendsChart';
 interface DealActivityTabProps {
   dealId: string;
 }
@@ -144,6 +144,9 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* FLEx Engagement Trends Chart */}
+      <FlexEngagementTrendsChart dealId={dealId} />
 
       {/* Activity Trend Chart */}
       <Card>
