@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from "date-fns";
-import { CheckCircle2, XCircle, Clock, RefreshCw, ExternalLink } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, RefreshCw, ExternalLink, CloudOff } from "lucide-react";
 import { useFlexSyncHistory, useLatestFlexSync } from "@/hooks/useFlexSyncHistory";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +35,24 @@ export function FlexSyncStatusBadge({ dealId }: { dealId: string }) {
 
   const timeAgo = formatDistanceToNow(new Date(latestSync.created_at), { addSuffix: true });
 
+  if (latestSync.status === "unpublished") {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="secondary" className="text-muted-foreground">
+              <CloudOff className="h-3 w-3 mr-1" />
+              Unpublished {timeAgo}
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Unpublished: {format(new Date(latestSync.created_at), "PPp")}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   if (latestSync.status === "success") {
     return (
       <TooltipProvider>
@@ -42,7 +60,7 @@ export function FlexSyncStatusBadge({ dealId }: { dealId: string }) {
           <TooltipTrigger asChild>
             <Badge variant="default" className="bg-green-600 hover:bg-green-700">
               <CheckCircle2 className="h-3 w-3 mr-1" />
-              Synced {timeAgo}
+              Published {timeAgo}
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
@@ -146,11 +164,14 @@ export function FlexSyncHistory({ dealId }: FlexSyncHistoryProps) {
                   <div className="flex items-center gap-2">
                     {record.status === "success" ? (
                       <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                    ) : record.status === "unpublished" ? (
+                      <CloudOff className="h-4 w-4 text-muted-foreground shrink-0" />
                     ) : (
                       <XCircle className="h-4 w-4 text-destructive shrink-0" />
                     )}
                     <span className="text-sm font-medium truncate">
                       {record.synced_by_profile?.display_name || "Unknown user"}
+                      {record.status === "unpublished" && " unpublished"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
