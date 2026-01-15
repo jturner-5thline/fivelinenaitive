@@ -750,13 +750,61 @@ export default function DealDetail() {
 
   // State for Data Room push confirmation dialog
   const [showDataRoomPushConfirm, setShowDataRoomPushConfirm] = useState(false);
+  const [selectedFilesForPush, setSelectedFilesForPush] = useState<Set<string>>(new Set());
+
+  // Initialize selected files when dialog opens
+  const handleOpenPushDialog = useCallback(() => {
+    setSelectedFilesForPush(new Set(attachments.map(a => a.id)));
+    setShowDataRoomPushConfirm(true);
+  }, [attachments]);
+
+  // Toggle file selection
+  const toggleFileSelection = useCallback((fileId: string) => {
+    setSelectedFilesForPush(prev => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Toggle all files in a category
+  const toggleCategorySelection = useCallback((categoryFiles: typeof attachments) => {
+    const allSelected = categoryFiles.every(f => selectedFilesForPush.has(f.id));
+    setSelectedFilesForPush(prev => {
+      const next = new Set(prev);
+      categoryFiles.forEach(f => {
+        if (allSelected) {
+          next.delete(f.id);
+        } else {
+          next.add(f.id);
+        }
+      });
+      return next;
+    });
+  }, [selectedFilesForPush]);
+
+  // Select/deselect all files
+  const toggleAllFiles = useCallback(() => {
+    const allSelected = attachments.every(a => selectedFilesForPush.has(a.id));
+    if (allSelected) {
+      setSelectedFilesForPush(new Set());
+    } else {
+      setSelectedFilesForPush(new Set(attachments.map(a => a.id)));
+    }
+  }, [attachments, selectedFilesForPush]);
 
   // Push Data Room to FLEx
   const handlePushDataRoomToFlex = useCallback(async () => {
-    if (!id || !deal || attachments.length === 0) {
+    const filesToPush = attachments.filter(a => selectedFilesForPush.has(a.id));
+    
+    if (!id || !deal || filesToPush.length === 0) {
       toast({
-        title: "No files to push",
-        description: "Add files to the data room before pushing to FLEx.",
+        title: "No files selected",
+        description: "Select at least one file to push to FLEx.",
         variant: "destructive",
       });
       return;
@@ -765,9 +813,9 @@ export default function DealDetail() {
     setShowDataRoomPushConfirm(false);
     setIsPushingDataRoom(true);
     try {
-      // Get signed URLs for all attachments
+      // Get signed URLs for selected attachments
       const attachmentData = await Promise.all(
-        attachments.map(async (att) => {
+        filesToPush.map(async (att) => {
           const { data: signedData } = await supabase.storage
             .from('deal-attachments')
             .createSignedUrl(att.file_path, 3600); // 1 hour expiry
@@ -795,11 +843,11 @@ export default function DealDetail() {
       
       toast({
         title: "Data Room pushed to FLEx",
-        description: `${attachments.length} file(s) synced successfully.`,
+        description: `${filesToPush.length} file(s) synced successfully.`,
       });
       
-      logActivity('flex_data_room_push', `Data room pushed to FLEx (${attachments.length} files)`, {
-        file_count: attachments.length,
+      logActivity('flex_data_room_push', `Data room pushed to FLEx (${filesToPush.length} files)`, {
+        file_count: filesToPush.length,
       });
     } catch (error) {
       console.error('Error pushing data room to FLEx:', error);
@@ -811,7 +859,7 @@ export default function DealDetail() {
     } finally {
       setIsPushingDataRoom(false);
     }
-  }, [id, deal, attachments, logActivity]);
+  }, [id, deal, attachments, selectedFilesForPush, logActivity]);
 
   // Group attachments by category for the confirmation preview
   const attachmentsByCategory = useMemo(() => {
@@ -2937,6 +2985,7 @@ export default function DealDetail() {
                                 size="sm"
                                 className="h-8 gap-1"
                                 disabled={isLoadingAttachments || isUploading || isPushingDataRoom || attachments.length === 0}
+                                onClick={handleOpenPushDialog}
                               >
                                 {isPushingDataRoom ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -2949,24 +2998,58 @@ export default function DealDetail() {
                             <AlertDialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Push Data Room to FLEx</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  The following {attachments.length} file{attachments.length !== 1 ? 's' : ''} will be synced to FLEx:
+                                <AlertDialogDescription asChild>
+                                  <div className="space-y-2">
+                                    <p>Select the files you want to sync to FLEx:</p>
+                                    <button
+                                      type="button"
+                                      onClick={toggleAllFiles}
+                                      className="text-sm text-primary hover:underline"
+                                    >
+                                      {attachments.every(a => selectedFilesForPush.has(a.id)) ? 'Deselect all' : 'Select all'}
+                                    </button>
+                                  </div>
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <div className="flex-1 overflow-y-auto py-2 space-y-3">
                                 {Object.entries(attachmentsByCategory).map(([category, files]) => {
                                   const categoryLabel = DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === category)?.label || category;
+                                  const allCategorySelected = files.every(f => selectedFilesForPush.has(f.id));
+                                  const someCategorySelected = files.some(f => selectedFilesForPush.has(f.id));
                                   return (
                                     <div key={category} className="space-y-1">
-                                      <h4 className="text-sm font-medium text-foreground">{categoryLabel}</h4>
-                                      <ul className="space-y-1 pl-2">
+                                      <div className="flex items-center gap-2">
+                                        <Checkbox
+                                          id={`category-${category}`}
+                                          checked={allCategorySelected}
+                                          className={someCategorySelected && !allCategorySelected ? "data-[state=unchecked]:bg-primary/30" : ""}
+                                          onCheckedChange={() => toggleCategorySelection(files)}
+                                        />
+                                        <label
+                                          htmlFor={`category-${category}`}
+                                          className="text-sm font-medium text-foreground cursor-pointer"
+                                        >
+                                          {categoryLabel} ({files.filter(f => selectedFilesForPush.has(f.id)).length}/{files.length})
+                                        </label>
+                                      </div>
+                                      <ul className="space-y-1 pl-6">
                                         {files.map((file) => (
                                           <li key={file.id} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                            <File className="h-3.5 w-3.5 shrink-0" />
-                                            <span className="truncate">{file.name}</span>
-                                            <span className="text-xs text-muted-foreground/70 shrink-0">
-                                              ({formatFileSize(file.size_bytes)})
-                                            </span>
+                                            <Checkbox
+                                              id={`file-${file.id}`}
+                                              checked={selectedFilesForPush.has(file.id)}
+                                              onCheckedChange={() => toggleFileSelection(file.id)}
+                                            />
+                                            <label
+                                              htmlFor={`file-${file.id}`}
+                                              className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
+                                            >
+                                              <File className="h-3.5 w-3.5 shrink-0" />
+                                              <span className="truncate">{file.name}</span>
+                                              <span className="text-xs text-muted-foreground/70 shrink-0">
+                                                ({formatFileSize(file.size_bytes)})
+                                              </span>
+                                            </label>
                                           </li>
                                         ))}
                                       </ul>
@@ -2976,9 +3059,12 @@ export default function DealDetail() {
                               </div>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handlePushDataRoomToFlex}>
+                                <AlertDialogAction
+                                  onClick={handlePushDataRoomToFlex}
+                                  disabled={selectedFilesForPush.size === 0}
+                                >
                                   <Send className="h-4 w-4 mr-1" />
-                                  Push to FLEx
+                                  Push {selectedFilesForPush.size} file{selectedFilesForPush.size !== 1 ? 's' : ''} to FLEx
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
