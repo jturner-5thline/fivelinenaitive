@@ -40,6 +40,7 @@ import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
+import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
@@ -292,6 +293,7 @@ export default function DealDetail() {
   
   // Real-time FLEx activity notifications
   useFlexActivityNotifications(id);
+  const { pendingCount: infoRequestPendingCount } = useFlexInfoNotifications(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const { flagNotes, addFlagNote, deleteFlagNote } = useFlagNotes(id || null);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
@@ -1972,7 +1974,14 @@ export default function DealDetail() {
                       </Badge>
                     )}
                   </TabsTrigger>
-                  <TabsTrigger value="deal-management">Deal Management</TabsTrigger>
+                  <TabsTrigger value="deal-management" className="gap-2">
+                    Deal Management
+                    {infoRequestPendingCount > 0 && (
+                      <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                        {infoRequestPendingCount}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
                   <TabsTrigger value="deal-writeup">Deal Write Up</TabsTrigger>
                   <TabsTrigger value="data-room" className="gap-2">
                     Data Room
