@@ -293,7 +293,7 @@ export default function DealDetail() {
   
   // Real-time FLEx activity notifications
   useFlexActivityNotifications(id);
-  const { pendingCount: infoRequestPendingCount, markAllAsRead: markInfoRequestsAsRead } = useFlexInfoNotifications(id);
+  const { actionRequiredCount: infoRequestActionCount, markAllAsRead: markInfoRequestsAsRead, pendingCount: infoRequestPendingCount } = useFlexInfoNotifications(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const { flagNotes, addFlagNote, deleteFlagNote } = useFlagNotes(id || null);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
@@ -1983,9 +1983,9 @@ export default function DealDetail() {
                   </TabsTrigger>
                   <TabsTrigger value="deal-management" className="gap-2">
                     Deal Management
-                    {infoRequestPendingCount > 0 && (
+                    {infoRequestActionCount > 0 && (
                       <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                        {infoRequestPendingCount}
+                        {infoRequestActionCount}
                       </Badge>
                     )}
                   </TabsTrigger>

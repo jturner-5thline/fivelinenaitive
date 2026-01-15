@@ -180,11 +180,13 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
   }, []);
 
   const pendingCount = notifications.filter(n => n.status === 'pending').length;
+  const actionRequiredCount = notifications.filter(n => n.status === 'pending' || n.status === 'read').length;
 
   return {
     notifications,
     isLoading,
     pendingCount,
+    actionRequiredCount,
     approveAccess,
     denyAccess,
     markAllAsRead,
