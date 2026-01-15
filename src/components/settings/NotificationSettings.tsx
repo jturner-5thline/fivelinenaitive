@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity, Target, ChevronDown, Send } from 'lucide-react';
+import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity, Target, ChevronDown, Send, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,8 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
     notify_activity_milestone_added: true,
     notify_activity_milestone_completed: true,
     notify_activity_milestone_missed: true,
+    // FLEx alerts
+    notify_flex_alerts: true,
   });
 
   useEffect(() => {
@@ -61,6 +63,8 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
         notify_activity_milestone_added: (profile as any).notify_activity_milestone_added ?? true,
         notify_activity_milestone_completed: (profile as any).notify_activity_milestone_completed ?? true,
         notify_activity_milestone_missed: (profile as any).notify_activity_milestone_missed ?? true,
+        // FLEx alerts
+        notify_flex_alerts: (profile as any).notify_flex_alerts ?? true,
       });
     }
   }, [profile]);
@@ -230,6 +234,24 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
                 id="weekly_summary_email"
                 checked={preferences.weekly_summary_email}
                 onCheckedChange={(checked) => handleToggle('weekly_summary_email', checked)}
+                disabled={isSaving || !preferences.email_notifications}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notify_flex_alerts" className="flex flex-col gap-1">
+                <span className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  FLEx engagement alerts
+                </span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  Get notified for hot engagement, term sheet & NDA requests
+                </span>
+              </Label>
+              <Switch
+                id="notify_flex_alerts"
+                checked={preferences.notify_flex_alerts}
+                onCheckedChange={(checked) => handleToggle('notify_flex_alerts', checked)}
                 disabled={isSaving || !preferences.email_notifications}
               />
             </div>

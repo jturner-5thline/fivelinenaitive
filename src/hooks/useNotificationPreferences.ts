@@ -11,6 +11,7 @@ export interface NotificationPreferences {
   notify_activity_milestone_added: boolean;
   notify_activity_milestone_completed: boolean;
   notify_activity_milestone_missed: boolean;
+  notify_flex_alerts: boolean;
 }
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
@@ -22,6 +23,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   notify_activity_milestone_added: true,
   notify_activity_milestone_completed: true,
   notify_activity_milestone_missed: true,
+  notify_flex_alerts: true,
 };
 
 export function useNotificationPreferences() {
@@ -35,7 +37,7 @@ export function useNotificationPreferences() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('notify_stale_alerts, notify_activity_lender_added, notify_activity_lender_updated, notify_activity_stage_changed, notify_activity_status_changed, notify_activity_milestone_added, notify_activity_milestone_completed, notify_activity_milestone_missed')
+      .select('notify_stale_alerts, notify_activity_lender_added, notify_activity_lender_updated, notify_activity_stage_changed, notify_activity_status_changed, notify_activity_milestone_added, notify_activity_milestone_completed, notify_activity_milestone_missed, notify_flex_alerts')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -51,6 +53,7 @@ export function useNotificationPreferences() {
         notify_activity_milestone_added: (data as any).notify_activity_milestone_added ?? true,
         notify_activity_milestone_completed: (data as any).notify_activity_milestone_completed ?? true,
         notify_activity_milestone_missed: (data as any).notify_activity_milestone_missed ?? true,
+        notify_flex_alerts: (data as any).notify_flex_alerts ?? true,
       });
     }
     setIsLoading(false);
