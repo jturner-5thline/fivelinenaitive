@@ -375,8 +375,11 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           </div>
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div 
-              className="h-full bg-primary transition-all duration-100 ease-linear rounded-full"
-              style={{ width: `${progress}%` }}
+              className="h-full transition-all duration-100 ease-linear rounded-full"
+              style={{ 
+                width: `${progress}%`,
+                background: `linear-gradient(90deg, hsl(45, 93%, 47%) 0%, hsl(85, 70%, 45%) 50%, hsl(142, 71%, 45%) 100%)`
+              }}
             />
           </div>
         </div>
