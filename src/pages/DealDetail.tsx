@@ -2397,10 +2397,24 @@ export default function DealDetail() {
                                         setSelectedPassReason(null);
                                         setPassReasonDialogOpen(true);
                                       } else {
-                                        const updatedLenders = deal.lenders?.map(l => 
-                                          l.id === lender.id ? { ...l, stage: value, passReason: undefined, updatedAt: new Date().toISOString() } : l
-                                        );
-                                        updateDeal('lenders', updatedLenders as any);
+                                        // Update local state optimistically
+                                        setDeal(prev => {
+                                          if (!prev) return prev;
+                                          const updatedLenders = prev.lenders?.map(l => 
+                                            l.id === lender.id ? { ...l, stage: value, passReason: undefined, updatedAt: new Date().toISOString() } : l
+                                          );
+                                          return { ...prev, lenders: updatedLenders };
+                                        });
+                                        
+                                        // Persist to database
+                                        const newGroup = newStage?.group || 'active';
+                                        withSavingAsync(`lender-stage-${lender.id}`, async () => {
+                                          await updateLenderInDb(lender.id, { 
+                                            stage: value, 
+                                            trackingStatus: newGroup,
+                                            passReason: undefined 
+                                          });
+                                        });
                                         
                                         // Check if lender moved to "term-sheets" stage - prompt for milestone completion
                                         if (value === 'term-sheets') {
@@ -2425,10 +2439,21 @@ export default function DealDetail() {
                                   <Select
                                     value={lender.substage || '__none__'}
                                     onValueChange={(value: LenderSubstage) => {
-                                      const updatedLenders = deal.lenders?.map(l => 
-                                        l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value, updatedAt: new Date().toISOString() } : l
-                                      );
-                                      updateDeal('lenders', updatedLenders as any);
+                                      const newSubstage = value === '__none__' ? undefined : value;
+                                      
+                                      // Update local state optimistically
+                                      setDeal(prev => {
+                                        if (!prev) return prev;
+                                        const updatedLenders = prev.lenders?.map(l => 
+                                          l.id === lender.id ? { ...l, substage: newSubstage, updatedAt: new Date().toISOString() } : l
+                                        );
+                                        return { ...prev, lenders: updatedLenders };
+                                      });
+                                      
+                                      // Persist to database
+                                      withSavingAsync(`lender-substage-${lender.id}`, async () => {
+                                        await updateLenderInDb(lender.id, { substage: newSubstage });
+                                      });
                                     }}
                                   >
                                     <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-muted/50 border-0 justify-start">
@@ -2743,10 +2768,24 @@ export default function DealDetail() {
                                                 setSelectedPassReason(null);
                                                 setPassReasonDialogOpen(true);
                                               } else {
-                                                const updatedLenders = deal.lenders?.map(l => 
-                                                  l.id === lender.id ? { ...l, stage: value, passReason: undefined, updatedAt: new Date().toISOString() } : l
-                                                );
-                                                updateDeal('lenders', updatedLenders as any);
+                                                // Update local state optimistically
+                                                setDeal(prev => {
+                                                  if (!prev) return prev;
+                                                  const updatedLenders = prev.lenders?.map(l => 
+                                                    l.id === lender.id ? { ...l, stage: value, passReason: undefined, updatedAt: new Date().toISOString() } : l
+                                                  );
+                                                  return { ...prev, lenders: updatedLenders };
+                                                });
+                                                
+                                                // Persist to database
+                                                const newGroup = newStage?.group || 'active';
+                                                withSavingAsync(`lender-stage-${lender.id}`, async () => {
+                                                  await updateLenderInDb(lender.id, { 
+                                                    stage: value, 
+                                                    trackingStatus: newGroup,
+                                                    passReason: undefined 
+                                                  });
+                                                });
                                                 
                                                 // Check if lender moved to "term-sheets" stage - prompt for milestone completion
                                                 if (value === 'term-sheets') {
@@ -2771,10 +2810,21 @@ export default function DealDetail() {
                                           <Select
                                             value={lender.substage || '__none__'}
                                             onValueChange={(value: LenderSubstage) => {
-                                              const updatedLenders = deal.lenders?.map(l => 
-                                                l.id === lender.id ? { ...l, substage: value === '__none__' ? undefined : value, updatedAt: new Date().toISOString() } : l
-                                              );
-                                              updateDeal('lenders', updatedLenders as any);
+                                              const newSubstage = value === '__none__' ? undefined : value;
+                                              
+                                              // Update local state optimistically
+                                              setDeal(prev => {
+                                                if (!prev) return prev;
+                                                const updatedLenders = prev.lenders?.map(l => 
+                                                  l.id === lender.id ? { ...l, substage: newSubstage, updatedAt: new Date().toISOString() } : l
+                                                );
+                                                return { ...prev, lenders: updatedLenders };
+                                              });
+                                              
+                                              // Persist to database
+                                              withSavingAsync(`lender-substage-${lender.id}`, async () => {
+                                                await updateLenderInDb(lender.id, { substage: newSubstage });
+                                              });
                                             }}
                                           >
                                             <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-muted/50 border-0 justify-start">
