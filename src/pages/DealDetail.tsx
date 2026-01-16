@@ -45,6 +45,7 @@ import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItem
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
+import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
@@ -387,17 +388,13 @@ export default function DealDetail() {
   }, [contextDeal]);
   
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
-  const [lenderSearchQuery, setLenderSearchQuery] = useState('');
-  const [isLenderDropdownOpen, setIsLenderDropdownOpen] = useState(false);
   
-  // Memoize filtered lenders to avoid recalculating on every render
-  const filteredLenderNames = useMemo(() => {
-    const searchLower = lenderSearchQuery.toLowerCase();
-    return lenderNames.filter(
-      name => !deal?.lenders?.some(l => l.name === name) &&
-      name.toLowerCase().includes(searchLower)
-    );
-  }, [lenderNames, deal?.lenders, lenderSearchQuery]);
+  // Memoize existing lender names to pass to the search component
+  const existingLenderNames = useMemo(() => 
+    deal?.lenders?.map(l => l.name) || [], 
+    [deal?.lenders]
+  );
+  
   const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
@@ -3026,70 +3023,11 @@ export default function DealDetail() {
                       </>
                     )}
                     <div className={`flex items-center gap-2 ${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                      <Popover open={isLenderDropdownOpen} onOpenChange={setIsLenderDropdownOpen}>
-                        <PopoverTrigger asChild>
-                          <div className="flex-1 max-w-[50%]">
-                            <Input
-                              placeholder="Type to add a lender..."
-                              value={lenderSearchQuery}
-                              onChange={(e) => {
-                                setLenderSearchQuery(e.target.value);
-                                setIsLenderDropdownOpen(true);
-                              }}
-                              onFocus={() => {
-                                setIsLenderDropdownOpen(true);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && lenderSearchQuery.trim()) {
-                                  if (filteredLenderNames.length > 0) {
-                                    addLender(filteredLenderNames[0]);
-                                  } else {
-                                    addLender(lenderSearchQuery);
-                                  }
-                                  setLenderSearchQuery('');
-                                  setIsLenderDropdownOpen(false);
-                                }
-                                if (e.key === 'Escape') {
-                                  setIsLenderDropdownOpen(false);
-                                }
-                              }}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </PopoverTrigger>
-                        <PopoverContent 
-                          className="w-[var(--radix-popover-trigger-width)] p-0 max-h-48 overflow-auto" 
-                          align="start"
-                          sideOffset={4}
-                          onOpenAutoFocus={(e) => e.preventDefault()}
-                        >
-                          {filteredLenderNames.map((lenderName) => (
-                            <button
-                              key={lenderName}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                              onClick={() => {
-                                addLender(lenderName);
-                                setLenderSearchQuery('');
-                                setIsLenderDropdownOpen(false);
-                              }}
-                            >
-                              {lenderName}
-                            </button>
-                          ))}
-                          {filteredLenderNames.length === 0 && lenderSearchQuery.trim() && (
-                            <button
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                              onClick={() => {
-                                addLender(lenderSearchQuery);
-                                setLenderSearchQuery('');
-                                setIsLenderDropdownOpen(false);
-                              }}
-                            >
-                              Add "{lenderSearchQuery}" as new lender
-                            </button>
-                          )}
-                        </PopoverContent>
-                      </Popover>
+                      <LenderSearchInput
+                        lenderNames={lenderNames}
+                        existingLenderNames={existingLenderNames}
+                        onAddLender={addLender}
+                      />
                       <LenderSuggestionsPanel
                         criteria={{
                           industry: dealWriteUpData.industry || undefined,
