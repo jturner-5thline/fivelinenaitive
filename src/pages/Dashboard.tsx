@@ -41,9 +41,15 @@ export default function Dashboard() {
 
   const firstName = profile?.first_name || profile?.display_name?.split(' ')[0] || 'there';
 
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Could navigate or trigger search
     if (inputValue.trim()) {
       navigate('/deals');
     }
@@ -59,9 +65,14 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-2xl space-y-8">
           {/* Greeting */}
-          <h1 className="text-4xl md:text-5xl font-serif text-center text-foreground">
-            What can I do for you?
-          </h1>
+          <div className="text-center space-y-2">
+            <p className="text-lg text-muted-foreground">
+              {getTimeBasedGreeting()}, {firstName}
+            </p>
+            <h1 className="text-4xl md:text-5xl font-serif text-foreground">
+              What can I do for you?
+            </h1>
+          </div>
 
           {/* Input Card */}
           <Card className="p-4 shadow-lg">
