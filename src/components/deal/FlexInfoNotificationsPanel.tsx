@@ -150,8 +150,8 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="pt-0">
-            <ScrollArea style={{ maxHeight: maxScrollHeight }} className="pr-3">
-              <div className="space-y-3">
+            <ScrollArea className="pr-3" style={{ height: notifications.length > 2 ? maxScrollHeight : 'auto' }}>
+              <div className="space-y-3 pb-1">
                 {notifications.map((notification) => {
                   const styles = getStatusStyles(notification.status);
                   return (
