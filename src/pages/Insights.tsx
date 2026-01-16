@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { HealthScoreTrendChart } from "@/components/insights/HealthScoreTrendChart";
 
 interface PipelineHealth {
   score: number;
@@ -434,6 +435,9 @@ export default function Insights() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Health Score Trend Chart */}
+            <HealthScoreTrendChart history={history} />
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* Risk Alerts */}
