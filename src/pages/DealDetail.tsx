@@ -2452,9 +2452,9 @@ export default function DealDetail() {
                                                 "p-1 rounded",
                                                 summary.hasNda 
                                                   ? "text-primary" 
-                                                  : "text-muted-foreground/30"
+                                                  : "text-muted-foreground/50"
                                               )}>
-                                                <FileSignature className="h-3.5 w-3.5" />
+                                                <FileSignature className="h-4 w-4" />
                                               </div>
                                             </TooltipTrigger>
                                             <TooltipContent>
@@ -2467,9 +2467,9 @@ export default function DealDetail() {
                                                 "p-1 rounded",
                                                 summary.hasMarketingMaterials 
                                                   ? "text-primary" 
-                                                  : "text-muted-foreground/30"
+                                                  : "text-muted-foreground/50"
                                               )}>
-                                                <Megaphone className="h-3.5 w-3.5" />
+                                                <Megaphone className="h-4 w-4" />
                                               </div>
                                             </TooltipTrigger>
                                             <TooltipContent>
