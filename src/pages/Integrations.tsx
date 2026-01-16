@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -15,14 +16,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
+import { useIntegrations, Integration } from "@/hooks/useIntegrations";
+import { formatDistanceToNow } from "date-fns";
 import { 
   Plug, 
   Plus, 
@@ -39,21 +35,11 @@ import {
   FileText,
   MessageSquare,
   Zap,
-  ExternalLink,
   Copy,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from "lucide-react";
-
-interface Integration {
-  id: string;
-  name: string;
-  type: string;
-  status: "connected" | "disconnected" | "error";
-  lastSync?: string;
-  config: Record<string, string>;
-  icon: React.ElementType;
-}
 
 const INTEGRATION_TEMPLATES = [
   { 
@@ -107,36 +93,20 @@ const INTEGRATION_TEMPLATES = [
   },
 ];
 
+const getIconForType = (type: string) => {
+  const template = INTEGRATION_TEMPLATES.find(t => t.id === type);
+  return template?.icon || Plug;
+};
+
 export default function Integrations() {
-  const [integrations, setIntegrations] = useState<Integration[]>([
-    {
-      id: "1",
-      name: "Deal Notifications Webhook",
-      type: "webhook",
-      status: "connected",
-      lastSync: "2 minutes ago",
-      config: { url: "https://api.example.com/webhooks/deals" },
-      icon: Webhook
-    },
-    {
-      id: "2",
-      name: "Slack Alerts",
-      type: "slack",
-      status: "connected",
-      lastSync: "5 minutes ago",
-      config: { webhookUrl: "https://hooks.slack.com/...", channel: "#deals" },
-      icon: MessageSquare
-    },
-    {
-      id: "3",
-      name: "CRM Sync",
-      type: "crm",
-      status: "error",
-      lastSync: "1 hour ago",
-      config: { apiKey: "sk-...", endpoint: "https://api.hubspot.com" },
-      icon: Database
-    },
-  ]);
+  const { 
+    integrations, 
+    isLoading, 
+    createIntegration, 
+    updateIntegration, 
+    deleteIntegration, 
+    toggleIntegration 
+  } = useIntegrations();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
@@ -146,27 +116,22 @@ export default function Integrations() {
   const [configValues, setConfigValues] = useState<Record<string, string>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
 
-  const handleAddIntegration = () => {
+  const handleAddIntegration = async () => {
     if (!selectedTemplate || !newIntegrationName) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    const newIntegration: Integration = {
-      id: Date.now().toString(),
+    await createIntegration.mutateAsync({
       name: newIntegrationName,
       type: selectedTemplate.id,
-      status: "disconnected",
       config: configValues,
-      icon: selectedTemplate.icon
-    };
+    });
 
-    setIntegrations([...integrations, newIntegration]);
     setIsAddDialogOpen(false);
     setSelectedTemplate(null);
     setNewIntegrationName("");
     setConfigValues({});
-    toast.success("Integration added successfully");
   };
 
   const handleTestConnection = (integration: Integration) => {
@@ -180,23 +145,20 @@ export default function Integrations() {
     );
   };
 
-  const handleDeleteIntegration = (id: string) => {
-    setIntegrations(integrations.filter(i => i.id !== id));
-    toast.success("Integration removed");
+  const handleDeleteIntegration = async (id: string) => {
+    await deleteIntegration.mutateAsync(id);
   };
 
-  const handleToggleIntegration = (id: string, enabled: boolean) => {
-    setIntegrations(integrations.map(i => 
-      i.id === id ? { ...i, status: enabled ? "connected" : "disconnected" } : i
-    ));
-    toast.success(enabled ? "Integration enabled" : "Integration disabled");
+  const handleToggleIntegration = async (id: string, enabled: boolean) => {
+    await toggleIntegration.mutateAsync({ id, enabled });
   };
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     if (selectedIntegration) {
-      setIntegrations(integrations.map(i => 
-        i.id === selectedIntegration.id ? { ...i, config: configValues } : i
-      ));
+      await updateIntegration.mutateAsync({
+        id: selectedIntegration.id,
+        updates: { config: configValues },
+      });
       setIsConfigDialogOpen(false);
       setSelectedIntegration(null);
       setConfigValues({});
@@ -206,22 +168,11 @@ export default function Integrations() {
 
   const openConfigDialog = (integration: Integration) => {
     setSelectedIntegration(integration);
-    setConfigValues(integration.config);
+    setConfigValues(integration.config as Record<string, string>);
     setIsConfigDialogOpen(true);
   };
 
-  const getStatusIcon = (status: Integration["status"]) => {
-    switch (status) {
-      case "connected":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "error":
-        return <XCircle className="h-4 w-4 text-destructive" />;
-      default:
-        return <Clock className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  const getStatusBadge = (status: Integration["status"]) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case "connected":
         return <Badge variant="default" className="bg-green-500/10 text-green-600 border-green-500/20">Connected</Badge>;
@@ -232,10 +183,29 @@ export default function Integrations() {
     }
   };
 
-  const maskSecret = (value: string) => {
-    if (value.length <= 8) return "••••••••";
-    return value.slice(0, 4) + "••••••••" + value.slice(-4);
+  const formatLastSync = (lastSyncAt: string | null) => {
+    if (!lastSyncAt) return null;
+    return formatDistanceToNow(new Date(lastSyncAt), { addSuffix: true });
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-9 w-48 mb-2" />
+            <Skeleton className="h-5 w-72" />
+          </div>
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -321,7 +291,11 @@ export default function Integrations() {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddIntegration}>
+              <Button 
+                onClick={handleAddIntegration}
+                disabled={createIntegration.isPending}
+              >
+                {createIntegration.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Add Integration
               </Button>
             </DialogFooter>
@@ -331,7 +305,7 @@ export default function Integrations() {
 
       <Tabs defaultValue="active" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="active">Active Integrations</TabsTrigger>
+          <TabsTrigger value="active">Active Integrations ({integrations.length})</TabsTrigger>
           <TabsTrigger value="available">Available Integrations</TabsTrigger>
         </TabsList>
 
@@ -352,55 +326,62 @@ export default function Integrations() {
             </Card>
           ) : (
             <div className="grid gap-4">
-              {integrations.map((integration) => (
-                <Card key={integration.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <integration.icon className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{integration.name}</h3>
-                            {getStatusBadge(integration.status)}
+              {integrations.map((integration) => {
+                const IconComponent = getIconForType(integration.type);
+                return (
+                  <Card key={integration.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <IconComponent className="h-5 w-5 text-primary" />
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {integration.lastSync && `Last sync: ${integration.lastSync}`}
-                          </p>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium">{integration.name}</h3>
+                              {getStatusBadge(integration.status)}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {integration.last_sync_at 
+                                ? `Last sync: ${formatLastSync(integration.last_sync_at)}`
+                                : "Never synced"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={integration.status === "connected"}
+                            onCheckedChange={(checked) => handleToggleIntegration(integration.id, checked)}
+                            disabled={toggleIntegration.isPending}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleTestConnection(integration)}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openConfigDialog(integration)}
+                          >
+                            <Settings2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteIntegration(integration.id)}
+                            disabled={deleteIntegration.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={integration.status === "connected"}
-                          onCheckedChange={(checked) => handleToggleIntegration(integration.id, checked)}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleTestConnection(integration)}
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openConfigDialog(integration)}
-                        >
-                          <Settings2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteIntegration(integration.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -449,7 +430,7 @@ export default function Integrations() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {selectedIntegration && Object.entries(selectedIntegration.config).map(([key, value]) => (
+            {selectedIntegration && Object.entries(selectedIntegration.config as Record<string, string>).map(([key, value]) => (
               <div key={key} className="space-y-2">
                 <Label className="capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</Label>
                 <div className="flex gap-2">
@@ -487,7 +468,11 @@ export default function Integrations() {
             <Button variant="outline" onClick={() => setIsConfigDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveConfig}>
+            <Button 
+              onClick={handleSaveConfig}
+              disabled={updateIntegration.isPending}
+            >
+              {updateIntegration.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
           </DialogFooter>
