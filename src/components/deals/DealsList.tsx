@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
+import { DealListRow } from './DealListRow';
 import { FileX, ChevronDown, ChevronRight } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { SortField, SortDirection } from '@/hooks/useDeals';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface DealsListProps {
   deals: Deal[];
@@ -17,11 +19,12 @@ interface DealsListProps {
   groupByStatus?: boolean;
   sortField?: SortField;
   sortDirection?: SortDirection;
+  viewMode?: 'grid' | 'list';
 }
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true, sortField, sortDirection }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true, sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
   
@@ -65,6 +68,41 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
         <p className="mt-1 text-sm text-muted-foreground">
           Try adjusting your filters or create a new deal to get started.
         </p>
+      </div>
+    );
+  }
+
+  // List view rendering
+  if (viewMode === 'list') {
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Company</TableHead>
+              <TableHead>Value</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Stage</TableHead>
+              <TableHead>Manager</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>FLEx</TableHead>
+              <TableHead>Updated</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedDeals.map((deal) => (
+              <DealListRow
+                key={deal.id}
+                deal={deal}
+                onStatusChange={onStatusChange}
+                onMarkReviewed={onMarkReviewed}
+                onToggleFlag={onToggleFlag}
+                flexEngagement={flexEngagementScores?.get(deal.id)}
+              />
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   }

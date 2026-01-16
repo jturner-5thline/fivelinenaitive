@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { DealsList } from '@/components/deals/DealsList';
@@ -47,6 +47,7 @@ import { useWidgets } from '@/contexts/WidgetsContext';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
@@ -263,20 +264,45 @@ export default function Dashboard() {
 
                 <div className="h-4 w-px bg-border" />
 
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="group-by-status"
-                    checked={groupByStatus}
-                    onCheckedChange={setGroupByStatus}
-                  />
-                  <Label htmlFor="group-by-status" className="text-sm text-muted-foreground cursor-pointer">
-                    Group by Status
-                  </Label>
+                {/* View Mode Toggle */}
+                <div className="flex items-center border rounded-md">
+                  <Button
+                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-8 px-2.5 rounded-r-none"
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-8 px-2.5 rounded-l-none"
+                    onClick={() => setViewMode('list')}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
                 </div>
+
+                {viewMode === 'grid' && (
+                  <>
+                    <div className="h-4 w-px bg-border" />
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="group-by-status"
+                        checked={groupByStatus}
+                        onCheckedChange={setGroupByStatus}
+                      />
+                      <Label htmlFor="group-by-status" className="text-sm text-muted-foreground cursor-pointer">
+                        Group by Status
+                      </Label>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Deals Grid */}
+            {/* Deals Grid/List */}
             {isLoading ? (
               <DealsListSkeleton groupByStatus={groupByStatus} />
             ) : (
@@ -288,6 +314,7 @@ export default function Dashboard() {
                 groupByStatus={groupByStatus}
                 sortField={sortField}
                 sortDirection={sortDirection}
+                viewMode={viewMode}
               />
             )}
           </div>
