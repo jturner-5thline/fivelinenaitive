@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Plus } from 'lucide-react';
 
 interface LenderSearchInputProps {
   lenderNames: string[];
@@ -152,12 +153,15 @@ export function LenderSearchInput({
             {highlightMatch(lenderName)}
           </button>
         ))}
-        {filteredLenderNames.length === 0 && searchQuery.trim() && (
+        {searchQuery.trim() && (
           <button
-            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-            onClick={() => handleAddLender(searchQuery)}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-2 border-t border-border bg-muted/50"
+            onClick={() => handleAddLender(searchQuery.trim())}
           >
-            Add "{searchQuery}" as new lender
+            <Plus className="h-4 w-4 text-primary" />
+            <span>
+              Add <span className="font-medium text-primary">"{searchQuery.trim()}"</span> as new lender
+            </span>
           </button>
         )}
       </PopoverContent>
