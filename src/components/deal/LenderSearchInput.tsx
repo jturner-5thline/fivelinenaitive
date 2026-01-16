@@ -63,30 +63,32 @@ export function LenderSearchInput({
           />
         </div>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-48 overflow-auto" 
-        align="start"
-        sideOffset={4}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        {filteredLenderNames.map((lenderName) => (
-          <button
-            key={lenderName}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-            onClick={() => handleAddLender(lenderName)}
-          >
-            {lenderName}
-          </button>
-        ))}
-        {filteredLenderNames.length === 0 && searchQuery.trim() && (
-          <button
-            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-            onClick={() => handleAddLender(searchQuery)}
-          >
-            Add "{searchQuery}" as new lender
-          </button>
-        )}
-      </PopoverContent>
+      {searchQuery.trim() && (
+        <PopoverContent 
+          className="w-[var(--radix-popover-trigger-width)] p-0 max-h-48 overflow-auto" 
+          align="start"
+          sideOffset={4}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          {filteredLenderNames.map((lenderName) => (
+            <button
+              key={lenderName}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              onClick={() => handleAddLender(lenderName)}
+            >
+              {lenderName}
+            </button>
+          ))}
+          {filteredLenderNames.length === 0 && (
+            <button
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+              onClick={() => handleAddLender(searchQuery)}
+            >
+              Add "{searchQuery}" as new lender
+            </button>
+          )}
+        </PopoverContent>
+      )}
     </Popover>
   );
 }
