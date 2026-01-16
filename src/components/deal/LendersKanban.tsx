@@ -92,8 +92,12 @@ function DraggableLenderTile({ lender, configuredStages }: { lender: DealLender;
             </div>
           )}
           {lender.passReason && (
-            <div className="mt-2 text-xs text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
-              {lender.passReason}
+            <div className="mt-2 flex flex-wrap gap-1">
+              {lender.passReason.split(', ').map((reason, idx) => (
+                <span key={idx} className="text-xs text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+                  {reason}
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -149,7 +153,7 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
   const [pendingPassChange, setPendingPassChange] = useState<{ lenderId: string } | null>(null);
-  const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
+  const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
 
   const filteredPassReasons = useMemo(() => {
@@ -185,7 +189,7 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
         // Check if dropping to passed column
         if (targetGroup === 'passed') {
           setPendingPassChange({ lenderId: active.id as string });
-          setSelectedPassReason(null);
+          setSelectedPassReasons([]);
           setPassReasonDialogOpen(true);
         } else {
           onUpdateLenderGroup(active.id as string, targetGroup);
@@ -195,19 +199,31 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
   };
 
   const handleConfirmPass = () => {
-    if (pendingPassChange && selectedPassReason) {
-      onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', selectedPassReason);
+    if (pendingPassChange && selectedPassReasons.length > 0) {
+      onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', selectedPassReasons.join(', '));
       setPassReasonDialogOpen(false);
       setPendingPassChange(null);
-      setSelectedPassReason(null);
+      setSelectedPassReasons([]);
     }
   };
 
   const handleCancelPass = () => {
     setPassReasonDialogOpen(false);
     setPendingPassChange(null);
-    setSelectedPassReason(null);
+    setSelectedPassReasons([]);
     setPassReasonSearch('');
+  };
+
+  const togglePassReason = (reasonLabel: string) => {
+    setSelectedPassReasons(prev => {
+      if (prev.includes(reasonLabel)) {
+        return prev.filter(r => r !== reasonLabel);
+      }
+      if (prev.length >= 3) {
+        return prev; // Don't add more than 3
+      }
+      return [...prev, reasonLabel];
+    });
   };
 
   const getLendersByGroup = (groupId: StageGroup) => {
@@ -258,7 +274,8 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
       <Dialog open={passReasonDialogOpen} onOpenChange={(open) => !open && handleCancelPass()}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Select Pass Reason for {pendingLenderName}</DialogTitle>
+            <DialogTitle>Select Pass Reasons for {pendingLenderName}</DialogTitle>
+            <p className="text-sm text-muted-foreground">Select up to 3 reasons ({selectedPassReasons.length}/3)</p>
           </DialogHeader>
           <div className="py-2 space-y-3">
             <div className="relative">
@@ -271,16 +288,21 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
               />
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {filteredPassReasons.map((reason) => (
-                <Button
-                  key={reason.id}
-                  variant={selectedPassReason === reason.label ? "default" : "outline"}
-                  className="h-auto py-2 px-3 text-sm justify-start"
-                  onClick={() => setSelectedPassReason(reason.label)}
-                >
-                  {reason.label}
-                </Button>
-              ))}
+              {filteredPassReasons.map((reason) => {
+                const isSelected = selectedPassReasons.includes(reason.label);
+                const isDisabled = !isSelected && selectedPassReasons.length >= 3;
+                return (
+                  <Button
+                    key={reason.id}
+                    variant={isSelected ? "default" : "outline"}
+                    className="h-auto py-2 px-3 text-sm justify-start"
+                    disabled={isDisabled}
+                    onClick={() => togglePassReason(reason.label)}
+                  >
+                    {reason.label}
+                  </Button>
+                );
+              })}
               {filteredPassReasons.length === 0 && (
                 <p className="col-span-3 text-sm text-muted-foreground text-center py-4">
                   No pass reasons match your search
@@ -294,9 +316,9 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
             </Button>
             <Button 
               onClick={handleConfirmPass}
-              disabled={!selectedPassReason}
+              disabled={selectedPassReasons.length === 0}
             >
-              Confirm
+              Confirm ({selectedPassReasons.length} selected)
             </Button>
           </DialogFooter>
         </DialogContent>
