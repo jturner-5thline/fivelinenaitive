@@ -33,6 +33,9 @@ import LenderDatabaseConfig from "./pages/LenderDatabaseConfig";
 import Preferences from "./pages/Preferences";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
+import Metrics from "./pages/Metrics";
+import Insights from "./pages/Insights";
+import SalesBD from "./pages/SalesBD";
 import Database from "./pages/Database";
 import Workflows from "./pages/Workflows";
 import Company from "./pages/Company";
@@ -84,6 +87,15 @@ const App = () => (
                           } />
                           <Route path="/reports" element={
                             <ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/metrics" element={
+                            <ProtectedRoute><AppLayout><Metrics /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/insights" element={
+                            <ProtectedRoute><AppLayout><Insights /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/sales-bd" element={
+                            <ProtectedRoute><AppLayout><SalesBD /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deal/:id" element={
                             <ProtectedRoute><AppLayout><DealDetail /></AppLayout></ProtectedRoute>
