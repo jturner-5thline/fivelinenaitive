@@ -40,7 +40,6 @@ import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
-import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { LendersKanban } from '@/components/deal/LendersKanban';
@@ -2231,8 +2230,8 @@ export default function DealDetail() {
                       </CardContent>
                     </Card>
 
-                    {/* Info Requests Panel */}
-                    <InfoRequestsPanel />
+                    {/* Flex Info Notifications */}
+                    <FlexInfoNotificationsPanel dealId={id} />
 
                     {/* Outstanding Items */}
                     <OutstandingItems
@@ -3010,6 +3009,7 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="deal-management" className="mt-6 space-y-6">
+                  <FlexInfoNotificationsPanel dealId={id} />
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
 
