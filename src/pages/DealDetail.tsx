@@ -350,9 +350,14 @@ export default function DealDetail() {
             .filter(l => contextLenderMap.has(l.id))
             .map(localLender => {
               const contextLender = contextLenderMap.get(localLender.id);
-              // Merge context data but preserve local notes that may be in edit
+              // Merge context data but preserve local edits that may not have synced yet
               return contextLender ? {
                 ...contextLender,
+                // Preserve local stage/trackingStatus during optimistic updates
+                stage: localLender.stage,
+                trackingStatus: localLender.trackingStatus,
+                substage: localLender.substage,
+                passReason: localLender.passReason,
                 notes: localLender.notes, // Preserve local notes during editing
                 notesHistory: contextLender.notesHistory, // Use context history (persisted)
               } : localLender;
