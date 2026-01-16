@@ -626,6 +626,24 @@ export function useDealsDatabase() {
         // Log warning if no rows were updated
         if (!data || data.length === 0) {
           console.warn(`Lender update returned no rows for id: ${lenderId}`);
+        } else {
+          // Show success toast based on what was updated
+          if (updates.stage !== undefined) {
+            toast({
+              title: "Stage updated",
+              description: `Lender stage saved successfully`,
+            });
+          } else if (updates.substage !== undefined) {
+            toast({
+              title: "Milestone updated",
+              description: `Lender milestone saved successfully`,
+            });
+          } else if (updates.notes !== undefined) {
+            toast({
+              title: "Notes saved",
+              description: `Lender notes saved successfully`,
+            });
+          }
         }
       }
       
