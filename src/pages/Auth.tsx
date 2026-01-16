@@ -29,8 +29,11 @@ interface MFAChallenge {
 
 // Gate password hash for quick client-side check
 const GATE_PASSWORD = "nAItive2024!";
+const GATE_SESSION_KEY = "naitive_gate_verified";
 
 const Auth = () => {
+  // Check if user has already passed the gate this session
+  const hasPassedGate = sessionStorage.getItem(GATE_SESSION_KEY) === "true";
   const [mode, setMode] = useState<AuthMode>("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -210,10 +213,20 @@ const Auth = () => {
   const handleGateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (gatePassword === GATE_PASSWORD) {
+      sessionStorage.setItem(GATE_SESSION_KEY, "true");
       setMode("login");
       setGatePassword("");
     } else {
       toast.error("Incorrect password");
+    }
+  };
+
+  // Handle "Already have an account?" click - skip gate if already verified
+  const handleLoginClick = () => {
+    if (hasPassedGate) {
+      setMode("login");
+    } else {
+      setMode("gate");
     }
   };
 
@@ -564,7 +577,7 @@ const Auth = () => {
                     {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
                     <button
                       type="button"
-                      onClick={() => setMode(mode === "login" ? "signup" : "gate")}
+                      onClick={() => mode === "login" ? setMode("signup") : handleLoginClick()}
                       className="text-white/80 hover:text-white underline underline-offset-4"
                     >
                       {mode === "login" ? "Sign up" : "Login"}
