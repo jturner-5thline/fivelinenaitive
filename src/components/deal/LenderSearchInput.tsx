@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -14,14 +14,31 @@ export function LenderSearchInput({
   onAddLender 
 }: LenderSearchInputProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Only show dropdown when there's text to filter
   const shouldShowDropdown = searchQuery.trim().length > 0;
 
-  // Filter lenders and limit to top 20 for performance
+  // Debounce the search query (150ms delay)
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 150);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Filter lenders using debounced query and limit to top 20 for performance
   const filteredLenderNames = useMemo(() => {
-    const trimmedQuery = searchQuery.trim();
+    const trimmedQuery = debouncedQuery.trim();
     if (!trimmedQuery) return [];
     const searchLower = trimmedQuery.toLowerCase();
     return lenderNames
@@ -30,7 +47,7 @@ export function LenderSearchInput({
         name.toLowerCase().includes(searchLower)
       )
       .slice(0, 20);
-  }, [lenderNames, existingLenderNames, searchQuery]);
+  }, [lenderNames, existingLenderNames, debouncedQuery]);
 
   const handleAddLender = useCallback((name: string) => {
     onAddLender(name);
