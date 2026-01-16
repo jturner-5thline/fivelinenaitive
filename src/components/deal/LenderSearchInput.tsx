@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -14,39 +14,20 @@ export function LenderSearchInput({
   onAddLender 
 }: LenderSearchInputProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout>();
 
-  // Debounce the search query to avoid filtering on every keystroke
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 150);
-    
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [searchQuery]);
-
-  // Filter lenders using debounced query
+  // Filter lenders - this is now cheap since it only re-renders this component, not the entire page
   const filteredLenderNames = useMemo(() => {
-    const searchLower = debouncedQuery.toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
     return lenderNames.filter(
       name => !existingLenderNames.includes(name) &&
       name.toLowerCase().includes(searchLower)
     );
-  }, [lenderNames, existingLenderNames, debouncedQuery]);
+  }, [lenderNames, existingLenderNames, searchQuery]);
 
   const handleAddLender = useCallback((name: string) => {
     onAddLender(name);
     setSearchQuery('');
-    setDebouncedQuery('');
     setIsOpen(false);
   }, [onAddLender]);
 
