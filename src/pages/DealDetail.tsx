@@ -382,6 +382,15 @@ export default function DealDetail() {
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   const [lenderSearchQuery, setLenderSearchQuery] = useState('');
   const [isLenderDropdownOpen, setIsLenderDropdownOpen] = useState(false);
+  
+  // Memoize filtered lenders to avoid recalculating on every render
+  const filteredLenderNames = useMemo(() => {
+    const searchLower = lenderSearchQuery.toLowerCase();
+    return lenderNames.filter(
+      name => !deal?.lenders?.some(l => l.name === name) &&
+      name.toLowerCase().includes(searchLower)
+    );
+  }, [lenderNames, deal?.lenders, lenderSearchQuery]);
   const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
@@ -2911,12 +2920,8 @@ export default function DealDetail() {
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' && lenderSearchQuery.trim()) {
-                                  const availableLenders = lenderNames.filter(
-                                    name => !deal.lenders?.some(l => l.name === name) &&
-                                    name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
-                                  );
-                                  if (availableLenders.length > 0) {
-                                    addLender(availableLenders[0]);
+                                  if (filteredLenderNames.length > 0) {
+                                    addLender(filteredLenderNames[0]);
                                   } else {
                                     addLender(lenderSearchQuery);
                                   }
@@ -2937,10 +2942,7 @@ export default function DealDetail() {
                           sideOffset={4}
                           onOpenAutoFocus={(e) => e.preventDefault()}
                         >
-                          {lenderNames.filter(
-                            name => !deal.lenders?.some(l => l.name === name) &&
-                            name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
-                          ).map((lenderName) => (
+                          {filteredLenderNames.map((lenderName) => (
                             <button
                               key={lenderName}
                               className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
@@ -2953,10 +2955,7 @@ export default function DealDetail() {
                               {lenderName}
                             </button>
                           ))}
-                          {lenderNames.filter(
-                            name => !deal.lenders?.some(l => l.name === name) &&
-                            name.toLowerCase().includes(lenderSearchQuery.toLowerCase())
-                          ).length === 0 && lenderSearchQuery.trim() && (
+                          {filteredLenderNames.length === 0 && lenderSearchQuery.trim() && (
                             <button
                               className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
                               onClick={() => {
