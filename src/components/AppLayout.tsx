@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Logo } from "@/components/Logo";
 import { AppBreadcrumb } from "@/components/AppBreadcrumb";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { Separator } from "@/components/ui/separator";
 
 interface AppLayoutProps {
@@ -21,6 +22,9 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
             <Separator orientation="vertical" className="h-4" />
             <AppBreadcrumb />
+            <div className="ml-auto">
+              <GlobalSearch />
+            </div>
           </div>
           <div className="flex-1">
             {children}
