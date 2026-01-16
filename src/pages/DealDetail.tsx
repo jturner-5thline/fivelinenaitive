@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -42,6 +42,7 @@ import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
+import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
@@ -301,6 +302,7 @@ export default function DealDetail() {
   const { members } = useCompany();
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
+  const { getLenderSummary } = useLenderAttachmentsSummary();
   const lenderNames = useMemo(() => {
     // Use master lenders database as primary source
     const masterLenderNames = masterLenders.map(l => l.name);
@@ -2364,7 +2366,7 @@ export default function DealDetail() {
                                       shouldHighlight && staleStatus.isUrgent && 'bg-destructive/10 -ml-2 pl-8 pr-2 py-2 rounded-lg border border-destructive/20',
                                       shouldHighlight && !staleStatus.isUrgent && 'bg-warning/10 -ml-2 pl-8 pr-2 py-2 rounded-lg border border-warning/20'
                                     )}>
-                                      <div className="grid grid-cols-[140px_160px_140px_1fr] items-center gap-3">
+                                      <div className="grid grid-cols-[140px_160px_140px_auto_1fr] items-center gap-3">
                                   <div className="flex flex-col">
                                     <button 
                                       className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
@@ -2438,6 +2440,46 @@ export default function DealDetail() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  {/* NDA & Marketing Materials Status Icons */}
+                                  <div className="flex items-center gap-1">
+                                    {(() => {
+                                      const summary = getLenderSummary(lender.name);
+                                      return (
+                                        <>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className={cn(
+                                                "p-1 rounded",
+                                                summary.hasNda 
+                                                  ? "text-primary" 
+                                                  : "text-muted-foreground/30"
+                                              )}>
+                                                <FileSignature className="h-3.5 w-3.5" />
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>{summary.hasNda ? 'NDA on file' : 'No NDA'}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className={cn(
+                                                "p-1 rounded",
+                                                summary.hasMarketingMaterials 
+                                                  ? "text-primary" 
+                                                  : "text-muted-foreground/30"
+                                              )}>
+                                                <Megaphone className="h-3.5 w-3.5" />
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>{summary.hasMarketingMaterials ? 'Marketing materials on file' : 'No marketing materials'}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
                                   <div className="flex justify-end">
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
