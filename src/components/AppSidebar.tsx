@@ -10,10 +10,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Logo } from "@/components/Logo";
 
 const menuItems = [
   { title: "Dashboard", url: "/deals", icon: LayoutDashboard },
@@ -37,12 +35,6 @@ export function AppSidebar() {
 
   return (
     <Sidebar side="left" collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border pb-4">
-        <div className="flex items-center gap-2 px-2">
-          <Logo className="h-6 w-6 flex-shrink-0" />
-          {!collapsed && <span className="font-semibold text-sidebar-foreground">5thLine</span>}
-        </div>
-      </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
