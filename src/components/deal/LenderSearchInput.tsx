@@ -21,15 +21,16 @@ export function LenderSearchInput({
 
   // Filter lenders and limit to top 20 for performance
   const filteredLenderNames = useMemo(() => {
-    if (!shouldShowDropdown) return [];
-    const searchLower = searchQuery.toLowerCase();
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery) return [];
+    const searchLower = trimmedQuery.toLowerCase();
     return lenderNames
       .filter(
         name => !existingLenderNames.includes(name) &&
         name.toLowerCase().includes(searchLower)
       )
       .slice(0, 20);
-  }, [lenderNames, existingLenderNames, searchQuery, shouldShowDropdown]);
+  }, [lenderNames, existingLenderNames, searchQuery]);
 
   const handleAddLender = useCallback((name: string) => {
     onAddLender(name);
@@ -69,7 +70,11 @@ export function LenderSearchInput({
   }, [searchQuery]);
 
   return (
-    <Popover open={isOpen && shouldShowDropdown} onOpenChange={setIsOpen}>
+    <Popover open={isOpen && shouldShowDropdown} onOpenChange={(open) => {
+      // Only allow closing via our explicit handlers, not Radix internal events
+      if (!open) return;
+      setIsOpen(open);
+    }}>
       <PopoverTrigger asChild>
         <div className="flex-1 max-w-[50%]">
           <Input
