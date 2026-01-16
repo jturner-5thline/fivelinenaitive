@@ -17,10 +17,10 @@ import { Logo } from "@/components/Logo";
 
 const menuItems = [
   { title: "Dashboard", url: "/deals", icon: LayoutDashboard },
-  { title: "Deals", url: "/deal", icon: Briefcase },
-  { title: "Metrics", url: "/analytics", icon: BarChart3 },
-  { title: "Insights", url: "/reports", icon: Lightbulb },
-  { title: "Sales & BD", url: "/lenders", icon: Users },
+  { title: "Deals", url: "/deals", icon: Briefcase },
+  { title: "Metrics", url: "/metrics", icon: BarChart3 },
+  { title: "Insights", url: "/insights", icon: Lightbulb },
+  { title: "Sales & BD", url: "/sales-bd", icon: Users },
 ];
 
 export function AppSidebar() {
