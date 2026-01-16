@@ -16,7 +16,8 @@ import {
   FileText,
   Users,
   TrendingUp,
-  Clock
+  Clock,
+  Briefcase
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAllActivities } from '@/hooks/useAllActivities';
@@ -25,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 
 const quickActions = [
   { label: 'Landing page', icon: Globe },
@@ -110,6 +112,18 @@ export default function Dashboard() {
             <h1 className="text-4xl md:text-5xl font-serif text-foreground">
               What can I do for you?
             </h1>
+          </div>
+
+          {/* Quick Action - Create Deal */}
+          <div className="flex justify-center">
+            <CreateDealDialog 
+              trigger={
+                <Button variant="gradient" size="lg" className="gap-2 px-6">
+                  <Briefcase className="h-5 w-5" />
+                  Create New Deal
+                </Button>
+              }
+            />
           </div>
 
           {/* Input Card */}
