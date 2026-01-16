@@ -19,6 +19,7 @@ import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { CopyProtection } from "@/components/CopyProtection";
+import { AppLayout } from "@/components/AppLayout";
 import Waitlist from "./pages/Waitlist";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -75,55 +76,55 @@ const App = () => (
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
                           <Route path="/deals" element={
-                            <ProtectedRoute><Deals /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Deals /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/dashboard" element={<Navigate to="/deals" replace />} />
                           <Route path="/analytics" element={
-                            <ProtectedRoute><Analytics /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/reports" element={
-                            <ProtectedRoute><Reports /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deal/:id" element={
-                            <ProtectedRoute><DealDetail /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><DealDetail /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/settings" element={
-                            <ProtectedRoute><Settings /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/account" element={
-                            <ProtectedRoute><Account /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Account /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/lenders" element={
-                            <ProtectedRoute><Lenders /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Lenders /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/lenders/config" element={
-                            <ProtectedRoute><LenderDatabaseConfig /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><LenderDatabaseConfig /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/preferences" element={
-                            <ProtectedRoute><Preferences /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Preferences /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/database" element={
-                            <ProtectedRoute><Database /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Database /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/workflows" element={
-                            <ProtectedRoute><Workflows /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Workflows /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/company" element={
-                            <ProtectedRoute><Company /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Company /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/notifications" element={
-                            <ProtectedRoute><Notifications /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/help" element={
-                            <ProtectedRoute><Help /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Help /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/waitlist-admin" element={
-                            <ProtectedRoute><WaitlistAdmin /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><WaitlistAdmin /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/accept-invite" element={<AcceptInvite />} />
                           <Route path="/migrate" element={<MigrationTool />} />
                           <Route path="/admin" element={
-                            <ProtectedRoute><Admin /></ProtectedRoute>
+                            <ProtectedRoute><AppLayout><Admin /></AppLayout></ProtectedRoute>
                           } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
