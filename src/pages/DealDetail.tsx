@@ -2562,8 +2562,9 @@ export default function DealDetail() {
                                       </span>
                                     )}
                                     <div className="flex-1 relative">
+                                      {/* Preview textarea - shows 2 lines */}
                                       <Textarea
-                                        placeholder="Add notes... (Press Enter to save)"
+                                        placeholder="Add notes... (Click to expand)"
                                         value={lender.notes || ''}
                                         onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
                                         onKeyDown={(e) => {
@@ -2573,11 +2574,10 @@ export default function DealDetail() {
                                           }
                                         }}
                                         className={cn(
-                                          "text-xs resize-none py-1.5 transition-all pr-8",
-                                          expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
+                                          "text-xs resize-none py-1.5 transition-all pr-8 min-h-[48px] h-12",
                                           savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                         )}
-                                        rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
+                                        rows={2}
                                       />
                                       <div className="absolute right-2 top-1.5">
                                         <SaveIndicator 
@@ -2586,26 +2586,50 @@ export default function DealDetail() {
                                         />
                                       </div>
                                     </div>
-                                    <button
-                                      onClick={() => {
-                                        setExpandedLenderNotes(prev => {
-                                          const next = new Set(prev);
-                                          if (next.has(lender.id)) {
-                                            next.delete(lender.id);
-                                          } else {
-                                            next.add(lender.id);
-                                          }
-                                          return next;
-                                        });
-                                      }}
-                                      className="text-muted-foreground hover:text-foreground mt-1.5"
-                                    >
-                                      {expandedLenderNotes.has(lender.id) ? (
-                                        <Minimize2 className="h-3.5 w-3.5" />
-                                      ) : (
-                                        <Maximize2 className="h-3.5 w-3.5" />
-                                      )}
-                                    </button>
+                                    {/* Expand button - shows popover with full notes */}
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <button
+                                          className="text-muted-foreground hover:text-foreground mt-1.5"
+                                          title="Expand notes"
+                                        >
+                                          <Maximize2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent 
+                                        className="w-80 p-3" 
+                                        side="right" 
+                                        align="start"
+                                      >
+                                        <div className="space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium">{lender.name} Notes</span>
+                                            {lender.notesUpdatedAt && (
+                                              <span className="text-[10px] text-muted-foreground">
+                                                Updated {format(new Date(lender.notesUpdatedAt), 'MMM d, yyyy')}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <Textarea
+                                            placeholder="Add notes... (Press Enter to save)"
+                                            value={lender.notes || ''}
+                                            onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                commitLenderNotes(lender.id);
+                                              }
+                                            }}
+                                            className={cn(
+                                              "text-xs resize-none min-h-[120px]",
+                                              savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
+                                            )}
+                                            rows={6}
+                                          />
+                                          <p className="text-[10px] text-muted-foreground">Press Enter to save</p>
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
                                   </div>
                                   {/* Notes History - Collapsible list */}
                                   {lender.notesHistory && lender.notesHistory.length > 0 && (
