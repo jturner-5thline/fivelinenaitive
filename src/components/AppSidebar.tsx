@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +31,7 @@ const menuItems = [
   { title: "Metrics", url: "/metrics", icon: BarChart3 },
   { title: "Insights", url: "/insights", icon: Lightbulb },
   { title: "Sales & BD", url: "/sales-bd", icon: Users },
+  { title: "Admin", url: "/admin", icon: ShieldCheck },
 ];
 
 const footerItems = [
