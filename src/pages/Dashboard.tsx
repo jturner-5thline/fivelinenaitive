@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
+import { DealsCalendar } from '@/components/deals/DealsCalendar';
 
 const quickActions = [
   { label: 'Landing page', icon: Globe },
@@ -209,7 +210,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Recent Activity */}
+          {/* Deals Calendar */}
+          <DealsCalendar />
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-medium flex items-center gap-2">
