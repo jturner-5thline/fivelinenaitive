@@ -46,6 +46,7 @@ import Help from "./pages/Help";
 import WaitlistAdmin from "./pages/WaitlistAdmin";
 import MigrationTool from "./pages/MigrationTool";
 import Admin from "./pages/Admin";
+import Integrations from "./pages/Integrations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -140,6 +141,9 @@ const App = () => (
                           <Route path="/migrate" element={<MigrationTool />} />
                           <Route path="/admin" element={
                             <ProtectedRoute><AppLayout><Admin /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/integrations" element={
+                            <ProtectedRoute><AppLayout><Integrations /></AppLayout></ProtectedRoute>
                           } />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
