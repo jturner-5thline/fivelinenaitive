@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useDeferredValue } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Plus } from 'lucide-react';
@@ -17,67 +17,51 @@ export function LenderSearchInput({
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Keep typing responsive while deferring expensive list filtering.
-  const deferredQuery = useDeferredValue(searchQuery);
-
   // Only show dropdown when there's text to filter
   const shouldShowDropdown = searchQuery.trim().length > 0;
 
   const existingLenderNamesSet = useMemo(() => new Set(existingLenderNames), [existingLenderNames]);
 
-  // Match score: lower is better. Returns Infinity if no match.
-  const matchScore = useCallback((name: string, query: string): number => {
-    const nameLower = name.toLowerCase();
-    const queryLower = query.toLowerCase();
-
-    // Exact prefix match is best
-    if (nameLower.startsWith(queryLower)) {
-      return queryLower.length / nameLower.length; // Higher coverage = lower score
-    }
-
-    // Word-start match (e.g., "cap" matches "Capital One")
-    const words = nameLower.split(/\s+/);
-    for (let i = 1; i < words.length; i++) {
-      if (words[i].startsWith(queryLower)) {
-        return 1 + (1 - queryLower.length / words[i].length);
-      }
-    }
-
-    // Exact substring match
-    if (nameLower.includes(queryLower)) {
-      return 2 + nameLower.indexOf(queryLower) / nameLower.length;
-    }
-
-    // No fuzzy matching - only exact matches allowed
-    return Infinity;
-  }, []);
-
-  const computeMatches = useCallback((rawQuery: string) => {
-    const trimmedQuery = rawQuery.trim();
+  // Filter lenders: ONLY include if name contains the search query (case-insensitive)
+  const filteredLenderNames = useMemo(() => {
+    const trimmedQuery = searchQuery.trim();
     if (!trimmedQuery) return [];
 
+    const queryLower = trimmedQuery.toLowerCase();
     const limit = 20;
-    const scored: { name: string; score: number }[] = [];
+    const matches: { name: string; score: number }[] = [];
 
     for (const name of lenderNames) {
       if (existingLenderNamesSet.has(name)) continue;
-      const score = matchScore(name, trimmedQuery);
-      if (score !== Infinity) {
-        scored.push({ name, score });
+      
+      const nameLower = name.toLowerCase();
+      
+      // STRICT: Only include if name actually contains the search text
+      if (!nameLower.includes(queryLower)) continue;
+
+      // Score: prefix match = 0, word-start match = 1, substring = 2
+      let score: number;
+      if (nameLower.startsWith(queryLower)) {
+        score = 0; // Best: starts with query
+      } else {
+        // Check if any word starts with query
+        const words = nameLower.split(/\s+/);
+        const wordStartMatch = words.some(word => word.startsWith(queryLower));
+        score = wordStartMatch ? 1 : 2;
       }
+
+      matches.push({ name, score });
     }
 
-    // Sort by score (lower is better), then by name length (shorter first), then alphabetically
-    scored.sort((a, b) => {
+    // Sort: best matches first, then shorter names, then alphabetically
+    matches.sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
       if (a.name.length !== b.name.length) return a.name.length - b.name.length;
       return a.name.localeCompare(b.name);
     });
 
-    return scored.slice(0, limit).map(s => s.name);
-  }, [lenderNames, existingLenderNamesSet, matchScore]);
-
-  const filteredLenderNames = useMemo(() => computeMatches(deferredQuery), [computeMatches, deferredQuery]);
+    return matches.slice(0, limit).map(m => m.name);
+  }, [lenderNames, existingLenderNamesSet, searchQuery]);
 
   const handleAddLender = useCallback((name: string) => {
     onAddLender(name);
@@ -87,9 +71,8 @@ export function LenderSearchInput({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
-      const matches = computeMatches(searchQuery);
-      if (matches.length > 0) {
-        handleAddLender(matches[0]);
+      if (filteredLenderNames.length > 0) {
+        handleAddLender(filteredLenderNames[0]);
       } else {
         handleAddLender(searchQuery.trim());
       }
@@ -97,7 +80,7 @@ export function LenderSearchInput({
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
-  }, [searchQuery, computeMatches, handleAddLender]);
+  }, [searchQuery, filteredLenderNames, handleAddLender]);
 
   // Highlight matching text in lender name
   const highlightMatch = useCallback((name: string) => {
