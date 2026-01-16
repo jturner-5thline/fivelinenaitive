@@ -15,8 +15,18 @@ interface FlexInfoNotificationsPanelProps {
   dealId: string | undefined;
 }
 
+const INFO_REQUESTS_COLLAPSED_KEY = 'info-requests-panel-collapsed';
+
 export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPanelProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(() => {
+    const stored = localStorage.getItem(INFO_REQUESTS_COLLAPSED_KEY);
+    return stored === null ? true : stored !== 'true';
+  });
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    localStorage.setItem(INFO_REQUESTS_COLLAPSED_KEY, (!open).toString());
+  };
   const { notifications, isLoading, pendingCount, approveAccess, denyAccess } = useFlexInfoNotifications(dealId);
 
   const handleApprove = async (notificationId: string) => {
@@ -112,7 +122,7 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
 
   return (
     <Card>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
         <CardHeader className="pb-3">
           <CollapsibleTrigger asChild>
             <button className="w-full flex items-center justify-between text-left hover:bg-muted/50 -mx-2 px-2 py-1 rounded-md transition-colors">
