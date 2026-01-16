@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { DealMilestone } from '@/types/deal';
+import { toast } from '@/hooks/use-toast';
 
 export interface DbDealMilestone {
   id: string;
@@ -109,9 +110,23 @@ export function useDealMilestones(dealId: string | undefined) {
       setMilestones(prev => prev.map(m => 
         m.id === id ? { ...m, ...updates } : m
       ));
+      
+      // Show success toast
+      toast({
+        title: "Milestone updated",
+        description: updates.completed !== undefined 
+          ? `Milestone ${updates.completed ? 'completed' : 'reopened'}`
+          : "Milestone saved successfully",
+      });
+      
       return true;
     } catch (error) {
       console.error('Error updating milestone:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update milestone",
+        variant: "destructive",
+      });
       return false;
     }
   }, [user]);
