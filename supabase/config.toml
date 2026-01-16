@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.notify-flex-info-response]
 verify_jwt = false
+
+[functions.generate-insights]
+verify_jwt = false
