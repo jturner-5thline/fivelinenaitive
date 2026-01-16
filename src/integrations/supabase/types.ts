@@ -1131,6 +1131,53 @@ export type Database = {
           },
         ]
       }
+      integrations: {
+        Row: {
+          company_id: string | null
+          config: Json
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          name: string
+          status: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          config?: Json
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          name: string
+          status?: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          config?: Json
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          name?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_attachments: {
         Row: {
           category: string
