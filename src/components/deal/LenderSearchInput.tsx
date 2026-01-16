@@ -16,8 +16,12 @@ export function LenderSearchInput({
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
+  // Only show dropdown when there's text to filter
+  const shouldShowDropdown = searchQuery.trim().length > 0;
+
   // Filter lenders and limit to top 20 for performance
   const filteredLenderNames = useMemo(() => {
+    if (!shouldShowDropdown) return [];
     const searchLower = searchQuery.toLowerCase();
     return lenderNames
       .filter(
@@ -25,7 +29,7 @@ export function LenderSearchInput({
         name.toLowerCase().includes(searchLower)
       )
       .slice(0, 20);
-  }, [lenderNames, existingLenderNames, searchQuery]);
+  }, [lenderNames, existingLenderNames, searchQuery, shouldShowDropdown]);
 
   const handleAddLender = useCallback((name: string) => {
     onAddLender(name);
@@ -47,7 +51,7 @@ export function LenderSearchInput({
   }, [searchQuery, filteredLenderNames, handleAddLender]);
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen && shouldShowDropdown} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div className="flex-1 max-w-[50%]">
           <Input
@@ -63,32 +67,30 @@ export function LenderSearchInput({
           />
         </div>
       </PopoverTrigger>
-      {searchQuery.trim() && (
-        <PopoverContent 
-          className="w-[var(--radix-popover-trigger-width)] p-0 max-h-48 overflow-auto" 
-          align="start"
-          sideOffset={4}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          {filteredLenderNames.map((lenderName) => (
-            <button
-              key={lenderName}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-              onClick={() => handleAddLender(lenderName)}
-            >
-              {lenderName}
-            </button>
-          ))}
-          {filteredLenderNames.length === 0 && (
-            <button
-              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-              onClick={() => handleAddLender(searchQuery)}
-            >
-              Add "{searchQuery}" as new lender
-            </button>
-          )}
-        </PopoverContent>
-      )}
+      <PopoverContent 
+        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-48 overflow-auto" 
+        align="start"
+        sideOffset={4}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        {filteredLenderNames.map((lenderName) => (
+          <button
+            key={lenderName}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+            onClick={() => handleAddLender(lenderName)}
+          >
+            {lenderName}
+          </button>
+        ))}
+        {filteredLenderNames.length === 0 && searchQuery.trim() && (
+          <button
+            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+            onClick={() => handleAddLender(searchQuery)}
+          >
+            Add "{searchQuery}" as new lender
+          </button>
+        )}
+      </PopoverContent>
     </Popover>
   );
 }
