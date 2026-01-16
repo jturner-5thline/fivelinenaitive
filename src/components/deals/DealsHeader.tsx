@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar, RotateCcw, BookOpen, Shield } from 'lucide-react';
+import { Plus, Settings, User, SlidersHorizontal, LogOut, HelpCircle, Flag, Calendar, RotateCcw, BookOpen, Shield, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,7 @@ export function DealsHeader() {
   const { defaultMilestones } = useDefaultMilestones();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const { isAdmin } = useAdminRole();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [confirmBlankOpen, setConfirmBlankOpen] = useState(false);
   const [blankFields, setBlankFields] = useState<string[]>([]);
@@ -494,6 +496,23 @@ export function DealsHeader() {
             </AlertDialogContent>
           </AlertDialog>
           </HintTooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                className="relative"
+              >
+                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Toggle theme</p>
+            </TooltipContent>
+          </Tooltip>
           <HintTooltip
             hint="Access settings to customize stages, deal types, and your preferences."
             visible={isHintVisible('settings-menu')}
