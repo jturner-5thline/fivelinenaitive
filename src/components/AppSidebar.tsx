@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -35,6 +36,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar side="left" collapsible="icon">
+      {!collapsed && (
+        <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
+          <span className="font-semibold text-sidebar-foreground">5thLine</span>
+        </SidebarHeader>
+      )}
 
       <SidebarContent>
         <SidebarGroup>
