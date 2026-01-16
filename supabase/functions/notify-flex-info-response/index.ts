@@ -113,27 +113,50 @@ Deno.serve(async (req) => {
 
     const responderName = profile?.display_name || profile?.first_name || profile?.email || "Team Member";
 
-    // Get nAItive Flex sync key
-    const naitiveFlexSyncKey = Deno.env.get("NAITIVE_FLEX_SYNC_KEY");
+    // Get the nAItive/Flex deal ID from sync history
+    const { data: syncHistory, error: syncError } = await supabaseAdmin
+      .from("flex_sync_history")
+      .select("flex_deal_id")
+      .eq("deal_id", payload.deal_id)
+      .eq("status", "success")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (syncError) {
+      console.error("Error fetching flex_deal_id:", syncError);
+    }
+
+    const flexDealId = syncHistory?.flex_deal_id;
+    
+    if (!flexDealId) {
+      console.log("No flex_deal_id found for deal, using internal deal_id");
+    }
+
+    // Get Flex info request API key
+    const flexInfoRequestApiKey = Deno.env.get("FLEX_INFO_REQUEST_API_KEY");
     const webhookUrl = "https://ndbrliydrlgtxcyfgyok.supabase.co/functions/v1/handle-info-request-response";
 
     let flexNotified = false;
     let flexResponse = null;
 
     // Send notification to nAItive Flex webhook
-    if (naitiveFlexSyncKey) {
+    if (flexInfoRequestApiKey && flexDealId) {
       try {
-        console.log("Sending info response notification to nAItive Flex...");
+        console.log("Sending info response notification to nAItive Flex...", {
+          flexDealId,
+          status: payload.status,
+        });
         
         const response = await fetch(webhookUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": naitiveFlexSyncKey,
+            "x-api-key": flexInfoRequestApiKey,
           },
           body: JSON.stringify({
             event: "info_request_response",
-            deal_id: payload.deal_id,
+            deal_id: flexDealId,
             response: payload.status,
           }),
         });
@@ -150,7 +173,12 @@ Deno.serve(async (req) => {
         console.error("Error calling nAItive Flex webhook:", flexError);
       }
     } else {
-      console.log("NAITIVE_FLEX_SYNC_KEY not configured, skipping webhook notification");
+      if (!flexInfoRequestApiKey) {
+        console.log("FLEX_INFO_REQUEST_API_KEY not configured, skipping webhook notification");
+      }
+      if (!flexDealId) {
+        console.log("No flex_deal_id found, skipping webhook notification");
+      }
     }
 
     // Log the response as an activity
