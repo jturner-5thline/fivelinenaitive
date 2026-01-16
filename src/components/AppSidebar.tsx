@@ -2,6 +2,7 @@ import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminRole } from "@/hooks/useAdminRole";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import {
@@ -31,7 +32,6 @@ const menuItems = [
   { title: "Metrics", url: "/metrics", icon: BarChart3 },
   { title: "Insights", url: "/insights", icon: Lightbulb },
   { title: "Sales & BD", url: "/sales-bd", icon: Users },
-  { title: "Admin", url: "/admin", icon: ShieldCheck },
 ];
 
 const footerItems = [
@@ -44,6 +44,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdminRole();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
 
@@ -92,6 +93,25 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive("/admin")}
+                    tooltip="Admin"
+                  >
+                    <NavLink 
+                      to="/admin" 
+                      className="hover:bg-sidebar-accent/50"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      {!collapsed && <span>Admin</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
