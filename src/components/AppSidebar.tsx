@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const menuItems = [
-  { title: "Dashboard", url: "/deals", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Deals", url: "/deals", icon: Briefcase },
   { title: "Metrics", url: "/metrics", icon: BarChart3 },
   { title: "Insights", url: "/insights", icon: Lightbulb },
@@ -50,7 +50,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
 
   const isActive = (url: string) => {
-    if (url === "/deals") return currentPath === "/deals" || currentPath === "/dashboard";
+    if (url === "/dashboard") return currentPath === "/dashboard";
+    if (url === "/deals") return currentPath === "/deals";
     if (url === "/deal") return currentPath.startsWith("/deal/");
     return currentPath.startsWith(url);
   };
