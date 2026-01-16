@@ -25,6 +25,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Deals from "./pages/Deals";
+import Dashboard from "./pages/Dashboard";
 import DealDetail from "./pages/DealDetail";
 import Settings from "./pages/Settings";
 import Account from "./pages/Account";
@@ -78,10 +79,12 @@ const App = () => (
                           <Route path="/onboarding" element={
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
+                          <Route path="/dashboard" element={
+                            <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
+                          } />
                           <Route path="/deals" element={
                             <ProtectedRoute><AppLayout><Deals /></AppLayout></ProtectedRoute>
                           } />
-                          <Route path="/dashboard" element={<Navigate to="/deals" replace />} />
                           <Route path="/analytics" element={
                             <ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>
                           } />
