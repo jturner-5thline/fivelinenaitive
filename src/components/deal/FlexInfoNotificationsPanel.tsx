@@ -134,6 +134,11 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
                     {pendingCount} new
                   </Badge>
                 )}
+                {notifications.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {notifications.length}
+                  </Badge>
+                )}
               </CardTitle>
               {isOpen ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
