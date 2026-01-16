@@ -1072,6 +1072,65 @@ export type Database = {
           },
         ]
       }
+      insights_history: {
+        Row: {
+          active_deals: number | null
+          avg_deal_size: number | null
+          company_id: string | null
+          created_at: string
+          deals_snapshot: Json | null
+          id: string
+          opportunities: Json | null
+          pipeline_health_score: number
+          pipeline_health_summary: string | null
+          recommendations: Json | null
+          risk_alerts: Json | null
+          total_value: number | null
+          trends: Json | null
+          user_id: string
+        }
+        Insert: {
+          active_deals?: number | null
+          avg_deal_size?: number | null
+          company_id?: string | null
+          created_at?: string
+          deals_snapshot?: Json | null
+          id?: string
+          opportunities?: Json | null
+          pipeline_health_score: number
+          pipeline_health_summary?: string | null
+          recommendations?: Json | null
+          risk_alerts?: Json | null
+          total_value?: number | null
+          trends?: Json | null
+          user_id: string
+        }
+        Update: {
+          active_deals?: number | null
+          avg_deal_size?: number | null
+          company_id?: string | null
+          created_at?: string
+          deals_snapshot?: Json | null
+          id?: string
+          opportunities?: Json | null
+          pipeline_health_score?: number
+          pipeline_health_summary?: string | null
+          recommendations?: Json | null
+          risk_alerts?: Json | null
+          total_value?: number | null
+          trends?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_attachments: {
         Row: {
           category: string
