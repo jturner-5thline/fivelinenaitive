@@ -24,12 +24,12 @@ export function LenderSearchInput({
 
   const existingLenderNamesSet = useMemo(() => new Set(existingLenderNames), [existingLenderNames]);
 
-  // Simple fuzzy score: lower is better. Returns Infinity if no match.
-  const fuzzyScore = useCallback((name: string, query: string): number => {
+  // Match score: lower is better. Returns Infinity if no match.
+  const matchScore = useCallback((name: string, query: string): number => {
     const nameLower = name.toLowerCase();
     const queryLower = query.toLowerCase();
 
-    // Exact prefix match is best (score 0-0.99 based on how much of name is matched)
+    // Exact prefix match is best
     if (nameLower.startsWith(queryLower)) {
       return queryLower.length / nameLower.length; // Higher coverage = lower score
     }
@@ -47,25 +47,8 @@ export function LenderSearchInput({
       return 2 + nameLower.indexOf(queryLower) / nameLower.length;
     }
 
-    // Fuzzy: check if all query chars appear in order (allows typos/skips)
-    let nameIdx = 0;
-    let matched = 0;
-    let gaps = 0;
-    for (const char of queryLower) {
-      const foundAt = nameLower.indexOf(char, nameIdx);
-      if (foundAt === -1) {
-        gaps += 2; // Penalty for missing char
-      } else {
-        gaps += foundAt - nameIdx; // Penalty for gap
-        nameIdx = foundAt + 1;
-        matched++;
-      }
-    }
-
-    // Require at least 50% of chars to match for fuzzy
-    if (matched < queryLower.length * 0.5) return Infinity;
-
-    return 3 + gaps + (1 - matched / queryLower.length);
+    // No fuzzy matching - only exact matches allowed
+    return Infinity;
   }, []);
 
   const computeMatches = useCallback((rawQuery: string) => {
@@ -77,7 +60,7 @@ export function LenderSearchInput({
 
     for (const name of lenderNames) {
       if (existingLenderNamesSet.has(name)) continue;
-      const score = fuzzyScore(name, trimmedQuery);
+      const score = matchScore(name, trimmedQuery);
       if (score !== Infinity) {
         scored.push({ name, score });
       }
@@ -91,7 +74,7 @@ export function LenderSearchInput({
     });
 
     return scored.slice(0, limit).map(s => s.name);
-  }, [lenderNames, existingLenderNamesSet, fuzzyScore]);
+  }, [lenderNames, existingLenderNamesSet, matchScore]);
 
   const filteredLenderNames = useMemo(() => computeMatches(deferredQuery), [computeMatches, deferredQuery]);
 
