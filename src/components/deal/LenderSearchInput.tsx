@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -14,40 +14,48 @@ export function LenderSearchInput({
   onAddLender 
 }: LenderSearchInputProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Keep typing responsive while deferring expensive list filtering.
+  const deferredQuery = useDeferredValue(searchQuery);
 
   // Only show dropdown when there's text to filter
   const shouldShowDropdown = searchQuery.trim().length > 0;
 
-  // Debounce the search query (150ms delay)
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 150);
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [searchQuery]);
+  const existingLenderNamesSet = useMemo(() => new Set(existingLenderNames), [existingLenderNames]);
 
-  // Filter lenders using debounced query and limit to top 20 for performance
-  const filteredLenderNames = useMemo(() => {
-    const trimmedQuery = debouncedQuery.trim();
+  const computeMatches = useCallback((rawQuery: string) => {
+    const trimmedQuery = rawQuery.trim();
     if (!trimmedQuery) return [];
+
     const searchLower = trimmedQuery.toLowerCase();
-    return lenderNames
-      .filter(
-        name => !existingLenderNames.includes(name) &&
-        name.toLowerCase().includes(searchLower)
-      )
-      .slice(0, 20);
-  }, [lenderNames, existingLenderNames, debouncedQuery]);
+    const limit = 20;
+
+    // "Closest" matches first: prefix matches, then substring matches.
+    const prefixMatches: string[] = [];
+    for (const name of lenderNames) {
+      if (existingLenderNamesSet.has(name)) continue;
+      const lower = name.toLowerCase();
+      if (lower.startsWith(searchLower)) {
+        prefixMatches.push(name);
+        if (prefixMatches.length >= limit) return prefixMatches;
+      }
+    }
+
+    const containsMatches: string[] = [];
+    for (const name of lenderNames) {
+      if (existingLenderNamesSet.has(name)) continue;
+      const lower = name.toLowerCase();
+      if (!lower.startsWith(searchLower) && lower.includes(searchLower)) {
+        containsMatches.push(name);
+        if (prefixMatches.length + containsMatches.length >= limit) break;
+      }
+    }
+
+    return prefixMatches.concat(containsMatches).slice(0, limit);
+  }, [lenderNames, existingLenderNamesSet]);
+
+  const filteredLenderNames = useMemo(() => computeMatches(deferredQuery), [computeMatches, deferredQuery]);
 
   const handleAddLender = useCallback((name: string) => {
     onAddLender(name);
@@ -57,16 +65,17 @@ export function LenderSearchInput({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
-      if (filteredLenderNames.length > 0) {
-        handleAddLender(filteredLenderNames[0]);
+      const matches = computeMatches(searchQuery);
+      if (matches.length > 0) {
+        handleAddLender(matches[0]);
       } else {
-        handleAddLender(searchQuery);
+        handleAddLender(searchQuery.trim());
       }
     }
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
-  }, [searchQuery, filteredLenderNames, handleAddLender]);
+  }, [searchQuery, computeMatches, handleAddLender]);
 
   // Highlight matching text in lender name
   const highlightMatch = useCallback((name: string) => {
