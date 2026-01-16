@@ -24,36 +24,58 @@ export function LenderSearchInput({
 
   const existingLenderNamesSet = useMemo(() => new Set(existingLenderNames), [existingLenderNames]);
 
+  // Simple fuzzy score: lower is better. Returns Infinity if no match.
+  const fuzzyScore = useCallback((name: string, query: string): number => {
+    const nameLower = name.toLowerCase();
+    const queryLower = query.toLowerCase();
+
+    // Exact prefix match is best
+    if (nameLower.startsWith(queryLower)) return 0;
+
+    // Exact substring match is second best
+    if (nameLower.includes(queryLower)) return 1;
+
+    // Fuzzy: check if all query chars appear in order (allows typos/skips)
+    let nameIdx = 0;
+    let matched = 0;
+    let gaps = 0;
+    for (const char of queryLower) {
+      const foundAt = nameLower.indexOf(char, nameIdx);
+      if (foundAt === -1) {
+        gaps += 2; // Penalty for missing char
+      } else {
+        gaps += foundAt - nameIdx; // Penalty for gap
+        nameIdx = foundAt + 1;
+        matched++;
+      }
+    }
+
+    // Require at least 60% of chars to match for fuzzy
+    if (matched < queryLower.length * 0.6) return Infinity;
+
+    return 2 + gaps;
+  }, []);
+
   const computeMatches = useCallback((rawQuery: string) => {
     const trimmedQuery = rawQuery.trim();
     if (!trimmedQuery) return [];
 
-    const searchLower = trimmedQuery.toLowerCase();
     const limit = 20;
+    const scored: { name: string; score: number }[] = [];
 
-    // "Closest" matches first: prefix matches, then substring matches.
-    const prefixMatches: string[] = [];
     for (const name of lenderNames) {
       if (existingLenderNamesSet.has(name)) continue;
-      const lower = name.toLowerCase();
-      if (lower.startsWith(searchLower)) {
-        prefixMatches.push(name);
-        if (prefixMatches.length >= limit) return prefixMatches;
+      const score = fuzzyScore(name, trimmedQuery);
+      if (score !== Infinity) {
+        scored.push({ name, score });
       }
     }
 
-    const containsMatches: string[] = [];
-    for (const name of lenderNames) {
-      if (existingLenderNamesSet.has(name)) continue;
-      const lower = name.toLowerCase();
-      if (!lower.startsWith(searchLower) && lower.includes(searchLower)) {
-        containsMatches.push(name);
-        if (prefixMatches.length + containsMatches.length >= limit) break;
-      }
-    }
+    // Sort by score (lower is better), then alphabetically
+    scored.sort((a, b) => a.score - b.score || a.name.localeCompare(b.name));
 
-    return prefixMatches.concat(containsMatches).slice(0, limit);
-  }, [lenderNames, existingLenderNamesSet]);
+    return scored.slice(0, limit).map(s => s.name);
+  }, [lenderNames, existingLenderNamesSet, fuzzyScore]);
 
   const filteredLenderNames = useMemo(() => computeMatches(deferredQuery), [computeMatches, deferredQuery]);
 
