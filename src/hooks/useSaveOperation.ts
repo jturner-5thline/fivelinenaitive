@@ -66,6 +66,9 @@ export function useSaveOperation() {
     const startTime = Date.now();
     
     operation()
+      .catch((error) => {
+        console.error(`Save operation ${id} failed:`, error);
+      })
       .finally(() => {
         const elapsed = Date.now() - startTime;
         const remaining = Math.max(0, minDuration - elapsed);
