@@ -50,6 +50,24 @@ export function LenderSearchInput({
     }
   }, [searchQuery, filteredLenderNames, handleAddLender]);
 
+  // Highlight matching text in lender name
+  const highlightMatch = useCallback((name: string) => {
+    if (!searchQuery.trim()) return name;
+    const searchLower = searchQuery.toLowerCase();
+    const index = name.toLowerCase().indexOf(searchLower);
+    if (index === -1) return name;
+    
+    const before = name.slice(0, index);
+    const match = name.slice(index, index + searchQuery.length);
+    const after = name.slice(index + searchQuery.length);
+    
+    return (
+      <>
+        {before}<span className="font-semibold text-primary">{match}</span>{after}
+      </>
+    );
+  }, [searchQuery]);
+
   return (
     <Popover open={isOpen && shouldShowDropdown} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -79,7 +97,7 @@ export function LenderSearchInput({
             className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
             onClick={() => handleAddLender(lenderName)}
           >
-            {lenderName}
+            {highlightMatch(lenderName)}
           </button>
         ))}
         {filteredLenderNames.length === 0 && searchQuery.trim() && (
