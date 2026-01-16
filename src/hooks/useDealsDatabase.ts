@@ -613,12 +613,21 @@ export function useDealsDatabase() {
       if (updates.passReason !== undefined) dbUpdates.pass_reason = updates.passReason;
       if (updates.trackingStatus !== undefined) dbUpdates.tracking_status = updates.trackingStatus;
 
-      const { error } = await supabase
-        .from('deal_lenders')
-        .update(dbUpdates)
-        .eq('id', lenderId);
+      // Only make db call if we have updates
+      if (Object.keys(dbUpdates).length > 0) {
+        const { data, error } = await supabase
+          .from('deal_lenders')
+          .update(dbUpdates)
+          .eq('id', lenderId)
+          .select();
 
-      if (error) throw error;
+        if (error) throw error;
+        
+        // Log warning if no rows were updated
+        if (!data || data.length === 0) {
+          console.warn(`Lender update returned no rows for id: ${lenderId}`);
+        }
+      }
       
       // Log activity for lender stage changes
       if (updates.stage && previousLender && previousLender.stage !== updates.stage && dealId) {
