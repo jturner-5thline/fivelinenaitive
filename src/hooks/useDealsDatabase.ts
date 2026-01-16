@@ -6,6 +6,37 @@ import type { TriggerType, WorkflowAction } from '@/components/workflows/Workflo
 import { addDays } from 'date-fns';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
+type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
+
+// Helper function to trigger webhooks
+async function triggerWebhookSync(
+  userId: string,
+  table: string,
+  type: WebhookEventType,
+  record: Record<string, unknown> | null,
+  oldRecord: Record<string, unknown> | null = null
+) {
+  try {
+    // Fire and forget - don't await to not block the main operation
+    supabase.functions.invoke('webhook-sync', {
+      body: {
+        type,
+        table,
+        record,
+        old_record: oldRecord,
+        user_id: userId,
+        timestamp: new Date().toISOString(),
+      },
+    }).then(({ error }) => {
+      if (error) {
+        console.error('Webhook trigger failed:', error);
+      }
+    });
+  } catch (error) {
+    // Silent fail - webhooks should not block main operations
+    console.error('Webhook trigger error:', error);
+  }
+}
 
 interface DefaultMilestone {
   id: string;
@@ -405,6 +436,9 @@ export function useDealsDatabase() {
         dealName: newDeal.company,
       });
       
+      // Trigger webhook for new deal
+      triggerWebhookSync(userId, 'deals', 'INSERT', data as unknown as Record<string, unknown>);
+      
       return newDeal;
     } catch (err) {
       console.error('Error creating deal:', err);
@@ -487,6 +521,18 @@ export function useDealsDatabase() {
           });
         }
       }
+      
+      // Trigger webhook for deal update
+      if (userId && previousDeal) {
+        const updatedDeal = { ...previousDeal, ...updates };
+        triggerWebhookSync(
+          userId, 
+          'deals', 
+          'UPDATE', 
+          updatedDeal as unknown as Record<string, unknown>,
+          previousDeal as unknown as Record<string, unknown>
+        );
+      }
     } catch (err) {
       // Rollback on error
       setDeals(previousDeals);
@@ -539,6 +585,11 @@ export function useDealsDatabase() {
             : deal
         )
       );
+
+      // Trigger webhook for new lender
+      if (userId) {
+        triggerWebhookSync(userId, 'deal_lenders', 'INSERT', data as unknown as Record<string, unknown>);
+      }
 
       return newLender;
     } catch (err) {
@@ -687,6 +738,18 @@ export function useDealsDatabase() {
           },
         });
       }
+      
+      // Trigger webhook for lender update
+      if (userId && previousLender) {
+        const updatedLender = { ...previousLender, ...updates, deal_id: dealId };
+        triggerWebhookSync(
+          userId, 
+          'deal_lenders', 
+          'UPDATE', 
+          updatedLender as unknown as Record<string, unknown>,
+          { ...previousLender, deal_id: dealId } as unknown as Record<string, unknown>
+        );
+      }
     } catch (err) {
       // Rollback on error
       setDeals(previousDeals);
@@ -713,12 +776,35 @@ export function useDealsDatabase() {
     );
 
     try {
+      // Find the lender data before deletion for webhook
+      let deletedLender: DealLender | undefined;
+      let dealId: string | undefined;
+      for (const deal of previousDeals) {
+        const lender = deal.lenders?.find(l => l.id === lenderId);
+        if (lender) {
+          deletedLender = lender;
+          dealId = deal.id;
+          break;
+        }
+      }
+      
       const { error } = await supabase
         .from('deal_lenders')
         .delete()
         .eq('id', lenderId);
 
       if (error) throw error;
+      
+      // Trigger webhook for lender deletion
+      if (userId && deletedLender) {
+        triggerWebhookSync(
+          userId, 
+          'deal_lenders', 
+          'DELETE', 
+          null,
+          { ...deletedLender, deal_id: dealId } as unknown as Record<string, unknown>
+        );
+      }
     } catch (err) {
       // Rollback on error
       setDeals(previousDeals);
@@ -740,6 +826,9 @@ export function useDealsDatabase() {
     setDeals(prev => prev.filter(d => d.id !== dealId));
 
     try {
+      // Get the deal data before deletion for webhook
+      const deletedDeal = previousDeals.find(d => d.id === dealId);
+      
       // First check if the deal exists and we can see it
       const { data: existingDeal } = await supabase
         .from('deals')
@@ -763,6 +852,17 @@ export function useDealsDatabase() {
       
       if (stillExists && existingDeal) {
         throw new Error('You do not have permission to delete this deal');
+      }
+      
+      // Trigger webhook for deal deletion
+      if (userId && deletedDeal) {
+        triggerWebhookSync(
+          userId, 
+          'deals', 
+          'DELETE', 
+          null,
+          deletedDeal as unknown as Record<string, unknown>
+        );
       }
     } catch (err: any) {
       // Rollback on error
