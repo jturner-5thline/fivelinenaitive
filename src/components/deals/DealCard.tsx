@@ -99,7 +99,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   return (
     <Link to={`/deal/${deal.id}`} className="block h-full">
-      <Card className={`group cursor-pointer h-full flex flex-col relative ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+      <Card className={`group cursor-pointer h-[280px] flex flex-col relative ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
         {timeAgoData.isStale && (
           <TooltipProvider>
             <Tooltip>
@@ -140,9 +140,9 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </Tooltip>
           </TooltipProvider>
         )}
-      <CardHeader className="space-y-0 pb-3">
+      <CardHeader className="space-y-0 pb-3 flex-shrink-0">
         <div className="flex flex-row items-center justify-between">
-          <h3 className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] leading-tight">{deal.company}</h3>
+          <h3 className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] leading-tight truncate max-w-[180px]">{deal.company}</h3>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">{formatCurrencyValue(deal.value)}</span>
             {onToggleFlag && (
@@ -329,7 +329,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           </p>
         )}
       </CardHeader>
-      <CardContent className="space-y-4 mt-auto">
+      <CardContent className="space-y-4 mt-auto flex-shrink-0">
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1.5">
