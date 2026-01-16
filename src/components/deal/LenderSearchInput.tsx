@@ -29,7 +29,7 @@ export function LenderSearchInput({
 
     const queryLower = trimmedQuery.toLowerCase();
     const limit = 20;
-    const matches: { name: string; score: number }[] = [];
+    const matches: { name: string; score: number; coverage: number }[] = [];
 
     for (const name of lenderNames) {
       if (existingLenderNamesSet.has(name)) continue;
@@ -50,13 +50,16 @@ export function LenderSearchInput({
         score = wordStartMatch ? 1 : 2;
       }
 
-      matches.push({ name, score });
+      // Coverage: what percentage of the name is matched by the query (higher = better)
+      const coverage = queryLower.length / nameLower.length;
+
+      matches.push({ name, score, coverage });
     }
 
-    // Sort: best matches first, then shorter names, then alphabetically
+    // Sort: best score first, then highest coverage (most letters matched), then alphabetically
     matches.sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
-      if (a.name.length !== b.name.length) return a.name.length - b.name.length;
+      if (a.coverage !== b.coverage) return b.coverage - a.coverage; // Higher coverage first
       return a.name.localeCompare(b.name);
     });
 
