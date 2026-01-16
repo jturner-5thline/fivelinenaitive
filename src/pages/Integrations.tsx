@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 import { useIntegrations, Integration } from "@/hooks/useIntegrations";
 import { formatDistanceToNow } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Plug, 
   Plus, 
@@ -38,7 +40,8 @@ import {
   Copy,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  Play
 } from "lucide-react";
 
 const INTEGRATION_TEMPLATES = [
@@ -99,6 +102,7 @@ const getIconForType = (type: string) => {
 };
 
 export default function Integrations() {
+  const { user } = useAuth();
   const { 
     integrations, 
     isLoading, 
@@ -115,6 +119,7 @@ export default function Integrations() {
   const [newIntegrationName, setNewIntegrationName] = useState("");
   const [configValues, setConfigValues] = useState<Record<string, string>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [testingIntegrationId, setTestingIntegrationId] = useState<string | null>(null);
 
   const handleAddIntegration = async () => {
     if (!selectedTemplate || !newIntegrationName) {
@@ -134,15 +139,76 @@ export default function Integrations() {
     setConfigValues({});
   };
 
-  const handleTestConnection = (integration: Integration) => {
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-      {
-        loading: "Testing connection...",
-        success: "Connection successful!",
-        error: "Connection failed"
+  const handleTestConnection = async (integration: Integration) => {
+    if (!user) {
+      toast.error("You must be logged in to test webhooks");
+      return;
+    }
+
+    // Check if webhook URL is configured
+    const webhookUrl = integration.config?.url || integration.config?.webhookUrl || integration.config?.webhook_url;
+    if (!webhookUrl && integration.type === 'webhook') {
+      toast.error("No webhook URL configured for this integration");
+      return;
+    }
+
+    setTestingIntegrationId(integration.id);
+
+    try {
+      // Send a test payload via the webhook-sync edge function
+      const testPayload = {
+        type: 'TEST' as const,
+        table: 'test',
+        record: {
+          id: 'test-' + Date.now(),
+          message: 'This is a test webhook from your integration',
+          integration_name: integration.name,
+          timestamp: new Date().toISOString(),
+          sample_deal: {
+            id: 'sample-deal-123',
+            company: 'Acme Corporation',
+            value: 1000000,
+            stage: 'diligence',
+            status: 'on-track',
+          }
+        },
+        old_record: null,
+        user_id: user.id,
+        timestamp: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase.functions.invoke('webhook-sync', {
+        body: testPayload,
+      });
+
+      if (error) {
+        throw error;
       }
-    );
+
+      if (data?.success && data?.sent > 0) {
+        toast.success(`Test webhook sent successfully to ${integration.name}!`, {
+          description: `Delivered to ${data.sent} endpoint(s)`,
+        });
+      } else if (data?.success && data?.sent === 0) {
+        toast.warning("No webhooks were sent", {
+          description: integration.status !== 'connected' 
+            ? "Integration is not enabled. Enable it first to receive webhooks."
+            : "Check your webhook configuration.",
+        });
+      } else if (data?.results) {
+        const failedResults = data.results.filter((r: any) => !r.success);
+        if (failedResults.length > 0) {
+          toast.error(`Webhook test failed: ${failedResults[0].error || 'Unknown error'}`);
+        }
+      }
+    } catch (error: any) {
+      console.error('Webhook test error:', error);
+      toast.error("Failed to send test webhook", {
+        description: error.message || "Please check your configuration and try again",
+      });
+    } finally {
+      setTestingIntegrationId(null);
+    }
   };
 
   const handleDeleteIntegration = async (id: string) => {
@@ -358,8 +424,14 @@ export default function Integrations() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleTestConnection(integration)}
+                            disabled={testingIntegrationId === integration.id}
+                            title="Send test webhook"
                           >
-                            <RefreshCw className="h-4 w-4" />
+                            {testingIntegrationId === integration.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Play className="h-4 w-4" />
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
