@@ -29,11 +29,23 @@ export function LenderSearchInput({
     const nameLower = name.toLowerCase();
     const queryLower = query.toLowerCase();
 
-    // Exact prefix match is best
-    if (nameLower.startsWith(queryLower)) return 0;
+    // Exact prefix match is best (score 0-0.99 based on how much of name is matched)
+    if (nameLower.startsWith(queryLower)) {
+      return queryLower.length / nameLower.length; // Higher coverage = lower score
+    }
 
-    // Exact substring match is second best
-    if (nameLower.includes(queryLower)) return 1;
+    // Word-start match (e.g., "cap" matches "Capital One")
+    const words = nameLower.split(/\s+/);
+    for (let i = 1; i < words.length; i++) {
+      if (words[i].startsWith(queryLower)) {
+        return 1 + (1 - queryLower.length / words[i].length);
+      }
+    }
+
+    // Exact substring match
+    if (nameLower.includes(queryLower)) {
+      return 2 + nameLower.indexOf(queryLower) / nameLower.length;
+    }
 
     // Fuzzy: check if all query chars appear in order (allows typos/skips)
     let nameIdx = 0;
@@ -50,10 +62,10 @@ export function LenderSearchInput({
       }
     }
 
-    // Require at least 60% of chars to match for fuzzy
-    if (matched < queryLower.length * 0.6) return Infinity;
+    // Require at least 50% of chars to match for fuzzy
+    if (matched < queryLower.length * 0.5) return Infinity;
 
-    return 2 + gaps;
+    return 3 + gaps + (1 - matched / queryLower.length);
   }, []);
 
   const computeMatches = useCallback((rawQuery: string) => {
@@ -71,8 +83,12 @@ export function LenderSearchInput({
       }
     }
 
-    // Sort by score (lower is better), then alphabetically
-    scored.sort((a, b) => a.score - b.score || a.name.localeCompare(b.name));
+    // Sort by score (lower is better), then by name length (shorter first), then alphabetically
+    scored.sort((a, b) => {
+      if (a.score !== b.score) return a.score - b.score;
+      if (a.name.length !== b.name.length) return a.name.length - b.name.length;
+      return a.name.localeCompare(b.name);
+    });
 
     return scored.slice(0, limit).map(s => s.name);
   }, [lenderNames, existingLenderNamesSet, fuzzyScore]);
