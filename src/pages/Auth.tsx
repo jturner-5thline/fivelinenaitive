@@ -20,23 +20,28 @@ const emailSchema = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }),
 });
 
-type AuthMode = "login" | "signup" | "forgot" | "reset" | "mfa";
+type AuthMode = "login" | "signup" | "forgot" | "reset" | "mfa" | "gate";
 
 interface MFAChallenge {
   factorId: string;
   challengeId: string;
 }
 
+// Gate password hash for quick client-side check
+const GATE_PASSWORD = "nAItive2024!";
+
 const Auth = () => {
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>("signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [gatePassword, setGatePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showGatePassword, setShowGatePassword] = useState(false);
   const [mfaChallenge, setMfaChallenge] = useState<MFAChallenge | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const navigate = useNavigate();
@@ -202,12 +207,23 @@ const Auth = () => {
     }
   };
 
+  const handleGateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (gatePassword === GATE_PASSWORD) {
+      setMode("login");
+      setGatePassword("");
+    } else {
+      toast.error("Incorrect password");
+    }
+  };
+
   const getTitle = () => {
     switch (mode) {
       case "forgot": return "Reset Password";
       case "reset": return "Set New Password";
       case "signup": return "Sign Up";
       case "mfa": return "Two-Factor Authentication";
+      case "gate": return "Access Required";
       default: return "Login";
     }
   };
@@ -218,6 +234,7 @@ const Auth = () => {
       case "reset": return "Enter your new password";
       case "signup": return "Create your account";
       case "mfa": return "Enter the code from your authenticator app";
+      case "gate": return "Enter the password to access login";
       default: return "Welcome back";
     }
   };
@@ -241,7 +258,7 @@ const Auth = () => {
               {getSubtitle()}
             </p>
             
-            <form onSubmit={mode === "mfa" ? handleMFAVerify : handleSubmit} className="space-y-6">
+            <form onSubmit={mode === "mfa" ? handleMFAVerify : mode === "gate" ? handleGateSubmit : handleSubmit} className="space-y-6">
               {mode === "mfa" ? (
                 <div className="space-y-4">
                   <div className="flex justify-center mb-4">
@@ -301,6 +318,45 @@ const Auth = () => {
                       {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                </div>
+              ) : mode === "gate" ? (
+                <div className="space-y-4">
+                  <div className="flex justify-center mb-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+                      <ShieldCheck className="h-8 w-8 text-white/80" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gatePassword" className="text-white/80 font-light">
+                      Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="gatePassword"
+                        type={showGatePassword ? "text" : "password"}
+                        value={gatePassword}
+                        onChange={(e) => setGatePassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 pr-10"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGatePassword(!showGatePassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+                      >
+                        {showGatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMode("signup")}
+                    className="text-sm text-white/50 hover:text-white/80 underline underline-offset-4"
+                  >
+                    Back to sign up
+                  </button>
                 </div>
               ) : (
                 <>
@@ -372,17 +428,28 @@ const Auth = () => {
                 </>
               )}
               
-              <Button
-                type="submit"
-                disabled={loading || (mode === "mfa" && mfaCode.length !== 6)}
-                className="w-full bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white/40 py-6 font-light tracking-wide"
-              >
-                {loading ? "Please wait..." : 
-                  mode === "forgot" ? "Send Reset Link" :
-                  mode === "reset" ? "Update Password" :
-                  mode === "mfa" ? "Verify" :
-                  mode === "login" ? "Login" : "Sign Up"}
-              </Button>
+              {mode !== "gate" && (
+                <Button
+                  type="submit"
+                  disabled={loading || (mode === "mfa" && mfaCode.length !== 6)}
+                  className="w-full bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white/40 py-6 font-light tracking-wide"
+                >
+                  {loading ? "Please wait..." : 
+                    mode === "forgot" ? "Send Reset Link" :
+                    mode === "reset" ? "Update Password" :
+                    mode === "mfa" ? "Verify" :
+                    mode === "login" ? "Login" : "Sign Up"}
+                </Button>
+              )}
+
+              {mode === "gate" && (
+                <Button
+                  type="submit"
+                  className="w-full bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white/40 py-6 font-light tracking-wide"
+                >
+                  Continue to Login
+                </Button>
+              )}
 
               {(mode === "login" || mode === "signup") && (
                 <>
@@ -482,22 +549,22 @@ const Auth = () => {
               )}
             </form>
             
-            {mode !== "reset" && mode !== "mfa" && (
+            {mode !== "reset" && mode !== "mfa" && mode !== "gate" && (
               <p className="text-center text-white/50 mt-6 font-light">
                 {mode === "forgot" ? (
                   <button
                     type="button"
-                    onClick={() => setMode("login")}
+                    onClick={() => setMode("signup")}
                     className="text-white/80 hover:text-white underline underline-offset-4"
                   >
-                    Back to login
+                    Back to sign up
                   </button>
                 ) : (
                   <>
                     {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
                     <button
                       type="button"
-                      onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                      onClick={() => setMode(mode === "login" ? "signup" : "gate")}
                       className="text-white/80 hover:text-white underline underline-offset-4"
                     >
                       {mode === "login" ? "Sign up" : "Login"}
