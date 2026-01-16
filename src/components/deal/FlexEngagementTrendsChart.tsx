@@ -202,7 +202,7 @@ export function FlexEngagementTrendsChart({ dealId }: FlexEngagementTrendsChartP
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <CardTitle className="text-base font-medium flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            FLEx Engagement Trends
+            Engagement Trends
           </CardTitle>
           <div className="flex items-center gap-2">
             <Tabs value={chartType} onValueChange={(v) => setChartType(v as 'area' | 'bar' | 'line')} className="h-8">

@@ -58,7 +58,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-medium flex items-center gap-2">
               <ExternalLink className="h-4 w-4" />
-              FLEx Engagement
+              Engagement
             </CardTitle>
             <Badge variant="outline" className="text-xs">
               {stats?.flexUniqueLenders ?? 0} lender{(stats?.flexUniqueLenders ?? 0) !== 1 ? 's' : ''} engaged
