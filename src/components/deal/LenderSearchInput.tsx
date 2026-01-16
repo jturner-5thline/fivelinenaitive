@@ -16,13 +16,15 @@ export function LenderSearchInput({
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Filter lenders - this is now cheap since it only re-renders this component, not the entire page
+  // Filter lenders and limit to top 20 for performance
   const filteredLenderNames = useMemo(() => {
     const searchLower = searchQuery.toLowerCase();
-    return lenderNames.filter(
-      name => !existingLenderNames.includes(name) &&
-      name.toLowerCase().includes(searchLower)
-    );
+    return lenderNames
+      .filter(
+        name => !existingLenderNames.includes(name) &&
+        name.toLowerCase().includes(searchLower)
+      )
+      .slice(0, 20);
   }, [lenderNames, existingLenderNames, searchQuery]);
 
   const handleAddLender = useCallback((name: string) => {
