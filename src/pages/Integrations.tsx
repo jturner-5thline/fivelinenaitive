@@ -21,6 +21,7 @@ import { useIntegrations, Integration } from "@/hooks/useIntegrations";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { GmailIntegration } from "@/components/integrations/GmailIntegration";
 import { 
   Plug, 
   Plus, 
@@ -400,11 +401,16 @@ export default function Integrations() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="active" className="space-y-4">
+      <Tabs defaultValue="gmail" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="gmail">Gmail</TabsTrigger>
           <TabsTrigger value="active">Active Integrations ({integrations.length})</TabsTrigger>
           <TabsTrigger value="available">Available Integrations</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="gmail">
+          <GmailIntegration />
+        </TabsContent>
 
         <TabsContent value="active" className="space-y-4">
           {integrations.length === 0 ? (

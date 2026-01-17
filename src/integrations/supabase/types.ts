@@ -1072,6 +1072,153 @@ export type Database = {
           },
         ]
       }
+      gmail_messages: {
+        Row: {
+          bcc_emails: string[] | null
+          body_html: string | null
+          body_text: string | null
+          cc_emails: string[] | null
+          created_at: string
+          from_email: string | null
+          from_name: string | null
+          gmail_message_id: string
+          id: string
+          is_read: boolean | null
+          is_starred: boolean | null
+          labels: string[] | null
+          received_at: string | null
+          snippet: string | null
+          subject: string | null
+          thread_id: string | null
+          to_emails: string[] | null
+          user_id: string
+        }
+        Insert: {
+          bcc_emails?: string[] | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_emails?: string[] | null
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          gmail_message_id: string
+          id?: string
+          is_read?: boolean | null
+          is_starred?: boolean | null
+          labels?: string[] | null
+          received_at?: string | null
+          snippet?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_emails?: string[] | null
+          user_id: string
+        }
+        Update: {
+          bcc_emails?: string[] | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_emails?: string[] | null
+          created_at?: string
+          from_email?: string | null
+          from_name?: string | null
+          gmail_message_id?: string
+          id?: string
+          is_read?: boolean | null
+          is_starred?: boolean | null
+          labels?: string[] | null
+          received_at?: string | null
+          snippet?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_emails?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gmail_sent_messages: {
+        Row: {
+          bcc_emails: string[] | null
+          body_html: string | null
+          body_text: string | null
+          cc_emails: string[] | null
+          created_at: string
+          error_message: string | null
+          gmail_message_id: string | null
+          id: string
+          sent_at: string | null
+          status: string | null
+          subject: string | null
+          to_emails: string[]
+          user_id: string
+        }
+        Insert: {
+          bcc_emails?: string[] | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_emails?: string[] | null
+          created_at?: string
+          error_message?: string | null
+          gmail_message_id?: string | null
+          id?: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
+          to_emails: string[]
+          user_id: string
+        }
+        Update: {
+          bcc_emails?: string[] | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_emails?: string[] | null
+          created_at?: string
+          error_message?: string | null
+          gmail_message_id?: string | null
+          id?: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
+          to_emails?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gmail_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token: string
+          scope: string | null
+          token_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          refresh_token: string
+          scope?: string | null
+          token_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          scope?: string | null
+          token_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       insights_history: {
         Row: {
           active_deals: number | null
