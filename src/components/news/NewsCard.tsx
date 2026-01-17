@@ -63,8 +63,8 @@ export function NewsCard({ item, featured = false }: NewsCardProps) {
       )}>
         {/* Image */}
         <div className={cn(
-          'relative overflow-hidden',
-          featured ? 'md:w-2/5 h-48 md:h-auto' : 'h-36'
+          'relative overflow-hidden bg-muted',
+          featured ? 'md:w-2/5 h-48 md:h-auto min-h-[200px]' : 'h-36'
         )}>
           {item.imageUrl ? (
             <img 
@@ -72,6 +72,9 @@ export function NewsCard({ item, featured = false }: NewsCardProps) {
               alt={item.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
             />
           ) : (
             <div className={cn(
@@ -79,8 +82,8 @@ export function NewsCard({ item, featured = false }: NewsCardProps) {
               getCategoryGradient(item.category)
             )} />
           )}
-          {/* Overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+          {/* Subtle overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/40 to-transparent" />
           
           {/* Category badge on image */}
           <div className="absolute top-3 left-3">
