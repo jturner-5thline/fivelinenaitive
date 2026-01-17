@@ -2,6 +2,20 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 export type CurrencyFormat = 'abbreviated' | 'abbreviated-1' | 'abbreviated-2' | 'full';
 
+export type SuggestionType = 'warning' | 'action' | 'opportunity' | 'reminder';
+
+export interface SuggestionPreferences {
+  staleLenders: boolean;
+  overdueMilestones: boolean;
+  upcomingMilestones: boolean;
+  lendersWithoutNotes: boolean;
+  stuckLenders: boolean;
+  staleDeals: boolean;
+  termSheetOpportunities: boolean;
+  noMilestones: boolean;
+  allMilestonesComplete: boolean;
+}
+
 export interface Preferences {
   compactMode: boolean;
   emailNotifications: boolean;
@@ -13,6 +27,7 @@ export interface Preferences {
   lenderUpdateRedDays: number;
   staleDealsDays: number;
   defaultLenderStage: string;
+  suggestions: SuggestionPreferences;
 }
 
 export const CURRENCY_FORMAT_OPTIONS: { value: CurrencyFormat; label: string; example: string }[] = [
@@ -21,6 +36,18 @@ export const CURRENCY_FORMAT_OPTIONS: { value: CurrencyFormat; label: string; ex
   { value: 'abbreviated-2', label: 'Two Decimals', example: '$15.00MM' },
   { value: 'full', label: 'Full Number', example: '$15,000,000' },
 ];
+
+export const DEFAULT_SUGGESTION_PREFERENCES: SuggestionPreferences = {
+  staleLenders: true,
+  overdueMilestones: true,
+  upcomingMilestones: true,
+  lendersWithoutNotes: true,
+  stuckLenders: true,
+  staleDeals: true,
+  termSheetOpportunities: true,
+  noMilestones: true,
+  allMilestonesComplete: true,
+};
 
 const DEFAULT_PREFERENCES: Preferences = {
   compactMode: false,
@@ -33,6 +60,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   lenderUpdateRedDays: 14,
   staleDealsDays: 14,
   defaultLenderStage: 'on-deck',
+  suggestions: DEFAULT_SUGGESTION_PREFERENCES,
 };
 
 const STORAGE_KEY = 'user-preferences';

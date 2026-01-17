@@ -13,6 +13,7 @@ import { DealTypesSettings } from '@/components/settings/DealTypesSettings';
 import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
 import { DefaultMilestonesSettings } from '@/components/settings/DefaultMilestonesSettings';
 import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
+import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -63,6 +64,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'referral-sources',
     keywords: ['referral', 'sources', 'source', 'referred', 'by', 'referrer'],
+  },
+  {
+    id: 'suggestions',
+    keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders', 'opportunities', 'ai'],
   },
   {
     id: 'preferences',
@@ -282,6 +287,8 @@ export default function Settings() {
             {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
 
             {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
+
+            {isVisible('suggestions') && <SuggestionSettings />}
 
             {isVisible('preferences') && (
               <Card>
