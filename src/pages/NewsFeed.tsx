@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async';
-import { NewsFeedWidget } from '@/components/deals/NewsFeedWidget';
+import { Newspaper } from 'lucide-react';
+import { NewsGrid } from '@/components/news/NewsGrid';
 
 export default function NewsFeed() {
   return (
@@ -9,16 +10,23 @@ export default function NewsFeed() {
         <meta name="description" content="Stay updated with the latest news from the lending and finance industry." />
       </Helmet>
 
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div>
-            <h1 className="text-3xl font-serif text-foreground">News Feed</h1>
-            <p className="text-muted-foreground mt-1">
-              Stay updated with the latest news from the lending and finance industry
-            </p>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-2.5 rounded-xl bg-primary/10">
+              <Newspaper className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Discover</h1>
+              <p className="text-sm text-muted-foreground">
+                Latest news from the lending and finance industry
+              </p>
+            </div>
           </div>
 
-          <NewsFeedWidget defaultOpen={true} />
+          {/* News Grid */}
+          <NewsGrid />
         </div>
       </div>
     </>
