@@ -56,6 +56,8 @@ import { DataRoomBulkActions } from '@/components/deal/DataRoomBulkActions';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { DealResearchPanel } from '@/components/deal/DealResearchPanel';
 import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
+import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
+import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
@@ -2016,7 +2018,7 @@ export default function DealDetail() {
                 </TabsList>
 
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
-                  {/* AI Panels - Research and Assistant side by side */}
+                  {/* AI Panels Row 1 - Research and Assistant side by side */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <DealResearchPanel
                       companyName={deal.company}
@@ -2034,6 +2036,56 @@ export default function DealDetail() {
                         manager: deal.manager,
                         lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage, notes: l.notes })),
                         milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed, dueDate: m.dueDate })),
+                        notes: deal.notes,
+                      }}
+                    />
+                  </div>
+                  
+                  {/* AI Panels Row 2 - Activity Summary and Contextual Suggestions */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <ActivitySummaryPanel
+                      dealInfo={{
+                        company: deal.company,
+                        value: deal.value,
+                        stage: deal.stage,
+                        status: deal.status,
+                      }}
+                      activities={activityLogs.map(log => ({
+                        type: log.activity_type,
+                        description: log.description,
+                        timestamp: format(new Date(log.created_at), 'MMM d, h:mm a'),
+                      }))}
+                      lenders={deal.lenders?.map(l => ({
+                        name: l.name,
+                        stage: l.stage,
+                        updatedAt: l.updatedAt,
+                      })) || []}
+                      milestones={dbMilestones?.map(m => ({
+                        title: m.title,
+                        completed: m.completed,
+                        dueDate: m.dueDate,
+                      })) || []}
+                    />
+                    <ContextualSuggestionsPanel
+                      deal={{
+                        id: deal.id,
+                        company: deal.company,
+                        stage: deal.stage,
+                        status: deal.status,
+                        updatedAt: deal.updatedAt,
+                        lenders: deal.lenders?.map(l => ({
+                          id: l.id,
+                          name: l.name,
+                          stage: l.stage,
+                          updatedAt: l.updatedAt,
+                          notes: l.notes,
+                        })),
+                        milestones: dbMilestones?.map(m => ({
+                          id: m.id,
+                          title: m.title,
+                          completed: m.completed,
+                          dueDate: m.dueDate,
+                        })),
                         notes: deal.notes,
                       }}
                     />
