@@ -20,17 +20,19 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/contexts/PreferencesContext';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { useCompany } from '@/hooks/useCompany';
 import { cn } from '@/lib/utils';
 
-const SECTION_COUNT = 8;
+const SECTION_COUNT = 9;
 const STORAGE_KEY = 'preferences-sections-state';
 
 const defaultOpenSections: Record<string, boolean> = {
   profile: true,
   appearance: true,
   notifications: true,
+  suggestions: true,
   lenderAlerts: true,
   staleDeals: true,
   lenderDefaults: true,
@@ -43,6 +45,7 @@ const sectionKeywords: Record<string, string[]> = {
   profile: ['profile', 'avatar', 'display name', 'email', 'photo', 'picture', 'name', 'account'],
   appearance: ['appearance', 'theme', 'dark', 'light', 'compact', 'mode', 'look', 'style', 'display'],
   notifications: ['notifications', 'alerts', 'email', 'in-app', 'deal updates', 'lender updates', 'summary', 'weekly'],
+  suggestions: ['suggestions', 'smart', 'ai', 'warnings', 'reminders', 'opportunities', 'actions', 'stale', 'overdue', 'milestones'],
   lenderAlerts: ['lender', 'update', 'alerts', 'stale', 'warning', 'threshold', 'yellow', 'red', 'urgent', 'days'],
   staleDeals: ['stale', 'deals', 'alert', 'threshold', 'days', 'inactive', 'old'],
   lenderDefaults: ['lender', 'defaults', 'stage', 'new lenders', 'default stage'],
@@ -111,6 +114,7 @@ export default function Preferences() {
       profile: newState,
       appearance: newState,
       notifications: newState,
+      suggestions: newState,
       lenderAlerts: newState,
       staleDeals: newState,
       lenderDefaults: newState,
@@ -248,6 +252,10 @@ export default function Preferences() {
 
             {shouldShowSection('notifications') && (
               <NotificationSettings collapsible open={isSectionOpen('notifications')} onOpenChange={() => toggleSection('notifications')} />
+            )}
+
+            {shouldShowSection('suggestions') && (
+              <SuggestionSettings collapsible open={isSectionOpen('suggestions')} onOpenChange={() => toggleSection('suggestions')} />
             )}
 
             {shouldShowSection('lenderAlerts') && (
