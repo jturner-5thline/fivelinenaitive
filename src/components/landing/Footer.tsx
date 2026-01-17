@@ -21,9 +21,9 @@ const footerLinks = {
     { label: "Contact", href: "mailto:support@5thline.com" },
   ],
   legal: [
-    { label: "Privacy Policy", href: "/login" },
-    { label: "Terms of Service", href: "/login" },
-    { label: "Cookie Policy", href: "/login" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Cookie Policy", href: "/privacy#cookies" },
   ],
 };
 
