@@ -1,112 +1,13 @@
+import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Users, BarChart3, FileText, Settings, Bell, Flag, Building2, Workflow, HelpCircle, RotateCcw } from 'lucide-react';
+import { ArrowLeft, HelpCircle, RotateCcw, PlayCircle } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-
-const featureGuides = [
-  {
-    icon: Plus,
-    title: 'Creating Deals',
-    description: 'Start tracking your pipeline',
-    tips: [
-      'Click the "New Deal" button in the header to create a deal',
-      'Enter the deal name, amount, and optionally assign a manager and owner',
-      'Default milestones will be automatically added based on your settings',
-      'Navigate to Settings > Default Milestones to customize what milestones are added to new deals',
-    ],
-  },
-  {
-    icon: Flag,
-    title: 'Deal Milestones',
-    description: 'Track progress on each deal',
-    tips: [
-      'Each deal has milestones that help track progress toward closing',
-      'Click on a milestone to mark it complete or set a due date',
-      'Overdue milestones will be highlighted to help you stay on track',
-      'Add custom milestones specific to each deal as needed',
-    ],
-  },
-  {
-    icon: Users,
-    title: 'Managing Lenders',
-    description: 'Track lender interactions',
-    tips: [
-      'Add lenders to each deal using the Lenders section on the deal page',
-      'Drag and drop lenders between stages to update their status',
-      'Add notes and quotes to each lender for easy reference',
-      'Use substages for more granular tracking of lender progress',
-    ],
-  },
-  {
-    icon: BarChart3,
-    title: 'Analytics Dashboard',
-    description: 'Visualize your performance',
-    tips: [
-      'View charts and metrics on the Analytics page',
-      'Customize widgets to show the data most relevant to you',
-      'Track deal volume, conversion rates, and pipeline value over time',
-      'Export analytics data for reporting purposes',
-    ],
-  },
-  {
-    icon: FileText,
-    title: 'Reports',
-    description: 'Generate professional reports',
-    tips: [
-      'Create custom reports using the Reports page',
-      'Select deals and choose which information to include',
-      'Export reports as PDF or Word documents',
-      'Schedule automated reports to be sent via email',
-    ],
-  },
-  {
-    icon: Building2,
-    title: 'Company & Team',
-    description: 'Collaborate with your team',
-    tips: [
-      'Create or join a company to collaborate with team members',
-      'Invite team members via email from the Company settings',
-      'Assign deals to specific team members for ownership',
-      'View activity across all team members in the activity log',
-    ],
-  },
-  {
-    icon: Workflow,
-    title: 'Workflows',
-    description: 'Automate repetitive tasks',
-    tips: [
-      'Create workflows to automate actions based on triggers',
-      'Set up notifications when deals reach certain stages',
-      'Automate milestone assignments based on deal type',
-      'Configure email alerts for stale deals or missed milestones',
-    ],
-  },
-  {
-    icon: Bell,
-    title: 'Notifications',
-    description: 'Stay informed',
-    tips: [
-      'Configure notification preferences in Account settings',
-      'Choose which activities trigger in-app and email notifications',
-      'Access all notifications from the bell icon in the header',
-      'Enable weekly summary emails for a digest of activity',
-    ],
-  },
-  {
-    icon: Settings,
-    title: 'Customization',
-    description: 'Tailor the app to your workflow',
-    tips: [
-      'Customize deal stages in Settings > Deal Stages',
-      'Configure lender stages and substages for your process',
-      'Set up deal types to categorize your deals',
-      'Manage pass reasons for when lenders decline',
-    ],
-  },
-];
+import { FeatureWalkthrough, type FeatureGuide } from '@/components/help/FeatureWalkthrough';
+import { featureGuides } from '@/data/featureWalkthroughs';
 
 const faqs = [
   {
@@ -135,21 +36,33 @@ const faqs = [
   },
   {
     question: 'How do I restart the guided tour?',
-    answer: 'Click the Settings icon in the header and select "Restart Tour". This will reset the tour and hint tooltips so you can go through them again.',
+    answer: 'Click the "Restart Tour" button at the top of this page, or go to Settings and select "Restart Tour". This will reset the tour and hint tooltips.',
   },
   {
     question: 'What\'s the difference between Deal Manager and Deal Owner?',
     answer: 'The Deal Manager is typically the person actively working the deal day-to-day. The Deal Owner is often the senior person or relationship holder accountable for the deal\'s success.',
   },
+  {
+    question: 'How do I link emails to deals?',
+    answer: 'First connect your Gmail in Integrations. Then when viewing any email, click "Link to Deal" to associate it with a specific deal. View linked emails in the deal\'s Emails tab.',
+  },
 ];
 
 export default function Help() {
+  const [selectedGuide, setSelectedGuide] = useState<FeatureGuide | null>(null);
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+
   const handleRestartTour = () => {
     localStorage.removeItem('tour-completed');
     localStorage.removeItem('dismissed-hints');
     localStorage.removeItem('hints-fully-dismissed');
     sessionStorage.removeItem('demo-tour-shown-this-session');
     window.location.href = '/deals';
+  };
+
+  const handleOpenWalkthrough = (guide: FeatureGuide) => {
+    setSelectedGuide(guide);
+    setWalkthroughOpen(true);
   };
 
   return (
@@ -207,24 +120,39 @@ export default function Help() {
             {/* Feature Guides */}
             <div>
               <h2 className="text-lg font-semibold mb-4">Feature Guides</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Click on any feature to start an interactive walkthrough.
+              </p>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {featureGuides.map((guide) => (
-                  <Card key={guide.title} className="hover:shadow-md transition-shadow">
+                  <Card 
+                    key={guide.title} 
+                    className="hover:shadow-md transition-all cursor-pointer hover:border-primary/50 group"
+                    onClick={() => handleOpenWalkthrough(guide)}
+                  >
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <guide.icon className="h-4 w-4 text-primary" />
-                        {guide.title}
+                      <CardTitle className="text-base flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <guide.icon className="h-4 w-4 text-primary" />
+                          {guide.title}
+                        </span>
+                        <PlayCircle className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                       </CardTitle>
                       <CardDescription className="text-xs">{guide.description}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <ul className="text-xs space-y-1.5 text-muted-foreground">
-                        {guide.tips.map((tip, i) => (
+                        {guide.tips.slice(0, 3).map((tip, i) => (
                           <li key={i} className="flex gap-2">
                             <span className="text-primary">•</span>
-                            <span>{tip}</span>
+                            <span className="line-clamp-1">{tip}</span>
                           </li>
                         ))}
+                        {guide.tips.length > 3 && (
+                          <li className="text-primary text-xs font-medium">
+                            + {guide.tips.length - 3} more tips
+                          </li>
+                        )}
                       </ul>
                     </CardContent>
                   </Card>
@@ -275,6 +203,13 @@ export default function Help() {
           </div>
         </main>
       </div>
+
+      {/* Walkthrough Dialog */}
+      <FeatureWalkthrough
+        guide={selectedGuide}
+        open={walkthroughOpen}
+        onOpenChange={setWalkthroughOpen}
+      />
     </>
   );
 }
