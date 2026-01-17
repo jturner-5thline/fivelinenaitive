@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,6 +29,7 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Deals", url: "/deals", icon: Briefcase },
+  { title: "News Feed", url: "/news-feed", icon: Newspaper },
   { title: "Metrics", url: "/metrics", icon: BarChart3 },
   { title: "Insights", url: "/insights", icon: Lightbulb },
   { title: "Sales & BD", url: "/sales-bd", icon: Users },

@@ -15,7 +15,9 @@ import {
   Briefcase,
   Calendar,
   Mail,
-  Zap
+  Zap,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAllActivities } from '@/hooks/useAllActivities';
@@ -24,8 +26,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealsCalendar } from '@/components/deals/DealsCalendar';
+import { NewsFeedWidget } from '@/components/deals/NewsFeedWidget';
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -62,6 +66,7 @@ export default function Dashboard() {
   const { profile } = useProfile();
   const { activities, isLoading: activitiesLoading } = useAllActivities(5);
   const [inputValue, setInputValue] = useState('');
+  const [activityOpen, setActivityOpen] = useState(true);
 
   const firstName = profile?.first_name || profile?.display_name?.split(' ')[0] || 'there';
 
@@ -178,79 +183,99 @@ export default function Dashboard() {
 
           {/* Deals Calendar */}
           <DealsCalendar />
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                Recent Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              {activitiesLoading ? (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                      <div className="flex-1 space-y-1">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/4" />
-                      </div>
+
+          {/* News Feed */}
+          <NewsFeedWidget />
+
+          {/* Recent Activity - Collapsible */}
+          <Collapsible open={activityOpen} onOpenChange={setActivityOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <CardTitle className="text-lg font-medium flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-primary" />
+                      Recent Activity
                     </div>
-                  ))}
-                </div>
-              ) : activities.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">
-                  No recent activity yet. Start by creating a deal!
-                </p>
-              ) : (
-                <div className="space-y-1">
-                  {activities.map((activity) => {
-                    const IconComponent = getActivityIcon(activity.activity_type);
-                    const colorClass = getActivityColor(activity.activity_type);
-                    
-                    return (
-                      <button
-                        key={activity.id}
-                        onClick={() => navigate(`/deal/${activity.deal_id}`)}
-                        className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-                      >
-                        <div className={`mt-0.5 p-1.5 rounded-full bg-muted ${colorClass}`}>
-                          <IconComponent className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground line-clamp-1">
-                            {activity.description}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {activity.deal_name && (
-                              <span className="text-xs text-primary font-medium truncate max-w-[150px]">
-                                {activity.deal_name}
-                              </span>
-                            )}
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
-                            </span>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      {activityOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-1">
+                  {activitiesLoading ? (
+                    <div className="space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <div className="flex-1 space-y-1">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/4" />
                           </div>
                         </div>
-                        <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                      </button>
-                    );
-                  })}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-2 text-muted-foreground"
-                    onClick={() => navigate('/deals')}
-                  >
-                    View all activity
-                    <ArrowUpRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      ))}
+                    </div>
+                  ) : activities.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      No recent activity yet. Start by creating a deal!
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {activities.map((activity) => {
+                        const IconComponent = getActivityIcon(activity.activity_type);
+                        const colorClass = getActivityColor(activity.activity_type);
+                        
+                        return (
+                          <button
+                            key={activity.id}
+                            onClick={() => navigate(`/deal/${activity.deal_id}`)}
+                            className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <div className={`mt-0.5 p-1.5 rounded-full bg-muted ${colorClass}`}>
+                              <IconComponent className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-foreground line-clamp-1">
+                                {activity.description}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {activity.deal_name && (
+                                  <span className="text-xs text-primary font-medium truncate max-w-[150px]">
+                                    {activity.deal_name}
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                                </span>
+                              </div>
+                            </div>
+                            <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          </button>
+                        );
+                      })}
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full mt-2 text-muted-foreground"
+                        onClick={() => navigate('/deals')}
+                      >
+                        View all activity
+                        <ArrowUpRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         </div>
       </div>
     </>
