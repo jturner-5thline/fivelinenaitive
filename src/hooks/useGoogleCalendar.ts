@@ -232,6 +232,117 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
+  // Create event
+  const createEvent = useCallback(async (eventData: {
+    summary: string;
+    description?: string;
+    location?: string;
+    start: string;
+    end: string;
+    allDay?: boolean;
+    attendees?: string[];
+  }, calendarId?: string) => {
+    if (!user) return null;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-events', {
+        body: {
+          action: 'create',
+          calendar_id: calendarId,
+          event_data: {
+            summary: eventData.summary,
+            description: eventData.description,
+            location: eventData.location,
+            start: eventData.start,
+            end: eventData.end,
+            all_day: eventData.allDay,
+            attendees: eventData.attendees,
+          },
+        },
+      });
+
+      if (error) throw error;
+      setError(null);
+      return data.event;
+    } catch (err: any) {
+      console.error('Event create error:', err);
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  // Update event
+  const updateEvent = useCallback(async (eventId: string, eventData: {
+    summary: string;
+    description?: string;
+    location?: string;
+    start: string;
+    end: string;
+    allDay?: boolean;
+    attendees?: string[];
+  }, calendarId?: string) => {
+    if (!user) return null;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-events', {
+        body: {
+          action: 'update',
+          event_id: eventId,
+          calendar_id: calendarId,
+          event_data: {
+            summary: eventData.summary,
+            description: eventData.description,
+            location: eventData.location,
+            start: eventData.start,
+            end: eventData.end,
+            all_day: eventData.allDay,
+            attendees: eventData.attendees,
+          },
+        },
+      });
+
+      if (error) throw error;
+      setError(null);
+      return data.event;
+    } catch (err: any) {
+      console.error('Event update error:', err);
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  // Delete event
+  const deleteEvent = useCallback(async (eventId: string, calendarId?: string) => {
+    if (!user) return false;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('calendar-events', {
+        body: {
+          action: 'delete',
+          event_id: eventId,
+          calendar_id: calendarId,
+        },
+      });
+
+      if (error) throw error;
+      setError(null);
+      return true;
+    } catch (err: any) {
+      console.error('Event delete error:', err);
+      setError(err.message);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
   // Check status on mount
   useEffect(() => {
     if (user) {
@@ -253,5 +364,8 @@ export function useGoogleCalendar() {
     listCalendars,
     listEvents,
     getEvent,
+    createEvent,
+    updateEvent,
+    deleteEvent,
   };
 }
