@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { DealMilestone } from '@/types/deal';
 
 export interface MilestoneWithDeal {
   id: string;
@@ -12,7 +13,7 @@ export interface MilestoneWithDeal {
   deal_company: string;
 }
 
-export function useAllMilestones() {
+export function useAllMilestones(dealIds?: string[]) {
   const { user } = useAuth();
   const [milestones, setMilestones] = useState<MilestoneWithDeal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,8 +61,29 @@ export function useAllMilestones() {
     fetchMilestones();
   }, [fetchMilestones]);
 
+  // Create a map of deal_id -> milestones for easy lookup
+  const milestonesMap = useMemo(() => {
+    const map: Record<string, DealMilestone[]> = {};
+    
+    milestones.forEach(m => {
+      if (!map[m.deal_id]) {
+        map[m.deal_id] = [];
+      }
+      map[m.deal_id].push({
+        id: m.id,
+        title: m.title,
+        completed: m.completed,
+        completedAt: m.completed_at || undefined,
+        dueDate: m.due_date || undefined,
+      });
+    });
+
+    return map;
+  }, [milestones]);
+
   return {
     milestones,
+    milestonesMap,
     isLoading,
     refetch: fetchMilestones,
   };
