@@ -98,18 +98,6 @@ export default function Dashboard() {
             </h1>
           </div>
 
-          {/* Quick Action - Create Deal */}
-          <div className="flex justify-center">
-            <CreateDealDialog 
-              trigger={
-                <Button variant="gradient" size="lg" className="gap-2 px-6">
-                  <Briefcase className="h-5 w-5" />
-                  Create New Deal
-                </Button>
-              }
-            />
-          </div>
-
           {/* Input Card */}
           <Card className="p-4 shadow-lg">
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -142,7 +130,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Quick Widgets */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             {/* Calendar Widget */}
             <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
               <div className="flex flex-col items-center text-center space-y-3">
@@ -172,6 +160,20 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">Quick Props</span>
               </div>
             </Card>
+
+            {/* Create New Deal Widget */}
+            <CreateDealDialog 
+              trigger={
+                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                      <Briefcase className="h-6 w-6 text-primary-foreground" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">Create New Deal</span>
+                  </div>
+                </Card>
+              }
+            />
           </div>
 
           {/* Deals Calendar */}
