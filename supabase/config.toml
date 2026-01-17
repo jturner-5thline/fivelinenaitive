@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.generate-insights]
 verify_jwt = false
+
+[functions.fetch-news]
+verify_jwt = false

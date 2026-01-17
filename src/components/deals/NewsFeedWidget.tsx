@@ -8,99 +8,17 @@ import {
   TrendingUp,
   Building2,
   Globe,
-  DollarSign
+  DollarSign,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-
-interface NewsItem {
-  id: string;
-  title: string;
-  source: string;
-  category: 'market' | 'deals' | 'regulation' | 'company';
-  summary: string;
-  url: string;
-  publishedAt: Date;
-}
-
-// Dummy news data
-const DUMMY_NEWS: NewsItem[] = [
-  {
-    id: '1',
-    title: 'Fed Signals Potential Rate Cuts in 2025 as Inflation Cools',
-    source: 'Wall Street Journal',
-    category: 'market',
-    summary: 'Federal Reserve officials indicated they may begin cutting interest rates later this year as inflation data shows signs of moderating.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-  },
-  {
-    id: '2',
-    title: 'Private Credit Market Reaches $1.7 Trillion Milestone',
-    source: 'Bloomberg',
-    category: 'deals',
-    summary: 'The private credit market has grown to $1.7 trillion globally, with institutional investors increasingly allocating capital to direct lending.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-  },
-  {
-    id: '3',
-    title: 'New SEC Regulations to Impact Alternative Lending Disclosure',
-    source: 'Reuters',
-    category: 'regulation',
-    summary: 'The SEC announced new disclosure requirements for alternative lending platforms, set to take effect in Q3 2025.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-  },
-  {
-    id: '4',
-    title: 'Apollo Global Closes $5B Infrastructure Credit Fund',
-    source: 'Financial Times',
-    category: 'company',
-    summary: 'Apollo Global Management has closed its fifth infrastructure credit fund at $5 billion, exceeding its initial target.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
-  },
-  {
-    id: '5',
-    title: 'SBA Loan Volume Surges 25% in January',
-    source: 'American Banker',
-    category: 'market',
-    summary: 'Small Business Administration loan approvals jumped 25% year-over-year in January, signaling strong demand from small businesses.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 8), // 8 hours ago
-  },
-  {
-    id: '6',
-    title: 'Ares Management Launches $3B Direct Lending Vehicle',
-    source: 'Private Equity News',
-    category: 'deals',
-    summary: 'Ares Management has launched a new $3 billion direct lending vehicle targeting middle-market companies across North America.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 12), // 12 hours ago
-  },
-  {
-    id: '7',
-    title: 'European Banks Tighten Lending Standards Amid Economic Uncertainty',
-    source: 'The Economist',
-    category: 'regulation',
-    summary: 'Major European banks are tightening lending standards as economic uncertainty persists, creating opportunities for alternative lenders.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-  },
-  {
-    id: '8',
-    title: 'KKR Credit Expands Healthcare Lending Practice',
-    source: 'PitchBook',
-    category: 'company',
-    summary: 'KKR Credit has hired three senior professionals to expand its healthcare-focused lending practice.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 36), // 1.5 days ago
-  },
-];
+import { useNews, NewsItem } from '@/hooks/useNews';
 
 const getCategoryIcon = (category: NewsItem['category']) => {
   switch (category) {
@@ -133,6 +51,8 @@ interface NewsFeedWidgetProps {
 }
 
 export function NewsFeedWidget({ defaultOpen = true }: NewsFeedWidgetProps) {
+  const { news, isLoading, error, lastFetched, refetch } = useNews();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('dashboard-newsfeed-open');
     return saved !== null ? JSON.parse(saved) : defaultOpen;
@@ -141,6 +61,12 @@ export function NewsFeedWidget({ defaultOpen = true }: NewsFeedWidgetProps) {
   const handleToggle = (open: boolean) => {
     setIsOpen(open);
     localStorage.setItem('dashboard-newsfeed-open', JSON.stringify(open));
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
   };
 
   return (
@@ -165,45 +91,90 @@ export function NewsFeedWidget({ defaultOpen = true }: NewsFeedWidgetProps) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="pt-0">
-            <ScrollArea className="h-[320px]">
-              <div className="space-y-3 pr-2">
-                {DUMMY_NEWS.map((news) => (
-                  <a
-                    key={news.id}
-                    href={news.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge 
-                            variant="secondary" 
-                            className={`text-[10px] px-1.5 py-0 ${getCategoryColor(news.category)}`}
-                          >
-                            <span className="mr-1">{getCategoryIcon(news.category)}</span>
-                            {news.category}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground">
-                            {news.source}
-                          </span>
-                        </div>
-                        <h4 className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-                          {news.title}
-                        </h4>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {news.summary}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-1.5">
-                          {formatDistanceToNow(news.publishedAt, { addSuffix: true })}
-                        </p>
-                      </div>
-                      <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1" />
-                    </div>
-                  </a>
-                ))}
+            {/* Refresh button and last fetched info */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-muted-foreground">
+                {lastFetched && (
+                  <span>Updated {formatDistanceToNow(lastFetched, { addSuffix: true })}</span>
+                )}
+                {error && (
+                  <span className="flex items-center gap-1 text-warning">
+                    <AlertCircle className="h-3 w-3" />
+                    {error}
+                  </span>
+                )}
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefresh();
+                }}
+                disabled={isRefreshing}
+                className="h-7 px-2 text-xs"
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+
+            <ScrollArea className="h-[320px]">
+              {isLoading ? (
+                <div className="space-y-3 pr-2">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="p-3 rounded-lg border border-border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                      <Skeleton className="h-4 w-full mb-1" />
+                      <Skeleton className="h-4 w-3/4 mb-2" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-2/3 mt-1" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3 pr-2">
+                  {news.map((item) => (
+                    <a
+                      key={item.id}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-[10px] px-1.5 py-0 ${getCategoryColor(item.category)}`}
+                            >
+                              <span className="mr-1">{getCategoryIcon(item.category)}</span>
+                              {item.category}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              {item.source}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+                            {item.title}
+                          </h4>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {item.summary}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1.5">
+                            {formatDistanceToNow(new Date(item.publishedAt), { addSuffix: true })}
+                          </p>
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1" />
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
             </ScrollArea>
           </CardContent>
         </CollapsibleContent>
