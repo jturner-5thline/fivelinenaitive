@@ -25,16 +25,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending waitlist welcome email to ${email}`);
 
+    const appUrl = "https://fivelinenaitive.lovable.app";
+
     const emailResponse = await resend.emails.send({
       from: "nAItive <noreply@updates.naitive.co>",
       reply_to: "support@naitive.co",
       to: [email],
       subject: "Welcome to the nAItive Waitlist!",
       headers: {
-        "List-Unsubscribe": "<https://naitive.co/unsubscribe>",
+        "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
-      text: `Hey ${name}!\n\nThanks for joining the nAItive waitlist! We're thrilled to have you on board.\n\nYou're now on the list to be among the first to experience our AI-powered lending platform. We're working hard to build something amazing, and we can't wait to share it with you.\n\nWe'll keep you updated on our progress and let you know as soon as early access becomes available.\n\nStay tuned for updates!\n— The nAItive Team\n\n---\nnAItive | Unsubscribe: https://naitive.co/unsubscribe`,
+      text: `Hey ${name}!\n\nThanks for joining the nAItive waitlist! We're thrilled to have you on board.\n\nYou're now on the list to be among the first to experience our AI-powered lending platform. We're working hard to build something amazing, and we can't wait to share it with you.\n\nWe'll keep you updated on our progress and let you know as soon as early access becomes available.\n\nStay tuned for updates!\n— The nAItive Team\n\n---\nnAItive | Unsubscribe: ${appUrl}/unsubscribe`,
       html: `
         <!DOCTYPE html>
         <html lang="en">
@@ -98,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
                         © ${new Date().getFullYear()} nAItive. All rights reserved.
                       </p>
                       <p style="margin: 8px 0 0 0; font-size: 12px; color: #52525b;">
-                        <a href="https://naitive.co/unsubscribe" style="color: #22c55e; text-decoration: underline;">Unsubscribe</a>
+                        <a href="${appUrl}/unsubscribe" style="color: #22c55e; text-decoration: underline;">Unsubscribe</a>
                       </p>
                     </td>
                   </tr>

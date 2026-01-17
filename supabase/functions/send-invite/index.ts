@@ -58,9 +58,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { invitationId, email, companyName, inviterName, role, token }: SendInviteRequest = await req.json();
 
-    // Construct the invite URL - use the origin from the request or fallback
-    const origin = req.headers.get("origin") || "https://lovable.dev";
-    const inviteUrl = `${origin}/accept-invite?token=${token}`;
+    // Use the published app URL for invitation links
+    const appUrl = "https://fivelinenaitive.lovable.app";
+    const inviteUrl = `${appUrl}/accept-invite?token=${token}`;
 
     console.log(`Sending invite to ${email} for company ${companyName}`);
 
@@ -71,10 +71,10 @@ const handler = async (req: Request): Promise<Response> => {
         to: [email],
         subject: `You've been invited to join ${companyName}`,
         headers: {
-          "List-Unsubscribe": "<https://naitive.co/unsubscribe>",
+          "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
           "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         },
-        text: `You're Invited to ${companyName}!\n\n${inviterName} has invited you to join ${companyName} as a ${role}.\n\nAccept your invitation: ${inviteUrl}\n\nThis invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.\n\n---\nnAItive - Manage preferences: https://naitive.co/settings | Unsubscribe: https://naitive.co/unsubscribe`,
+        text: `You're Invited to ${companyName}!\n\n${inviterName} has invited you to join ${companyName} as a ${role}.\n\nAccept your invitation: ${inviteUrl}\n\nThis invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.\n\n---\nnAItive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
         html: `
           <!DOCTYPE html>
           <html lang="en">
@@ -118,13 +118,13 @@ const handler = async (req: Request): Promise<Response> => {
                     </tr>
                     <tr>
                       <td style="padding: 24px 40px; border-top: 1px solid #eeeeee; text-align: center;">
-                        <p style="color: #888888; font-size: 12px; margin: 0 0 8px 0;">
+                      <p style="color: #888888; font-size: 12px; margin: 0 0 8px 0;">
                           © ${new Date().getFullYear()} nAItive. All rights reserved.
                         </p>
                         <p style="color: #888888; font-size: 12px; margin: 0;">
-                          <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
+                          <a href="${appUrl}/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
                           &nbsp;|&nbsp;
-                          <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+                          <a href="${appUrl}/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
                         </p>
                       </td>
                     </tr>

@@ -120,16 +120,18 @@ const handler = async (req: Request): Promise<Response> => {
           `;
         }
 
+        const appUrl = "https://fivelinenaitive.lovable.app";
+
         const emailResponse = await resend.emails.send({
           from: "nAItive <noreply@updates.naitive.co>",
           reply_to: "support@naitive.co",
           to: [userData.user.email],
           subject: "nAItive: Your Weekly Summary",
           headers: {
-            "List-Unsubscribe": "<https://naitive.co/unsubscribe>",
+            "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
           },
-          text: `Weekly Summary\n\nHi ${profile.display_name || 'there'}, here's what happened this week.\n\nActive Deals: ${totalDeals}\nActivities This Week: ${totalActivities}\nUpcoming Milestones: ${upcomingCount}\n\nView Dashboard: https://naitive.co/deals\n\n---\nnAItive - Manage preferences: https://naitive.co/settings | Unsubscribe: https://naitive.co/unsubscribe`,
+          text: `Weekly Summary\n\nHi ${profile.display_name || 'there'}, here's what happened this week.\n\nActive Deals: ${totalDeals}\nActivities This Week: ${totalActivities}\nUpcoming Milestones: ${upcomingCount}\n\nView Dashboard: ${appUrl}/deals\n\n---\nnAItive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
           html: `
             <!DOCTYPE html>
             <html lang="en">
@@ -204,7 +206,7 @@ const handler = async (req: Request): Promise<Response> => {
                           <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top: 32px;">
                             <tr>
                               <td style="border-radius: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%);">
-                                <a href="https://naitive.co/deals" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">View Dashboard</a>
+                                <a href="${appUrl}/deals" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">View Dashboard</a>
                               </td>
                             </tr>
                           </table>
@@ -216,9 +218,9 @@ const handler = async (req: Request): Promise<Response> => {
                             © ${new Date().getFullYear()} nAItive. All rights reserved.
                           </p>
                           <p style="color: #888888; font-size: 12px; margin: 0;">
-                            <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
+                            <a href="${appUrl}/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
                             &nbsp;|&nbsp;
-                            <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+                            <a href="${appUrl}/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
                           </p>
                         </td>
                       </tr>
