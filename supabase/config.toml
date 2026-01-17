@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.fetch-news]
 verify_jwt = false
+
+[functions.deal-research]
+verify_jwt = false
+
+[functions.deal-assistant]
+verify_jwt = false

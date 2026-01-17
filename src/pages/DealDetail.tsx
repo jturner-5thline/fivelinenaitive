@@ -54,6 +54,8 @@ import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
 import { FileDropzoneOverlay } from '@/components/deal/FileDropzoneOverlay';
 import { DataRoomBulkActions } from '@/components/deal/DataRoomBulkActions';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
+import { DealResearchPanel } from '@/components/deal/DealResearchPanel';
+import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
@@ -2014,6 +2016,28 @@ export default function DealDetail() {
                 </TabsList>
 
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
+                  {/* AI Panels - Research and Assistant side by side */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <DealResearchPanel
+                      companyName={deal.company}
+                      companyUrl={deal.companyUrl}
+                      industry={deal.dealTypes?.[0]}
+                      dealValue={deal.value}
+                      lenders={deal.lenders?.map(l => ({ name: l.name })) || []}
+                    />
+                    <DealAssistantPanel
+                      dealContext={{
+                        company: deal.company,
+                        value: deal.value,
+                        stage: deal.stage,
+                        status: deal.status,
+                        manager: deal.manager,
+                        lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage, notes: l.notes })),
+                        milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed, dueDate: m.dueDate })),
+                        notes: deal.notes,
+                      }}
+                    />
+                  </div>
                   {statusNotes.length > 0 && (
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
