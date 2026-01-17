@@ -28,25 +28,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, FlaskConical, Rocket, Ban } from "lucide-react";
+import { Plus, FlaskConical, Rocket, Ban } from "lucide-react";
 import { toast } from "sonner";
 import {
   useFeatureFlags,
   useUpdateFeatureFlag,
   useCreateFeatureFlag,
-  useDeleteFeatureFlag,
   FeatureStatus,
 } from "@/hooks/useFeatureFlags";
 
@@ -75,7 +63,6 @@ export const FeatureFlagsTable = () => {
   const { data: flags, isLoading } = useFeatureFlags();
   const updateFlag = useUpdateFeatureFlag();
   const createFlag = useCreateFeatureFlag();
-  const deleteFlag = useDeleteFeatureFlag();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newFeature, setNewFeature] = useState({
@@ -117,14 +104,6 @@ export const FeatureFlagsTable = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteFlag.mutateAsync(id);
-      toast.success("Feature deleted successfully");
-    } catch (error) {
-      toast.error("Failed to delete feature");
-    }
-  };
 
   if (isLoading) {
     return (
@@ -227,13 +206,12 @@ export const FeatureFlagsTable = () => {
             <TableHead>Description</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Last Updated</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {flags?.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground">
+              <TableCell colSpan={4} className="text-center text-muted-foreground">
                 No feature flags configured
               </TableCell>
             </TableRow>
@@ -285,33 +263,6 @@ export const FeatureFlagsTable = () => {
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {format(new Date(flag.updated_at), "MMM d, yyyy HH:mm")}
-                  </TableCell>
-                  <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Feature Flag</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{flag.name}"? This action
-                            cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(flag.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               );
