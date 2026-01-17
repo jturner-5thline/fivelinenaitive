@@ -47,6 +47,7 @@ import WaitlistAdmin from "./pages/WaitlistAdmin";
 import MigrationTool from "./pages/MigrationTool";
 import Admin from "./pages/Admin";
 import Integrations from "./pages/Integrations";
+import NewsFeed from "./pages/NewsFeed";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -82,6 +83,9 @@ const App = () => (
                           } />
                           <Route path="/dashboard" element={
                             <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/news-feed" element={
+                            <ProtectedRoute><AppLayout><NewsFeed /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deals" element={
                             <ProtectedRoute><AppLayout><Deals /></AppLayout></ProtectedRoute>
