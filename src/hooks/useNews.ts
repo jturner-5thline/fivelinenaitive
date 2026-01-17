@@ -9,6 +9,7 @@ export interface NewsItem {
   summary: string;
   url: string;
   publishedAt: string;
+  imageUrl?: string;
 }
 
 // Fallback dummy data in case API fails
@@ -21,6 +22,7 @@ const FALLBACK_NEWS: NewsItem[] = [
     summary: 'Federal Reserve officials indicated they may begin cutting interest rates later this year as inflation data shows signs of moderating.',
     url: '#',
     publishedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+    imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop',
   },
   {
     id: 'fallback-2',
@@ -30,6 +32,7 @@ const FALLBACK_NEWS: NewsItem[] = [
     summary: 'The private credit market has grown to $1.7 trillion globally, with institutional investors increasingly allocating capital to direct lending.',
     url: '#',
     publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+    imageUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop',
   },
   {
     id: 'fallback-3',
@@ -39,6 +42,7 @@ const FALLBACK_NEWS: NewsItem[] = [
     summary: 'The SEC announced new disclosure requirements for alternative lending platforms, set to take effect in Q3 2025.',
     url: '#',
     publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
+    imageUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop',
   },
   {
     id: 'fallback-4',
@@ -48,6 +52,7 @@ const FALLBACK_NEWS: NewsItem[] = [
     summary: 'Apollo Global Management has closed its fifth infrastructure credit fund at $5 billion, exceeding its initial target.',
     url: '#',
     publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
+    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop',
   },
 ];
 
