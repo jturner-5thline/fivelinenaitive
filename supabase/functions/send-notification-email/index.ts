@@ -127,7 +127,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const message = template.getMessage(payload);
-    const dealUrl = payload.deal_id ? `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app')}/deal/${payload.deal_id}` : null;
+    const appUrl = "https://fivelinenaitive.lovable.app";
+    const dealUrl = payload.deal_id ? `${appUrl}/deal/${payload.deal_id}` : null;
 
     const emailResponse = await resend.emails.send({
       from: "nAItive <noreply@updates.naitive.co>",
@@ -135,10 +136,10 @@ const handler = async (req: Request): Promise<Response> => {
       to: [userData.user.email],
       subject: `nAItive: ${template.subject}`,
       headers: {
-        "List-Unsubscribe": "<https://naitive.co/unsubscribe>",
+        "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
-      text: `${template.subject}\n\n${message}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnAItive - Manage preferences: https://naitive.co/settings | Unsubscribe: https://naitive.co/unsubscribe`,
+      text: `${template.subject}\n\n${message}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnAItive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
       html: `
         <!DOCTYPE html>
         <html lang="en">
@@ -180,9 +181,9 @@ const handler = async (req: Request): Promise<Response> => {
                         © ${new Date().getFullYear()} nAItive. All rights reserved.
                       </p>
                       <p style="color: #888888; font-size: 12px; margin: 0;">
-                        <a href="https://naitive.co/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
+                        <a href="${appUrl}/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
                         &nbsp;|&nbsp;
-                        <a href="https://naitive.co/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
+                        <a href="${appUrl}/unsubscribe" style="color: #8B5CF6; text-decoration: underline;">Unsubscribe</a>
                       </p>
                     </td>
                   </tr>
