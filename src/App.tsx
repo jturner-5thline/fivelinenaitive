@@ -75,8 +75,8 @@ const App = () => (
                       <Toaster />
                       <Sonner />
                       <FeedbackWidget />
-                      <CookieConsent />
                       <BrowserRouter>
+                        <CookieConsent />
                         <Routes>
                           <Route path="/" element={<Waitlist />} />
                           <Route path="/home" element={<Index />} />
