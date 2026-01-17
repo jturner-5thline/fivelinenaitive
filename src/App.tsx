@@ -18,6 +18,7 @@ import { AnalyticsWidgetsProvider } from "@/contexts/AnalyticsWidgetsContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { CookieConsent } from "@/components/CookieConsent";
 import { CopyProtection } from "@/components/CopyProtection";
 import { AppLayout } from "@/components/AppLayout";
 import Waitlist from "./pages/Waitlist";
@@ -74,6 +75,7 @@ const App = () => (
                       <Toaster />
                       <Sonner />
                       <FeedbackWidget />
+                      <CookieConsent />
                       <BrowserRouter>
                         <Routes>
                           <Route path="/" element={<Waitlist />} />
