@@ -1,5 +1,6 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </main>
       </div>
+      <FeedbackWidget />
     </SidebarProvider>
   );
 }
