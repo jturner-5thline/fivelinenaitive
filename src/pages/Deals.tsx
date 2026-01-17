@@ -18,6 +18,7 @@ import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBan
 import { DemoBanner } from '@/components/deals/DemoBanner';
 import { DemoTour } from '@/components/deals/DemoTour';
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
+import { AllSuggestionsWidget } from '@/components/deals/AllSuggestionsWidget';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
@@ -170,6 +171,9 @@ export default function Dashboard() {
                     {specialWidgets['milestones'] && <MilestonesWidget />}
                     {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
                   </div>
+                  
+                  {/* Smart Suggestions Widget - spans full width */}
+                  <AllSuggestionsWidget deals={allDeals} />
                 </>
               )}
               <NotificationsBar deals={allDeals} />
