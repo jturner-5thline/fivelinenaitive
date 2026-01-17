@@ -14,6 +14,36 @@ interface NewsItem {
   summary: string;
   url: string;
   publishedAt: string;
+  imageUrl?: string;
+}
+
+// Placeholder images for each category using Unsplash
+const categoryImages: Record<string, string[]> = {
+  market: [
+    'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=400&h=300&fit=crop',
+  ],
+  deals: [
+    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?w=400&h=300&fit=crop',
+  ],
+  regulation: [
+    'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&h=300&fit=crop',
+  ],
+  company: [
+    'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop',
+  ],
+};
+
+function getRandomImage(category: string): string {
+  const images = categoryImages[category] || categoryImages.market;
+  return images[Math.floor(Math.random() * images.length)];
 }
 
 serve(async (req) => {
@@ -96,17 +126,21 @@ serve(async (req) => {
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        newsItems = parsed.map((item: any, index: number) => ({
-          id: `news-${Date.now()}-${index}`,
-          title: item.title || 'Untitled',
-          source: item.source || 'Unknown Source',
-          category: ['market', 'deals', 'regulation', 'company'].includes(item.category) 
+        newsItems = parsed.map((item: any, index: number) => {
+          const category = ['market', 'deals', 'regulation', 'company'].includes(item.category) 
             ? item.category 
-            : 'market',
-          summary: item.summary || '',
-          url: citations[index] || item.url || '#',
-          publishedAt: new Date(Date.now() - (index * 3600000)).toISOString(), // Stagger times
-        }));
+            : 'market';
+          return {
+            id: `news-${Date.now()}-${index}`,
+            title: item.title || 'Untitled',
+            source: item.source || 'Unknown Source',
+            category,
+            summary: item.summary || '',
+            url: citations[index] || item.url || '#',
+            publishedAt: new Date(Date.now() - (index * 3600000)).toISOString(),
+            imageUrl: getRandomImage(category),
+          };
+        });
       }
     } catch (parseError) {
       console.error('Error parsing Perplexity response:', parseError);

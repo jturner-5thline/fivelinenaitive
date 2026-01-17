@@ -36,6 +36,19 @@ const getCategoryColor = (category: NewsItem['category']) => {
   }
 };
 
+const getCategoryGradient = (category: NewsItem['category']) => {
+  switch (category) {
+    case 'market':
+      return 'from-primary/20 to-primary/5';
+    case 'deals':
+      return 'from-success/20 to-success/5';
+    case 'regulation':
+      return 'from-warning/20 to-warning/5';
+    case 'company':
+      return 'from-accent/40 to-accent/10';
+  }
+};
+
 export function NewsCard({ item, featured = false }: NewsCardProps) {
   return (
     <a
@@ -46,27 +59,58 @@ export function NewsCard({ item, featured = false }: NewsCardProps) {
     >
       <Card className={cn(
         'overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/40 h-full',
-        featured ? 'p-6' : 'p-4'
+        featured ? 'flex flex-col md:flex-row' : ''
       )}>
-        <div className="flex flex-col h-full">
-          {/* Header with category and source */}
-          <div className="flex items-center justify-between gap-2 mb-3">
+        {/* Image */}
+        <div className={cn(
+          'relative overflow-hidden',
+          featured ? 'md:w-2/5 h-48 md:h-auto' : 'h-36'
+        )}>
+          {item.imageUrl ? (
+            <img 
+              src={item.imageUrl} 
+              alt={item.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
+          ) : (
+            <div className={cn(
+              'w-full h-full bg-gradient-to-br',
+              getCategoryGradient(item.category)
+            )} />
+          )}
+          {/* Overlay gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+          
+          {/* Category badge on image */}
+          <div className="absolute top-3 left-3">
             <Badge 
               variant="outline" 
-              className={cn('text-[10px] px-2 py-0.5 gap-1', getCategoryColor(item.category))}
+              className={cn(
+                'text-[10px] px-2 py-0.5 gap-1 backdrop-blur-sm bg-background/60',
+                getCategoryColor(item.category)
+              )}
             >
               {getCategoryIcon(item.category)}
               {item.category}
             </Badge>
-            <span className="text-[11px] text-muted-foreground font-medium truncate">
-              {item.source}
-            </span>
           </div>
+        </div>
+
+        {/* Content */}
+        <div className={cn(
+          'flex flex-col p-4',
+          featured ? 'md:w-3/5 md:p-6' : ''
+        )}>
+          {/* Source */}
+          <span className="text-[11px] text-muted-foreground font-medium mb-2">
+            {item.source}
+          </span>
 
           {/* Title */}
           <h3 className={cn(
-            'font-semibold text-foreground group-hover:text-primary transition-colors mb-2 line-clamp-2',
-            featured ? 'text-xl' : 'text-sm'
+            'font-semibold text-foreground group-hover:text-primary transition-colors mb-2',
+            featured ? 'text-xl line-clamp-2' : 'text-sm line-clamp-2'
           )}>
             {item.title}
           </h3>
