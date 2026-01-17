@@ -3,11 +3,6 @@ import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { 
-  LayoutDashboard, 
-  FolderKanban, 
-  Building2, 
-  CloudCog, 
-  LinkIcon,
   ArrowUpRight,
   Send,
   Plus,
@@ -17,7 +12,10 @@ import {
   Users,
   TrendingUp,
   Clock,
-  Briefcase
+  Briefcase,
+  Calendar,
+  Mail,
+  Zap
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAllActivities } from '@/hooks/useAllActivities';
@@ -28,21 +26,6 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealsCalendar } from '@/components/deals/DealsCalendar';
-
-const quickActions = [
-  { label: 'Landing page', icon: Globe },
-  { label: 'Dashboard', icon: LayoutDashboard, active: true },
-  { label: 'Portfolio', icon: FolderKanban },
-  { label: 'Corporate', icon: Building2 },
-  { label: 'SaaS', icon: CloudCog },
-  { label: 'Link...', icon: LinkIcon },
-];
-
-const exploreIdeas = [
-  { label: 'Sales tracking dashboard', href: '/deals' },
-  { label: 'Lender Database', href: '/lenders' },
-  { label: 'Analytics Dashboard', href: '/analytics' },
-];
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -158,56 +141,37 @@ export default function Dashboard() {
             </form>
           </Card>
 
-          {/* Quick Actions */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">What would you like to build?</p>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <button className="flex items-center gap-1 hover:text-foreground transition-colors">
-                  <LinkIcon className="h-3.5 w-3.5" />
-                  Add website reference
-                </button>
+          {/* Quick Widgets */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* Calendar Widget */}
+            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Calendar</span>
               </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {quickActions.map((action) => (
-                <Button
-                  key={action.label}
-                  variant={action.active ? 'outline' : 'ghost'}
-                  size="sm"
-                  className={`gap-2 ${action.active ? 'border-primary text-primary' : ''}`}
-                  onClick={() => {
-                    if (action.label === 'Dashboard') navigate('/deals');
-                    if (action.label === 'Portfolio') navigate('/analytics');
-                    if (action.label === 'Corporate') navigate('/company');
-                    if (action.label === 'SaaS') navigate('/insights');
-                  }}
-                >
-                  <action.icon className="h-4 w-4" />
-                  {action.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+            </Card>
 
-          {/* Explore Ideas */}
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-foreground">Explore ideas</p>
-            <div className="flex flex-wrap gap-2">
-              {exploreIdeas.map((idea) => (
-                <Button
-                  key={idea.label}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 text-muted-foreground hover:text-foreground"
-                  onClick={() => navigate(idea.href)}
-                >
-                  {idea.label}
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </Button>
-              ))}
-            </div>
+            {/* Email Widget */}
+            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="h-12 w-12 rounded-xl bg-accent/50 flex items-center justify-center">
+                  <Mail className="h-6 w-6 text-accent-foreground" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Email</span>
+              </div>
+            </Card>
+
+            {/* Quick Props Widget */}
+            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-success" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Quick Props</span>
+              </div>
+            </Card>
           </div>
 
           {/* Deals Calendar */}
