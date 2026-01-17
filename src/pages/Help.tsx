@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, HelpCircle, RotateCcw, PlayCircle } from 'lucide-react';
+import { ArrowLeft, HelpCircle, RotateCcw, PlayCircle, FileText, Shield } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,6 +180,33 @@ export default function Help() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Legal Links */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Legal Information
+                </CardTitle>
+                <CardDescription>Review our policies and terms</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/privacy">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Privacy Policy
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/terms">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Terms of Service
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Contact Support */}
             <Card className="bg-muted/30">
