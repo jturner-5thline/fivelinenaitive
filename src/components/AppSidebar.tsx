@@ -67,7 +67,7 @@ export function AppSidebar() {
     <Sidebar side="left" collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-2 py-3">
         <div className="flex items-center gap-2">
-          <SidebarTrigger className="h-8 w-8 bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors" />
+          <SidebarTrigger className="h-9 w-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md shadow-sm transition-all" />
           {!collapsed && <span className="font-semibold text-sidebar-foreground">5thLine</span>}
         </div>
       </SidebarHeader>
