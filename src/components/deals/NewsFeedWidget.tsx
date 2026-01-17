@@ -133,10 +133,18 @@ interface NewsFeedWidgetProps {
 }
 
 export function NewsFeedWidget({ defaultOpen = true }: NewsFeedWidgetProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('dashboard-newsfeed-open');
+    return saved !== null ? JSON.parse(saved) : defaultOpen;
+  });
+
+  const handleToggle = (open: boolean) => {
+    setIsOpen(open);
+    localStorage.setItem('dashboard-newsfeed-open', JSON.stringify(open));
+  };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isOpen} onOpenChange={handleToggle}>
       <Card>
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">

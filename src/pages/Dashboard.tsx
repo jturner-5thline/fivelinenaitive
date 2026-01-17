@@ -66,7 +66,15 @@ export default function Dashboard() {
   const { profile } = useProfile();
   const { activities, isLoading: activitiesLoading } = useAllActivities(5);
   const [inputValue, setInputValue] = useState('');
-  const [activityOpen, setActivityOpen] = useState(true);
+  const [activityOpen, setActivityOpen] = useState(() => {
+    const saved = localStorage.getItem('dashboard-activity-open');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  const handleActivityToggle = (open: boolean) => {
+    setActivityOpen(open);
+    localStorage.setItem('dashboard-activity-open', JSON.stringify(open));
+  };
 
   const firstName = profile?.first_name || profile?.display_name?.split(' ')[0] || 'there';
 
@@ -188,7 +196,7 @@ export default function Dashboard() {
           <NewsFeedWidget />
 
           {/* Recent Activity - Collapsible */}
-          <Collapsible open={activityOpen} onOpenChange={setActivityOpen}>
+          <Collapsible open={activityOpen} onOpenChange={handleActivityToggle}>
             <Card>
               <CollapsibleTrigger asChild>
                 <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
