@@ -301,6 +301,41 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_emails: {
+        Row: {
+          deal_id: string
+          gmail_message_id: string
+          id: string
+          linked_at: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          deal_id: string
+          gmail_message_id: string
+          id?: string
+          linked_at?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          deal_id?: string
+          gmail_message_id?: string
+          id?: string
+          linked_at?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_emails_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_flag_notes: {
         Row: {
           created_at: string
