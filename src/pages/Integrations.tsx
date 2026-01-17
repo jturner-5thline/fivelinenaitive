@@ -41,7 +41,10 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Play
+  Play,
+  Linkedin,
+  FolderOpen,
+  Users
 } from "lucide-react";
 
 const INTEGRATION_TEMPLATES = [
@@ -67,6 +70,41 @@ const INTEGRATION_TEMPLATES = [
     fields: ["webhookUrl", "channel"]
   },
   { 
+    id: "gmail", 
+    name: "Gmail", 
+    description: "Send and receive emails via Gmail API",
+    icon: Mail,
+    fields: ["clientId", "clientSecret", "refreshToken"]
+  },
+  { 
+    id: "google-calendar", 
+    name: "Google Calendar", 
+    description: "Sync milestones and events with Google Calendar",
+    icon: Calendar,
+    fields: ["clientId", "clientSecret", "calendarId"]
+  },
+  { 
+    id: "google-drive", 
+    name: "Google Drive", 
+    description: "Store and access documents in Google Drive",
+    icon: FolderOpen,
+    fields: ["clientId", "clientSecret", "folderId"]
+  },
+  { 
+    id: "hubspot", 
+    name: "HubSpot", 
+    description: "Sync contacts, deals, and activities with HubSpot CRM",
+    icon: Users,
+    fields: ["apiKey", "portalId"]
+  },
+  { 
+    id: "linkedin", 
+    name: "LinkedIn", 
+    description: "Connect with LinkedIn for professional networking",
+    icon: Linkedin,
+    fields: ["clientId", "clientSecret", "accessToken"]
+  },
+  { 
     id: "email", 
     name: "Email SMTP", 
     description: "Send emails via custom SMTP server",
@@ -74,23 +112,16 @@ const INTEGRATION_TEMPLATES = [
     fields: ["host", "port", "username", "password"]
   },
   { 
-    id: "calendar", 
-    name: "Calendar Sync", 
-    description: "Sync milestones with Google Calendar or Outlook",
-    icon: Calendar,
-    fields: ["calendarId", "apiKey"]
-  },
-  { 
     id: "crm", 
     name: "CRM Integration", 
-    description: "Sync deals with Salesforce, HubSpot, or Pipedrive",
+    description: "Sync deals with Salesforce or Pipedrive",
     icon: Database,
     fields: ["apiKey", "endpoint"]
   },
   { 
     id: "docs", 
     name: "Document Storage", 
-    description: "Connect to Google Drive, Dropbox, or OneDrive",
+    description: "Connect to Dropbox or OneDrive",
     icon: FileText,
     fields: ["provider", "accessToken"]
   },
