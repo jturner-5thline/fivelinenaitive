@@ -972,6 +972,33 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["feature_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: Database["public"]["Enums"]["feature_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["feature_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           created_at: string
@@ -2216,6 +2243,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       company_role: "owner" | "admin" | "member"
+      feature_status: "disabled" | "staging" | "deployed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2345,6 +2373,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       company_role: ["owner", "admin", "member"],
+      feature_status: ["disabled", "staging", "deployed"],
     },
   },
 } as const

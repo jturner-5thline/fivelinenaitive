@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare } from "lucide-react";
+import { Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, ToggleRight } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
 import { AdminStatsCards } from "@/components/admin/AdminStatsCards";
@@ -13,6 +13,7 @@ import { InvitationsTable } from "@/components/admin/InvitationsTable";
 import { AuditLogTable } from "@/components/admin/AuditLogTable";
 import { ExternalDataTab } from "@/components/admin/ExternalDataTab";
 import { FeedbackTable } from "@/components/admin/FeedbackTable";
+import { FeatureFlagsTable } from "@/components/admin/FeatureFlagsTable";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 
 const Admin = () => {
@@ -71,7 +72,7 @@ const Admin = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full max-w-4xl grid-cols-7">
+        <TabsList className="grid w-full max-w-5xl grid-cols-8">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Users
@@ -79,6 +80,10 @@ const Admin = () => {
           <TabsTrigger value="companies" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Companies
+          </TabsTrigger>
+          <TabsTrigger value="features" className="flex items-center gap-2">
+            <ToggleRight className="h-4 w-4" />
+            Features
           </TabsTrigger>
           <TabsTrigger value="external" className="flex items-center gap-2">
             <Cloud className="h-4 w-4" />
@@ -132,6 +137,23 @@ const Admin = () => {
             </CardHeader>
             <CardContent>
               <CompaniesTable />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="features">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ToggleRight className="h-5 w-5" />
+                Feature Access Control
+              </CardTitle>
+              <CardDescription>
+                Manage which features are available to users. 5thLine admins always have access to all features.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FeatureFlagsTable />
             </CardContent>
           </Card>
         </TabsContent>
