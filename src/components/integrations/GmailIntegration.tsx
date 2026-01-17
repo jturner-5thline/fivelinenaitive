@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,8 +16,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useGmail } from '@/hooks/useGmail';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
   Mail,
@@ -34,6 +44,8 @@ import {
   ArrowLeft,
   PenSquare,
   Search,
+  Link2,
+  Check,
 } from 'lucide-react';
 
 interface GmailIntegrationProps {
@@ -42,6 +54,8 @@ interface GmailIntegrationProps {
 
 export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { deals } = useDealsContext();
   const {
     status,
     messages,
@@ -72,6 +86,67 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
     body: '',
   });
   const [isSending, setIsSending] = useState(false);
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [selectedDealId, setSelectedDealId] = useState<string>('');
+  const [isLinking, setIsLinking] = useState(false);
+  const [linkedMessageIds, setLinkedMessageIds] = useState<Set<string>>(new Set());
+
+  // Load linked message IDs
+  useEffect(() => {
+    const loadLinkedMessageIds = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('deal_emails')
+        .select('gmail_message_id')
+        .eq('user_id', user.id);
+      
+      if (data) {
+        setLinkedMessageIds(new Set(data.map(d => d.gmail_message_id)));
+      }
+    };
+    
+    loadLinkedMessageIds();
+  }, [user]);
+
+  // Active deals for linking (not archived)
+  const activeDeals = useMemo(() => 
+    deals.filter(d => d.status !== 'archived').sort((a, b) => a.company.localeCompare(b.company)),
+    [deals]
+  );
+
+  const handleLinkToDeal = async () => {
+    if (!selectedMessage || !selectedDealId || !user) return;
+
+    setIsLinking(true);
+    try {
+      const { error } = await supabase
+        .from('deal_emails')
+        .insert({
+          deal_id: selectedDealId,
+          gmail_message_id: selectedMessage.id,
+          user_id: user.id,
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Email already linked to this deal');
+        } else {
+          throw error;
+        }
+      } else {
+        toast.success('Email linked to deal');
+        setLinkedMessageIds(prev => new Set([...prev, selectedMessage.id]));
+        setIsLinkDialogOpen(false);
+        setSelectedDealId('');
+      }
+    } catch (err: any) {
+      console.error('Error linking email:', err);
+      toast.error('Failed to link email');
+    } finally {
+      setIsLinking(false);
+    }
+  };
 
   // Handle OAuth callback
   useEffect(() => {
@@ -450,6 +525,21 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
                   <span className="text-xs text-muted-foreground">
                     {selectedMessage.received_at && format(new Date(selectedMessage.received_at), 'PPp')}
                   </span>
+                  {linkedMessageIds.has(selectedMessage.id) ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <Check className="h-3 w-3" />
+                      Linked
+                    </Badge>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsLinkDialogOpen(true)}
+                    >
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Link to Deal
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -483,6 +573,56 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
               </ScrollArea>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Link to Deal Dialog */}
+      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Link Email to Deal</DialogTitle>
+            <DialogDescription>
+              Select a deal to link this email for tracking correspondence.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="deal-select">Select Deal</Label>
+            <Select value={selectedDealId} onValueChange={setSelectedDealId}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Choose a deal..." />
+              </SelectTrigger>
+              <SelectContent>
+                {activeDeals.map((deal) => (
+                  <SelectItem key={deal.id} value={deal.id}>
+                    {deal.company}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {activeDeals.length === 0 && (
+              <p className="text-sm text-muted-foreground mt-2">
+                No deals available. Create a deal first.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLinkDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleLinkToDeal} disabled={!selectedDealId || isLinking}>
+              {isLinking ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Linking...
+                </>
+              ) : (
+                <>
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Link
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
