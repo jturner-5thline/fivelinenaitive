@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.deal-assistant]
 verify_jwt = false
+
+[functions.generate-activity-summary]
+verify_jwt = false
