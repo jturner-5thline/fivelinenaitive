@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
     console.log('AI Deal Assistant request:', { messageCount: messages.length, hasContext: !!dealContext });
 
-    const response = await fetch('https://ai-gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
