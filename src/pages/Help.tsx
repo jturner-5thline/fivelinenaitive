@@ -256,11 +256,19 @@ export default function Help() {
             {/* Contact Support */}
             <Card className="bg-muted/30">
               <CardContent className="pt-6">
-                <div className="text-center space-y-2">
+                <div className="text-center space-y-4">
                   <h3 className="font-medium">Still need help?</h3>
                   <p className="text-sm text-muted-foreground">
-                    Contact your administrator or reach out to support for assistance.
+                    Contact your administrator or reach out to our support team for assistance.
                   </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="mailto:support@5thline.com">
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        Email Support
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
