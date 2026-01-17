@@ -34,13 +34,17 @@ export const HeroSection = () => {
 
           {/* CTA buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-in">
-            <Button variant="hero" size="xl">
-              Start Free Trial
-              <ArrowRight className="w-5 h-5" />
+            <Button variant="hero" size="xl" asChild>
+              <a href="/login">
+                Start Free Trial
+                <ArrowRight className="w-5 h-5" />
+              </a>
             </Button>
-            <Button variant="hero-outline" size="xl">
-              <Play className="w-5 h-5" />
-              Watch Demo
+            <Button variant="hero-outline" size="xl" asChild>
+              <a href="mailto:demo@5thline.com?subject=Demo Request">
+                <Play className="w-5 h-5" />
+                Request Demo
+              </a>
             </Button>
           </div>
 

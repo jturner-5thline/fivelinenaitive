@@ -5,25 +5,25 @@ const footerLinks = {
   product: [
     { label: "Features", href: "#features" },
     { label: "Pricing", href: "#pricing" },
-    { label: "Security", href: "#" },
-    { label: "Integrations", href: "#" },
+    { label: "Security", href: "/login" },
+    { label: "Integrations", href: "/login" },
   ],
   company: [
     { label: "About", href: "#about" },
-    { label: "Careers", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Press", href: "#" },
+    { label: "Careers", href: "mailto:careers@5thline.com" },
+    { label: "Blog", href: "/login" },
+    { label: "Press", href: "mailto:press@5thline.com" },
   ],
   resources: [
-    { label: "Documentation", href: "#" },
-    { label: "API Reference", href: "#" },
-    { label: "Help Center", href: "#" },
-    { label: "Contact", href: "#" },
+    { label: "Documentation", href: "/login" },
+    { label: "API Reference", href: "/login" },
+    { label: "Help Center", href: "/login" },
+    { label: "Contact", href: "mailto:support@5thline.com" },
   ],
   legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Service", href: "#" },
-    { label: "Cookie Policy", href: "#" },
+    { label: "Privacy Policy", href: "/login" },
+    { label: "Terms of Service", href: "/login" },
+    { label: "Cookie Policy", href: "/login" },
   ],
 };
 
@@ -45,14 +45,18 @@ export const Footer = () => {
             </p>
             <div className="flex gap-4">
               <a
-                href="#"
+                href="https://linkedin.com/company/5thline"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors"
                 aria-label="LinkedIn"
               >
                 <Linkedin className="w-5 h-5" />
               </a>
               <a
-                href="#"
+                href="https://twitter.com/5thline"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors"
                 aria-label="Twitter"
               >
