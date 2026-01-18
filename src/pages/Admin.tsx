@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
-  ToggleRight, Settings, Megaphone, Lock, Webhook, AlertCircle, Database 
+  ToggleRight, Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout 
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -24,6 +24,7 @@ import { EmailTemplatesPanel } from "@/components/admin/EmailTemplatesPanel";
 import { IntegrationLogsPanel } from "@/components/admin/IntegrationLogsPanel";
 import { ErrorLogsPanel } from "@/components/admin/ErrorLogsPanel";
 import { DataManagementPanel } from "@/components/admin/DataManagementPanel";
+import { PageAccessPanel } from "@/components/admin/PageAccessPanel";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 
 const Admin = () => {
@@ -90,6 +91,10 @@ const Admin = () => {
             <TabsTrigger value="companies" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               Companies
+            </TabsTrigger>
+            <TabsTrigger value="pages" className="flex items-center gap-2">
+              <Layout className="h-4 w-4" />
+              Page Access
             </TabsTrigger>
             <TabsTrigger value="features" className="flex items-center gap-2">
               <ToggleRight className="h-4 w-4" />
@@ -171,14 +176,29 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="pages">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Layout className="h-5 w-5" />
+                  Page Access Control
+                </CardTitle>
+                <CardDescription>
+                  Control which pages are visible to users. Set to "5thLine Only" for staging features that only @5thline.co users can see.
+                </CardDescription>
+              </CardHeader>
+              <CardContent><PageAccessPanel /></CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="features">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ToggleRight className="h-5 w-5" />
-                  Feature Access Control
+                  Feature Flags
                 </CardTitle>
-                <CardDescription>Manage feature flags - 5thLine admins always have access</CardDescription>
+                <CardDescription>Manage feature flags for granular feature control</CardDescription>
               </CardHeader>
               <CardContent><FeatureFlagsTable /></CardContent>
             </Card>
