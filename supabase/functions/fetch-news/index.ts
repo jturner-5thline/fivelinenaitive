@@ -81,7 +81,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a financial news aggregator specializing in private credit and lending. Return exactly 8 recent news items.
+            content: `You are a financial news aggregator specializing in private credit and lending. Return exactly 8 recent news items from the past 30 days.
             
             For "lenders" category news, focus on these specific lenders/firms: ${lenderSearchTerms}
             Look for news about their fund closings, personnel moves, new deals, market positioning, or strategic announcements.
@@ -101,11 +101,12 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Get me the latest news about these lenders: ${lenderSearchTerms}. Also include news about companies seeking private credit financing.`
+            content: `Get me the latest news from the past 30 days about these lenders: ${lenderSearchTerms}. Also include news about companies seeking private credit financing.`
           }
         ],
         max_tokens: 2000,
         temperature: 0.3,
+        search_recency_filter: 'month',
       }),
     });
 
