@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAdminRole } from "./useAdminRole";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type FeatureStatus = "disabled" | "staging" | "deployed";
 
@@ -99,18 +99,46 @@ export const useDeleteFeatureFlag = () => {
 
 // Hook to check if user has access to a feature
 export const useFeatureAccess = (featureName: string) => {
-  const { isAdmin } = useAdminRole();
+  const { user } = useAuth();
   const { data: flags, isLoading } = useFeatureFlags();
 
   const flag = flags?.find((f) => f.name === featureName);
+  
+  // Check if user is a 5thline.co user
+  const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
 
-  // 5thLine users (admins) always have access
-  if (isAdmin) {
-    return { hasAccess: true, isLoading };
+  // 5thLine users have access to deployed and staging features
+  if (is5thLineUser) {
+    const hasAccess = flag?.status === "deployed" || flag?.status === "staging";
+    return { hasAccess: hasAccess !== false, isLoading, is5thLineUser };
   }
 
-  // For non-admins, only deployed features are accessible
+  // For non-5thline users, only deployed features are accessible
   const hasAccess = flag?.status === "deployed";
 
-  return { hasAccess, isLoading };
+  return { hasAccess, isLoading, is5thLineUser };
+};
+
+// Hook to get all page access flags
+export const usePageAccessFlags = () => {
+  const { user } = useAuth();
+  const { data: flags, isLoading } = useFeatureFlags();
+  
+  const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
+  
+  const pageFlags = flags?.filter(f => f.name.startsWith('page_')) ?? [];
+  
+  const hasPageAccess = (pageName: string): boolean => {
+    const flag = pageFlags.find(f => f.name === `page_${pageName}`);
+    
+    if (!flag) return true; // If no flag exists, allow access
+    
+    if (is5thLineUser) {
+      return flag.status === 'deployed' || flag.status === 'staging';
+    }
+    
+    return flag.status === 'deployed';
+  };
+  
+  return { pageFlags, hasPageAccess, isLoading, is5thLineUser };
 };

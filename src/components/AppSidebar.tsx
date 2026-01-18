@@ -3,6 +3,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import {
@@ -26,21 +27,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Map page URLs to feature flag names
 const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Deals", url: "/deals", icon: Briefcase },
-  { title: "News Feed", url: "/news-feed", icon: Newspaper },
-  { title: "Metrics", url: "/metrics", icon: BarChart3 },
-  { title: "Insights", url: "/insights", icon: Lightbulb },
-  { title: "Sales & BD", url: "/sales-bd", icon: Users },
-  { title: "HR", url: "/hr", icon: UserCog },
-  { title: "Operations", url: "/operations", icon: Cog },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
+  { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
+  { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
+  { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
+  { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },
+  { title: "Sales & BD", url: "/sales-bd", icon: Users, featureKey: "sales_bd" },
+  { title: "HR", url: "/hr", icon: UserCog, featureKey: "hr" },
+  { title: "Operations", url: "/operations", icon: Cog, featureKey: "operations" },
 ];
 
 const footerItems = [
-  { title: "Integrations", url: "/integrations", icon: Plug },
-  { title: "Settings", url: "/settings", icon: Settings },
-  { title: "Help", url: "/help", icon: HelpCircle },
+  { title: "Integrations", url: "/integrations", icon: Plug, featureKey: "integrations" },
+  { title: "Settings", url: "/settings", icon: Settings, featureKey: null }, // Always visible
+  { title: "Help", url: "/help", icon: HelpCircle, featureKey: null }, // Always visible
 ];
 
 export function AppSidebar() {
@@ -49,9 +51,19 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminRole();
+  const { hasPageAccess } = usePageAccessFlags();
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
+  
+  // Filter menu items based on feature access
+  const visibleMenuItems = menuItems.filter(item => 
+    item.featureKey === null || hasPageAccess(item.featureKey)
+  );
+  
+  const visibleFooterItems = footerItems.filter(item =>
+    item.featureKey === null || hasPageAccess(item.featureKey)
+  );
 
   const isActive = (url: string) => {
     if (url === "/dashboard") return currentPath === "/dashboard";
@@ -80,7 +92,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
@@ -125,7 +137,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
-          {footerItems.map((item) => (
+          {visibleFooterItems.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton 
                 asChild 
