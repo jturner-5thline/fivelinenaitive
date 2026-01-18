@@ -217,7 +217,7 @@ const Sidebar = React.forwardRef<
       onMouseLeave={handleMouseLeave}
     >
       {/* This is what handles the sidebar gap on desktop */}
-      {/* Spacer div - stays collapsed width even on hover so content doesn't shift */}
+      {/* Spacer div - expands on hover OR click so content shifts over */}
       <div
         className={cn(
           "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
@@ -226,8 +226,8 @@ const Sidebar = React.forwardRef<
           variant === "floating" || variant === "inset"
             ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
             : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]",
-          // Only use full width when actually expanded (not hovering)
-          state === "expanded" ? "w-[--sidebar-width]" : "",
+          // Expand spacer when expanded OR hovering
+          effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
         )}
       />
       {/* Actual sidebar container - expands on hover */}
