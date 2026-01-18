@@ -99,24 +99,60 @@ function latLonToVector3(lat: number, lon: number, radius: number): THREE.Vector
   return new THREE.Vector3(x, y, z);
 }
 
+function createContinentMesh(coords: number[][], radius: number): THREE.Mesh {
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  
+  // Create vertices on sphere surface
+  coords.forEach(([lat, lon]) => {
+    const vec = latLonToVector3(lat, lon, radius);
+    vertices.push(vec.x, vec.y, vec.z);
+  });
+  
+  // Simple fan triangulation from first vertex
+  for (let i = 1; i < coords.length - 1; i++) {
+    indices.push(0, i, i + 1);
+  }
+  
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  
+  const material = new THREE.MeshBasicMaterial({
+    color: '#0ea5e9',
+    transparent: true,
+    opacity: 0.08,
+    side: THREE.DoubleSide,
+  });
+  
+  return new THREE.Mesh(geometry, material);
+}
+
 function ContinentOutlines() {
   const groupRef = useRef<THREE.Group>(null);
   
-  const lineGeometries = useMemo(() => {
-    const radius = 2.02;
-    const geometries: THREE.BufferGeometry[] = [];
+  const { lineObjects, fillMeshes } = useMemo(() => {
+    const outlineRadius = 2.02;
+    const fillRadius = 2.01;
+    const lines: THREE.Line[] = [];
+    const fills: THREE.Mesh[] = [];
     
     Object.values(continentOutlines).forEach((coords) => {
+      // Create outline
       const points: THREE.Vector3[] = [];
       coords.forEach(([lat, lon]) => {
-        points.push(latLonToVector3(lat, lon, radius));
+        points.push(latLonToVector3(lat, lon, outlineRadius));
       });
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+      const lineMaterial = new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.4 });
+      lines.push(new THREE.Line(lineGeometry, lineMaterial));
       
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      geometries.push(geometry);
+      // Create fill
+      fills.push(createContinentMesh(coords, fillRadius));
     });
     
-    return geometries;
+    return { lineObjects: lines, fillMeshes: fills };
   }, []);
   
   useFrame((state, delta) => {
@@ -127,8 +163,11 @@ function ContinentOutlines() {
 
   return (
     <group ref={groupRef}>
-      {lineGeometries.map((geometry, index) => (
-        <primitive key={index} object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.4 }))} />
+      {lineObjects.map((line, index) => (
+        <primitive key={`line-${index}`} object={line} />
+      ))}
+      {fillMeshes.map((mesh, index) => (
+        <primitive key={`fill-${index}`} object={mesh} />
       ))}
     </group>
   );
