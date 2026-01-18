@@ -255,32 +255,39 @@ function CityLights() {
 
 // Network connection pairs between major cities [fromIndex, toIndex]
 const networkConnections: [number, number][] = [
-  // Transatlantic
-  [0, 143], [6, 143], [4, 144], [8, 145], [11, 144],
-  // Trans-Pacific
-  [1, 157], [7, 160], [8, 165], [0, 157], [14, 160],
+  // === NORTHERN HEMISPHERE ===
+  // Transatlantic (North America - Europe)
+  [0, 143], [8, 145], [11, 144],
+  // Trans-Pacific (North America - Asia)
+  [1, 157], [7, 160], [8, 165],
   // Europe-Asia
-  [143, 157], [144, 160], [145, 162], [152, 157], [146, 171],
-  // Americas North-South
-  [0, 67], [1, 69], [0, 40], [1, 50], [13, 67], [8, 70],
-  // Africa connections
-  [143, 196], [144, 190], [145, 200], [146, 205], [152, 190],
-  // Australia connections
-  [160, 208], [157, 209], [7, 208], [1, 208], [171, 208],
-  // Middle East
-  [143, 185], [152, 181], [171, 185], [160, 185],
-  // South America internal & cross
-  [67, 68], [67, 69], [69, 70], [67, 205], [69, 208],
-  // Africa internal & cross
-  [190, 196], [196, 200], [200, 205], [205, 208],
-  // Southern hemisphere routes
-  [208, 69], [209, 67], [205, 69], [208, 205],
-  // Asia-Africa
-  [171, 190], [160, 196], [185, 196],
-  // More global coverage
-  [50, 67], [40, 144], [5, 185], [13, 208], [12, 157],
-  // Additional southern routes
-  [67, 210], [69, 211], [205, 209], [200, 171],
+  [143, 157], [144, 160], [152, 157],
+  
+  // === SOUTHERN HEMISPHERE ===
+  // South America - Africa
+  [67, 205], [68, 196], [69, 200], [70, 205],
+  // South America - Australia/NZ
+  [67, 208], [69, 209], [68, 210], [70, 211],
+  // Africa - Australia
+  [205, 208], [200, 209], [196, 208], [201, 210],
+  // South America internal
+  [67, 69], [68, 70], [69, 71], [67, 72],
+  // Africa internal (south)
+  [205, 206], [200, 201], [202, 205], [203, 207],
+  // Australia/NZ internal
+  [208, 209], [208, 210], [209, 211], [210, 212],
+  
+  // === CROSS-HEMISPHERE ===
+  // North America - South America
+  [0, 67], [1, 69], [13, 68], [50, 67],
+  // Europe - Africa
+  [143, 190], [144, 196], [145, 200], [146, 205],
+  // Asia - Australia
+  [160, 208], [157, 209], [170, 208], [171, 210],
+  // Middle East - Africa
+  [185, 190], [185, 196], [181, 200],
+  // Asia - South
+  [171, 205], [160, 200], [165, 208],
 ];
 
 function NetworkLines() {
