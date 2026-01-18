@@ -90,6 +90,72 @@ async function hubspotRequest<T>(action: string, params?: Record<string, any>): 
   return data as T;
 }
 
+// Separate hooks for data fetching - these should be called directly in components
+export function useHubSpotContacts(limit = 100) {
+  return useQuery({
+    queryKey: ['hubspot', 'contacts', limit],
+    queryFn: () => hubspotRequest<PaginatedResponse<HubSpotContact>>('getContacts', { limit }),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useHubSpotContact(contactId: string) {
+  return useQuery({
+    queryKey: ['hubspot', 'contacts', contactId],
+    queryFn: () => hubspotRequest<HubSpotContact>('getContact', { contactId }),
+    enabled: !!contactId,
+  });
+}
+
+export function useHubSpotDeals(limit = 100) {
+  return useQuery({
+    queryKey: ['hubspot', 'deals', limit],
+    queryFn: () => hubspotRequest<PaginatedResponse<HubSpotDeal>>('getDeals', { limit }),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useHubSpotDeal(dealId: string) {
+  return useQuery({
+    queryKey: ['hubspot', 'deals', dealId],
+    queryFn: () => hubspotRequest<HubSpotDeal>('getDeal', { dealId }),
+    enabled: !!dealId,
+  });
+}
+
+export function useHubSpotPipelines() {
+  return useQuery({
+    queryKey: ['hubspot', 'pipelines'],
+    queryFn: () => hubspotRequest<{ results: HubSpotPipeline[] }>('getPipelines'),
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useHubSpotCompanies(limit = 100) {
+  return useQuery({
+    queryKey: ['hubspot', 'companies', limit],
+    queryFn: () => hubspotRequest<PaginatedResponse<HubSpotCompany>>('getCompanies', { limit }),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useHubSpotCompany(companyId: string) {
+  return useQuery({
+    queryKey: ['hubspot', 'companies', companyId],
+    queryFn: () => hubspotRequest<HubSpotCompany>('getCompany', { companyId }),
+    enabled: !!companyId,
+  });
+}
+
+export function useHubSpotNotes(limit = 100) {
+  return useQuery({
+    queryKey: ['hubspot', 'notes', limit],
+    queryFn: () => hubspotRequest<PaginatedResponse<HubSpotNote>>('getNotes', { limit }),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// Main hook for mutations and utility functions
 export function useHubSpot() {
   const queryClient = useQueryClient();
 
@@ -98,24 +164,20 @@ export function useHubSpot() {
     return hubspotRequest<{ success: boolean }>('test');
   }, []);
 
-  // ===== CONTACTS =====
-  
-  const useContacts = (limit = 100) => {
-    return useQuery({
-      queryKey: ['hubspot', 'contacts', limit],
-      queryFn: () => hubspotRequest<PaginatedResponse<HubSpotContact>>('getContacts', { limit }),
-      staleTime: 1000 * 60 * 5,
-    });
-  };
+  // Search functions
+  const searchContacts = useCallback((query: string) => 
+    hubspotRequest<PaginatedResponse<HubSpotContact>>('searchContacts', { query }),
+  []);
 
-  const useContact = (contactId: string) => {
-    return useQuery({
-      queryKey: ['hubspot', 'contacts', contactId],
-      queryFn: () => hubspotRequest<HubSpotContact>('getContact', { contactId }),
-      enabled: !!contactId,
-    });
-  };
+  const searchDeals = useCallback((query: string) =>
+    hubspotRequest<PaginatedResponse<HubSpotDeal>>('searchDeals', { query }),
+  []);
 
+  const searchCompanies = useCallback((query: string) =>
+    hubspotRequest<PaginatedResponse<HubSpotCompany>>('searchCompanies', { query }),
+  []);
+
+  // Mutations
   const createContact = useMutation({
     mutationFn: (properties: Record<string, string>) => 
       hubspotRequest<HubSpotContact>('createContact', { properties }),
@@ -139,36 +201,6 @@ export function useHubSpot() {
       toast.error('Failed to update contact', { description: error.message });
     },
   });
-
-  const searchContacts = useCallback((query: string) => 
-    hubspotRequest<PaginatedResponse<HubSpotContact>>('searchContacts', { query }),
-  []);
-
-  // ===== DEALS =====
-
-  const useDeals = (limit = 100) => {
-    return useQuery({
-      queryKey: ['hubspot', 'deals', limit],
-      queryFn: () => hubspotRequest<PaginatedResponse<HubSpotDeal>>('getDeals', { limit }),
-      staleTime: 1000 * 60 * 5,
-    });
-  };
-
-  const useDeal = (dealId: string) => {
-    return useQuery({
-      queryKey: ['hubspot', 'deals', dealId],
-      queryFn: () => hubspotRequest<HubSpotDeal>('getDeal', { dealId }),
-      enabled: !!dealId,
-    });
-  };
-
-  const usePipelines = () => {
-    return useQuery({
-      queryKey: ['hubspot', 'pipelines'],
-      queryFn: () => hubspotRequest<{ results: HubSpotPipeline[] }>('getPipelines'),
-      staleTime: 1000 * 60 * 30,
-    });
-  };
 
   const createDeal = useMutation({
     mutationFn: (properties: Record<string, string>) =>
@@ -194,28 +226,6 @@ export function useHubSpot() {
     },
   });
 
-  const searchDeals = useCallback((query: string) =>
-    hubspotRequest<PaginatedResponse<HubSpotDeal>>('searchDeals', { query }),
-  []);
-
-  // ===== COMPANIES =====
-
-  const useCompanies = (limit = 100) => {
-    return useQuery({
-      queryKey: ['hubspot', 'companies', limit],
-      queryFn: () => hubspotRequest<PaginatedResponse<HubSpotCompany>>('getCompanies', { limit }),
-      staleTime: 1000 * 60 * 5,
-    });
-  };
-
-  const useCompany = (companyId: string) => {
-    return useQuery({
-      queryKey: ['hubspot', 'companies', companyId],
-      queryFn: () => hubspotRequest<HubSpotCompany>('getCompany', { companyId }),
-      enabled: !!companyId,
-    });
-  };
-
   const createCompany = useMutation({
     mutationFn: (properties: Record<string, string>) =>
       hubspotRequest<HubSpotCompany>('createCompany', { properties }),
@@ -240,20 +250,6 @@ export function useHubSpot() {
     },
   });
 
-  const searchCompanies = useCallback((query: string) =>
-    hubspotRequest<PaginatedResponse<HubSpotCompany>>('searchCompanies', { query }),
-  []);
-
-  // ===== ACTIVITIES / NOTES =====
-
-  const useNotes = (limit = 100) => {
-    return useQuery({
-      queryKey: ['hubspot', 'notes', limit],
-      queryFn: () => hubspotRequest<PaginatedResponse<HubSpotNote>>('getNotes', { limit }),
-      staleTime: 1000 * 60 * 5,
-    });
-  };
-
   const logActivity = useMutation({
     mutationFn: ({ objectType, objectId, noteBody }: { 
       objectType: 'contacts' | 'deals' | 'companies'; 
@@ -273,30 +269,18 @@ export function useHubSpot() {
     // Connection
     testConnection,
 
-    // Contacts
-    useContacts,
-    useContact,
-    createContact,
-    updateContact,
+    // Search
     searchContacts,
-
-    // Deals
-    useDeals,
-    useDeal,
-    usePipelines,
-    createDeal,
-    updateDeal,
     searchDeals,
-
-    // Companies
-    useCompanies,
-    useCompany,
-    createCompany,
-    updateCompany,
     searchCompanies,
 
-    // Activities
-    useNotes,
+    // Mutations
+    createContact,
+    updateContact,
+    createDeal,
+    updateDeal,
+    createCompany,
+    updateCompany,
     logActivity,
   };
 }

@@ -33,7 +33,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { useHubSpot, HubSpotContact, HubSpotDeal, HubSpotCompany } from "@/hooks/useHubSpot";
+import { 
+  useHubSpot, 
+  useHubSpotContacts, 
+  useHubSpotDeals, 
+  useHubSpotCompanies, 
+  useHubSpotPipelines,
+  HubSpotContact, 
+  HubSpotDeal, 
+  HubSpotCompany 
+} from "@/hooks/useHubSpot";
 import { formatDistanceToNow } from "date-fns";
 import {
   Users,
@@ -77,11 +86,11 @@ export function HubSpotIntegration() {
   const [newCompany, setNewCompany] = useState({ name: "", domain: "", industry: "", phone: "", city: "", state: "", country: "" });
   const [activityForm, setActivityForm] = useState({ objectType: "deals" as "contacts" | "deals" | "companies", objectId: "", noteBody: "" });
 
-  // Data queries
-  const { data: contactsData, isLoading: contactsLoading, refetch: refetchContacts } = hubspot.useContacts();
-  const { data: dealsData, isLoading: dealsLoading, refetch: refetchDeals } = hubspot.useDeals();
-  const { data: companiesData, isLoading: companiesLoading, refetch: refetchCompanies } = hubspot.useCompanies();
-  const { data: pipelinesData } = hubspot.usePipelines();
+  // Data queries - using separate hooks directly
+  const { data: contactsData, isLoading: contactsLoading, refetch: refetchContacts } = useHubSpotContacts();
+  const { data: dealsData, isLoading: dealsLoading, refetch: refetchDeals } = useHubSpotDeals();
+  const { data: companiesData, isLoading: companiesLoading, refetch: refetchCompanies } = useHubSpotCompanies();
+  const { data: pipelinesData } = useHubSpotPipelines();
 
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
