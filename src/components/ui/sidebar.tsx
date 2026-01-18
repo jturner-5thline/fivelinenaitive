@@ -252,7 +252,7 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col bg-sidebar rounded-xl border border-sidebar-border overflow-hidden transition-all duration-200",
+            "flex h-full w-full flex-col bg-card rounded-xl border border-border overflow-hidden transition-all duration-200",
             // Add enhanced shadow when hovering (like a drawer sliding out)
             isHovering && state === "collapsed" ? "shadow-xl" : "shadow-sm",
             className,
