@@ -469,6 +469,7 @@ export function SpinningGlobe() {
           autoRotateSpeed={-0.3}
         />
       </Canvas>
+      <div className="absolute inset-0 bg-background/40 pointer-events-none" />
     </div>
   );
 }
