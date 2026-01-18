@@ -292,13 +292,12 @@ const networkConnections: [number, number][] = [
 
 function NetworkLines() {
   const groupRef = useRef<THREE.Group>(null);
-  const pulsesRef = useRef<THREE.Points[]>([]);
+  const pulsesRef = useRef<THREE.Mesh[]>([]);
   const pulseProgressRef = useRef<number[]>(networkConnections.map(() => Math.random()));
   
-  const { curves, pulseGeometries } = useMemo(() => {
+  const curves = useMemo(() => {
     const radius = 2.04;
     const curvesList: THREE.CurvePath<THREE.Vector3>[] = [];
-    const pulseGeos: THREE.BufferGeometry[] = [];
     
     networkConnections.forEach(([fromIdx, toIdx]) => {
       if (fromIdx >= cityLights.length || toIdx >= cityLights.length) return;
@@ -319,13 +318,9 @@ function NetworkLines() {
       const curvePath = new THREE.CurvePath<THREE.Vector3>();
       curvePath.add(curve);
       curvesList.push(curvePath);
-      
-      const pulseGeo = new THREE.BufferGeometry();
-      pulseGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
-      pulseGeos.push(pulseGeo);
     });
     
-    return { curves: curvesList, pulseGeometries: pulseGeos };
+    return curvesList;
   }, []);
   
   useFrame((state, delta) => {
@@ -340,11 +335,7 @@ function NetworkLines() {
       pulseProgressRef.current[idx] = (progress + delta * speed) % 1;
       
       const point = curves[idx].getPoint(pulseProgressRef.current[idx]);
-      const positions = pulsesRef.current[idx].geometry.attributes.position.array as Float32Array;
-      positions[0] = point.x;
-      positions[1] = point.y;
-      positions[2] = point.z;
-      pulsesRef.current[idx].geometry.attributes.position.needsUpdate = true;
+      pulsesRef.current[idx].position.set(point.x, point.y, point.z);
     });
   });
 
@@ -360,20 +351,14 @@ function NetworkLines() {
           )} />
         );
       })}
-      {pulseGeometries.map((geo, idx) => (
-        <points 
+      {curves.map((_, idx) => (
+        <mesh 
           key={`pulse-${idx}`} 
           ref={(el) => { if (el) pulsesRef.current[idx] = el; }}
-          geometry={geo}
         >
-          <pointsMaterial
-            size={0.06}
-            color="#67e8f9"
-            transparent
-            opacity={1}
-            sizeAttenuation
-          />
-        </points>
+          <sphereGeometry args={[0.025, 12, 12]} />
+          <meshBasicMaterial color="#67e8f9" transparent opacity={1} />
+        </mesh>
       ))}
     </group>
   );
