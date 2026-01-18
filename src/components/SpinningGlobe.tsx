@@ -543,28 +543,52 @@ function NeuralNetwork() {
   const groupRef = useRef<THREE.Group>(null);
   const pulseRef = useRef<number>(0);
   const lineMaterialsRef = useRef<THREE.LineBasicMaterial[]>([]);
+  const corePulseRef = useRef<number>(0);
+  const coreGlowRef = useRef<THREE.Mesh>(null);
+  const coreInnerRef = useRef<THREE.Mesh>(null);
   
-  const { nodeGeometry, lineObjects } = useMemo(() => {
-    const nodeCount = 25;
-    const maxRadius = 1.7;
-    const minRadius = 0.3;
-    const nodePositions: THREE.Vector3[] = [];
+  const { nodeGeometry, lineObjects, surfaceNodes, coreConnections } = useMemo(() => {
+    // Central core at origin
+    const corePosition = new THREE.Vector3(0, 0, 0);
     
-    for (let i = 0; i < nodeCount; i++) {
+    // Surface nodes - distributed on the globe surface for connection points
+    const surfaceNodeCount = 60;
+    const surfaceRadius = 1.95; // Just inside the globe surface
+    const surfacePositions: THREE.Vector3[] = [];
+    
+    // Create evenly distributed surface nodes using golden spiral
+    for (let i = 0; i < surfaceNodeCount; i++) {
+      const phi = Math.acos(1 - 2 * (i + 0.5) / surfaceNodeCount);
+      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+      
+      const x = surfaceRadius * Math.sin(phi) * Math.cos(theta);
+      const y = surfaceRadius * Math.sin(phi) * Math.sin(theta);
+      const z = surfaceRadius * Math.cos(phi);
+      
+      surfacePositions.push(new THREE.Vector3(x, y, z));
+    }
+    
+    // Interior relay nodes for more complex network
+    const relayNodeCount = 20;
+    const relayPositions: THREE.Vector3[] = [];
+    for (let i = 0; i < relayNodeCount; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
-      const radius = minRadius + Math.random() * (maxRadius - minRadius);
+      const radius = 0.5 + Math.random() * 1.0; // Between core and surface
       
       const x = radius * Math.sin(phi) * Math.cos(theta);
       const y = radius * Math.sin(phi) * Math.sin(theta);
       const z = radius * Math.cos(phi);
       
-      nodePositions.push(new THREE.Vector3(x, y, z));
+      relayPositions.push(new THREE.Vector3(x, y, z));
     }
     
-    const maxConnectionDistance = 1.0;
-    const positions = new Float32Array(nodeCount * 3);
-    nodePositions.forEach((pos, i) => {
+    // Combine all nodes
+    const allNodes = [...surfacePositions, ...relayPositions];
+    
+    // Create geometry for all nodes
+    const positions = new Float32Array(allNodes.length * 3);
+    allNodes.forEach((pos, i) => {
       positions[i * 3] = pos.x;
       positions[i * 3 + 1] = pos.y;
       positions[i * 3 + 2] = pos.z;
@@ -573,23 +597,83 @@ function NeuralNetwork() {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     
+    // Lines between nearby nodes (horizontal network)
     const lines: THREE.Line[] = [];
     const materials: THREE.LineBasicMaterial[] = [];
+    const maxConnectionDistance = 1.2;
     
-    for (let i = 0; i < nodeCount; i++) {
-      for (let j = i + 1; j < nodeCount; j++) {
-        const dist = nodePositions[i].distanceTo(nodePositions[j]);
-        if (dist < maxConnectionDistance && Math.random() > 0.7) {
-          const lineGeo = new THREE.BufferGeometry().setFromPoints([nodePositions[i], nodePositions[j]]);
-          const material = new THREE.LineBasicMaterial({ color: '#06b6d4', transparent: true, opacity: 0.2 });
+    for (let i = 0; i < allNodes.length; i++) {
+      for (let j = i + 1; j < allNodes.length; j++) {
+        const dist = allNodes[i].distanceTo(allNodes[j]);
+        if (dist < maxConnectionDistance && Math.random() > 0.6) {
+          const lineGeo = new THREE.BufferGeometry().setFromPoints([allNodes[i], allNodes[j]]);
+          const material = new THREE.LineBasicMaterial({ 
+            color: '#06b6d4', 
+            transparent: true, 
+            opacity: 0.25 
+          });
           materials.push(material);
           lines.push(new THREE.Line(lineGeo, material));
         }
       }
     }
     
-    lineMaterialsRef.current = materials;
-    return { nodeGeometry: geo, lineObjects: lines };
+    // Core connections - lines from center to surface nodes
+    const coreLines: THREE.Line[] = [];
+    const coreMaterials: THREE.LineBasicMaterial[] = [];
+    
+    // Connect core to all surface nodes with curved lines
+    surfacePositions.forEach((surfacePos, idx) => {
+      // Create a curved path from core to surface
+      const midPoint = surfacePos.clone().multiplyScalar(0.5);
+      // Add some randomness to mid point for organic look
+      midPoint.x += (Math.random() - 0.5) * 0.3;
+      midPoint.y += (Math.random() - 0.5) * 0.3;
+      midPoint.z += (Math.random() - 0.5) * 0.3;
+      
+      const curve = new THREE.QuadraticBezierCurve3(corePosition, midPoint, surfacePos);
+      const points = curve.getPoints(20);
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+      
+      const intensity = 0.15 + Math.random() * 0.15;
+      const material = new THREE.LineBasicMaterial({ 
+        color: '#22d3ee', 
+        transparent: true, 
+        opacity: intensity
+      });
+      coreMaterials.push(material);
+      coreLines.push(new THREE.Line(lineGeo, material));
+    });
+    
+    // Also connect some relay nodes to core
+    relayPositions.forEach((relayPos, idx) => {
+      if (Math.random() > 0.4) {
+        const midPoint = relayPos.clone().multiplyScalar(0.3);
+        midPoint.x += (Math.random() - 0.5) * 0.2;
+        midPoint.y += (Math.random() - 0.5) * 0.2;
+        midPoint.z += (Math.random() - 0.5) * 0.2;
+        
+        const curve = new THREE.QuadraticBezierCurve3(corePosition, midPoint, relayPos);
+        const points = curve.getPoints(15);
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+        
+        const material = new THREE.LineBasicMaterial({ 
+          color: '#67e8f9', 
+          transparent: true, 
+          opacity: 0.2 + Math.random() * 0.2
+        });
+        coreMaterials.push(material);
+        coreLines.push(new THREE.Line(lineGeo, material));
+      }
+    });
+    
+    lineMaterialsRef.current = [...materials, ...coreMaterials];
+    return { 
+      nodeGeometry: geo, 
+      lineObjects: lines, 
+      surfaceNodes: surfacePositions,
+      coreConnections: coreLines 
+    };
   }, []);
   
   useFrame((state, delta) => {
@@ -598,20 +682,61 @@ function NeuralNetwork() {
       groupRef.current.rotation.x += delta * 0.016;
     }
     
-    pulseRef.current += delta * 1.6;
+    // Animate network lines
+    pulseRef.current += delta * 1.2;
     lineMaterialsRef.current.forEach((material, idx) => {
-      const wave = Math.sin(pulseRef.current + idx * 0.3) * 0.5 + 0.5;
-      material.opacity = 0.1 + wave * 0.4;
+      const wave = Math.sin(pulseRef.current + idx * 0.15) * 0.5 + 0.5;
+      const baseOpacity = idx < lineObjects.length ? 0.15 : 0.1;
+      material.opacity = baseOpacity + wave * 0.35;
     });
+    
+    // Animate core glow
+    corePulseRef.current += delta * 2.0;
+    if (coreGlowRef.current) {
+      const glowScale = 1.0 + Math.sin(corePulseRef.current) * 0.15;
+      coreGlowRef.current.scale.setScalar(glowScale);
+      (coreGlowRef.current.material as THREE.MeshBasicMaterial).opacity = 
+        0.3 + Math.sin(corePulseRef.current * 1.5) * 0.15;
+    }
+    if (coreInnerRef.current) {
+      const innerScale = 1.0 + Math.sin(corePulseRef.current * 1.3) * 0.1;
+      coreInnerRef.current.scale.setScalar(innerScale);
+    }
   });
 
   return (
     <group ref={groupRef}>
+      {/* Central Intelligence Core - outer glow */}
+      <mesh ref={coreGlowRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.35, 32, 32]} />
+        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.3} />
+      </mesh>
+      
+      {/* Central Intelligence Core - inner bright */}
+      <mesh ref={coreInnerRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.18, 24, 24]} />
+        <meshBasicMaterial color="#67e8f9" transparent opacity={0.9} />
+      </mesh>
+      
+      {/* Core center point */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.08, 16, 16]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+      
+      {/* Surface and relay nodes */}
       <points geometry={nodeGeometry}>
-        <pointsMaterial size={0.05} color="#22d3ee" transparent opacity={0.7} sizeAttenuation />
+        <pointsMaterial size={0.045} color="#22d3ee" transparent opacity={0.8} sizeAttenuation />
       </points>
+      
+      {/* Network connections between nodes */}
       {lineObjects.map((line, idx) => (
         <primitive key={`neural-${idx}`} object={line} />
+      ))}
+      
+      {/* Core-to-surface connections */}
+      {coreConnections.map((line, idx) => (
+        <primitive key={`core-${idx}`} object={line} />
       ))}
     </group>
   );
