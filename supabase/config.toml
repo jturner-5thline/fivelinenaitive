@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.gmail-status]
 verify_jwt = false
+
+[functions.hubspot-sync]
+verify_jwt = false

@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { GmailIntegration } from "@/components/integrations/GmailIntegration";
 import { GoogleCalendarIntegration } from "@/components/integrations/GoogleCalendarIntegration";
 import { QuickBooksIntegration } from "@/components/integrations/QuickBooksIntegration";
+import { HubSpotIntegration } from "@/components/integrations/HubSpotIntegration";
 import { 
   Plug, 
   Plus, 
@@ -403,14 +404,19 @@ export default function Integrations() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="quickbooks" className="space-y-4">
+      <Tabs defaultValue="hubspot" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="hubspot">HubSpot</TabsTrigger>
           <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>
           <TabsTrigger value="gmail">Gmail</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="active">Active Integrations ({integrations.length})</TabsTrigger>
           <TabsTrigger value="available">Available Integrations</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="hubspot">
+          <HubSpotIntegration />
+        </TabsContent>
 
         <TabsContent value="quickbooks">
           <QuickBooksIntegration />
