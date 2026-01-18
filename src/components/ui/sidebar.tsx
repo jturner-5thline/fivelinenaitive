@@ -224,11 +224,9 @@ const Sidebar = React.forwardRef<
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           // Use effectiveState to determine width (includes hover)
-          effectiveState === "expanded" 
-            ? "w-[--sidebar-width]" 
-            : variant === "floating" || variant === "inset"
-              ? "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "w-[--sidebar-width-icon]",
+          effectiveState === "expanded"
+            ? "w-[--sidebar-width]"
+            : "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]",
         )}
       />
       {/* Actual sidebar container - expands on hover */}
