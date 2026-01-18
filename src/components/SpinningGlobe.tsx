@@ -341,7 +341,7 @@ function NetworkLines() {
         return (
           <primitive key={`line-${idx}`} object={new THREE.Line(
             lineGeometry,
-            new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.15 })
+            new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.5, linewidth: 2 })
           )} />
         );
       })}
@@ -352,10 +352,10 @@ function NetworkLines() {
           geometry={geo}
         >
           <pointsMaterial
-            size={0.04}
-            color="#22d3ee"
+            size={0.06}
+            color="#67e8f9"
             transparent
-            opacity={0.9}
+            opacity={1}
             sizeAttenuation
           />
         </points>
