@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -79,45 +79,14 @@ interface PaginatedResponse<T> {
   };
 }
 
-// Helper function to call the edge function
-async function hubspotFetch<T>(
-  path: string,
-  method: string = 'GET',
-  body?: any
-): Promise<T> {
+// Helper function to call the edge function with action-based routing
+async function hubspotRequest<T>(action: string, params?: Record<string, any>): Promise<T> {
   const { data, error } = await supabase.functions.invoke('hubspot-sync', {
-    method: method as 'GET' | 'POST' | 'PATCH' | 'DELETE',
-    body: method === 'GET' ? undefined : body,
-    headers: {
-      'x-path': path,
-    },
-  });
-
-  // For GET requests with query params, we need to use a different approach
-  if (method === 'GET') {
-    const response = await supabase.functions.invoke(`hubspot-sync/${path}`, {
-      method: 'GET',
-    });
-    if (response.error) throw new Error(response.error.message);
-    return response.data as T;
-  }
-
-  if (error) throw new Error(error.message);
-  return data as T;
-}
-
-// POST/PATCH helper
-async function hubspotMutate<T>(
-  path: string,
-  method: 'POST' | 'PATCH',
-  body: any
-): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(`hubspot-sync/${path}`, {
-    method,
-    body,
+    body: { action, ...params },
   });
 
   if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
   return data as T;
 }
 
@@ -126,9 +95,7 @@ export function useHubSpot() {
 
   // Test connection
   const testConnection = useCallback(async () => {
-    const { data, error } = await supabase.functions.invoke('hubspot-sync/test');
-    if (error) throw new Error(error.message);
-    return data;
+    return hubspotRequest<{ success: boolean }>('test');
   }, []);
 
   // ===== CONTACTS =====
@@ -136,31 +103,22 @@ export function useHubSpot() {
   const useContacts = (limit = 100) => {
     return useQuery({
       queryKey: ['hubspot', 'contacts', limit],
-      queryFn: async () => {
-        const { data, error } = await supabase.functions.invoke(`hubspot-sync/contacts?limit=${limit}`);
-        if (error) throw new Error(error.message);
-        return data as PaginatedResponse<HubSpotContact>;
-      },
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      queryFn: () => hubspotRequest<PaginatedResponse<HubSpotContact>>('getContacts', { limit }),
+      staleTime: 1000 * 60 * 5,
     });
   };
 
   const useContact = (contactId: string) => {
     return useQuery({
       queryKey: ['hubspot', 'contacts', contactId],
-      queryFn: async () => {
-        const { data, error } = await supabase.functions.invoke(`hubspot-sync/contacts/${contactId}`);
-        if (error) throw new Error(error.message);
-        return data as HubSpotContact;
-      },
+      queryFn: () => hubspotRequest<HubSpotContact>('getContact', { contactId }),
       enabled: !!contactId,
     });
   };
 
   const createContact = useMutation({
-    mutationFn: async (contact: { properties: Record<string, string> }) => {
-      return hubspotMutate<HubSpotContact>('contacts', 'POST', contact);
-    },
+    mutationFn: (properties: Record<string, string>) => 
+      hubspotRequest<HubSpotContact>('createContact', { properties }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hubspot', 'contacts'] });
       toast.success('Contact created in HubSpot');
@@ -171,9 +129,8 @@ export function useHubSpot() {
   });
 
   const updateContact = useMutation({
-    mutationFn: async ({ contactId, properties }: { contactId: string; properties: Record<string, string> }) => {
-      return hubspotMutate<HubSpotContact>(`contacts/${contactId}`, 'PATCH', { properties });
-    },
+    mutationFn: ({ contactId, properties }: { contactId: string; properties: Record<string, string> }) =>
+      hubspotRequest<HubSpotContact>('updateContact', { contactId, properties }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hubspot', 'contacts'] });
       toast.success('Contact updated in HubSpot');
@@ -183,22 +140,16 @@ export function useHubSpot() {
     },
   });
 
-  const searchContacts = useCallback(async (query: string) => {
-    const { data, error } = await supabase.functions.invoke(`hubspot-sync/contacts/search?query=${encodeURIComponent(query)}`);
-    if (error) throw new Error(error.message);
-    return data as PaginatedResponse<HubSpotContact>;
-  }, []);
+  const searchContacts = useCallback((query: string) => 
+    hubspotRequest<PaginatedResponse<HubSpotContact>>('searchContacts', { query }),
+  []);
 
   // ===== DEALS =====
 
   const useDeals = (limit = 100) => {
     return useQuery({
       queryKey: ['hubspot', 'deals', limit],
-      queryFn: async () => {
-        const { data, error } = await supabase.functions.invoke(`hubspot-sync/deals?limit=${limit}`);
-        if (error) throw new Error(error.message);
-        return data as PaginatedResponse<HubSpotDeal>;
-      },
+      queryFn: () => hubspotRequest<PaginatedResponse<HubSpotDeal>>('getDeals', { limit }),
       staleTime: 1000 * 60 * 5,
     });
   };
@@ -206,11 +157,7 @@ export function useHubSpot() {
   const useDeal = (dealId: string) => {
     return useQuery({
       queryKey: ['hubspot', 'deals', dealId],
-      queryFn: async () => {
-        const { data, error } = await supabase.functions.invoke(`hubspot-sync/deals/${dealId}`);
-        if (error) throw new Error(error.message);
-        return data as HubSpotDeal;
-      },
+      queryFn: () => hubspotRequest<HubSpotDeal>('getDeal', { dealId }),
       enabled: !!dealId,
     });
   };
@@ -218,19 +165,14 @@ export function useHubSpot() {
   const usePipelines = () => {
     return useQuery({
       queryKey: ['hubspot', 'pipelines'],
-      queryFn: async () => {
-        const { data, error } = await supabase.functions.invoke('hubspot-sync/deals/pipelines');
-        if (error) throw new Error(error.message);
-        return data as { results: HubSpotPipeline[] };
-      },
-      staleTime: 1000 * 60 * 30, // 30 minutes
+      queryFn: () => hubspotRequest<{ results: HubSpotPipeline[] }>('getPipelines'),
+      staleTime: 1000 * 60 * 30,
     });
   };
 
   const createDeal = useMutation({
-    mutationFn: async (deal: { properties: Record<string, string> }) => {
-      return hubspotMutate<HubSpotDeal>('deals', 'POST', deal);
-    },
+    mutationFn: (properties: Record<string, string>) =>
+      hubspotRequest<HubSpotDeal>('createDeal', { properties }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hubspot', 'deals'] });
       toast.success('Deal created in HubSpot');
@@ -241,9 +183,8 @@ export function useHubSpot() {
   });
 
   const updateDeal = useMutation({
-    mutationFn: async ({ dealId, properties }: { dealId: string; properties: Record<string, string> }) => {
-      return hubspotMutate<HubSpotDeal>(`deals/${dealId}`, 'PATCH', { properties });
-    },
+    mutationFn: ({ dealId, properties }: { dealId: string; properties: Record<string, string> }) =>
+      hubspotRequest<HubSpotDeal>('updateDeal', { dealId, properties }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hubspot', 'deals'] });
       toast.success('Deal updated in HubSpot');
@@ -253,22 +194,16 @@ export function useHubSpot() {
     },
   });
 
-  const searchDeals = useCallback(async (query: string) => {
-    const { data, error } = await supabase.functions.invoke(`hubspot-sync/deals/search?query=${encodeURIComponent(query)}`);
-    if (error) throw new Error(error.message);
-    return data as PaginatedResponse<HubSpotDeal>;
-  }, []);
+  const searchDeals = useCallback((query: string) =>
+    hubspotRequest<PaginatedResponse<HubSpotDeal>>('searchDeals', { query }),
+  []);
 
   // ===== COMPANIES =====
 
   const useCompanies = (limit = 100) => {
     return useQuery({
       queryKey: ['hubspot', 'companies', limit],
-      queryFn: async () => {
-        const { data, error } = await supabase.functions.invoke(`hubspot-sync/companies?limit=${limit}`);
-        if (error) throw new Error(error.message);
-        return data as PaginatedResponse<HubSpotCompany>;
-      },
+      queryFn: () => hubspotRequest<PaginatedResponse<HubSpotCompany>>('getCompanies', { limit }),
       staleTime: 1000 * 60 * 5,
     });
   };
@@ -276,19 +211,14 @@ export function useHubSpot() {
   const useCompany = (companyId: string) => {
     return useQuery({
       queryKey: ['hubspot', 'companies', companyId],
-      queryFn: async () => {
-        const { data, error } = await supabase.functions.invoke(`hubspot-sync/companies/${companyId}`);
-        if (error) throw new Error(error.message);
-        return data as HubSpotCompany;
-      },
+      queryFn: () => hubspotRequest<HubSpotCompany>('getCompany', { companyId }),
       enabled: !!companyId,
     });
   };
 
   const createCompany = useMutation({
-    mutationFn: async (company: { properties: Record<string, string> }) => {
-      return hubspotMutate<HubSpotCompany>('companies', 'POST', company);
-    },
+    mutationFn: (properties: Record<string, string>) =>
+      hubspotRequest<HubSpotCompany>('createCompany', { properties }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hubspot', 'companies'] });
       toast.success('Company created in HubSpot');
@@ -299,9 +229,8 @@ export function useHubSpot() {
   });
 
   const updateCompany = useMutation({
-    mutationFn: async ({ companyId, properties }: { companyId: string; properties: Record<string, string> }) => {
-      return hubspotMutate<HubSpotCompany>(`companies/${companyId}`, 'PATCH', { properties });
-    },
+    mutationFn: ({ companyId, properties }: { companyId: string; properties: Record<string, string> }) =>
+      hubspotRequest<HubSpotCompany>('updateCompany', { companyId, properties }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hubspot', 'companies'] });
       toast.success('Company updated in HubSpot');
@@ -311,38 +240,26 @@ export function useHubSpot() {
     },
   });
 
-  const searchCompanies = useCallback(async (query: string) => {
-    const { data, error } = await supabase.functions.invoke(`hubspot-sync/companies/search?query=${encodeURIComponent(query)}`);
-    if (error) throw new Error(error.message);
-    return data as PaginatedResponse<HubSpotCompany>;
-  }, []);
+  const searchCompanies = useCallback((query: string) =>
+    hubspotRequest<PaginatedResponse<HubSpotCompany>>('searchCompanies', { query }),
+  []);
 
   // ===== ACTIVITIES / NOTES =====
 
   const useNotes = (limit = 100) => {
     return useQuery({
       queryKey: ['hubspot', 'notes', limit],
-      queryFn: async () => {
-        const { data, error } = await supabase.functions.invoke(`hubspot-sync/notes?limit=${limit}`);
-        if (error) throw new Error(error.message);
-        return data as PaginatedResponse<HubSpotNote>;
-      },
+      queryFn: () => hubspotRequest<PaginatedResponse<HubSpotNote>>('getNotes', { limit }),
       staleTime: 1000 * 60 * 5,
     });
   };
 
   const logActivity = useMutation({
-    mutationFn: async ({ 
-      objectType, 
-      objectId, 
-      noteBody 
-    }: { 
+    mutationFn: ({ objectType, objectId, noteBody }: { 
       objectType: 'contacts' | 'deals' | 'companies'; 
       objectId: string; 
       noteBody: string;
-    }) => {
-      return hubspotMutate<HubSpotNote>('activities', 'POST', { objectType, objectId, noteBody });
-    },
+    }) => hubspotRequest<HubSpotNote>('logActivity', { objectType, objectId, noteBody }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hubspot', 'notes'] });
       toast.success('Activity logged to HubSpot');
