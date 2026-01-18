@@ -356,7 +356,7 @@ function NetworkLines() {
           key={`pulse-${idx}`} 
           ref={(el) => { if (el) pulsesRef.current[idx] = el; }}
         >
-          <sphereGeometry args={[0.025, 12, 12]} />
+          <sphereGeometry args={[0.012, 8, 8]} />
           <meshBasicMaterial color="#67e8f9" transparent opacity={1} />
         </mesh>
       ))}
