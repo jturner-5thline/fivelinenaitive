@@ -1,65 +1,9 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 const HUBSPOT_API_BASE = 'https://api.hubapi.com';
-
-interface HubSpotContact {
-  id?: string;
-  properties: {
-    email?: string;
-    firstname?: string;
-    lastname?: string;
-    phone?: string;
-    company?: string;
-    jobtitle?: string;
-    [key: string]: string | undefined;
-  };
-}
-
-interface HubSpotDeal {
-  id?: string;
-  properties: {
-    dealname?: string;
-    amount?: string;
-    dealstage?: string;
-    pipeline?: string;
-    closedate?: string;
-    [key: string]: string | undefined;
-  };
-  associations?: {
-    contacts?: { id: string }[];
-    companies?: { id: string }[];
-  };
-}
-
-interface HubSpotCompany {
-  id?: string;
-  properties: {
-    name?: string;
-    domain?: string;
-    industry?: string;
-    phone?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    [key: string]: string | undefined;
-  };
-}
-
-interface HubSpotNote {
-  properties: {
-    hs_note_body: string;
-    hs_timestamp: string;
-  };
-  associations?: Array<{
-    to: { id: string };
-    types: Array<{ associationCategory: string; associationTypeId: number }>;
-  }>;
-}
 
 async function hubspotRequest(
   endpoint: string,
@@ -115,8 +59,8 @@ async function getContact(contactId: string): Promise<any> {
   return hubspotRequest(`/crm/v3/objects/contacts/${contactId}?properties=email,firstname,lastname,phone,company,jobtitle,createdate,lastmodifieddate`);
 }
 
-async function createContact(contact: HubSpotContact): Promise<any> {
-  return hubspotRequest('/crm/v3/objects/contacts', 'POST', contact);
+async function createContact(properties: Record<string, string>): Promise<any> {
+  return hubspotRequest('/crm/v3/objects/contacts', 'POST', { properties });
 }
 
 async function updateContact(contactId: string, properties: Record<string, string>): Promise<any> {
@@ -150,8 +94,8 @@ async function getDeal(dealId: string): Promise<any> {
   return hubspotRequest(`/crm/v3/objects/deals/${dealId}?properties=dealname,amount,dealstage,pipeline,closedate,createdate,hs_lastmodifieddate&associations=contacts,companies`);
 }
 
-async function createDeal(deal: HubSpotDeal): Promise<any> {
-  return hubspotRequest('/crm/v3/objects/deals', 'POST', deal);
+async function createDeal(properties: Record<string, string>): Promise<any> {
+  return hubspotRequest('/crm/v3/objects/deals', 'POST', { properties });
 }
 
 async function updateDeal(dealId: string, properties: Record<string, string>): Promise<any> {
@@ -189,8 +133,8 @@ async function getCompany(companyId: string): Promise<any> {
   return hubspotRequest(`/crm/v3/objects/companies/${companyId}?properties=name,domain,industry,phone,city,state,country,description,numberofemployees,annualrevenue`);
 }
 
-async function createCompany(company: HubSpotCompany): Promise<any> {
-  return hubspotRequest('/crm/v3/objects/companies', 'POST', company);
+async function createCompany(properties: Record<string, string>): Promise<any> {
+  return hubspotRequest('/crm/v3/objects/companies', 'POST', { properties });
 }
 
 async function updateCompany(companyId: string, properties: Record<string, string>): Promise<any> {
@@ -220,17 +164,13 @@ async function getNotes(limit: number = 100, after?: string): Promise<any> {
   return hubspotRequest(endpoint);
 }
 
-async function createNote(note: HubSpotNote): Promise<any> {
-  return hubspotRequest('/crm/v3/objects/notes', 'POST', note);
-}
-
 async function logActivity(
   objectType: 'contacts' | 'deals' | 'companies',
   objectId: string,
   noteBody: string
 ): Promise<any> {
   // First create the note
-  const noteData: HubSpotNote = {
+  const noteData = {
     properties: {
       hs_note_body: noteBody,
       hs_timestamp: new Date().toISOString(),
@@ -254,10 +194,6 @@ async function logActivity(
   return createdNote;
 }
 
-async function getEngagements(objectType: 'contacts' | 'deals' | 'companies', objectId: string): Promise<any> {
-  return hubspotRequest(`/crm/v4/objects/${objectType}/${objectId}/associations/notes`);
-}
-
 // ===== CONNECTION TEST =====
 
 async function testConnection(): Promise<any> {
@@ -273,32 +209,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    
-    // Remove 'hubspot-sync' from path if present
-    if (pathParts[0] === 'hubspot-sync') {
-      pathParts.shift();
-    }
+    // Parse the request body to get the action
+    const body = await req.json();
+    const { action, ...params } = body;
 
-    const action = pathParts[0];
-    const subAction = pathParts[1];
-    const id = pathParts[2];
-
-    console.log(`HubSpot sync request: ${req.method} action=${action} subAction=${subAction} id=${id}`);
+    console.log(`HubSpot sync request: action=${action}`, params);
 
     let result: any;
-
-    // For POST/PATCH requests, parse body
-    let body: any = null;
-    if (req.method === 'POST' || req.method === 'PATCH') {
-      body = await req.json();
-    }
-
-    // Query params
-    const limit = parseInt(url.searchParams.get('limit') || '100');
-    const after = url.searchParams.get('after') || undefined;
-    const query = url.searchParams.get('query') || '';
 
     switch (action) {
       // Test connection
@@ -307,80 +224,79 @@ Deno.serve(async (req) => {
         break;
 
       // Contacts
-      case 'contacts':
-        if (req.method === 'GET') {
-          if (subAction === 'search') {
-            result = await searchContacts(query);
-          } else if (subAction) {
-            result = await getContact(subAction);
-          } else {
-            result = await getContacts(limit, after);
-          }
-        } else if (req.method === 'POST') {
-          result = await createContact(body);
-        } else if (req.method === 'PATCH' && subAction) {
-          result = await updateContact(subAction, body.properties);
-        }
+      case 'getContacts':
+        result = await getContacts(params.limit || 100, params.after);
+        break;
+      case 'getContact':
+        result = await getContact(params.contactId);
+        break;
+      case 'createContact':
+        result = await createContact(params.properties);
+        break;
+      case 'updateContact':
+        result = await updateContact(params.contactId, params.properties);
+        break;
+      case 'searchContacts':
+        result = await searchContacts(params.query);
         break;
 
       // Deals
-      case 'deals':
-        if (req.method === 'GET') {
-          if (subAction === 'search') {
-            result = await searchDeals(query);
-          } else if (subAction === 'pipelines') {
-            result = await getDealPipelines();
-          } else if (subAction) {
-            result = await getDeal(subAction);
-          } else {
-            result = await getDeals(limit, after);
-          }
-        } else if (req.method === 'POST') {
-          result = await createDeal(body);
-        } else if (req.method === 'PATCH' && subAction) {
-          result = await updateDeal(subAction, body.properties);
-        }
+      case 'getDeals':
+        result = await getDeals(params.limit || 100, params.after);
+        break;
+      case 'getDeal':
+        result = await getDeal(params.dealId);
+        break;
+      case 'createDeal':
+        result = await createDeal(params.properties);
+        break;
+      case 'updateDeal':
+        result = await updateDeal(params.dealId, params.properties);
+        break;
+      case 'searchDeals':
+        result = await searchDeals(params.query);
+        break;
+      case 'getPipelines':
+        result = await getDealPipelines();
         break;
 
       // Companies
-      case 'companies':
-        if (req.method === 'GET') {
-          if (subAction === 'search') {
-            result = await searchCompanies(query);
-          } else if (subAction) {
-            result = await getCompany(subAction);
-          } else {
-            result = await getCompanies(limit, after);
-          }
-        } else if (req.method === 'POST') {
-          result = await createCompany(body);
-        } else if (req.method === 'PATCH' && subAction) {
-          result = await updateCompany(subAction, body.properties);
-        }
+      case 'getCompanies':
+        result = await getCompanies(params.limit || 100, params.after);
+        break;
+      case 'getCompany':
+        result = await getCompany(params.companyId);
+        break;
+      case 'createCompany':
+        result = await createCompany(params.properties);
+        break;
+      case 'updateCompany':
+        result = await updateCompany(params.companyId, params.properties);
+        break;
+      case 'searchCompanies':
+        result = await searchCompanies(params.query);
         break;
 
       // Activities / Notes
-      case 'activities':
-      case 'notes':
-        if (req.method === 'GET') {
-          if (subAction && id) {
-            // Get engagements for an object
-            result = await getEngagements(subAction as 'contacts' | 'deals' | 'companies', id);
-          } else {
-            result = await getNotes(limit, after);
-          }
-        } else if (req.method === 'POST') {
-          if (body.objectType && body.objectId && body.noteBody) {
-            result = await logActivity(body.objectType, body.objectId, body.noteBody);
-          } else {
-            result = await createNote(body);
-          }
-        }
+      case 'getNotes':
+        result = await getNotes(params.limit || 100, params.after);
+        break;
+      case 'logActivity':
+        result = await logActivity(params.objectType, params.objectId, params.noteBody);
         break;
 
       default:
         return new Response(
-          JSON.stringify({ error: 'Unknown action', validActions: ['test', 'contacts', 'deals', 'companies', 'activities', 'notes'] }),
+          JSON.stringify({ 
+            error: 'Unknown action', 
+            validActions: [
+              'test',
+              'getContacts', 'getContact', 'createContact', 'updateContact', 'searchContacts',
+              'getDeals', 'getDeal', 'createDeal', 'updateDeal', 'searchDeals', 'getPipelines',
+              'getCompanies', 'getCompany', 'createCompany', 'updateCompany', 'searchCompanies',
+              'getNotes', 'logActivity'
+            ] 
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }

@@ -99,7 +99,7 @@ export function HubSpotIntegration() {
 
   const handleCreateContact = async () => {
     try {
-      await hubspot.createContact.mutateAsync({ properties: newContact });
+      await hubspot.createContact.mutateAsync(newContact);
       setIsCreateContactOpen(false);
       setNewContact({ email: "", firstname: "", lastname: "", phone: "", company: "", jobtitle: "" });
       refetchContacts();
@@ -110,7 +110,7 @@ export function HubSpotIntegration() {
 
   const handleCreateDeal = async () => {
     try {
-      await hubspot.createDeal.mutateAsync({ properties: newDeal });
+      await hubspot.createDeal.mutateAsync(newDeal);
       setIsCreateDealOpen(false);
       setNewDeal({ dealname: "", amount: "", pipeline: "", dealstage: "" });
       refetchDeals();
@@ -121,7 +121,7 @@ export function HubSpotIntegration() {
 
   const handleCreateCompany = async () => {
     try {
-      await hubspot.createCompany.mutateAsync({ properties: newCompany });
+      await hubspot.createCompany.mutateAsync(newCompany);
       setIsCreateCompanyOpen(false);
       setNewCompany({ name: "", domain: "", industry: "", phone: "", city: "", state: "", country: "" });
       refetchCompanies();
