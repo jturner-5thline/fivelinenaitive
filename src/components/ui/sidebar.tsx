@@ -190,7 +190,7 @@ const Sidebar = React.forwardRef<
         <SheetContent
           data-sidebar="sidebar"
           data-mobile="true"
-          className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          className="w-[--sidebar-width] bg-background p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -252,7 +252,7 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col bg-card rounded-xl border border-border overflow-hidden transition-all duration-200",
+            "flex h-full w-full flex-col bg-background rounded-xl border border-border overflow-hidden transition-all duration-200",
             // Add enhanced shadow when hovering (like a drawer sliding out)
             isHovering && state === "collapsed" ? "shadow-xl" : "shadow-sm",
             className,
