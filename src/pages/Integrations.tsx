@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { GmailIntegration } from "@/components/integrations/GmailIntegration";
 import { GoogleCalendarIntegration } from "@/components/integrations/GoogleCalendarIntegration";
+import { QuickBooksIntegration } from "@/components/integrations/QuickBooksIntegration";
 import { 
   Plug, 
   Plus, 
@@ -402,13 +403,18 @@ export default function Integrations() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="gmail" className="space-y-4">
+      <Tabs defaultValue="quickbooks" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>
           <TabsTrigger value="gmail">Gmail</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="active">Active Integrations ({integrations.length})</TabsTrigger>
           <TabsTrigger value="available">Available Integrations</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="quickbooks">
+          <QuickBooksIntegration />
+        </TabsContent>
 
         <TabsContent value="gmail">
           <GmailIntegration />
