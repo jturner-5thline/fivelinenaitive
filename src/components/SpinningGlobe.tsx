@@ -114,6 +114,74 @@ const continentOutlines = {
   ]
 };
 
+// Major city coordinates [lat, lon] for city lights
+const cityLights: [number, number][] = [
+  // North America
+  [40.7, -74], [34, -118], [41.9, -87.6], [29.8, -95.4], [33.4, -112],
+  [49.3, -123], [45.5, -73.6], [43.7, -79.4], [19.4, -99.1], [25.7, -100.3],
+  [37.8, -122.4], [47.6, -122.3], [32.7, -117.2], [39.7, -105], [38.9, -77],
+  // South America
+  [-23.5, -46.6], [-34.6, -58.4], [-33.4, -70.6], [-12, -77], [4.6, -74],
+  [-22.9, -43.2], [-3.7, -38.5], [-16.5, -68.1], [-0.2, -78.5], [10.5, -66.9],
+  // Europe
+  [51.5, -0.1], [48.9, 2.3], [52.5, 13.4], [41.9, 12.5], [40.4, -3.7],
+  [55.8, 37.6], [50.1, 14.4], [48.2, 16.4], [52.4, 4.9], [59.3, 18.1],
+  [59.9, 10.8], [55.7, 12.6], [60.2, 25], [53.3, -6.3], [38.7, -9.1],
+  // Africa
+  [30, 31.2], [-33.9, 18.4], [6.5, 3.4], [-1.3, 36.8], [33.6, -7.6],
+  [-26.2, 28], [36.8, 10.2], [9, 38.7], [5.6, -0.2], [14.7, -17.4],
+  // Asia
+  [35.7, 139.7], [31.2, 121.5], [39.9, 116.4], [22.3, 114.2], [1.3, 103.8],
+  [28.6, 77.2], [19.1, 72.9], [13.1, 80.3], [37.6, 127], [25, 121.5],
+  [35.2, 136.9], [34.7, 135.5], [23.1, 113.3], [30.3, 120.2], [41, 29],
+  [24.9, 67], [33.7, 73.1], [13.8, 100.5], [21, 105.8], [14.6, 121],
+  // Australia & Oceania
+  [-33.9, 151.2], [-37.8, 145], [-27.5, 153], [-31.9, 116], [-36.8, 174.8],
+  [-41.3, 174.8], [-35.3, 149.1], [-34.9, 138.6], [-12.5, 130.8],
+  // Middle East
+  [25.3, 55.3], [24.5, 54.4], [26.2, 50.6], [29.4, 48], [21.4, 39.8],
+  [32.1, 34.8], [31.8, 35.2], [33.9, 35.5], [36.2, 37.2], [35.7, 51.4],
+];
+
+function CityLights() {
+  const groupRef = useRef<THREE.Group>(null);
+  
+  const pointsGeometry = useMemo(() => {
+    const radius = 2.03;
+    const positions = new Float32Array(cityLights.length * 3);
+    
+    cityLights.forEach(([lat, lon], i) => {
+      const vec = latLonToVector3(lat, lon, radius);
+      positions[i * 3] = vec.x;
+      positions[i * 3 + 1] = vec.y;
+      positions[i * 3 + 2] = vec.z;
+    });
+    
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    return geometry;
+  }, []);
+  
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y -= delta * 0.08;
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <points geometry={pointsGeometry}>
+        <pointsMaterial
+          size={0.025}
+          color="#fbbf24"
+          transparent
+          opacity={0.6}
+          sizeAttenuation
+        />
+      </points>
+    </group>
+  );
+}
 
 function latLonToVector3(lat: number, lon: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -321,6 +389,7 @@ export function SpinningGlobe() {
           <GlobeLines />
           <GlobeGlow />
           <ContinentOutlines />
+          <CityLights />
         </group>
         <Particles />
         <OrbitControls
