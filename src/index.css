@@ -55,14 +55,14 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar */
-    --sidebar-background: 229 35% 40%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 216 37% 55%;
+    /* Sidebar - matches card background */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 215 28% 17%;
+    --sidebar-primary: 229 35% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 36% 48%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 229 35% 35%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 215 28% 17%;
+    --sidebar-border: 214 32% 91%;
     --sidebar-ring: 216 37% 55%;
 
     /* Brand color - #341539 */
@@ -134,14 +134,14 @@
     --input: 215 28% 22%;
     --ring: 229 35% 50%;
 
-    --sidebar-background: 229 35% 12%;
+    --sidebar-background: 215 28% 14%;
     --sidebar-foreground: 210 20% 96%;
-    --sidebar-primary: 216 37% 60%;
+    --sidebar-primary: 229 35% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 36% 22%;
+    --sidebar-accent: 215 28% 20%;
     --sidebar-accent-foreground: 210 20% 96%;
-    --sidebar-border: 229 35% 18%;
-    --sidebar-ring: 216 37% 60%;
+    --sidebar-border: 215 28% 22%;
+    --sidebar-ring: 229 35% 50%;
 
     /* Brand color - lighter for dark mode */
     --brand: 292 46% 50%;
