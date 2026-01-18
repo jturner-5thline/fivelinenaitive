@@ -451,11 +451,9 @@ export function SpinningGlobe() {
   return (
     <div className="absolute inset-0">
       <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
-        <ambientLight intensity={0.2} />
-        <directionalLight position={[0, 0, 5]} intensity={0.8} color="#ffffff" />
-        <pointLight position={[5, 3, 5]} intensity={0.6} color="#22d3ee" />
-        <pointLight position={[-5, -3, -5]} intensity={0.1} color="#0ea5e9" />
-        <fog attach="fog" args={['#0c0a09', 3, 8]} />
+        <ambientLight intensity={0.3} />
+        <pointLight position={[10, 10, 10]} intensity={0.5} color="#22d3ee" />
+        <pointLight position={[-10, -10, -10]} intensity={0.3} color="#0ea5e9" />
         <group rotation={[seasonalTilt.x, 0, seasonalTilt.z]}>
           <Globe />
           <GlobeLines />
@@ -472,14 +470,7 @@ export function SpinningGlobe() {
         />
       </Canvas>
       {/* Background color overlay filter */}
-      <div className="absolute inset-0 bg-background/50 pointer-events-none" />
-      {/* Radial vignette for depth */}
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle at center, transparent 20%, hsl(var(--background)) 80%)',
-        }}
-      />
+      <div className="absolute inset-0 bg-background/60 pointer-events-none" />
     </div>
   );
 }
