@@ -534,7 +534,7 @@ function NeuralNetwork() {
   const lineMaterialsRef = useRef<THREE.LineBasicMaterial[]>([]);
   
   const { nodeGeometry, lineObjects } = useMemo(() => {
-    const nodeCount = 40;
+    const nodeCount = 25;
     const maxRadius = 1.7;
     const minRadius = 0.3;
     const nodePositions: THREE.Vector3[] = [];
@@ -551,7 +551,7 @@ function NeuralNetwork() {
       nodePositions.push(new THREE.Vector3(x, y, z));
     }
     
-    const maxConnectionDistance = 1.2;
+    const maxConnectionDistance = 1.0;
     const positions = new Float32Array(nodeCount * 3);
     nodePositions.forEach((pos, i) => {
       positions[i * 3] = pos.x;
@@ -568,7 +568,7 @@ function NeuralNetwork() {
     for (let i = 0; i < nodeCount; i++) {
       for (let j = i + 1; j < nodeCount; j++) {
         const dist = nodePositions[i].distanceTo(nodePositions[j]);
-        if (dist < maxConnectionDistance && Math.random() > 0.5) {
+        if (dist < maxConnectionDistance && Math.random() > 0.7) {
           const lineGeo = new THREE.BufferGeometry().setFromPoints([nodePositions[i], nodePositions[j]]);
           const material = new THREE.LineBasicMaterial({ color: '#06b6d4', transparent: true, opacity: 0.2 });
           materials.push(material);
@@ -583,11 +583,11 @@ function NeuralNetwork() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y -= delta * 0.05;
-      groupRef.current.rotation.x -= delta * 0.02;
+      groupRef.current.rotation.y -= delta * 0.04;
+      groupRef.current.rotation.x -= delta * 0.016;
     }
     
-    pulseRef.current += delta * 2;
+    pulseRef.current += delta * 1.6;
     lineMaterialsRef.current.forEach((material, idx) => {
       const wave = Math.sin(pulseRef.current + idx * 0.3) * 0.5 + 0.5;
       material.opacity = 0.1 + wave * 0.4;
