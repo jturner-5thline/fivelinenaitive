@@ -47,7 +47,7 @@ const FALLBACK_NEWS: NewsItem[] = [
   },
 ];
 
-const CACHE_KEY = 'news-feed-cache-v3'; // Updated to bust cache
+const CACHE_KEY = 'news-feed-cache-v4'; // Updated to bust cache
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
 interface CachedNews {
