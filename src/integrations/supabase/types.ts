@@ -2020,6 +2020,239 @@ export type Database = {
         }
         Relationships: []
       }
+      quickbooks_customers: {
+        Row: {
+          active: boolean | null
+          balance: number | null
+          company_name: string | null
+          display_name: string | null
+          email: string | null
+          family_name: string | null
+          given_name: string | null
+          id: string
+          metadata: Json | null
+          phone: string | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          balance?: number | null
+          company_name?: string | null
+          display_name?: string | null
+          email?: string | null
+          family_name?: string | null
+          given_name?: string | null
+          id?: string
+          metadata?: Json | null
+          phone?: string | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          balance?: number | null
+          company_name?: string | null
+          display_name?: string | null
+          email?: string | null
+          family_name?: string | null
+          given_name?: string | null
+          id?: string
+          metadata?: Json | null
+          phone?: string | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_invoices: {
+        Row: {
+          balance: number | null
+          customer_id: string | null
+          customer_name: string | null
+          doc_number: string | null
+          due_date: string | null
+          email_status: string | null
+          id: string
+          metadata: Json | null
+          qb_id: string
+          realm_id: string
+          status: string | null
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          user_id: string
+        }
+        Insert: {
+          balance?: number | null
+          customer_id?: string | null
+          customer_name?: string | null
+          doc_number?: string | null
+          due_date?: string | null
+          email_status?: string | null
+          id?: string
+          metadata?: Json | null
+          qb_id: string
+          realm_id: string
+          status?: string | null
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number | null
+          customer_id?: string | null
+          customer_name?: string | null
+          doc_number?: string | null
+          due_date?: string | null
+          email_status?: string | null
+          id?: string
+          metadata?: Json | null
+          qb_id?: string
+          realm_id?: string
+          status?: string | null
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_payments: {
+        Row: {
+          customer_id: string | null
+          customer_name: string | null
+          id: string
+          metadata: Json | null
+          payment_method: string | null
+          qb_id: string
+          realm_id: string
+          synced_at: string
+          total_amt: number | null
+          txn_date: string | null
+          user_id: string
+        }
+        Insert: {
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_method?: string | null
+          qb_id: string
+          realm_id: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id: string
+        }
+        Update: {
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_method?: string | null
+          qb_id?: string
+          realm_id?: string
+          synced_at?: string
+          total_amt?: number | null
+          txn_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_sync_history: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          realm_id: string
+          records_synced: number | null
+          started_at: string
+          status: string
+          sync_type: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          realm_id: string
+          records_synced?: number | null
+          started_at?: string
+          status?: string
+          sync_type: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          realm_id?: string
+          records_synced?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quickbooks_tokens: {
+        Row: {
+          access_token: string
+          company_id: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          realm_id: string
+          refresh_token: string
+          scope: string | null
+          token_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          company_id?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          realm_id: string
+          refresh_token: string
+          scope?: string | null
+          token_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          company_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          realm_id?: string
+          refresh_token?: string
+          scope?: string | null
+          token_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickbooks_tokens_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limits: {
         Row: {
           blocked_until: string | null
