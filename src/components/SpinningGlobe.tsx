@@ -544,19 +544,28 @@ function NeuralNetwork() {
   const pulseRef = useRef<number>(0);
   const lineMaterialsRef = useRef<THREE.LineBasicMaterial[]>([]);
   const corePulseRef = useRef<number>(0);
-  const coreGlowRef = useRef<THREE.Mesh>(null);
-  const coreInnerRef = useRef<THREE.Mesh>(null);
+  
+  // Core cell refs
+  const nucleusRef = useRef<THREE.Mesh>(null);
+  const membraneRef = useRef<THREE.Mesh>(null);
+  const outerMembraneRef = useRef<THREE.Mesh>(null);
+  const haloRing1Ref = useRef<THREE.Mesh>(null);
+  const haloRing2Ref = useRef<THREE.Mesh>(null);
+  const haloRing3Ref = useRef<THREE.Mesh>(null);
+  const dataOrbitRef = useRef<THREE.Group>(null);
+  const electronOrbitRef = useRef<THREE.Group>(null);
+  const pulseWaveRef = useRef<THREE.Mesh>(null);
+  const innerGlowRef = useRef<THREE.Mesh>(null);
   
   const { nodeGeometry, lineObjects, surfaceNodes, coreConnections } = useMemo(() => {
     // Central core at origin
     const corePosition = new THREE.Vector3(0, 0, 0);
     
     // Surface nodes - distributed on the globe surface for connection points
-    const surfaceNodeCount = 60;
-    const surfaceRadius = 1.95; // Just inside the globe surface
+    const surfaceNodeCount = 80;
+    const surfaceRadius = 1.95;
     const surfacePositions: THREE.Vector3[] = [];
     
-    // Create evenly distributed surface nodes using golden spiral
     for (let i = 0; i < surfaceNodeCount; i++) {
       const phi = Math.acos(1 - 2 * (i + 0.5) / surfaceNodeCount);
       const theta = Math.PI * (1 + Math.sqrt(5)) * i;
@@ -568,13 +577,13 @@ function NeuralNetwork() {
       surfacePositions.push(new THREE.Vector3(x, y, z));
     }
     
-    // Interior relay nodes for more complex network
-    const relayNodeCount = 20;
+    // Interior relay nodes
+    const relayNodeCount = 30;
     const relayPositions: THREE.Vector3[] = [];
     for (let i = 0; i < relayNodeCount; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
-      const radius = 0.5 + Math.random() * 1.0; // Between core and surface
+      const radius = 0.6 + Math.random() * 1.1;
       
       const x = radius * Math.sin(phi) * Math.cos(theta);
       const y = radius * Math.sin(phi) * Math.sin(theta);
@@ -583,10 +592,8 @@ function NeuralNetwork() {
       relayPositions.push(new THREE.Vector3(x, y, z));
     }
     
-    // Combine all nodes
     const allNodes = [...surfacePositions, ...relayPositions];
     
-    // Create geometry for all nodes
     const positions = new Float32Array(allNodes.length * 3);
     allNodes.forEach((pos, i) => {
       positions[i * 3] = pos.x;
@@ -597,20 +604,19 @@ function NeuralNetwork() {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     
-    // Lines between nearby nodes (horizontal network)
     const lines: THREE.Line[] = [];
     const materials: THREE.LineBasicMaterial[] = [];
-    const maxConnectionDistance = 1.2;
+    const maxConnectionDistance = 1.0;
     
     for (let i = 0; i < allNodes.length; i++) {
       for (let j = i + 1; j < allNodes.length; j++) {
         const dist = allNodes[i].distanceTo(allNodes[j]);
-        if (dist < maxConnectionDistance && Math.random() > 0.6) {
+        if (dist < maxConnectionDistance && Math.random() > 0.5) {
           const lineGeo = new THREE.BufferGeometry().setFromPoints([allNodes[i], allNodes[j]]);
           const material = new THREE.LineBasicMaterial({ 
             color: '#06b6d4', 
             transparent: true, 
-            opacity: 0.25 
+            opacity: 0.3 
           });
           materials.push(material);
           lines.push(new THREE.Line(lineGeo, material));
@@ -618,24 +624,20 @@ function NeuralNetwork() {
       }
     }
     
-    // Core connections - lines from center to surface nodes
     const coreLines: THREE.Line[] = [];
     const coreMaterials: THREE.LineBasicMaterial[] = [];
     
-    // Connect core to all surface nodes with curved lines
-    surfacePositions.forEach((surfacePos, idx) => {
-      // Create a curved path from core to surface
-      const midPoint = surfacePos.clone().multiplyScalar(0.5);
-      // Add some randomness to mid point for organic look
-      midPoint.x += (Math.random() - 0.5) * 0.3;
-      midPoint.y += (Math.random() - 0.5) * 0.3;
-      midPoint.z += (Math.random() - 0.5) * 0.3;
+    surfacePositions.forEach((surfacePos) => {
+      const midPoint = surfacePos.clone().multiplyScalar(0.45);
+      midPoint.x += (Math.random() - 0.5) * 0.25;
+      midPoint.y += (Math.random() - 0.5) * 0.25;
+      midPoint.z += (Math.random() - 0.5) * 0.25;
       
       const curve = new THREE.QuadraticBezierCurve3(corePosition, midPoint, surfacePos);
-      const points = curve.getPoints(20);
+      const points = curve.getPoints(25);
       const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
       
-      const intensity = 0.15 + Math.random() * 0.15;
+      const intensity = 0.2 + Math.random() * 0.2;
       const material = new THREE.LineBasicMaterial({ 
         color: '#22d3ee', 
         transparent: true, 
@@ -645,13 +647,12 @@ function NeuralNetwork() {
       coreLines.push(new THREE.Line(lineGeo, material));
     });
     
-    // Also connect some relay nodes to core
-    relayPositions.forEach((relayPos, idx) => {
-      if (Math.random() > 0.4) {
-        const midPoint = relayPos.clone().multiplyScalar(0.3);
-        midPoint.x += (Math.random() - 0.5) * 0.2;
-        midPoint.y += (Math.random() - 0.5) * 0.2;
-        midPoint.z += (Math.random() - 0.5) * 0.2;
+    relayPositions.forEach((relayPos) => {
+      if (Math.random() > 0.3) {
+        const midPoint = relayPos.clone().multiplyScalar(0.25);
+        midPoint.x += (Math.random() - 0.5) * 0.15;
+        midPoint.y += (Math.random() - 0.5) * 0.15;
+        midPoint.z += (Math.random() - 0.5) * 0.15;
         
         const curve = new THREE.QuadraticBezierCurve3(corePosition, midPoint, relayPos);
         const points = curve.getPoints(15);
@@ -660,7 +661,7 @@ function NeuralNetwork() {
         const material = new THREE.LineBasicMaterial({ 
           color: '#67e8f9', 
           transparent: true, 
-          opacity: 0.2 + Math.random() * 0.2
+          opacity: 0.25 + Math.random() * 0.25
         });
         coreMaterials.push(material);
         coreLines.push(new THREE.Line(lineGeo, material));
@@ -682,51 +683,203 @@ function NeuralNetwork() {
       groupRef.current.rotation.x += delta * 0.016;
     }
     
-    // Animate network lines
-    pulseRef.current += delta * 1.2;
+    pulseRef.current += delta * 1.5;
     lineMaterialsRef.current.forEach((material, idx) => {
-      const wave = Math.sin(pulseRef.current + idx * 0.15) * 0.5 + 0.5;
-      const baseOpacity = idx < lineObjects.length ? 0.15 : 0.1;
-      material.opacity = baseOpacity + wave * 0.35;
+      const wave = Math.sin(pulseRef.current + idx * 0.12) * 0.5 + 0.5;
+      const baseOpacity = idx < lineObjects.length ? 0.2 : 0.15;
+      material.opacity = baseOpacity + wave * 0.4;
     });
     
-    // Animate core glow
-    corePulseRef.current += delta * 2.0;
-    if (coreGlowRef.current) {
-      const glowScale = 1.0 + Math.sin(corePulseRef.current) * 0.15;
-      coreGlowRef.current.scale.setScalar(glowScale);
-      (coreGlowRef.current.material as THREE.MeshBasicMaterial).opacity = 
-        0.3 + Math.sin(corePulseRef.current * 1.5) * 0.15;
+    corePulseRef.current += delta;
+    const t = corePulseRef.current;
+    
+    // Nucleus pulsing
+    if (nucleusRef.current) {
+      const scale = 1.0 + Math.sin(t * 3) * 0.08;
+      nucleusRef.current.scale.setScalar(scale);
     }
-    if (coreInnerRef.current) {
-      const innerScale = 1.0 + Math.sin(corePulseRef.current * 1.3) * 0.1;
-      coreInnerRef.current.scale.setScalar(innerScale);
+    
+    // Inner glow breathing
+    if (innerGlowRef.current) {
+      const scale = 1.0 + Math.sin(t * 2.5) * 0.12;
+      innerGlowRef.current.scale.setScalar(scale);
+      (innerGlowRef.current.material as THREE.MeshBasicMaterial).opacity = 
+        0.5 + Math.sin(t * 2) * 0.2;
+    }
+    
+    // Cell membrane pulsing
+    if (membraneRef.current) {
+      const scale = 1.0 + Math.sin(t * 1.8) * 0.06;
+      membraneRef.current.scale.setScalar(scale);
+      (membraneRef.current.material as THREE.MeshBasicMaterial).opacity = 
+        0.25 + Math.sin(t * 2.2) * 0.1;
+    }
+    
+    // Outer membrane
+    if (outerMembraneRef.current) {
+      const scale = 1.0 + Math.sin(t * 1.5 + 0.5) * 0.08;
+      outerMembraneRef.current.scale.setScalar(scale);
+      (outerMembraneRef.current.material as THREE.MeshBasicMaterial).opacity = 
+        0.15 + Math.sin(t * 1.8) * 0.08;
+    }
+    
+    // Halo rings rotation
+    if (haloRing1Ref.current) {
+      haloRing1Ref.current.rotation.z += delta * 0.8;
+      haloRing1Ref.current.rotation.x = Math.sin(t * 0.5) * 0.2;
+    }
+    if (haloRing2Ref.current) {
+      haloRing2Ref.current.rotation.z -= delta * 0.6;
+      haloRing2Ref.current.rotation.y = Math.sin(t * 0.4) * 0.3;
+    }
+    if (haloRing3Ref.current) {
+      haloRing3Ref.current.rotation.z += delta * 0.4;
+      haloRing3Ref.current.rotation.x = Math.cos(t * 0.3) * 0.25;
+    }
+    
+    // Data orbit
+    if (dataOrbitRef.current) {
+      dataOrbitRef.current.rotation.y += delta * 1.2;
+      dataOrbitRef.current.rotation.z = Math.sin(t * 0.7) * 0.1;
+    }
+    
+    // Electron orbit
+    if (electronOrbitRef.current) {
+      electronOrbitRef.current.rotation.x += delta * 0.9;
+      electronOrbitRef.current.rotation.y += delta * 0.5;
+    }
+    
+    // Pulse wave expanding
+    if (pulseWaveRef.current) {
+      const wavePhase = (t * 0.8) % 1;
+      const waveScale = 0.3 + wavePhase * 0.4;
+      pulseWaveRef.current.scale.setScalar(waveScale);
+      (pulseWaveRef.current.material as THREE.MeshBasicMaterial).opacity = 
+        0.4 * (1 - wavePhase);
     }
   });
 
   return (
     <group ref={groupRef}>
-      {/* Central Intelligence Core - outer glow */}
-      <mesh ref={coreGlowRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[0.35, 32, 32]} />
-        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.3} />
+      {/* === INTELLIGENT CELL CORE === */}
+      
+      {/* Expanding pulse wave */}
+      <mesh ref={pulseWaveRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.2} side={THREE.BackSide} />
       </mesh>
       
-      {/* Central Intelligence Core - inner bright */}
-      <mesh ref={coreInnerRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[0.18, 24, 24]} />
-        <meshBasicMaterial color="#67e8f9" transparent opacity={0.9} />
+      {/* Outer membrane - translucent cell wall */}
+      <mesh ref={outerMembraneRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.5, 48, 48]} />
+        <meshBasicMaterial color="#0891b2" transparent opacity={0.15} wireframe />
       </mesh>
       
-      {/* Core center point */}
+      {/* Middle membrane */}
+      <mesh ref={membraneRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.38, 40, 40]} />
+        <meshBasicMaterial color="#06b6d4" transparent opacity={0.25} />
+      </mesh>
+      
+      {/* Inner glow layer */}
+      <mesh ref={innerGlowRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.28, 32, 32]} />
+        <meshBasicMaterial color="#22d3ee" transparent opacity={0.5} />
+      </mesh>
+      
+      {/* Nucleus - bright core */}
+      <mesh ref={nucleusRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.15, 24, 24]} />
+        <meshBasicMaterial color="#67e8f9" transparent opacity={0.95} />
+      </mesh>
+      
+      {/* Nucleus center - white hot */}
       <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.08, 16, 16]} />
+        <sphereGeometry args={[0.07, 16, 16]} />
         <meshBasicMaterial color="#ffffff" />
       </mesh>
       
+      {/* === ORBITAL RINGS === */}
+      
+      {/* Halo ring 1 - equatorial */}
+      <mesh ref={haloRing1Ref} position={[0, 0, 0]} rotation={[0, 0, 0]}>
+        <torusGeometry args={[0.42, 0.008, 16, 100]} />
+        <meshBasicMaterial color="#22d3ee" transparent opacity={0.7} />
+      </mesh>
+      
+      {/* Halo ring 2 - tilted */}
+      <mesh ref={haloRing2Ref} position={[0, 0, 0]} rotation={[Math.PI / 3, 0, 0]}>
+        <torusGeometry args={[0.48, 0.006, 16, 100]} />
+        <meshBasicMaterial color="#06b6d4" transparent opacity={0.5} />
+      </mesh>
+      
+      {/* Halo ring 3 - perpendicular */}
+      <mesh ref={haloRing3Ref} position={[0, 0, 0]} rotation={[Math.PI / 2, Math.PI / 4, 0]}>
+        <torusGeometry args={[0.55, 0.005, 16, 100]} />
+        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.4} />
+      </mesh>
+      
+      {/* === ORBITING DATA PARTICLES === */}
+      
+      {/* Data orbit group */}
+      <group ref={dataOrbitRef}>
+        {[0, 1, 2, 3, 4, 5].map((i) => {
+          const angle = (i / 6) * Math.PI * 2;
+          const radius = 0.35;
+          return (
+            <mesh key={`data-${i}`} position={[
+              Math.cos(angle) * radius,
+              Math.sin(angle) * radius * 0.3,
+              Math.sin(angle) * radius
+            ]}>
+              <sphereGeometry args={[0.025, 12, 12]} />
+              <meshBasicMaterial color="#67e8f9" transparent opacity={0.9} />
+            </mesh>
+          );
+        })}
+      </group>
+      
+      {/* Electron orbit group */}
+      <group ref={electronOrbitRef}>
+        {[0, 1, 2, 3].map((i) => {
+          const angle = (i / 4) * Math.PI * 2;
+          const radius = 0.52;
+          return (
+            <mesh key={`electron-${i}`} position={[
+              Math.cos(angle) * radius,
+              Math.sin(angle) * radius,
+              0
+            ]}>
+              <sphereGeometry args={[0.018, 10, 10]} />
+              <meshBasicMaterial color="#ffffff" transparent opacity={0.85} />
+            </mesh>
+          );
+        })}
+      </group>
+      
+      {/* Additional orbiting sparks */}
+      <group rotation={[Math.PI / 6, 0, Math.PI / 4]}>
+        {[0, 1, 2].map((i) => {
+          const angle = (i / 3) * Math.PI * 2 + corePulseRef.current;
+          const radius = 0.45;
+          return (
+            <mesh key={`spark-${i}`} position={[
+              Math.cos(angle) * radius,
+              0,
+              Math.sin(angle) * radius
+            ]}>
+              <sphereGeometry args={[0.015, 8, 8]} />
+              <meshBasicMaterial color="#a5f3fc" transparent opacity={0.8} />
+            </mesh>
+          );
+        })}
+      </group>
+      
+      {/* === NETWORK NODES AND CONNECTIONS === */}
+      
       {/* Surface and relay nodes */}
       <points geometry={nodeGeometry}>
-        <pointsMaterial size={0.045} color="#22d3ee" transparent opacity={0.8} sizeAttenuation />
+        <pointsMaterial size={0.05} color="#22d3ee" transparent opacity={0.85} sizeAttenuation />
       </points>
       
       {/* Network connections between nodes */}
