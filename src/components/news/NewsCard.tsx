@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import { ExternalLink, TrendingUp, DollarSign, Globe, Building2, Clock } from 'lucide-react';
+import { ExternalLink, Building2, Users, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -12,40 +12,28 @@ interface NewsCardProps {
 
 const getCategoryIcon = (category: NewsItem['category']) => {
   switch (category) {
-    case 'market':
-      return <TrendingUp className="h-3 w-3" />;
-    case 'deals':
-      return <DollarSign className="h-3 w-3" />;
-    case 'regulation':
-      return <Globe className="h-3 w-3" />;
-    case 'company':
+    case 'lenders':
       return <Building2 className="h-3 w-3" />;
+    case 'clients':
+      return <Users className="h-3 w-3" />;
   }
 };
 
 const getCategoryColor = (category: NewsItem['category']) => {
   switch (category) {
-    case 'market':
+    case 'lenders':
       return 'bg-primary/10 text-primary border-primary/20';
-    case 'deals':
+    case 'clients':
       return 'bg-success/10 text-success border-success/20';
-    case 'regulation':
-      return 'bg-warning/10 text-warning border-warning/20';
-    case 'company':
-      return 'bg-accent text-accent-foreground border-accent';
   }
 };
 
 const getCategoryGradient = (category: NewsItem['category']) => {
   switch (category) {
-    case 'market':
+    case 'lenders':
       return 'from-primary/20 to-primary/5';
-    case 'deals':
+    case 'clients':
       return 'from-success/20 to-success/5';
-    case 'regulation':
-      return 'from-warning/20 to-warning/5';
-    case 'company':
-      return 'from-accent/40 to-accent/10';
   }
 };
 

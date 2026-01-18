@@ -1,9 +1,9 @@
-import { Search, TrendingUp, DollarSign, Globe, Building2 } from 'lucide-react';
+import { Search, Building2, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export type NewsCategory = 'all' | 'market' | 'deals' | 'regulation' | 'company';
+export type NewsCategory = 'all' | 'lenders' | 'clients';
 
 interface NewsFiltersProps {
   selectedCategory: NewsCategory;
@@ -14,10 +14,8 @@ interface NewsFiltersProps {
 
 const categories: { id: NewsCategory; label: string; icon: React.ReactNode }[] = [
   { id: 'all', label: 'All', icon: null },
-  { id: 'market', label: 'Market', icon: <TrendingUp className="h-3.5 w-3.5" /> },
-  { id: 'deals', label: 'Deals', icon: <DollarSign className="h-3.5 w-3.5" /> },
-  { id: 'regulation', label: 'Regulation', icon: <Globe className="h-3.5 w-3.5" /> },
-  { id: 'company', label: 'Company', icon: <Building2 className="h-3.5 w-3.5" /> },
+  { id: 'lenders', label: 'Lenders', icon: <Building2 className="h-3.5 w-3.5" /> },
+  { id: 'clients', label: 'Clients', icon: <Users className="h-3.5 w-3.5" /> },
 ];
 
 export function NewsFilters({ 
