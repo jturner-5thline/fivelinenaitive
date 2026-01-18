@@ -44,13 +44,14 @@ const footerItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isHovering } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminRole();
   const currentPath = location.pathname;
-  const collapsed = state === "collapsed";
+  // Show expanded content if either actually expanded or hovering while collapsed
+  const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
 
   const isActive = (url: string) => {
     if (url === "/dashboard") return currentPath === "/dashboard";
@@ -71,7 +72,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border px-2 py-3">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="h-9 w-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md shadow-sm transition-all" />
-          {!collapsed && <span className="font-semibold text-sidebar-foreground">5thLine</span>}
+          {showExpanded && <span className="font-semibold text-sidebar-foreground">5thLine</span>}
         </div>
       </SidebarHeader>
 
@@ -93,7 +94,7 @@ export function AppSidebar() {
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {showExpanded && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -112,7 +113,7 @@ export function AppSidebar() {
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <ShieldCheck className="h-4 w-4" />
-                      {!collapsed && <span>Admin</span>}
+                      {showExpanded && <span>Admin</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -137,7 +138,7 @@ export function AppSidebar() {
                   activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                 >
                   <item.icon className="h-4 w-4" />
-                  {!collapsed && <span>{item.title}</span>}
+                  {showExpanded && <span>{item.title}</span>}
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -153,7 +154,7 @@ export function AppSidebar() {
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
-                  {!collapsed && (
+                  {showExpanded && (
                     <span className="truncate">{user?.email || "Profile"}</span>
                   )}
                 </SidebarMenuButton>
