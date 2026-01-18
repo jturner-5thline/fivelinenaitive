@@ -234,7 +234,7 @@ function CityLights() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y -= delta * 0.08;
+      groupRef.current.rotation.y += delta * 0.08;
     }
   });
 
@@ -330,7 +330,7 @@ function NetworkLines() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y -= delta * 0.08;
+      groupRef.current.rotation.y += delta * 0.08;
     }
     
     pulseProgressRef.current.forEach((progress, idx) => {
@@ -449,7 +449,7 @@ function ContinentOutlines() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y -= delta * 0.08;
+      groupRef.current.rotation.y += delta * 0.08;
     }
   });
 
@@ -470,7 +470,7 @@ function Globe() {
   
   useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y -= delta * 0.08;
+      meshRef.current.rotation.y += delta * 0.08;
     }
   });
 
@@ -491,8 +491,8 @@ function GlobeLines() {
   
   useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y -= delta * 0.08;
-      meshRef.current.rotation.x -= delta * 0.015;
+      meshRef.current.rotation.y += delta * 0.08;
+      meshRef.current.rotation.x += delta * 0.015;
     }
   });
 
@@ -513,7 +513,7 @@ function GlobeGlow() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y -= delta * 0.08;
+      groupRef.current.rotation.y += delta * 0.08;
     }
   });
 
@@ -594,8 +594,8 @@ function NeuralNetwork() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y -= delta * 0.04;
-      groupRef.current.rotation.x -= delta * 0.016;
+      groupRef.current.rotation.y += delta * 0.04;
+      groupRef.current.rotation.x += delta * 0.016;
     }
     
     pulseRef.current += delta * 1.6;
@@ -635,7 +635,7 @@ function Particles() {
   
   useFrame((state, delta) => {
     if (points.current) {
-      points.current.rotation.y -= delta * 0.03;
+      points.current.rotation.y += delta * 0.03;
     }
   });
 
