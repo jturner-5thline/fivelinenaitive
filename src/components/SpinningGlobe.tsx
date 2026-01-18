@@ -469,8 +469,6 @@ export function SpinningGlobe() {
           autoRotateSpeed={-0.3}
         />
       </Canvas>
-      {/* Background color overlay filter */}
-      <div className="absolute inset-0 bg-background/60 pointer-events-none" />
     </div>
   );
 }
