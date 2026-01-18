@@ -528,6 +528,84 @@ function GlobeGlow() {
   );
 }
 
+function NeuralNetwork() {
+  const groupRef = useRef<THREE.Group>(null);
+  const pulseRef = useRef<number>(0);
+  const lineMaterialsRef = useRef<THREE.LineBasicMaterial[]>([]);
+  
+  const { nodeGeometry, lineObjects } = useMemo(() => {
+    const nodeCount = 40;
+    const maxRadius = 1.7;
+    const minRadius = 0.3;
+    const nodePositions: THREE.Vector3[] = [];
+    
+    for (let i = 0; i < nodeCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const radius = minRadius + Math.random() * (maxRadius - minRadius);
+      
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.sin(phi) * Math.sin(theta);
+      const z = radius * Math.cos(phi);
+      
+      nodePositions.push(new THREE.Vector3(x, y, z));
+    }
+    
+    const maxConnectionDistance = 1.2;
+    const positions = new Float32Array(nodeCount * 3);
+    nodePositions.forEach((pos, i) => {
+      positions[i * 3] = pos.x;
+      positions[i * 3 + 1] = pos.y;
+      positions[i * 3 + 2] = pos.z;
+    });
+    
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    
+    const lines: THREE.Line[] = [];
+    const materials: THREE.LineBasicMaterial[] = [];
+    
+    for (let i = 0; i < nodeCount; i++) {
+      for (let j = i + 1; j < nodeCount; j++) {
+        const dist = nodePositions[i].distanceTo(nodePositions[j]);
+        if (dist < maxConnectionDistance && Math.random() > 0.5) {
+          const lineGeo = new THREE.BufferGeometry().setFromPoints([nodePositions[i], nodePositions[j]]);
+          const material = new THREE.LineBasicMaterial({ color: '#06b6d4', transparent: true, opacity: 0.2 });
+          materials.push(material);
+          lines.push(new THREE.Line(lineGeo, material));
+        }
+      }
+    }
+    
+    lineMaterialsRef.current = materials;
+    return { nodeGeometry: geo, lineObjects: lines };
+  }, []);
+  
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y -= delta * 0.05;
+      groupRef.current.rotation.x -= delta * 0.02;
+    }
+    
+    pulseRef.current += delta * 2;
+    lineMaterialsRef.current.forEach((material, idx) => {
+      const wave = Math.sin(pulseRef.current + idx * 0.3) * 0.5 + 0.5;
+      material.opacity = 0.1 + wave * 0.4;
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      <points geometry={nodeGeometry}>
+        <pointsMaterial size={0.05} color="#22d3ee" transparent opacity={0.7} sizeAttenuation />
+      </points>
+      {lineObjects.map((line, idx) => (
+        <primitive key={`neural-${idx}`} object={line} />
+      ))}
+    </group>
+  );
+}
+
 function Particles() {
   const points = useRef<THREE.Points>(null);
   
@@ -581,6 +659,7 @@ export function SpinningGlobe() {
         <pointLight position={[10, 10, 10]} intensity={0.5} color="#22d3ee" />
         <pointLight position={[-10, -10, -10]} intensity={0.3} color="#0ea5e9" />
         <group rotation={[seasonalTilt.x, 0, seasonalTilt.z]}>
+          <NeuralNetwork />
           <Globe />
           <GlobeLines />
           <GlobeGlow />
