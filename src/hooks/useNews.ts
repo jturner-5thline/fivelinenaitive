@@ -5,50 +5,41 @@ export interface NewsItem {
   id: string;
   title: string;
   source: string;
-  category: 'market' | 'deals' | 'regulation' | 'company';
+  category: 'lenders' | 'clients';
   summary: string;
   url: string;
   publishedAt: string;
   imageUrl?: string;
+  lenderName?: string;
 }
 
 // Fallback dummy data in case API fails
 const FALLBACK_NEWS: NewsItem[] = [
   {
     id: 'fallback-1',
-    title: 'Fed Signals Potential Rate Cuts in 2025 as Inflation Cools',
+    title: 'Private Credit Market Sees Record Growth in Q4',
     source: 'Wall Street Journal',
-    category: 'market',
-    summary: 'Federal Reserve officials indicated they may begin cutting interest rates later this year as inflation data shows signs of moderating.',
+    category: 'lenders',
+    summary: 'Major private credit lenders report unprecedented deal flow as traditional banks pull back from leveraged lending.',
     url: '#',
     publishedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop',
   },
   {
     id: 'fallback-2',
-    title: 'Private Credit Market Reaches $1.7 Trillion Milestone',
+    title: 'Mid-Market Companies Seek Alternative Financing',
     source: 'Bloomberg',
-    category: 'deals',
-    summary: 'The private credit market has grown to $1.7 trillion globally, with institutional investors increasingly allocating capital to direct lending.',
+    category: 'clients',
+    summary: 'Growing number of mid-market companies turn to private credit as bank lending standards tighten.',
     url: '#',
     publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     imageUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop',
   },
   {
     id: 'fallback-3',
-    title: 'New SEC Regulations to Impact Alternative Lending Disclosure',
-    source: 'Reuters',
-    category: 'regulation',
-    summary: 'The SEC announced new disclosure requirements for alternative lending platforms, set to take effect in Q3 2025.',
-    url: '#',
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-    imageUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop',
-  },
-  {
-    id: 'fallback-4',
     title: 'Apollo Global Closes $5B Infrastructure Credit Fund',
     source: 'Financial Times',
-    category: 'company',
+    category: 'lenders',
     summary: 'Apollo Global Management has closed its fifth infrastructure credit fund at $5 billion, exceeding its initial target.',
     url: '#',
     publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
@@ -56,7 +47,7 @@ const FALLBACK_NEWS: NewsItem[] = [
   },
 ];
 
-const CACHE_KEY = 'news-feed-cache';
+const CACHE_KEY = 'news-feed-cache-v2';
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
 interface CachedNews {
@@ -93,7 +84,17 @@ export function useNews() {
     setError(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('fetch-news');
+      // Fetch lender names from the database
+      const { data: lenderData } = await supabase
+        .from('master_lenders')
+        .select('name')
+        .limit(20);
+
+      const lenderNames = lenderData?.map(l => l.name) || [];
+
+      const { data, error: fnError } = await supabase.functions.invoke('fetch-news', {
+        body: { lenderNames }
+      });
 
       if (fnError) {
         throw new Error(fnError.message);

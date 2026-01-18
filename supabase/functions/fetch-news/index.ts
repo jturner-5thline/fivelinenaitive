@@ -10,39 +10,30 @@ interface NewsItem {
   id: string;
   title: string;
   source: string;
-  category: 'market' | 'deals' | 'regulation' | 'company';
+  category: 'lenders' | 'clients';
   summary: string;
   url: string;
   publishedAt: string;
   imageUrl?: string;
+  lenderName?: string;
 }
 
 // Placeholder images for each category using Unsplash
 const categoryImages: Record<string, string[]> = {
-  market: [
-    'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=400&h=300&fit=crop',
-  ],
-  deals: [
-    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?w=400&h=300&fit=crop',
-  ],
-  regulation: [
-    'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400&h=300&fit=crop',
-    'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&h=300&fit=crop',
-  ],
-  company: [
+  lenders: [
     'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop',
     'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=400&h=300&fit=crop',
     'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop',
   ],
+  clients: [
+    'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop',
+    'https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?w=400&h=300&fit=crop',
+  ],
 };
 
 function getRandomImage(category: string): string {
-  const images = categoryImages[category] || categoryImages.market;
+  const images = categoryImages[category] || categoryImages.lenders;
   return images[Math.floor(Math.random() * images.length)];
 }
 
@@ -63,7 +54,21 @@ serve(async (req) => {
       );
     }
 
-    console.log('Fetching finance/lending news from Perplexity...');
+    // Parse request body for lender names
+    let lenderNames: string[] = [];
+    try {
+      const body = await req.json();
+      lenderNames = body.lenderNames || [];
+    } catch {
+      // No body or invalid JSON
+    }
+
+    console.log('Fetching news for lenders:', lenderNames.slice(0, 5).join(', '));
+
+    // Build lender-specific search prompt
+    const lenderSearchTerms = lenderNames.length > 0 
+      ? lenderNames.slice(0, 10).join(', ')
+      : 'private credit lenders, direct lenders, alternative lenders';
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -76,27 +81,27 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a financial news aggregator. Return exactly 8 recent news items about lending, private credit, debt financing, and financial markets. 
+            content: `You are a financial news aggregator specializing in private credit and lending. Return exactly 8 recent news items.
+            
+            For "lenders" category news, focus on these specific lenders/firms: ${lenderSearchTerms}
+            Look for news about their fund closings, personnel moves, new deals, market positioning, or strategic announcements.
+            
+            For "clients" category news, focus on companies seeking financing, borrower news, and market demand for private credit.
             
             Format your response as a JSON array with objects containing:
             - title: string (news headline)
-            - source: string (publication name like "Bloomberg", "Wall Street Journal", "Reuters", etc.)
-            - category: one of "market", "deals", "regulation", "company"
+            - source: string (publication name like "Bloomberg", "Wall Street Journal", "Reuters", "PitchBook", etc.)
+            - category: "lenders" or "clients"
             - summary: string (2-3 sentence summary)
             - url: string (use "#" as placeholder)
+            - lenderName: string (optional - the specific lender name if this is about a specific lender from the list)
             
-            Focus on:
-            - Private credit market developments
-            - Interest rate news from Fed/central banks
-            - Major lending deals and fund closings
-            - Regulatory changes affecting lending
-            - Notable company financing news
-            
+            Return 5 lender-focused articles and 3 client-focused articles.
             Return ONLY the JSON array, no other text.`
           },
           {
             role: 'user',
-            content: 'Get me the latest news about lending, private credit, debt financing, and financial markets from the past week.'
+            content: `Get me the latest news about these lenders: ${lenderSearchTerms}. Also include news about companies seeking private credit financing.`
           }
         ],
         max_tokens: 2000,
@@ -127,9 +132,7 @@ serve(async (req) => {
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         newsItems = parsed.map((item: any, index: number) => {
-          const category = ['market', 'deals', 'regulation', 'company'].includes(item.category) 
-            ? item.category 
-            : 'market';
+          const category = item.category === 'clients' ? 'clients' : 'lenders';
           return {
             id: `news-${Date.now()}-${index}`,
             title: item.title || 'Untitled',
@@ -139,6 +142,7 @@ serve(async (req) => {
             url: citations[index] || item.url || '#',
             publishedAt: new Date(Date.now() - (index * 3600000)).toISOString(),
             imageUrl: getRandomImage(category),
+            lenderName: item.lenderName || undefined,
           };
         });
       }

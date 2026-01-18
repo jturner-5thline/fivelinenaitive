@@ -5,10 +5,8 @@ import {
   ExternalLink, 
   ChevronDown,
   ChevronUp,
-  TrendingUp,
   Building2,
-  Globe,
-  DollarSign,
+  Users,
   RefreshCw,
   AlertCircle
 } from 'lucide-react';
@@ -22,30 +20,21 @@ import { useNews, NewsItem } from '@/hooks/useNews';
 
 const getCategoryIcon = (category: NewsItem['category']) => {
   switch (category) {
-    case 'market':
-      return <TrendingUp className="h-3 w-3" />;
-    case 'deals':
-      return <DollarSign className="h-3 w-3" />;
-    case 'regulation':
-      return <Globe className="h-3 w-3" />;
-    case 'company':
+    case 'lenders':
       return <Building2 className="h-3 w-3" />;
+    case 'clients':
+      return <Users className="h-3 w-3" />;
   }
 };
 
 const getCategoryColor = (category: NewsItem['category']) => {
   switch (category) {
-    case 'market':
+    case 'lenders':
       return 'bg-primary/10 text-primary';
-    case 'deals':
+    case 'clients':
       return 'bg-success/10 text-success';
-    case 'regulation':
-      return 'bg-warning/10 text-warning';
-    case 'company':
-      return 'bg-accent text-accent-foreground';
   }
 };
-
 interface NewsFeedWidgetProps {
   defaultOpen?: boolean;
 }
