@@ -123,7 +123,8 @@ function createContinentMesh(coords: number[][], radius: number): THREE.Mesh {
     color: '#0ea5e9',
     transparent: true,
     opacity: 0.08,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
+    depthWrite: false,
   });
   
   return new THREE.Mesh(geometry, material);
