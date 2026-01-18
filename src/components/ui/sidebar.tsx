@@ -217,20 +217,24 @@ const Sidebar = React.forwardRef<
       onMouseLeave={handleMouseLeave}
     >
       {/* This is what handles the sidebar gap on desktop */}
+      {/* Spacer div - stays collapsed width even on hover so content doesn't shift */}
       <div
         className={cn(
-          "relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear",
+          "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           variant === "floating" || variant === "inset"
             ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
             : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]",
+          // Only use full width when actually expanded (not hovering)
+          state === "expanded" ? "w-[--sidebar-width]" : "",
         )}
       />
+      {/* Actual sidebar container - expands on hover */}
       <div
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex",
-          // Use effectiveState for width calculations
+          // Use full width when expanded OR hovering
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
@@ -240,7 +244,6 @@ const Sidebar = React.forwardRef<
           side === "left"
             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-          // Adjust the padding for floating and inset variants.
           "p-2",
           className,
         )}
@@ -250,7 +253,9 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col bg-sidebar rounded-xl border border-sidebar-border shadow-sm overflow-hidden transition-all duration-200",
+            "flex h-full w-full flex-col bg-sidebar rounded-xl border border-sidebar-border overflow-hidden transition-all duration-200",
+            // Add enhanced shadow when hovering (like a drawer sliding out)
+            isHovering && state === "collapsed" ? "shadow-xl" : "shadow-sm",
             className,
           )}
         >
