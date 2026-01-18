@@ -335,47 +335,36 @@ const Admin = () => {
     const isActive = activeCategory === category;
 
     return (
-      <div className="flex items-center">
-        <TabsTrigger 
-          value={category} 
-          className="flex items-center gap-2 pr-1"
-          onClick={() => setActiveCategory(category)}
-        >
-          <Icon className="h-4 w-4" />
-          {label}
-        </TabsTrigger>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button 
-              className={`flex items-center px-2 py-1.5 rounded-md text-sm transition-colors ${
-                isActive 
-                  ? "text-foreground" 
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button 
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              isActive 
+                ? "bg-background text-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+            <ChevronDown className="h-3 w-3 ml-1" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          {subPages.map((subPage) => (
+            <DropdownMenuItem
+              key={subPage.id}
+              onClick={() => {
+                setActiveCategory(category);
+                handleSubPageChange(category, subPage.id);
+              }}
+              className={activeSubPage[category] === subPage.id ? "bg-accent" : ""}
             >
-              <span className="text-xs text-muted-foreground mr-1">
-                {currentSubPage.label}
-              </span>
-              <ChevronDown className="h-3 w-3" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {subPages.map((subPage) => (
-              <DropdownMenuItem
-                key={subPage.id}
-                onClick={() => {
-                  setActiveCategory(category);
-                  handleSubPageChange(category, subPage.id);
-                }}
-                className={activeSubPage[category] === subPage.id ? "bg-accent" : ""}
-              >
-                <subPage.icon className="h-4 w-4 mr-2" />
-                {subPage.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+              <subPage.icon className="h-4 w-4 mr-2" />
+              {subPage.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   };
 
@@ -401,12 +390,12 @@ const Admin = () => {
 
         {/* Main Content Tabs */}
         <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as TabCategory)} className="space-y-6">
-          <TabsList className="flex h-auto gap-2 p-1">
+          <div className="flex gap-2 p-1 bg-muted/50 rounded-lg w-fit">
             <TabWithDropdown category="users" label="Users" icon={Users} />
             <TabWithDropdown category="access" label="Access" icon={Layout} />
             <TabWithDropdown category="data-security" label="Data & Security" icon={ShieldCheck} />
             <TabWithDropdown category="settings" label="Settings" icon={Cog} />
-          </TabsList>
+          </div>
 
           <TabsContent value="users">
             {renderSubPageContent(activeSubPage.users)}
