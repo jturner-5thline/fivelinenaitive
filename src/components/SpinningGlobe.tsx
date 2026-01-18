@@ -256,23 +256,31 @@ function CityLights() {
 // Network connection pairs between major cities [fromIndex, toIndex]
 const networkConnections: [number, number][] = [
   // Transatlantic
-  [0, 143], [6, 143], [4, 144], [8, 145],
+  [0, 143], [6, 143], [4, 144], [8, 145], [11, 144],
   // Trans-Pacific
-  [1, 157], [7, 160], [8, 165], [0, 157],
+  [1, 157], [7, 160], [8, 165], [0, 157], [14, 160],
   // Europe-Asia
-  [143, 157], [144, 160], [145, 162], [152, 157],
-  // Americas
-  [0, 67], [1, 69], [0, 40], [1, 50],
+  [143, 157], [144, 160], [145, 162], [152, 157], [146, 171],
+  // Americas North-South
+  [0, 67], [1, 69], [0, 40], [1, 50], [13, 67], [8, 70],
   // Africa connections
-  [143, 196], [144, 190], [145, 200],
-  // Australia
-  [160, 208], [157, 209], [7, 208],
+  [143, 196], [144, 190], [145, 200], [146, 205], [152, 190],
+  // Australia connections
+  [160, 208], [157, 209], [7, 208], [1, 208], [171, 208],
   // Middle East
-  [143, 185], [152, 181],
-  // South America internal
-  [67, 68], [67, 69],
-  // Additional global routes
-  [40, 143], [5, 185], [160, 185],
+  [143, 185], [152, 181], [171, 185], [160, 185],
+  // South America internal & cross
+  [67, 68], [67, 69], [69, 70], [67, 205], [69, 208],
+  // Africa internal & cross
+  [190, 196], [196, 200], [200, 205], [205, 208],
+  // Southern hemisphere routes
+  [208, 69], [209, 67], [205, 69], [208, 205],
+  // Asia-Africa
+  [171, 190], [160, 196], [185, 196],
+  // More global coverage
+  [50, 67], [40, 144], [5, 185], [13, 208], [12, 157],
+  // Additional southern routes
+  [67, 210], [69, 211], [205, 209], [200, 171],
 ];
 
 function NetworkLines() {
@@ -295,7 +303,7 @@ function NetworkLines() {
       const end = latLonToVector3(lat2, lon2, radius);
       
       const distance = start.distanceTo(end);
-      const arcHeight = 0.15 + distance * 0.12;
+      const arcHeight = 0.4 + distance * 0.25;
       
       const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
       mid.normalize().multiplyScalar(radius + arcHeight);
