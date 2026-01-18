@@ -509,22 +509,33 @@ function GlobeLines() {
 }
 
 function GlobeGlow() {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y -= delta * 0.08;
+    if (groupRef.current) {
+      groupRef.current.rotation.y -= delta * 0.08;
     }
   });
 
   return (
-    <Sphere ref={meshRef} args={[1.98, 32, 32]} position={[0, 0, 0]}>
-      <meshBasicMaterial
-        color="#06b6d4"
-        transparent
-        opacity={0.03}
-      />
-    </Sphere>
+    <group ref={groupRef}>
+      {/* Solid inner sphere to block backside visibility */}
+      <Sphere args={[1.85, 32, 32]} position={[0, 0, 0]}>
+        <meshBasicMaterial
+          color="#0c1929"
+          transparent
+          opacity={0.85}
+        />
+      </Sphere>
+      {/* Outer glow sphere */}
+      <Sphere args={[1.98, 32, 32]} position={[0, 0, 0]}>
+        <meshBasicMaterial
+          color="#06b6d4"
+          transparent
+          opacity={0.03}
+        />
+      </Sphere>
+    </group>
   );
 }
 
