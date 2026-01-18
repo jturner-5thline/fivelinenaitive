@@ -80,7 +80,7 @@ export function AppSidebar() {
   const userInitials = user?.email?.slice(0, 2).toUpperCase() || "U";
 
   return (
-    <Sidebar side="left" collapsible="icon">
+    <Sidebar side="left" collapsible="icon" className="rounded-xl border border-border shadow-sm overflow-hidden">
       <SidebarHeader className="border-b border-sidebar-border px-2 py-3">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="h-9 w-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md shadow-sm transition-all" />
