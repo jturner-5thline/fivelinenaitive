@@ -253,6 +253,117 @@ function CityLights() {
   );
 }
 
+// Network connection pairs between major cities [fromIndex, toIndex]
+const networkConnections: [number, number][] = [
+  // Transatlantic
+  [0, 143], [6, 143], [4, 144], [8, 145],
+  // Trans-Pacific
+  [1, 157], [7, 160], [8, 165], [0, 157],
+  // Europe-Asia
+  [143, 157], [144, 160], [145, 162], [152, 157],
+  // Americas
+  [0, 67], [1, 69], [0, 40], [1, 50],
+  // Africa connections
+  [143, 196], [144, 190], [145, 200],
+  // Australia
+  [160, 208], [157, 209], [7, 208],
+  // Middle East
+  [143, 185], [152, 181],
+  // South America internal
+  [67, 68], [67, 69],
+  // Additional global routes
+  [40, 143], [5, 185], [160, 185],
+];
+
+function NetworkLines() {
+  const groupRef = useRef<THREE.Group>(null);
+  const pulsesRef = useRef<THREE.Points[]>([]);
+  const pulseProgressRef = useRef<number[]>(networkConnections.map(() => Math.random()));
+  
+  const { curves, pulseGeometries } = useMemo(() => {
+    const radius = 2.04;
+    const curvesList: THREE.CurvePath<THREE.Vector3>[] = [];
+    const pulseGeos: THREE.BufferGeometry[] = [];
+    
+    networkConnections.forEach(([fromIdx, toIdx]) => {
+      if (fromIdx >= cityLights.length || toIdx >= cityLights.length) return;
+      
+      const [lat1, lon1] = cityLights[fromIdx];
+      const [lat2, lon2] = cityLights[toIdx];
+      
+      const start = latLonToVector3(lat1, lon1, radius);
+      const end = latLonToVector3(lat2, lon2, radius);
+      
+      const distance = start.distanceTo(end);
+      const arcHeight = 0.15 + distance * 0.12;
+      
+      const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+      mid.normalize().multiplyScalar(radius + arcHeight);
+      
+      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+      const curvePath = new THREE.CurvePath<THREE.Vector3>();
+      curvePath.add(curve);
+      curvesList.push(curvePath);
+      
+      const pulseGeo = new THREE.BufferGeometry();
+      pulseGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+      pulseGeos.push(pulseGeo);
+    });
+    
+    return { curves: curvesList, pulseGeometries: pulseGeos };
+  }, []);
+  
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y -= delta * 0.08;
+    }
+    
+    pulseProgressRef.current.forEach((progress, idx) => {
+      if (idx >= curves.length || !pulsesRef.current[idx]) return;
+      
+      const speed = 0.15 + (idx % 5) * 0.05;
+      pulseProgressRef.current[idx] = (progress + delta * speed) % 1;
+      
+      const point = curves[idx].getPoint(pulseProgressRef.current[idx]);
+      const positions = pulsesRef.current[idx].geometry.attributes.position.array as Float32Array;
+      positions[0] = point.x;
+      positions[1] = point.y;
+      positions[2] = point.z;
+      pulsesRef.current[idx].geometry.attributes.position.needsUpdate = true;
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {curves.map((curvePath, idx) => {
+        const points = curvePath.getPoints(30);
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+        return (
+          <primitive key={`line-${idx}`} object={new THREE.Line(
+            lineGeometry,
+            new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.15 })
+          )} />
+        );
+      })}
+      {pulseGeometries.map((geo, idx) => (
+        <points 
+          key={`pulse-${idx}`} 
+          ref={(el) => { if (el) pulsesRef.current[idx] = el; }}
+          geometry={geo}
+        >
+          <pointsMaterial
+            size={0.04}
+            color="#22d3ee"
+            transparent
+            opacity={0.9}
+            sizeAttenuation
+          />
+        </points>
+      ))}
+    </group>
+  );
+}
+
 function latLonToVector3(lat: number, lon: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
   const theta = (lon + 180) * (Math.PI / 180);
@@ -460,6 +571,7 @@ export function SpinningGlobe() {
           <GlobeGlow />
           <ContinentOutlines />
           <CityLights />
+          <NetworkLines />
         </group>
         <Particles />
         <OrbitControls
