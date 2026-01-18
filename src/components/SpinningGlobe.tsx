@@ -3,6 +3,33 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Sphere, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
+// Earth's axial tilt is 23.5 degrees
+const AXIAL_TILT = 23.5 * (Math.PI / 180);
+
+// Calculate the seasonal tilt direction based on current date
+// Summer solstice (June 21) = day 172, North Pole tilts toward sun
+// Winter solstice (Dec 21) = day 355, North Pole tilts away from sun
+function getSeasonalTilt(): { x: number; z: number } {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 0);
+  const diff = now.getTime() - startOfYear.getTime();
+  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+  
+  // Summer solstice is around day 172 (June 21)
+  // We want the tilt to rotate through the year
+  // At summer solstice, North Pole tilts toward viewer (positive X tilt)
+  // At winter solstice, North Pole tilts away (negative X tilt)
+  const summerSolsticeDay = 172;
+  const daysFromSolstice = dayOfYear - summerSolsticeDay;
+  const yearProgress = (daysFromSolstice / 365) * Math.PI * 2;
+  
+  // The tilt rotates around the Y axis through the year
+  return {
+    x: Math.cos(yearProgress) * AXIAL_TILT,
+    z: Math.sin(yearProgress) * AXIAL_TILT,
+  };
+}
+
 // More accurate continent outline coordinates [lat, lon] pairs
 const continentOutlines = {
   northAmerica: [
@@ -281,22 +308,26 @@ function Particles() {
 }
 
 export function SpinningGlobe() {
+  const seasonalTilt = useMemo(() => getSeasonalTilt(), []);
+  
   return (
     <div className="absolute inset-0">
       <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
         <ambientLight intensity={0.3} />
         <pointLight position={[10, 10, 10]} intensity={0.5} color="#22d3ee" />
         <pointLight position={[-10, -10, -10]} intensity={0.3} color="#0ea5e9" />
-        <Globe />
-        <GlobeLines />
-        <GlobeGlow />
-        <ContinentOutlines />
+        <group rotation={[seasonalTilt.x, 0, seasonalTilt.z]}>
+          <Globe />
+          <GlobeLines />
+          <GlobeGlow />
+          <ContinentOutlines />
+        </group>
         <Particles />
         <OrbitControls
           enableZoom={false}
           enablePan={false}
           autoRotate
-          autoRotateSpeed={0.3}
+          autoRotateSpeed={-0.3}
         />
       </Canvas>
     </div>
