@@ -34,6 +34,7 @@ import { DataManagementPanel } from "@/components/admin/DataManagementPanel";
 import { PageAccessPanel } from "@/components/admin/PageAccessPanel";
 import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 import { DealsHeader } from "@/components/deals/DealsHeader";
+import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -341,20 +342,7 @@ const Admin = () => {
           </Card>
         );
       case "enhancement":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5" />
-                Product Enhancement
-              </CardTitle>
-              <CardDescription>Coming soon</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Product enhancement features will be available here.</p>
-            </CardContent>
-          </Card>
-        );
+        return <UXRecommendationsPanel />;
       default:
         return null;
     }
