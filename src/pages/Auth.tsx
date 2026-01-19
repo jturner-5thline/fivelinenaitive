@@ -276,7 +276,7 @@ const Auth = () => {
               >AI</span>
               <span className="text-white/[0.10]">tive</span>
             </h1>
-            <p className="text-white text-[1.65vw] font-light tracking-[0.72em] -mt-[6.5vw] uppercase whitespace-nowrap ml-[0.35em]">
+            <p className="text-white text-[1.65vw] font-light tracking-[0.72em] -mt-[5.5vw] uppercase whitespace-nowrap ml-[0.35em]">
               Intelligence, by Design
             </p>
           </div>
