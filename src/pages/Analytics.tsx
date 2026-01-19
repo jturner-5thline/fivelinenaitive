@@ -745,7 +745,7 @@ export default function Analytics() {
         <meta name="description" content="View and manage analytics charts for your deals pipeline" />
       </Helmet>
       
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DealsHeader />
         
         <main className="container mx-auto px-6 py-8">

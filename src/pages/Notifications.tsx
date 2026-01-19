@@ -153,7 +153,7 @@ export default function Notifications() {
         <meta name="description" content="View all your notifications and alerts" />
       </Helmet>
       
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DealsHeader />
         
         <main className="container max-w-4xl py-8">
