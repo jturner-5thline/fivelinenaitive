@@ -47,9 +47,26 @@ const Index = () => {
             nAItive
           </h1>
           
-          <p className="text-white/60 text-lg md:text-xl font-light mb-12 tracking-wide">
-            AI-Powered Deal Intelligence
+          <p 
+            className="text-white text-[1.65vw] font-light tracking-[0.72em] -mt-[5.5vw] uppercase whitespace-nowrap ml-[0.35em] opacity-0 mb-12"
+            style={{
+              animation: 'fadeInTagline 0.3s ease-out 0.4s forwards',
+            }}
+          >
+            Intelligence, by Design
           </p>
+          <style>{`
+            @keyframes fadeInTagline {
+              from {
+                opacity: 0;
+                transform: translateY(10px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+          `}</style>
           
           <Button 
             variant="outline" 
