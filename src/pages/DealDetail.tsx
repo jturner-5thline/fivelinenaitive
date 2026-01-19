@@ -1380,7 +1380,7 @@ export default function DealDetail() {
 
   if (!deal) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DealsHeader />
         <main className="container mx-auto max-w-5xl px-4 py-8">
           <div className="text-center">
@@ -1602,7 +1602,7 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="min-h-screen bg-background relative">
+      <div className="bg-background relative">
         <GlobalSaveBar isAnySaving={isAnySaving} />
         <DealsHeader />
 
