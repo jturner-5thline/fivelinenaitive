@@ -655,6 +655,49 @@ function NeuralNetwork() {
   const pulseWaveRef = useRef<THREE.Mesh>(null);
   const innerGlowRef = useRef<THREE.Mesh>(null);
   
+  // Create shader material for soft radial pulse
+  const pulseShaderMaterial = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color('#0ea5e9') },
+        uOpacity: { value: 0.35 },
+        uPhase: { value: 0.0 }
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vPosition = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        uniform float uPhase;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          // Calculate distance from center (0-1 range for unit sphere)
+          float dist = length(vPosition);
+          // Create soft radial fade - stronger in center, fades to edges
+          float centerFade = 1.0 - smoothstep(0.0, 1.0, dist);
+          // Add extra softness with power curve
+          centerFade = pow(centerFade, 1.5);
+          // Edge fade based on phase (disperses more as it expands)
+          float edgeSoftness = mix(0.3, 0.8, uPhase);
+          float finalAlpha = uOpacity * centerFade * edgeSoftness;
+          gl_FragColor = vec4(uColor, finalAlpha);
+        }
+      `,
+      transparent: true,
+      side: THREE.BackSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+  }, []);
+  
   const { nodeGeometry, lineObjects, surfaceNodes, coreConnections } = useMemo(() => {
     // Central core at origin
     const corePosition = new THREE.Vector3(0, 0, 0);
@@ -847,13 +890,15 @@ function NeuralNetwork() {
       electronOrbitRef.current.rotation.y += delta * 0.5;
     }
     
-    // Pulse wave expanding
+    // Pulse wave expanding with soft fade
     if (pulseWaveRef.current) {
-      const wavePhase = (t * 0.8) % 1;
-      const waveScale = 0.3 + wavePhase * 0.4;
+      const wavePhase = (t * 0.6) % 1;
+      const waveScale = 0.15 + wavePhase * 0.55;
       pulseWaveRef.current.scale.setScalar(waveScale);
-      (pulseWaveRef.current.material as THREE.MeshBasicMaterial).opacity = 
-        0.4 * (1 - wavePhase);
+      // Use eased falloff for softer dispersion
+      const easedFade = Math.pow(1 - wavePhase, 2.5);
+      (pulseWaveRef.current.material as THREE.ShaderMaterial).uniforms.uOpacity.value = easedFade * 0.35;
+      (pulseWaveRef.current.material as THREE.ShaderMaterial).uniforms.uPhase.value = wavePhase;
     }
   });
 
@@ -861,10 +906,9 @@ function NeuralNetwork() {
     <group ref={groupRef}>
       {/* === INTELLIGENT CELL CORE === */}
       
-      {/* Expanding pulse wave */}
-      <mesh ref={pulseWaveRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[1, 32, 32]} />
-        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.2} side={THREE.BackSide} />
+      {/* Expanding pulse wave with soft radial fade */}
+      <mesh ref={pulseWaveRef} position={[0, 0, 0]} material={pulseShaderMaterial}>
+        <sphereGeometry args={[1, 48, 48]} />
       </mesh>
       
       {/* Outer membrane - translucent cell wall */}
