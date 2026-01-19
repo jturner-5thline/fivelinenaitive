@@ -71,7 +71,7 @@ export default function Metrics() {
         <Helmet>
           <title>Deal Metrics | 5thLine</title>
         </Helmet>
-        <div className="container mx-auto py-6 px-4 space-y-6">
+        <div className="container mx-auto py-6 px-4 space-y-6 bg-card rounded-xl">
           <div className="flex items-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span>Loading metrics...</span>
@@ -123,7 +123,7 @@ export default function Metrics() {
       <Helmet>
         <title>Deal Metrics | 5thLine</title>
       </Helmet>
-      <div className="container mx-auto py-6 px-4 space-y-6">
+      <div className="container mx-auto py-6 px-4 space-y-6 bg-card rounded-xl">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>

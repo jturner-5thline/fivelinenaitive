@@ -8,7 +8,7 @@ export default function SalesBD() {
       <Helmet>
         <title>Sales & BD | 5thLine</title>
       </Helmet>
-      <div className="container mx-auto py-8 px-4">
+      <div className="container mx-auto py-8 px-4 bg-card rounded-xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Sales & BD</h1>
           <p className="text-muted-foreground mt-1">
