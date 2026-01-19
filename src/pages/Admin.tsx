@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog
+  ShieldCheck, Cog, Lightbulb
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -64,7 +64,11 @@ const settingsSubPages = [
   { id: "audit", label: "Audit", icon: ClipboardList },
 ];
 
-type TabCategory = "users" | "access" | "data-security" | "settings";
+const productEnhancementSubPages = [
+  { id: "enhancement", label: "Product Enhancement", icon: Lightbulb },
+];
+
+type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement";
 
 const Admin = () => {
   const { isAdmin, isLoading: roleLoading } = useAdminRole();
@@ -76,6 +80,7 @@ const Admin = () => {
     access: "pages",
     "data-security": "data",
     settings: "settings",
+    "product-enhancement": "enhancement",
   });
 
   const handleSubPageChange = (category: TabCategory, subPageId: string) => {
@@ -92,6 +97,8 @@ const Admin = () => {
         return dataSecuritySubPages;
       case "settings":
         return settingsSubPages;
+      case "product-enhancement":
+        return productEnhancementSubPages;
     }
   };
 
@@ -333,6 +340,21 @@ const Admin = () => {
             <CardContent><AuditLogTable /></CardContent>
           </Card>
         );
+      case "enhancement":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5" />
+                Product Enhancement
+              </CardTitle>
+              <CardDescription>Coming soon</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Product enhancement features will be available here.</p>
+            </CardContent>
+          </Card>
+        );
       default:
         return null;
     }
@@ -412,6 +434,7 @@ const Admin = () => {
             <TabWithDropdown category="access" label="Access" icon={Layout} />
             <TabWithDropdown category="data-security" label="Data & Security" icon={ShieldCheck} />
             <TabWithDropdown category="settings" label="Settings" icon={Cog} />
+            <TabWithDropdown category="product-enhancement" label="Product Enhancement" icon={Lightbulb} />
           </div>
 
           <TabsContent value="users">
@@ -428,6 +451,10 @@ const Admin = () => {
 
           <TabsContent value="settings">
             {renderSubPageContent(activeSubPage.settings)}
+          </TabsContent>
+
+          <TabsContent value="product-enhancement">
+            {renderSubPageContent(activeSubPage["product-enhancement"])}
           </TabsContent>
         </Tabs>
       </div>
