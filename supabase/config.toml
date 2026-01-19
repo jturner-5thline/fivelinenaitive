@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.rate-tracking]
 verify_jwt = false
+
+[functions.universal-search]
+verify_jwt = false

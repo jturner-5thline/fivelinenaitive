@@ -32,6 +32,7 @@ import { IntegrationLogsPanel } from "@/components/admin/IntegrationLogsPanel";
 import { ErrorLogsPanel } from "@/components/admin/ErrorLogsPanel";
 import { DataManagementPanel } from "@/components/admin/DataManagementPanel";
 import { PageAccessPanel } from "@/components/admin/PageAccessPanel";
+import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 
 // Sub-page configurations
@@ -45,6 +46,7 @@ const usersSubPages = [
 
 const accessSubPages = [
   { id: "pages", label: "Page Access", icon: Layout },
+  { id: "permissions", label: "User Permissions", icon: Shield },
   { id: "announcements", label: "Announcements", icon: Megaphone },
   { id: "waitlist", label: "Waitlist", icon: ListTodo },
 ];
@@ -197,6 +199,21 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent><PageAccessPanel /></CardContent>
+          </Card>
+        );
+      case "permissions":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                User Data Permissions
+              </CardTitle>
+              <CardDescription>
+                Control what data each user can access. Restrict by scope (all, team, own) or specific capabilities.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><UserPermissionsPanel /></CardContent>
           </Card>
         );
       case "announcements":

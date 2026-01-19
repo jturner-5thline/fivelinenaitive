@@ -2397,6 +2397,77 @@ export type Database = {
         }
         Relationships: []
       }
+      user_data_permissions: {
+        Row: {
+          analytics_scope: Database["public"]["Enums"]["data_access_scope"]
+          assigned_deal_ids: string[] | null
+          can_bulk_edit: boolean
+          can_delete: boolean
+          can_export: boolean
+          can_view_financials: boolean
+          can_view_sensitive: boolean
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deals_scope: Database["public"]["Enums"]["data_access_scope"]
+          id: string
+          insights_scope: Database["public"]["Enums"]["data_access_scope"]
+          lenders_scope: Database["public"]["Enums"]["data_access_scope"]
+          notes: string | null
+          reports_scope: Database["public"]["Enums"]["data_access_scope"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analytics_scope?: Database["public"]["Enums"]["data_access_scope"]
+          assigned_deal_ids?: string[] | null
+          can_bulk_edit?: boolean
+          can_delete?: boolean
+          can_export?: boolean
+          can_view_financials?: boolean
+          can_view_sensitive?: boolean
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deals_scope?: Database["public"]["Enums"]["data_access_scope"]
+          id?: string
+          insights_scope?: Database["public"]["Enums"]["data_access_scope"]
+          lenders_scope?: Database["public"]["Enums"]["data_access_scope"]
+          notes?: string | null
+          reports_scope?: Database["public"]["Enums"]["data_access_scope"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analytics_scope?: Database["public"]["Enums"]["data_access_scope"]
+          assigned_deal_ids?: string[] | null
+          can_bulk_edit?: boolean
+          can_delete?: boolean
+          can_export?: boolean
+          can_view_financials?: boolean
+          can_view_sensitive?: boolean
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deals_scope?: Database["public"]["Enums"]["data_access_scope"]
+          id?: string
+          insights_scope?: Database["public"]["Enums"]["data_access_scope"]
+          lenders_scope?: Database["public"]["Enums"]["data_access_scope"]
+          notes?: string | null
+          reports_scope?: Database["public"]["Enums"]["data_access_scope"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_data_permissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2639,11 +2710,19 @@ export type Database = {
         Args: { _company_id: string; _reason?: string; _suspend: boolean }
         Returns: undefined
       }
+      can_access_deal: {
+        Args: { _deal_id: string; _user_id: string }
+        Returns: boolean
+      }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_company_role: {
         Args: { _company_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["company_role"]
+      }
+      get_user_data_scope: {
+        Args: { _company_id: string; _scope_type: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["data_access_scope"]
       }
       has_role: {
         Args: {
@@ -2680,6 +2759,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       company_role: "owner" | "admin" | "member"
+      data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed"
     }
     CompositeTypes: {
@@ -2810,6 +2890,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       company_role: ["owner", "admin", "member"],
+      data_access_scope: ["all", "team", "own", "none"],
       feature_status: ["disabled", "staging", "deployed"],
     },
   },
