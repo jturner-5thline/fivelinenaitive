@@ -119,7 +119,10 @@ export default function Dashboard() {
           <div className="space-y-6">
             {/* Page Header & Widgets */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div 
+                className="flex items-center justify-between opacity-0"
+                style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
+              >
                 <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">5th Line</h1>
                 <div className="flex items-center gap-2">
                   <FlaggedDealsPanel deals={allDeals} />
@@ -160,29 +163,60 @@ export default function Dashboard() {
               {isLoading ? (
                 <WidgetsSectionSkeleton />
               ) : (
-                <>
+                <div 
+                  className="opacity-0"
+                  style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
+                >
                   <WidgetsSection deals={allDeals} />
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                     {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
                     {specialWidgets['milestones'] && <MilestonesWidget />}
                     {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
                   </div>
                   
                   {/* Smart Suggestions Widget - spans full width */}
-                  <AllSuggestionsWidget deals={allDeals} />
-                </>
+                  <div className="mt-4">
+                    <AllSuggestionsWidget deals={allDeals} />
+                  </div>
+                </div>
               )}
-              <NotificationsBar deals={allDeals} />
+              <div 
+                className="opacity-0"
+                style={{ animation: 'fadeInUp 0.4s ease-out 0.15s forwards' }}
+              >
+                <NotificationsBar deals={allDeals} />
+              </div>
             </div>
+            
+            <style>{`
+              @keyframes fadeInUp {
+                from {
+                  opacity: 0;
+                  transform: translateY(12px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+            `}</style>
 
             {/* Filters */}
-            <DealFilters
-              filters={filters}
-              onFilterChange={updateFilters}
-            />
+            <div 
+              className="opacity-0"
+              style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
+            >
+              <DealFilters
+                filters={filters}
+                onFilterChange={updateFilters}
+              />
+            </div>
 
             {/* Results Count & Group Toggle */}
-            <div className="flex items-center justify-between">
+            <div 
+              className="flex items-center justify-between opacity-0"
+              style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
+            >
               <p className="text-sm text-muted-foreground">
                 Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
                 {deals.length === 1 ? 'deal' : 'deals'}
@@ -303,20 +337,25 @@ export default function Dashboard() {
             </div>
 
             {/* Deals Grid/List */}
-            {isLoading ? (
-              <DealsListSkeleton groupByStatus={groupByStatus} />
-            ) : (
-              <DealsList 
-                deals={deals} 
-                onStatusChange={updateDealStatus} 
-                onMarkReviewed={handleMarkReviewed} 
-                onToggleFlag={handleToggleFlag} 
-                groupByStatus={groupByStatus}
-                sortField={sortField}
-                sortDirection={sortDirection}
-                viewMode={viewMode}
-              />
-            )}
+            <div 
+              className="opacity-0"
+              style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
+            >
+              {isLoading ? (
+                <DealsListSkeleton groupByStatus={groupByStatus} />
+              ) : (
+                <DealsList 
+                  deals={deals} 
+                  onStatusChange={updateDealStatus} 
+                  onMarkReviewed={handleMarkReviewed} 
+                  onToggleFlag={handleToggleFlag} 
+                  groupByStatus={groupByStatus}
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  viewMode={viewMode}
+                />
+              )}
+            </div>
           </div>
         </main>
 
