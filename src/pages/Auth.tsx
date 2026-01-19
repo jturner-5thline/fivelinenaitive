@@ -262,7 +262,7 @@ const Auth = () => {
         <SpinningGlobe />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
-        <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-8 md:pb-12 px-4">
+        <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
           <h1 className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap pointer-events-none select-none">
             <span className="text-white/[0.07]">n</span>
             <span 
