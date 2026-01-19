@@ -99,13 +99,9 @@ const Waitlist = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-16 md:pb-24 px-4 animate-fade-in">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-1 tracking-tight">
+          <h1 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20vw] font-bold text-white/[0.07] tracking-tighter whitespace-nowrap pointer-events-none select-none">
             nAItive
           </h1>
-          
-          <p className="text-white/60 text-base md:text-lg font-light mb-6 tracking-wide">
-            AI-Powered Deal Intelligence
-          </p>
 
           {isSubmitted ? (
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm text-center">
