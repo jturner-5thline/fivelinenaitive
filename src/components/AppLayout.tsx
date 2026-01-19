@@ -18,12 +18,10 @@ function MainContent({ children }: { children: React.ReactNode }) {
 
   return (
     <main 
-      className="flex-1 flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-hidden h-[calc(100vh-1rem)]"
+      className="flex-1 flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-auto h-[calc(100vh-1rem)]"
       onClick={handleMainClick}
     >
-      <div className="flex-1 overflow-auto">
-        {children}
-      </div>
+      {children}
     </main>
   );
 }
