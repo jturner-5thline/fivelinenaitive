@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +32,7 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
   { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
+  { title: "AI Research", url: "/research", icon: Sparkles, featureKey: null }, // Always visible
   { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
   { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },
   { title: "Sales & BD", url: "/sales-bd", icon: Users, featureKey: "sales_bd" },
