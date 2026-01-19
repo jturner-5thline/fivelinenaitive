@@ -42,20 +42,34 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-[#010128]/95 via-[#010128]/90 to-[#010114]/95" />
         
         {/* Content */}
-        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 animate-fade-in">
-          <h1 className="text-6xl md:text-8xl lg:text-9xl font-bold text-white mb-4 tracking-tight">
-            nAItive
-          </h1>
-          
-          <p 
-            className="text-white text-[1.65vw] font-light tracking-[0.72em] -mt-[5.5vw] uppercase whitespace-nowrap ml-[0.35em] opacity-0 mb-12"
-            style={{
-              animation: 'fadeInTagline 0.3s ease-out 0.4s forwards',
-            }}
-          >
-            Intelligence, by Design
-          </p>
+        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
+          <div className="flex flex-col items-center">
+            <h1 className="text-[18vw] font-sans font-bold tracking-tighter whitespace-nowrap animate-fade-in">
+              <span className="text-white/[0.10]">n</span>
+              <span 
+                className="bg-clip-text text-transparent"
+                style={{ 
+                  backgroundImage: 'linear-gradient(45deg, rgba(100,116,139,0.3) 0%, rgba(139,92,246,0.45) 50%, rgba(148,163,184,0.3) 100%)',
+                  backgroundSize: '300% 300%',
+                  animation: 'shimmer 8s ease-in-out infinite',
+                }}
+              >AI</span>
+              <span className="text-white/[0.10]">tive</span>
+            </h1>
+            <p 
+              className="text-white text-[1.65vw] font-light tracking-[0.72em] -mt-[5.5vw] uppercase whitespace-nowrap ml-[0.35em] opacity-0"
+              style={{
+                animation: 'fadeInTagline 0.3s ease-out 0.4s forwards',
+              }}
+            >
+              Intelligence, by Design
+            </p>
+          </div>
           <style>{`
+            @keyframes shimmer {
+              0%, 100% { background-position: 100% 100%; }
+              50% { background-position: 0% 0%; }
+            }
             @keyframes fadeInTagline {
               from {
                 opacity: 0;
