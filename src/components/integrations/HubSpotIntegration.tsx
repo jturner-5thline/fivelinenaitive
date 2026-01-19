@@ -61,7 +61,17 @@ import {
   Globe,
   MapPin,
   Briefcase,
+  BarChart3,
+  ArrowRightLeft,
+  Brain,
+  FileText,
 } from "lucide-react";
+import {
+  HubSpotAnalyticsDashboard,
+  HubSpotDealSync,
+  HubSpotAIInsights,
+  HubSpotReporting,
+} from "./hubspot";
 
 export function HubSpotIntegration() {
   const hubspot = useHubSpot();
@@ -220,7 +230,7 @@ export function HubSpotIntegration() {
       {/* Data Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between mb-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="contacts" className="gap-2">
               <Users className="h-4 w-4" />
               Contacts
@@ -236,6 +246,22 @@ export function HubSpotIntegration() {
             <TabsTrigger value="activities" className="gap-2">
               <MessageSquare className="h-4 w-4" />
               Activities
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="sync" className="gap-2">
+              <ArrowRightLeft className="h-4 w-4" />
+              Sync
+            </TabsTrigger>
+            <TabsTrigger value="insights" className="gap-2">
+              <Brain className="h-4 w-4" />
+              AI Insights
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Reports
             </TabsTrigger>
           </TabsList>
 
@@ -747,6 +773,26 @@ export function HubSpotIntegration() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics">
+          <HubSpotAnalyticsDashboard />
+        </TabsContent>
+
+        {/* Sync Tab */}
+        <TabsContent value="sync">
+          <HubSpotDealSync />
+        </TabsContent>
+
+        {/* AI Insights Tab */}
+        <TabsContent value="insights">
+          <HubSpotAIInsights />
+        </TabsContent>
+
+        {/* Reports Tab */}
+        <TabsContent value="reports">
+          <HubSpotReporting />
         </TabsContent>
       </Tabs>
     </div>
