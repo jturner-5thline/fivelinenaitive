@@ -5,6 +5,7 @@ import { Bell, AlertCircle, Calendar, FileText, Users, ChevronLeft, ChevronRight
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface Notification {
   id: string;
@@ -118,9 +119,13 @@ const getPriorityBadge = (priority?: Notification['priority']) => {
   }
 };
 
-export function NotificationCarousel() {
-  const navigate = useNavigate();
-  const notifications = mockNotifications;
+interface CarouselContentProps {
+  notifications: Notification[];
+  onNavigate: (dealId: string) => void;
+  onClose?: () => void;
+}
+
+function CarouselInner({ notifications, onNavigate, onClose }: CarouselContentProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -160,17 +165,17 @@ export function NotificationCarousel() {
     setActiveIndex(closestIndex);
   }, []);
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     const newIndex = Math.max(0, activeIndex - 1);
     setActiveIndex(newIndex);
     scrollToIndex(newIndex);
-  };
+  }, [activeIndex, scrollToIndex]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     const newIndex = Math.min(notifications.length - 1, activeIndex + 1);
     setActiveIndex(newIndex);
     scrollToIndex(newIndex);
-  };
+  }, [activeIndex, notifications.length, scrollToIndex]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'ArrowLeft') {
@@ -178,7 +183,7 @@ export function NotificationCarousel() {
     } else if (e.key === 'ArrowRight') {
       goToNext();
     }
-  }, [activeIndex, notifications.length]);
+  }, [goToPrevious, goToNext]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.touches[0].clientX);
@@ -213,23 +218,11 @@ export function NotificationCarousel() {
   }, [handleKeyDown]);
 
   useEffect(() => {
-    // Center on first card on mount
     setTimeout(() => scrollToIndex(0), 100);
   }, [scrollToIndex]);
 
-  if (notifications.length === 0) {
-    return (
-      <Card className="p-6">
-        <div className="flex flex-col items-center justify-center text-center space-y-2">
-          <Bell className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No notifications at this time</p>
-        </div>
-      </Card>
-    );
-  }
-
   return (
-    <div className="relative py-4">
+    <div className="relative py-4 flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 px-4">
         <div className="flex items-center gap-2">
@@ -264,7 +257,7 @@ export function NotificationCarousel() {
       {/* Carousel Container */}
       <div
         ref={scrollRef}
-        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+        className="flex-1 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide items-center"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -300,7 +293,12 @@ export function NotificationCarousel() {
                     ? 'w-[380px] md:w-[480px] min-h-[420px] md:min-h-[480px] shadow-2xl z-10'
                     : 'w-[280px] md:w-[320px] min-h-[320px] md:min-h-[360px] shadow-md'
                 }`}
-                onClick={() => notification.dealId && navigate(`/deal/${notification.dealId}`)}
+                onClick={() => {
+                  if (notification.dealId) {
+                    onClose?.();
+                    onNavigate(notification.dealId);
+                  }
+                }}
               >
                 <CardContent className="p-6 h-full flex flex-col">
                   {/* Header */}
@@ -362,5 +360,67 @@ export function NotificationCarousel() {
         ))}
       </div>
     </div>
+  );
+}
+
+export function NotificationCarousel() {
+  const navigate = useNavigate();
+  const notifications = mockNotifications;
+  const [isOpen, setIsOpen] = useState(false);
+
+  const highPriorityCount = notifications.filter(n => n.priority === 'high').length;
+
+  const handleNavigate = (dealId: string) => {
+    navigate(`/deal/${dealId}`);
+  };
+
+  if (notifications.length === 0) {
+    return (
+      <Card className="p-6">
+        <div className="flex flex-col items-center justify-center text-center space-y-2">
+          <Bell className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No notifications at this time</p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      {/* Trigger Card */}
+      <Card 
+        className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setIsOpen(true)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center relative">
+              <Bell className="h-6 w-6 text-primary" />
+              {highPriorityCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-medium">
+                  {highPriorityCount}
+                </span>
+              )}
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Notifications</h3>
+              <p className="text-xs text-muted-foreground">{notifications.length} items</p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </div>
+      </Card>
+
+      {/* Fullscreen Dialog */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+          <CarouselInner 
+            notifications={notifications} 
+            onNavigate={handleNavigate}
+            onClose={() => setIsOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
