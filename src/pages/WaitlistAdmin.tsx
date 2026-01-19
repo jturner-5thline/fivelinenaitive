@@ -100,7 +100,7 @@ export default function WaitlistAdmin() {
         <title>Waitlist Admin - nAItive</title>
       </Helmet>
 
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DealsHeader />
 
         <main className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">

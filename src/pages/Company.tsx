@@ -19,7 +19,7 @@ export default function Company() {
         <Helmet>
           <title>Company - nAItive</title>
         </Helmet>
-        <div className="min-h-screen bg-background">
+        <div className="bg-background">
           <DealsHeader />
           <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center py-12">
@@ -37,7 +37,7 @@ export default function Company() {
         <Helmet>
           <title>Company - nAItive</title>
         </Helmet>
-        <div className="min-h-screen bg-background">
+        <div className="bg-background">
           <DealsHeader />
           <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
             <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
@@ -69,7 +69,7 @@ export default function Company() {
         <title>{company.name} - Company Settings</title>
       </Helmet>
 
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DealsHeader />
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">

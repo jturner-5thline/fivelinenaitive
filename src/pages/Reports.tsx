@@ -225,7 +225,7 @@ export default function Reports() {
         <meta name="description" content="Generate and download pipeline, lender, and financial reports" />
       </Helmet>
 
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DealsHeader />
 
         <main className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
