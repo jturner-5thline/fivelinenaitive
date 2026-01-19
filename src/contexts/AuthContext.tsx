@@ -99,6 +99,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         setIsLoading(false);
 
+        // For OAuth logins (Google, etc.), always treat as "remember me"
+        // since there's no checkbox shown during OAuth flow
+        if (event === 'SIGNED_IN' && session?.user) {
+          const provider = session.user.app_metadata?.provider;
+          if (provider && provider !== 'email') {
+            // OAuth login - always remember
+            localStorage.setItem('naitive_remember_me', 'true');
+            sessionStorage.setItem('naitive_session_active', 'true');
+          }
+        }
+
         // Process pending invitations on sign in (deferred to avoid deadlock)
         if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
           const userId = session.user.id;
@@ -118,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           processedUsersRef.current.clear();
           localStorage.removeItem('naitive_remember_me');
           sessionStorage.removeItem('naitive_session_only');
+          sessionStorage.removeItem('naitive_session_active');
         }
       }
     );
@@ -126,10 +138,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       // Check if this is a session-only login that should be cleared
       // (browser was closed and reopened without Remember Me)
-      const wasSessionOnly = !localStorage.getItem('naitive_remember_me');
+      // Only apply this logic if the user explicitly chose NOT to remember (session-only flag was set)
+      const wasExplicitlySessionOnly = sessionStorage.getItem('naitive_session_only') === 'true' || 
+        (!localStorage.getItem('naitive_remember_me') && !sessionStorage.getItem('naitive_session_active'));
       const hasSessionMarker = sessionStorage.getItem('naitive_session_active') === 'true';
       
-      if (session && wasSessionOnly && !hasSessionMarker) {
+      // Only sign out if:
+      // 1. User has a session
+      // 2. User explicitly unchecked "Remember Me" (has session-only flag in previous session)
+      // 3. This is a new browser session (no active session marker)
+      // 4. User logged in via email (not OAuth - OAuth always remembers)
+      const isOAuthUser = session?.user?.app_metadata?.provider && session.user.app_metadata.provider !== 'email';
+      
+      if (session && wasExplicitlySessionOnly && !hasSessionMarker && !isOAuthUser) {
         // User had a session but didn't check "Remember Me" and this is a new browser session
         // Sign them out
         supabase.auth.signOut().then(() => {
@@ -143,6 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Mark this browser session as active
       if (session) {
         sessionStorage.setItem('naitive_session_active', 'true');
+        // If it's an OAuth user, ensure remember me is set
+        if (isOAuthUser) {
+          localStorage.setItem('naitive_remember_me', 'true');
+        }
       }
       
       setSession(session);
