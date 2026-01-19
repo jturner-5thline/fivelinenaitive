@@ -8,7 +8,8 @@ export default function Operations() {
       <Helmet>
         <title>Operations | 5thLine</title>
       </Helmet>
-      <div className="container mx-auto py-8 px-4 bg-card rounded-xl">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-8 px-4">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Operations</h1>
           <p className="text-muted-foreground mt-1">
@@ -37,6 +38,7 @@ export default function Operations() {
             This page will help you streamline operational workflows, track resources, 
             manage vendor relationships, and optimize business processes.
           </p>
+        </div>
         </div>
       </div>
     </>
