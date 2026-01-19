@@ -21,7 +21,7 @@ import {
 import { 
   TrendingUp, TrendingDown, DollarSign, Percent, Building2, Calendar, Loader2, 
   Plus, Pencil, RotateCcw, Save, FolderOpen, BarChart3, LineChart as LineChartIcon, 
-  PieChart as PieChartIcon, AreaChart 
+  PieChart as PieChartIcon, AreaChart, Star, ChevronDown, LayoutDashboard
 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -62,6 +62,24 @@ import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/c
 import { MetricWidgetEditor } from "@/components/metrics/MetricWidgetEditor";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
+// Dashboard options
+const DASHBOARD_OPTIONS = [
+  { id: 'management-snapshot', name: 'Management Snapshot', isFavorite: true },
+  { id: 'pnl', name: 'P&L', isFavorite: false },
+  { id: 'cash-flow', name: 'Cash Flow', isFavorite: false },
+  { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false },
+  { id: 'income-board', name: 'Income Board', isFavorite: false },
+  { id: 'finserv-pipeline-metrics', name: 'Finserv Pipeline Metrics', isFavorite: false },
+  { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false },
+  { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false },
+  { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false },
+  { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false },
+  { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false },
+  { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false },
+  { id: 'niki-bonus-board', name: 'Copy of Niki Bonus Board', isFavorite: false },
+  { id: 'paz-sales-pipeline', name: 'Paz Sales Pipeline Board', isFavorite: false },
+];
 
 // Generate rolling 12 months labels
 const generateMonthLabels = () => {
@@ -436,6 +454,7 @@ export default function Metrics() {
     deletePreset 
   } = useMetricsWidgets();
 
+  const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<MetricWidgetConfig | undefined>();
@@ -530,8 +549,52 @@ export default function Metrics() {
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Deal Metrics</h1>
+              <div className="flex items-center gap-3">
+                {/* Dashboard Selector Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
+                      <div className="flex items-center gap-2">
+                        <LayoutDashboard className="h-6 w-6 text-primary" />
+                        <h1 className="text-3xl font-bold tracking-tight">
+                          {DASHBOARD_OPTIONS.find(d => d.id === selectedDashboard)?.name || 'Dashboard'}
+                        </h1>
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-72 bg-popover border border-border shadow-lg z-50">
+                    {DASHBOARD_OPTIONS.map((dashboard) => (
+                      <DropdownMenuItem
+                        key={dashboard.id}
+                        onClick={() => setSelectedDashboard(dashboard.id)}
+                        className={cn(
+                          "flex items-center justify-between py-2",
+                          selectedDashboard === dashboard.id && "bg-accent"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                          <span>{dashboard.name}</span>
+                        </div>
+                        <Star 
+                          className={cn(
+                            "h-4 w-4",
+                            dashboard.isFavorite 
+                              ? "text-yellow-500 fill-yellow-500" 
+                              : "text-muted-foreground/40"
+                          )} 
+                        />
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="flex items-center gap-2 text-primary">
+                      <Plus className="h-4 w-4" />
+                      <span>Create New Dashboard</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <Badge variant="outline" className="text-sm">
                   <Calendar className="h-3 w-3 mr-1" />
                   {format(new Date(), "MMM, yyyy")}
