@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, LogIn, Mail, User, Building2 } from 'lucide-react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
+import { SpinningGlobe } from '@/components/SpinningGlobe';
 
 const waitlistSchema = z.object({
   email: z.string().trim().email({ message: "Please enter a valid email address" }),
@@ -94,18 +95,8 @@ const Waitlist = () => {
       </Helmet>
       
       <div className="min-h-screen bg-[#010114] relative overflow-hidden">
-        {/* YouTube Video Background */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden">
-          <iframe
-            src="https://www.youtube.com/embed/cR1FyHv_rJE?autoplay=1&mute=1&loop=1&playlist=cR1FyHv_rJE&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.78vh] min-w-full h-[56.25vw] min-h-full pointer-events-none"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-            title="Background video"
-          />
-        </div>
-        
-        <div className="absolute inset-0 bg-gradient-to-b from-[#010128]/95 via-[#010128]/90 to-[#010114]/95" />
+        <SpinningGlobe />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 animate-fade-in">
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-2 tracking-tight">
