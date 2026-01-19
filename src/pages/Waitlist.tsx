@@ -100,7 +100,7 @@ const Waitlist = () => {
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-16 md:pb-24 px-4 animate-fade-in">
           <h1 className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap pointer-events-none select-none">
-            <span className="text-white/[0.07]">n</span>
+            <span className="text-white/[0.10]">n</span>
             <span 
               className="bg-clip-text text-transparent"
               style={{ 
@@ -109,7 +109,7 @@ const Waitlist = () => {
                 animation: 'shimmer 8s ease-in-out infinite',
               }}
             >AI</span>
-            <span className="text-white/[0.07]">tive</span>
+            <span className="text-white/[0.10]">tive</span>
           </h1>
           <style>{`
             @keyframes shimmer {
