@@ -11,29 +11,36 @@ const AXIAL_TILT = 23.5 * (Math.PI / 180);
 const EARTH_ROTATION_SPEED = 0.08; // radians per second (positive = counter-clockwise when viewed from above North Pole)
 
 // Calculate the seasonal tilt direction based on current date
-// Earth's axis always points toward Polaris (fixed in space relative to stars)
-// But relative to the Sun, the tilt direction appears to change through the year
-// Summer solstice (June 21): Northern hemisphere tilts toward Sun
-// Winter solstice (Dec 21): Northern hemisphere tilts away from Sun
+// Earth's axis is tilted 23.5° and always points toward Polaris
+// As Earth orbits the Sun, different hemispheres tilt toward/away from Sun
+// Winter Solstice (Dec 21, ~day 355): Northern hemisphere tilts AWAY from Sun (max -23.5°)
+// Summer Solstice (June 21, ~day 172): Northern hemisphere tilts TOWARD Sun (max +23.5°)
+// Equinoxes (Mar 21, Sep 22): Neither hemisphere tilts toward Sun (0° effective tilt)
 function getSeasonalTilt(): { x: number; z: number } {
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 0);
   const diff = now.getTime() - startOfYear.getTime();
   const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
   
-  // Vernal equinox is around day 80 (March 21)
-  // At vernal equinox, the tilt is perpendicular to Sun direction
-  // We use this as our reference point
-  const vernalEquinoxDay = 80;
-  const daysFromEquinox = dayOfYear - vernalEquinoxDay;
-  const yearProgress = (daysFromEquinox / 365.25) * Math.PI * 2;
+  // Winter solstice is around day 355 (Dec 21)
+  // This is when Northern Hemisphere is tilted maximally AWAY from Sun
+  // We use this as our reference: at day 355, tilt should show North Pole away
+  const winterSolsticeDay = 355;
+  const daysFromWinterSolstice = dayOfYear - winterSolsticeDay;
   
-  // The axial tilt creates a fixed orientation in space
-  // We apply it as a rotation around the X axis (tilting the North Pole)
-  // The Z component accounts for the precession through seasons
+  // Full cycle over 365.25 days
+  // At winter solstice: yearPhase = 0 → cos = 1 → North tilts away (negative X in our view)
+  // At summer solstice: yearPhase = π → cos = -1 → North tilts toward (positive X)
+  const yearPhase = (daysFromWinterSolstice / 365.25) * Math.PI * 2;
+  
+  // The apparent tilt varies sinusoidally through the year
+  // Negative X rotation tilts North Pole away from viewer (toward back)
+  // Positive X rotation tilts North Pole toward viewer (toward front)
+  const effectiveTilt = -Math.cos(yearPhase) * AXIAL_TILT;
+  
   return {
-    x: AXIAL_TILT, // Fixed tilt toward/away from viewer
-    z: Math.sin(yearProgress) * AXIAL_TILT * 0.1, // Subtle seasonal variation in appearance
+    x: effectiveTilt, // Seasonal tilt toward/away from viewer
+    z: Math.sin(yearPhase) * AXIAL_TILT * 0.3, // Side-to-side component for realism
   };
 }
 
