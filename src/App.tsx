@@ -38,6 +38,8 @@ import Reports from "./pages/Reports";
 import Metrics from "./pages/Metrics";
 import Insights from "./pages/Insights";
 import SalesBD from "./pages/SalesBD";
+import HR from "./pages/HR";
+import Operations from "./pages/Operations";
 import Database from "./pages/Database";
 import Workflows from "./pages/Workflows";
 import Company from "./pages/Company";
@@ -108,6 +110,12 @@ const App = () => (
                           } />
                           <Route path="/sales-bd" element={
                             <ProtectedRoute><AppLayout><SalesBD /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/hr" element={
+                            <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/operations" element={
+                            <ProtectedRoute><AppLayout><Operations /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deal/:id" element={
                             <ProtectedRoute><AppLayout><DealDetail /></AppLayout></ProtectedRoute>
