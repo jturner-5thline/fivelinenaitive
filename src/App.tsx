@@ -16,6 +16,7 @@ import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChartsProvider } from "@/contexts/ChartsContext";
 import { AnalyticsWidgetsProvider } from "@/contexts/AnalyticsWidgetsContext";
 import { MetricsWidgetsProvider } from "@/contexts/MetricsWidgetsContext";
+import { DashboardWidgetsProvider } from "@/contexts/DashboardWidgetsContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
@@ -75,6 +76,7 @@ const App = () => (
                     <AnalyticsWidgetsProvider>
                     <MetricsWidgetsProvider>
                     <WidgetsProvider>
+                    <DashboardWidgetsProvider>
                     <TooltipProvider>
                       <CopyProtection>
                       <Toaster />
@@ -175,6 +177,7 @@ const App = () => (
                       </BrowserRouter>
                       </CopyProtection>
                     </TooltipProvider>
+                    </DashboardWidgetsProvider>
                     </WidgetsProvider>
                     </MetricsWidgetsProvider>
                     </AnalyticsWidgetsProvider>
