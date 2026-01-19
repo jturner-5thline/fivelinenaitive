@@ -1023,12 +1023,7 @@ function NeuralNetwork() {
         })}
       </group>
       
-      {/* === NETWORK NODES AND CONNECTIONS === */}
-      
-      {/* Surface and relay nodes */}
-      <points geometry={nodeGeometry}>
-        <pointsMaterial size={0.05} color="#22d3ee" transparent opacity={0.85} sizeAttenuation />
-      </points>
+      {/* === NETWORK CONNECTIONS === */}
       
       {/* Network connections between nodes */}
       {lineObjects.map((line, idx) => (
