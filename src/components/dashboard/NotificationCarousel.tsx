@@ -392,49 +392,54 @@ export function NotificationCarousel() {
         <Badge variant="secondary" className="ml-1">{notifications.length}</Badge>
       </div>
 
-      {/* Notification Tiles Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {notifications.map((notification) => {
-          const IconComponent = getNotificationIcon(notification.type);
-          const colorClass = getNotificationColor(notification.type);
+      {/* Notification Tiles - Horizontal Scroll */}
+      <div className="relative">
+        <div 
+          className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {notifications.map((notification) => {
+            const IconComponent = getNotificationIcon(notification.type);
+            const colorClass = getNotificationColor(notification.type);
 
-          return (
-            <Card
-              key={notification.id}
-              className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => setSelectedNotification(notification)}
-            >
-              <div className="flex flex-col h-full space-y-3">
-                {/* Icon and Priority */}
-                <div className="flex items-start justify-between">
-                  <div className={`p-2 rounded-lg ${colorClass}`}>
-                    <IconComponent className="h-4 w-4" />
+            return (
+              <Card
+                key={notification.id}
+                className="flex-shrink-0 w-[200px] p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setSelectedNotification(notification)}
+              >
+                <div className="flex flex-col h-full space-y-3">
+                  {/* Icon and Priority */}
+                  <div className="flex items-start justify-between">
+                    <div className={`p-2 rounded-lg ${colorClass}`}>
+                      <IconComponent className="h-4 w-4" />
+                    </div>
+                    {notification.priority === 'high' && (
+                      <span className="h-2 w-2 rounded-full bg-destructive" />
+                    )}
                   </div>
-                  {notification.priority === 'high' && (
-                    <span className="h-2 w-2 rounded-full bg-destructive" />
-                  )}
-                </div>
 
-                {/* Title */}
-                <h4 className="text-sm font-medium text-foreground line-clamp-2">
-                  {notification.title}
-                </h4>
+                  {/* Title */}
+                  <h4 className="text-sm font-medium text-foreground line-clamp-2">
+                    {notification.title}
+                  </h4>
 
-                {/* Deal Name & Time */}
-                <div className="mt-auto pt-2">
-                  {notification.dealName && (
-                    <p className="text-xs text-primary font-medium truncate mb-1">
-                      {notification.dealName}
+                  {/* Deal Name & Time */}
+                  <div className="mt-auto pt-2">
+                    {notification.dealName && (
+                      <p className="text-xs text-primary font-medium truncate mb-1">
+                        {notification.dealName}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
                     </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
-                  </p>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          );
-        })}
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
       {/* Detail Dialog */}
