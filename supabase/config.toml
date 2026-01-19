@@ -89,3 +89,21 @@ verify_jwt = false
 
 [functions.hubspot-sync]
 verify_jwt = false
+
+[functions.lender-matching-ai]
+verify_jwt = false
+
+[functions.competitive-intel]
+verify_jwt = false
+
+[functions.market-sizing]
+verify_jwt = false
+
+[functions.term-sheet-benchmark]
+verify_jwt = false
+
+[functions.sec-filings-search]
+verify_jwt = false
+
+[functions.rate-tracking]
+verify_jwt = false
