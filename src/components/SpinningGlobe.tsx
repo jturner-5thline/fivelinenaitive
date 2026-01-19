@@ -410,79 +410,6 @@ const networkConnections: [number, number][] = [
   [171, 205], [160, 200], [165, 208],
 ];
 
-function NetworkLines() {
-  const groupRef = useRef<THREE.Group>(null);
-  const pulsesRef = useRef<THREE.Mesh[]>([]);
-  const pulseProgressRef = useRef<number[]>(networkConnections.map(() => Math.random()));
-  
-  const curves = useMemo(() => {
-    const radius = 2.04;
-    const curvesList: THREE.CurvePath<THREE.Vector3>[] = [];
-    
-    networkConnections.forEach(([fromIdx, toIdx]) => {
-      if (fromIdx >= cityLights.length || toIdx >= cityLights.length) return;
-      
-      const [lat1, lon1] = cityLights[fromIdx];
-      const [lat2, lon2] = cityLights[toIdx];
-      
-      const start = latLonToVector3(lat1, lon1, radius);
-      const end = latLonToVector3(lat2, lon2, radius);
-      
-      const distance = start.distanceTo(end);
-      const arcHeight = 0.4 + distance * 0.25;
-      
-      const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-      mid.normalize().multiplyScalar(radius + arcHeight);
-      
-      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
-      const curvePath = new THREE.CurvePath<THREE.Vector3>();
-      curvePath.add(curve);
-      curvesList.push(curvePath);
-    });
-    
-    return curvesList;
-  }, []);
-  
-  useFrame((state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.08;
-    }
-    
-    pulseProgressRef.current.forEach((progress, idx) => {
-      if (idx >= curves.length || !pulsesRef.current[idx]) return;
-      
-      const speed = 0.15 + (idx % 5) * 0.05;
-      pulseProgressRef.current[idx] = (progress + delta * speed) % 1;
-      
-      const point = curves[idx].getPoint(pulseProgressRef.current[idx]);
-      pulsesRef.current[idx].position.set(point.x, point.y, point.z);
-    });
-  });
-
-  return (
-    <group ref={groupRef}>
-      {curves.map((curvePath, idx) => {
-        const points = curvePath.getPoints(30);
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-        return (
-          <primitive key={`line-${idx}`} object={new THREE.Line(
-            lineGeometry,
-            new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.5, linewidth: 2 })
-          )} />
-        );
-      })}
-      {curves.map((_, idx) => (
-        <mesh 
-          key={`pulse-${idx}`} 
-          ref={(el) => { if (el) pulsesRef.current[idx] = el; }}
-        >
-          <sphereGeometry args={[0.012, 8, 8]} />
-          <meshBasicMaterial color="#67e8f9" transparent opacity={1} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
 
 function latLonToVector3(lat: number, lon: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -1196,7 +1123,6 @@ export function SpinningGlobe() {
           <GlobeGlow />
           <ContinentOutlines />
           <CityLights />
-          <NetworkLines />
         </group>
         <Particles />
         <OrbitControls
