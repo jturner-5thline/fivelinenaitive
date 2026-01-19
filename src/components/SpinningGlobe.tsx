@@ -208,25 +208,25 @@ const generateCityLights = (): [number, number][] => {
     [-36.85, 174.76, 10], [-41.29, 174.78, 8], [-43.53, 172.64, 6],
   ];
   
-  // Generate lights around each urban center
+  // Generate lights around each urban center (5x density)
   urbanCenters.forEach(([lat, lon, density]) => {
     // Add the center point
     lights.push([lat, lon]);
     
-    // Add surrounding points based on density
-    for (let i = 0; i < density; i++) {
+    // Add surrounding points based on density (5x multiplier)
+    for (let i = 0; i < density * 5; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const distance = Math.random() * 0.3 + 0.05; // 0.05 to 0.35 degrees
+      const distance = Math.random() * 0.4 + 0.03; // Slightly wider spread
       const newLat = lat + Math.sin(angle) * distance;
       const newLon = lon + Math.cos(angle) * distance;
       lights.push([newLat, newLon]);
     }
     
-    // Add extra cluster for very dense areas
+    // Add extra cluster for very dense areas (5x multiplier)
     if (density > 15) {
-      for (let i = 0; i < density * 0.5; i++) {
+      for (let i = 0; i < density * 2.5; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const distance = Math.random() * 0.5 + 0.2;
+        const distance = Math.random() * 0.6 + 0.15;
         const newLat = lat + Math.sin(angle) * distance;
         const newLon = lon + Math.cos(angle) * distance;
         lights.push([newLat, newLon]);
@@ -234,30 +234,30 @@ const generateCityLights = (): [number, number][] => {
     }
   });
   
-  // Add coastal/highway corridor lights
+  // Add coastal/highway corridor lights (5x multiplier)
   const corridors: [number, number, number, number, number][] = [
     // US East Coast [startLat, startLon, endLat, endLon, count]
-    [42.36, -71.06, 25.76, -80.19, 80],
-    [40.71, -74.01, 41.88, -87.63, 50],
+    [42.36, -71.06, 25.76, -80.19, 400],
+    [40.71, -74.01, 41.88, -87.63, 250],
     // US West Coast
-    [47.61, -122.33, 32.72, -117.16, 60],
+    [47.61, -122.33, 32.72, -117.16, 300],
     // Europe
-    [51.51, -0.13, 41.90, 12.50, 80],
-    [48.86, 2.35, 52.52, 13.41, 40],
-    [52.52, 13.41, 55.76, 37.62, 50],
+    [51.51, -0.13, 41.90, 12.50, 400],
+    [48.86, 2.35, 52.52, 13.41, 200],
+    [52.52, 13.41, 55.76, 37.62, 250],
     // China coast
-    [39.90, 116.41, 23.13, 113.26, 100],
-    [31.23, 121.47, 22.54, 114.06, 80],
+    [39.90, 116.41, 23.13, 113.26, 500],
+    [31.23, 121.47, 22.54, 114.06, 400],
     // Japan
-    [35.68, 139.69, 34.69, 135.50, 50],
+    [35.68, 139.69, 34.69, 135.50, 250],
     // India
-    [28.61, 77.21, 19.08, 72.88, 40],
-    [19.08, 72.88, 13.08, 80.27, 40],
+    [28.61, 77.21, 19.08, 72.88, 200],
+    [19.08, 72.88, 13.08, 80.27, 200],
     // Brazil coast
-    [-23.55, -46.63, -22.91, -43.17, 30],
-    [-22.91, -43.17, -8.05, -34.88, 40],
+    [-23.55, -46.63, -22.91, -43.17, 150],
+    [-22.91, -43.17, -8.05, -34.88, 200],
     // Australia
-    [-33.87, 151.21, -37.81, 144.96, 30],
+    [-33.87, 151.21, -37.81, 144.96, 150],
   ];
   
   corridors.forEach(([startLat, startLon, endLat, endLon, count]) => {
@@ -269,47 +269,47 @@ const generateCityLights = (): [number, number][] => {
     }
   });
   
-  // Add scattered rural/small town lights
+  // Add scattered rural/small town lights (5x multiplier)
   const regions: [number, number, number, number, number][] = [
     // Region bounding boxes [minLat, maxLat, minLon, maxLon, count]
     // Eastern US
-    [30, 45, -90, -70, 150],
+    [30, 45, -90, -70, 750],
     // Western US
-    [32, 48, -125, -105, 80],
+    [32, 48, -125, -105, 400],
     // Central US
-    [30, 48, -105, -90, 60],
+    [30, 48, -105, -90, 300],
     // Western Europe
-    [42, 55, -5, 15, 120],
+    [42, 55, -5, 15, 600],
     // Eastern Europe
-    [42, 60, 15, 40, 80],
+    [42, 60, 15, 40, 400],
     // UK/Ireland
-    [50, 58, -10, 2, 50],
+    [50, 58, -10, 2, 250],
     // Eastern China
-    [22, 42, 105, 125, 200],
+    [22, 42, 105, 125, 1000],
     // Japan
-    [32, 44, 128, 145, 80],
+    [32, 44, 128, 145, 400],
     // India
-    [8, 32, 68, 92, 150],
+    [8, 32, 68, 92, 750],
     // Southeast Asia
-    [-8, 20, 95, 125, 100],
+    [-8, 20, 95, 125, 500],
     // Middle East
-    [22, 40, 35, 60, 60],
+    [22, 40, 35, 60, 300],
     // North Africa
-    [25, 37, -10, 35, 40],
+    [25, 37, -10, 35, 200],
     // Sub-Saharan Africa
-    [-35, 15, -18, 50, 80],
+    [-35, 15, -18, 50, 400],
     // Brazil
-    [-30, 0, -55, -35, 80],
+    [-30, 0, -55, -35, 400],
     // Argentina/Chile
-    [-55, -20, -75, -55, 40],
+    [-55, -20, -75, -55, 200],
     // Australia coast
-    [-40, -12, 110, 155, 50],
+    [-40, -12, 110, 155, 250],
     // New Zealand
-    [-47, -35, 166, 178, 20],
+    [-47, -35, 166, 178, 100],
     // Korea
-    [34, 38, 125, 130, 40],
+    [34, 38, 125, 130, 200],
     // Taiwan
-    [22, 26, 119, 122, 30],
+    [22, 26, 119, 122, 150],
   ];
   
   regions.forEach(([minLat, maxLat, minLon, maxLon, count]) => {
