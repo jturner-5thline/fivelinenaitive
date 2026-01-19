@@ -1092,7 +1092,7 @@ function NeuralNetwork() {
           >
             <sphereGeometry args={[idx >= neuronPositions.length - 3 ? 0.04 : 0.025, 12, 12]} />
             <meshBasicMaterial 
-              color={idx >= neuronPositions.length - 3 ? "#f0fdfa" : "#67e8f9"} 
+              color={idx >= neuronPositions.length - 3 ? "#3b82f6" : "#1d4ed8"} 
               transparent 
               opacity={idx >= neuronPositions.length - 3 ? 0.95 : 0.85} 
             />
@@ -1111,7 +1111,7 @@ function NeuralNetwork() {
             ref={(el) => { if (el) firingPulsesRef.current[idx] = el; }}
           >
             <sphereGeometry args={[0.018, 8, 8]} />
-            <meshBasicMaterial color="#f0fdfa" transparent opacity={0.95} />
+            <meshBasicMaterial color="#60a5fa" transparent opacity={0.95} />
           </mesh>
         ))}
         
