@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell, AlertCircle, Calendar, FileText, Users, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Bell, AlertCircle, Calendar, FileText, Users, ChevronLeft, ChevronRight, Clock, Expand } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -367,6 +367,7 @@ export function NotificationCarousel() {
   const navigate = useNavigate();
   const notifications = mockNotifications;
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
 
   const handleNavigate = (dealId: string) => {
     navigate(`/deal/${dealId}`);
@@ -386,10 +387,20 @@ export function NotificationCarousel() {
   return (
     <>
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <Bell className="h-5 w-5 text-primary" />
-        <h3 className="text-lg font-medium text-foreground">Notifications</h3>
-        <Badge variant="secondary" className="ml-1">{notifications.length}</Badge>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Bell className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-medium text-foreground">Notifications</h3>
+          <Badge variant="secondary" className="ml-1">{notifications.length}</Badge>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setIsCarouselOpen(true)}
+        >
+          <Expand className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Notification Tiles - Horizontal Scroll */}
@@ -507,6 +518,17 @@ export function NotificationCarousel() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Fullscreen Carousel Dialog */}
+      <Dialog open={isCarouselOpen} onOpenChange={setIsCarouselOpen}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+          <CarouselInner 
+            notifications={notifications} 
+            onNavigate={handleNavigate}
+            onClose={() => setIsCarouselOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </>
