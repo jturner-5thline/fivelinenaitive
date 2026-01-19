@@ -131,7 +131,7 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
-  const scrollToIndex = useCallback((index: number) => {
+  const scrollToIndex = useCallback((index: number, smooth = true) => {
     if (!scrollRef.current) return;
     const container = scrollRef.current;
     const cards = container.querySelectorAll('[data-card-index]');
@@ -140,7 +140,7 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
       const containerWidth = container.offsetWidth;
       const cardCenter = card.offsetLeft + card.offsetWidth / 2;
       const scrollPosition = cardCenter - containerWidth / 2;
-      container.scrollTo({ left: scrollPosition, behavior: 'smooth' });
+      container.scrollTo({ left: scrollPosition, behavior: smooth ? 'smooth' : 'instant' });
     }
   }, []);
 
@@ -219,7 +219,11 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
   }, [handleKeyDown]);
 
   useEffect(() => {
-    setTimeout(() => scrollToIndex(initialIndex), 100);
+    // Initial scroll without animation to position correctly
+    scrollToIndex(initialIndex, false);
+    // Then do a small adjustment with animation for polish
+    const timer = setTimeout(() => scrollToIndex(initialIndex, false), 150);
+    return () => clearTimeout(timer);
   }, [scrollToIndex, initialIndex]);
 
   return (
