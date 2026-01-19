@@ -6,27 +6,34 @@ import * as THREE from 'three';
 // Earth's axial tilt is 23.5 degrees
 const AXIAL_TILT = 23.5 * (Math.PI / 180);
 
+// Earth's rotation speed - one full rotation per day
+// For visualization we speed this up significantly
+const EARTH_ROTATION_SPEED = 0.08; // radians per second (positive = counter-clockwise when viewed from above North Pole)
+
 // Calculate the seasonal tilt direction based on current date
-// Summer solstice (June 21) = day 172, North Pole tilts toward sun
-// Winter solstice (Dec 21) = day 355, North Pole tilts away from sun
+// Earth's axis always points toward Polaris (fixed in space relative to stars)
+// But relative to the Sun, the tilt direction appears to change through the year
+// Summer solstice (June 21): Northern hemisphere tilts toward Sun
+// Winter solstice (Dec 21): Northern hemisphere tilts away from Sun
 function getSeasonalTilt(): { x: number; z: number } {
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 0);
   const diff = now.getTime() - startOfYear.getTime();
   const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
   
-  // Summer solstice is around day 172 (June 21)
-  // We want the tilt to rotate through the year
-  // At summer solstice, North Pole tilts toward viewer (positive X tilt)
-  // At winter solstice, North Pole tilts away (negative X tilt)
-  const summerSolsticeDay = 172;
-  const daysFromSolstice = dayOfYear - summerSolsticeDay;
-  const yearProgress = (daysFromSolstice / 365) * Math.PI * 2;
+  // Vernal equinox is around day 80 (March 21)
+  // At vernal equinox, the tilt is perpendicular to Sun direction
+  // We use this as our reference point
+  const vernalEquinoxDay = 80;
+  const daysFromEquinox = dayOfYear - vernalEquinoxDay;
+  const yearProgress = (daysFromEquinox / 365.25) * Math.PI * 2;
   
-  // The tilt rotates around the Y axis through the year
+  // The axial tilt creates a fixed orientation in space
+  // We apply it as a rotation around the X axis (tilting the North Pole)
+  // The Z component accounts for the precession through seasons
   return {
-    x: Math.cos(yearProgress) * AXIAL_TILT,
-    z: Math.sin(yearProgress) * AXIAL_TILT,
+    x: AXIAL_TILT, // Fixed tilt toward/away from viewer
+    z: Math.sin(yearProgress) * AXIAL_TILT * 0.1, // Subtle seasonal variation in appearance
   };
 }
 
@@ -547,7 +554,7 @@ function ContinentOutlines() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.08;
+      groupRef.current.rotation.y += delta * EARTH_ROTATION_SPEED;
     }
   });
 
@@ -568,7 +575,8 @@ function Globe() {
   
   useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.08;
+      // Earth rotates west-to-east (counter-clockwise when viewed from above North Pole)
+      meshRef.current.rotation.y += delta * EARTH_ROTATION_SPEED;
     }
   });
 
@@ -589,8 +597,9 @@ function GlobeLines() {
   
   useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.08;
-      meshRef.current.rotation.x += delta * 0.015;
+      // Earth rotates west-to-east (counter-clockwise when viewed from above North Pole)
+      // Positive Y rotation in Three.js is counter-clockwise
+      meshRef.current.rotation.y += delta * EARTH_ROTATION_SPEED;
     }
   });
 
@@ -611,7 +620,7 @@ function GlobeGlow() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.08;
+      groupRef.current.rotation.y += delta * EARTH_ROTATION_SPEED;
     }
   });
 
@@ -826,8 +835,8 @@ function NeuralNetwork() {
   
   useFrame((state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.04;
-      groupRef.current.rotation.x += delta * 0.016;
+      // Neural network rotates slightly slower for visual interest but same direction
+      groupRef.current.rotation.y += delta * EARTH_ROTATION_SPEED * 0.5;
     }
     
     pulseRef.current += delta * 1.5;
