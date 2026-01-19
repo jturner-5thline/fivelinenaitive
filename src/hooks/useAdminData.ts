@@ -21,6 +21,8 @@ interface AdminProfile {
   avatar_url: string;
   created_at: string;
   onboarding_completed: boolean;
+  suspended_at: string | null;
+  suspended_reason: string | null;
 }
 
 interface AdminCompany {
@@ -113,9 +115,23 @@ export const useAllProfiles = () => {
   return useQuery({
     queryKey: ["admin-all-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("admin_get_all_profiles");
-      if (error) throw error;
-      return data as AdminProfile[];
+      // Get profiles from RPC
+      const { data: rpcData, error: rpcError } = await supabase.rpc("admin_get_all_profiles");
+      if (rpcError) throw rpcError;
+      
+      // Get suspension info directly from profiles table
+      const { data: suspensionData, error: suspensionError } = await supabase
+        .from("profiles")
+        .select("user_id, suspended_at, suspended_reason");
+      if (suspensionError) throw suspensionError;
+      
+      const suspensionMap = new Map(suspensionData?.map(p => [p.user_id, p]) || []);
+      
+      return (rpcData as AdminProfile[]).map(profile => ({
+        ...profile,
+        suspended_at: suspensionMap.get(profile.user_id)?.suspended_at || null,
+        suspended_reason: suspensionMap.get(profile.user_id)?.suspended_reason || null,
+      }));
     },
   });
 };
@@ -369,6 +385,28 @@ export const useDeleteUser = () => {
   });
 };
 
+export const useToggleUserSuspension = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ userId, suspend, reason }: { userId: string; suspend: boolean; reason?: string }) => {
+      const { error } = await supabase.rpc("admin_toggle_user_suspension", { 
+        _user_id: userId, 
+        _suspend: suspend, 
+        _reason: reason || null 
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-profiles"] });
+      toast.success(variables.suspend ? "User suspended" : "User unsuspended");
+    },
+    onError: (error) => {
+      toast.error("Failed to update user: " + error.message);
+    },
+  });
+};
+
 export const useRemoveUserRole = () => {
   const queryClient = useQueryClient();
   
@@ -440,6 +478,8 @@ export interface ConsolidatedUser {
   source: 'local' | 'external';
   source_project_id?: string;
   external_id?: string;
+  suspended_at?: string | null;
+  suspended_reason?: string | null;
 }
 
 export const useConsolidatedUsers = () => {
@@ -465,6 +505,8 @@ export const useConsolidatedUsers = () => {
         created_at: p.created_at,
         onboarding_completed: p.onboarding_completed,
         source: 'local',
+        suspended_at: p.suspended_at,
+        suspended_reason: p.suspended_reason,
       });
     }
   }
