@@ -125,7 +125,12 @@ const Waitlist = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-8 md:pb-12 px-4 animate-fade-in">
-          <h1 className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap pointer-events-none select-none">
+          <h1 
+            className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap pointer-events-none select-none"
+            style={{
+              animation: 'fadeInFromBack 1.5s ease-out forwards',
+            }}
+          >
             <span className="text-white/[0.10]">n</span>
             <span 
               className="bg-clip-text text-transparent"
@@ -141,6 +146,16 @@ const Waitlist = () => {
             @keyframes shimmer {
               0%, 100% { background-position: 100% 100%; }
               50% { background-position: 0% 0%; }
+            }
+            @keyframes fadeInFromBack {
+              0% {
+                opacity: 0;
+                transform: translateX(-50%) scale(0.8);
+              }
+              100% {
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+              }
             }
           `}</style>
 
