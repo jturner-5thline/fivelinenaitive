@@ -393,9 +393,22 @@ export function NotificationCarousel() {
       </div>
 
       {/* Notification Tiles - Horizontal Scroll */}
-      <div className="relative">
+      <div className="relative group">
+        {/* Left fade indicator */}
+        <div className="absolute left-0 top-0 bottom-2 w-8 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+        
+        {/* Right fade indicator */}
+        <div className="absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+        
+        {/* Scroll hint arrow */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+          <div className="flex items-center gap-1 text-muted-foreground animate-pulse">
+            <ChevronRight className="h-5 w-5" />
+          </div>
+        </div>
+
         <div 
-          className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
+          className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide pr-8"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {notifications.map((notification) => {
