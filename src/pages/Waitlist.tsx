@@ -139,7 +139,7 @@ const Waitlist = () => {
               </Button>
             </div>
           ) : (
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-md">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm">
               <h2 className="text-lg font-semibold text-white mb-1 text-center">Join the Waitlist</h2>
               <p className="text-white/50 text-xs text-center mb-4">
                 Be the first to experience the future of deal intelligence
@@ -207,20 +207,18 @@ const Waitlist = () => {
                   )}
                 </Button>
               </form>
-              
-              <div className="mt-4 pt-4 border-t border-white/10 text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/40 hover:text-white/60 hover:bg-white/5"
-                  onClick={() => navigate('/auth')}
-                >
-                  <LogIn className="h-3 w-3 mr-2" />
-                  Already have an account? Sign in
-                </Button>
-              </div>
             </div>
           )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute bottom-4 right-4 text-white/40 hover:text-white/60 hover:bg-white/5"
+            onClick={() => navigate('/auth')}
+          >
+            <LogIn className="h-3 w-3 mr-2" />
+            Already have an account? Sign in
+          </Button>
         </div>
       </div>
       </>
