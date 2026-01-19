@@ -6,10 +6,16 @@ import { Label } from '@/components/ui/label';
 import { RateLimitGuard } from '@/components/RateLimitGuard';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, LogIn, Mail, User, Building2 } from 'lucide-react';
+import { Loader2, CheckCircle2, LogIn, Mail, User, Building2, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { SpinningGlobe } from '@/components/SpinningGlobe';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const waitlistSchema = z.object({
   email: z.string().trim().email({ message: "Please enter a valid email address" }),
@@ -24,6 +30,26 @@ const Waitlist = () => {
   const [company, setCompany] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showGateDialog, setShowGateDialog] = useState(false);
+  const [gatePassword, setGatePassword] = useState('');
+  const [showGatePassword, setShowGatePassword] = useState(false);
+
+  const GATE_PASSWORD = '5thlinecapital';
+
+  const handleGateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (gatePassword === GATE_PASSWORD) {
+      setShowGateDialog(false);
+      setGatePassword('');
+      navigate('/auth');
+    } else {
+      toast({
+        title: 'Incorrect password',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,11 +237,51 @@ const Waitlist = () => {
             variant="ghost"
             size="sm"
             className="absolute bottom-4 right-4 text-white/40 hover:text-white/60 hover:bg-white/5"
-            onClick={() => navigate('/auth')}
+            onClick={() => setShowGateDialog(true)}
           >
             <LogIn className="h-3 w-3 mr-2" />
             Already have an account? Sign in
           </Button>
+
+          <Dialog open={showGateDialog} onOpenChange={setShowGateDialog}>
+            <DialogContent className="bg-[#0a0a1a] border-white/10 text-white max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="text-white">Access Required</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleGateSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="gatePassword" className="text-white/80">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="gatePassword"
+                      type={showGatePassword ? "text" : "password"}
+                      value={gatePassword}
+                      onChange={(e) => setGatePassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 pr-10"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGatePassword(!showGatePassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+                    >
+                      {showGatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0"
+                >
+                  Continue
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       </>
