@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Accordion,
   AccordionContent,
@@ -19,7 +18,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { 
-  Shield, 
   Search,
   User,
   LayoutDashboard,
@@ -41,9 +39,9 @@ import {
   Eye,
   DollarSign,
   Lock,
-  ChevronRight,
   Check,
-  X
+  X,
+  LucideIcon
 } from 'lucide-react';
 
 interface UserProfile {
@@ -56,7 +54,6 @@ interface UserProfile {
 }
 
 interface UserPermissionState {
-  // Page Access
   dashboard: boolean;
   deals: boolean;
   newsFeed: boolean;
@@ -72,7 +69,6 @@ interface UserPermissionState {
   lenders: boolean;
   analytics: boolean;
   reports: boolean;
-  // Capabilities
   canExport: boolean;
   canBulkEdit: boolean;
   canDelete: boolean;
@@ -103,7 +99,14 @@ const DEFAULT_PERMISSIONS: UserPermissionState = {
   canViewSensitive: true,
 };
 
-const PAGE_SECTIONS = [
+interface SectionConfig {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  description: string;
+}
+
+const PAGE_SECTIONS: SectionConfig[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Main overview and stats' },
   { key: 'deals', label: 'Deals', icon: Briefcase, description: 'Deal management and pipeline' },
   { key: 'newsFeed', label: 'News Feed', icon: Newspaper, description: 'Industry news and updates' },
@@ -121,7 +124,7 @@ const PAGE_SECTIONS = [
   { key: 'help', label: 'Help', icon: HelpCircle, description: 'Help and documentation' },
 ];
 
-const CAPABILITY_SECTIONS = [
+const CAPABILITY_SECTIONS: SectionConfig[] = [
   { key: 'canExport', label: 'Export Data', icon: Download, description: 'Export to CSV/PDF' },
   { key: 'canBulkEdit', label: 'Bulk Edit', icon: Pencil, description: 'Edit multiple records at once' },
   { key: 'canDelete', label: 'Delete Records', icon: Trash2, description: 'Permanently delete data' },
@@ -129,7 +132,6 @@ const CAPABILITY_SECTIONS = [
   { key: 'canViewSensitive', label: 'View Sensitive Info', icon: Eye, description: 'Access sensitive information' },
 ];
 
-// Store permissions in localStorage for now, can be migrated to DB later
 const getStoredPermissions = (): Record<string, UserPermissionState> => {
   const stored = localStorage.getItem('user_page_permissions');
   return stored ? JSON.parse(stored) : {};
@@ -140,12 +142,11 @@ const saveStoredPermissions = (permissions: Record<string, UserPermissionState>)
 };
 
 export function UserPermissionsPanel() {
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [userPermissions, setUserPermissions] = useState<Record<string, UserPermissionState>>({});
   const [expandedUsers, setExpandedUsers] = useState<string[]>([]);
+  const [expandedSections, setExpandedSections] = useState<string[]>([]);
 
-  // Fetch all users (profiles)
   const { data: users, isLoading: usersLoading } = useQuery({
     queryKey: ['all-users-for-permissions'],
     queryFn: async () => {
@@ -159,18 +160,15 @@ export function UserPermissionsPanel() {
     },
   });
 
-  // Load stored permissions on mount
   useEffect(() => {
     const stored = getStoredPermissions();
     setUserPermissions(stored);
   }, []);
 
-  // Get permissions for a user (default to all enabled)
   const getUserPermissions = (userId: string): UserPermissionState => {
     return userPermissions[userId] || DEFAULT_PERMISSIONS;
   };
 
-  // Update a single permission for a user
   const updatePermission = (userId: string, key: keyof UserPermissionState, value: boolean) => {
     const currentPerms = getUserPermissions(userId);
     const newPerms = { ...currentPerms, [key]: value };
@@ -180,7 +178,6 @@ export function UserPermissionsPanel() {
     toast.success('Permission updated');
   };
 
-  // Toggle all permissions for a user
   const toggleAllPermissions = (userId: string, enabled: boolean) => {
     const newPerms = Object.keys(DEFAULT_PERMISSIONS).reduce((acc, key) => {
       acc[key as keyof UserPermissionState] = enabled;
@@ -192,7 +189,18 @@ export function UserPermissionsPanel() {
     toast.success(enabled ? 'All permissions enabled' : 'All permissions disabled');
   };
 
-  // Count enabled permissions
+  const toggleAllUsersForPermission = (key: keyof UserPermissionState, enabled: boolean) => {
+    if (!users) return;
+    const allPerms = { ...userPermissions };
+    users.forEach(user => {
+      const currentPerms = getUserPermissions(user.user_id);
+      allPerms[user.user_id] = { ...currentPerms, [key]: enabled };
+    });
+    setUserPermissions(allPerms);
+    saveStoredPermissions(allPerms);
+    toast.success(enabled ? 'Enabled for all users' : 'Disabled for all users');
+  };
+
   const countEnabledPermissions = (userId: string): { pages: number; caps: number; total: number } => {
     const perms = getUserPermissions(userId);
     const pageKeys = PAGE_SECTIONS.map(s => s.key);
@@ -202,6 +210,11 @@ export function UserPermissionsPanel() {
     const caps = capKeys.filter(k => perms[k as keyof UserPermissionState]).length;
     
     return { pages, caps, total: pages + caps };
+  };
+
+  const countUsersWithPermission = (key: keyof UserPermissionState): number => {
+    if (!users) return 0;
+    return users.filter(u => getUserPermissions(u.user_id)[key]).length;
   };
 
   const filteredUsers = users?.filter(u => {
@@ -225,10 +238,104 @@ export function UserPermissionsPanel() {
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
       </div>
     );
   }
+
+  const renderUserRow = (user: UserProfile, permKey: keyof UserPermissionState) => {
+    const enabled = getUserPermissions(user.user_id)[permKey];
+    return (
+      <div 
+        key={user.user_id}
+        className="flex items-center justify-between rounded-lg border p-2.5 bg-background"
+      >
+        <div className="flex items-center gap-2">
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={user.avatar_url || ''} />
+            <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+              {getUserInitials(user)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{user.display_name || user.email?.split('@')[0]}</span>
+            <span className="text-xs text-muted-foreground">{user.email}</span>
+          </div>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={(checked) => updatePermission(user.user_id, permKey, checked)}
+        />
+      </div>
+    );
+  };
+
+  const renderSectionAccordion = (sections: SectionConfig[], type: 'pages' | 'capabilities') => (
+    <Accordion 
+      type="multiple" 
+      value={expandedSections}
+      onValueChange={setExpandedSections}
+      className="space-y-2"
+    >
+      {sections.map((section) => {
+        const Icon = section.icon;
+        const permKey = section.key as keyof UserPermissionState;
+        const enabledCount = countUsersWithPermission(permKey);
+        const totalUsers = users?.length || 0;
+        const allEnabled = enabledCount === totalUsers;
+
+        return (
+          <AccordionItem 
+            key={section.key} 
+            value={section.key}
+            className="border rounded-lg bg-card px-4"
+          >
+            <AccordionTrigger className="hover:no-underline py-3">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center">
+                  <Icon className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex flex-col items-start text-left">
+                  <span className="font-medium text-sm">{section.label}</span>
+                  <span className="text-xs text-muted-foreground">{section.description}</span>
+                </div>
+                <div className="flex items-center gap-2 ml-auto mr-4">
+                  <Badge variant={allEnabled ? 'default' : 'secondary'} className="text-xs">
+                    {enabledCount}/{totalUsers} users
+                  </Badge>
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => toggleAllUsersForPermission(permKey, true)}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Enable All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => toggleAllUsersForPermission(permKey, false)}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Disable All
+                  </Button>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {filteredUsers?.map(user => renderUserRow(user, permKey))}
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        );
+      })}
+    </Accordion>
+  );
 
   return (
     <div className="space-y-4">
@@ -247,154 +354,185 @@ export function UserPermissionsPanel() {
         </Badge>
       </div>
 
-      <ScrollArea className="h-[600px] pr-4">
-        <Accordion 
-          type="multiple" 
-          value={expandedUsers}
-          onValueChange={setExpandedUsers}
-          className="space-y-2"
-        >
-          {filteredUsers?.map((user) => {
-            const perms = getUserPermissions(user.user_id);
-            const counts = countEnabledPermissions(user.user_id);
-            const allEnabled = counts.total === PAGE_SECTIONS.length + CAPABILITY_SECTIONS.length;
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            By Users
+          </TabsTrigger>
+          <TabsTrigger value="pages" className="flex items-center gap-2">
+            <LayoutDashboard className="h-4 w-4" />
+            By Pages
+          </TabsTrigger>
+          <TabsTrigger value="capabilities" className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            By Capabilities
+          </TabsTrigger>
+        </TabsList>
 
-            return (
-              <AccordionItem 
-                key={user.user_id} 
-                value={user.user_id}
-                className="border rounded-lg bg-card px-4"
-              >
-                <AccordionTrigger className="hover:no-underline py-3">
-                  <div className="flex items-center gap-3 flex-1">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatar_url || ''} />
-                      <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                        {getUserInitials(user)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col items-start text-left">
-                      <span className="font-medium text-sm">
-                        {user.display_name || user.email?.split('@')[0]}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {user.email}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 ml-auto mr-4">
-                      <Badge variant={allEnabled ? 'default' : 'secondary'} className="text-xs">
-                        {counts.pages}/{PAGE_SECTIONS.length} pages
-                      </Badge>
-                      <Badge variant={counts.caps === CAPABILITY_SECTIONS.length ? 'default' : 'outline'} className="text-xs">
-                        {counts.caps}/{CAPABILITY_SECTIONS.length} capabilities
-                      </Badge>
-                    </div>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pt-2 pb-4">
-                  <div className="space-y-4">
-                    {/* Quick Actions */}
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => toggleAllPermissions(user.user_id, true)}
-                      >
-                        <Check className="h-3 w-3 mr-1" />
-                        Enable All
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => toggleAllPermissions(user.user_id, false)}
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Disable All
-                      </Button>
-                    </div>
+        {/* By Users Tab */}
+        <TabsContent value="users" className="mt-4">
+          <ScrollArea className="h-[550px] pr-4">
+            <Accordion 
+              type="multiple" 
+              value={expandedUsers}
+              onValueChange={setExpandedUsers}
+              className="space-y-2"
+            >
+              {filteredUsers?.map((user) => {
+                const perms = getUserPermissions(user.user_id);
+                const counts = countEnabledPermissions(user.user_id);
+                const allEnabled = counts.total === PAGE_SECTIONS.length + CAPABILITY_SECTIONS.length;
 
-                    <Separator />
-
-                    {/* Page Access */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium flex items-center gap-2">
-                        <LayoutDashboard className="h-4 w-4" />
-                        Page Access
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {PAGE_SECTIONS.map((section) => {
-                          const Icon = section.icon;
-                          const enabled = perms[section.key as keyof UserPermissionState];
-                          return (
-                            <div 
-                              key={section.key}
-                              className="flex items-center justify-between rounded-lg border p-2.5 bg-background"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Icon className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">{section.label}</span>
-                              </div>
-                              <Switch
-                                checked={enabled}
-                                onCheckedChange={(checked) => 
-                                  updatePermission(user.user_id, section.key as keyof UserPermissionState, checked)
-                                }
-                              />
-                            </div>
-                          );
-                        })}
+                return (
+                  <AccordionItem 
+                    key={user.user_id} 
+                    value={user.user_id}
+                    className="border rounded-lg bg-card px-4"
+                  >
+                    <AccordionTrigger className="hover:no-underline py-3">
+                      <div className="flex items-center gap-3 flex-1">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.avatar_url || ''} />
+                          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                            {getUserInitials(user)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col items-start text-left">
+                          <span className="font-medium text-sm">
+                            {user.display_name || user.email?.split('@')[0]}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {user.email}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 ml-auto mr-4">
+                          <Badge variant={allEnabled ? 'default' : 'secondary'} className="text-xs">
+                            {counts.pages}/{PAGE_SECTIONS.length} pages
+                          </Badge>
+                          <Badge variant={counts.caps === CAPABILITY_SECTIONS.length ? 'default' : 'outline'} className="text-xs">
+                            {counts.caps}/{CAPABILITY_SECTIONS.length} capabilities
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-2 pb-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => toggleAllPermissions(user.user_id, true)}
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Enable All
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => toggleAllPermissions(user.user_id, false)}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Disable All
+                          </Button>
+                        </div>
 
-                    <Separator />
+                        <Separator />
 
-                    {/* Capabilities */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium flex items-center gap-2">
-                        <Lock className="h-4 w-4" />
-                        Capabilities
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {CAPABILITY_SECTIONS.map((section) => {
-                          const Icon = section.icon;
-                          const enabled = perms[section.key as keyof UserPermissionState];
-                          return (
-                            <div 
-                              key={section.key}
-                              className="flex items-center justify-between rounded-lg border p-2.5 bg-background"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Icon className="h-4 w-4 text-muted-foreground" />
-                                <div className="flex flex-col">
-                                  <span className="text-sm">{section.label}</span>
-                                  <span className="text-xs text-muted-foreground">{section.description}</span>
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium flex items-center gap-2">
+                            <LayoutDashboard className="h-4 w-4" />
+                            Page Access
+                          </h4>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {PAGE_SECTIONS.map((section) => {
+                              const Icon = section.icon;
+                              const enabled = perms[section.key as keyof UserPermissionState];
+                              return (
+                                <div 
+                                  key={section.key}
+                                  className="flex items-center justify-between rounded-lg border p-2.5 bg-background"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm">{section.label}</span>
+                                  </div>
+                                  <Switch
+                                    checked={enabled}
+                                    onCheckedChange={(checked) => 
+                                      updatePermission(user.user_id, section.key as keyof UserPermissionState, checked)
+                                    }
+                                  />
                                 </div>
-                              </div>
-                              <Switch
-                                checked={enabled}
-                                onCheckedChange={(checked) => 
-                                  updatePermission(user.user_id, section.key as keyof UserPermissionState, checked)
-                                }
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            );
-          })}
-        </Accordion>
+                              );
+                            })}
+                          </div>
+                        </div>
 
-        {filteredUsers?.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No users found</p>
-          </div>
-        )}
-      </ScrollArea>
+                        <Separator />
+
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium flex items-center gap-2">
+                            <Lock className="h-4 w-4" />
+                            Capabilities
+                          </h4>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {CAPABILITY_SECTIONS.map((section) => {
+                              const Icon = section.icon;
+                              const enabled = perms[section.key as keyof UserPermissionState];
+                              return (
+                                <div 
+                                  key={section.key}
+                                  className="flex items-center justify-between rounded-lg border p-2.5 bg-background"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex flex-col">
+                                      <span className="text-sm">{section.label}</span>
+                                      <span className="text-xs text-muted-foreground">{section.description}</span>
+                                    </div>
+                                  </div>
+                                  <Switch
+                                    checked={enabled}
+                                    onCheckedChange={(checked) => 
+                                      updatePermission(user.user_id, section.key as keyof UserPermissionState, checked)
+                                    }
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+
+            {filteredUsers?.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>No users found</p>
+              </div>
+            )}
+          </ScrollArea>
+        </TabsContent>
+
+        {/* By Pages Tab */}
+        <TabsContent value="pages" className="mt-4">
+          <ScrollArea className="h-[550px] pr-4">
+            {renderSectionAccordion(PAGE_SECTIONS, 'pages')}
+          </ScrollArea>
+        </TabsContent>
+
+        {/* By Capabilities Tab */}
+        <TabsContent value="capabilities" className="mt-4">
+          <ScrollArea className="h-[550px] pr-4">
+            {renderSectionAccordion(CAPABILITY_SECTIONS, 'capabilities')}
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
