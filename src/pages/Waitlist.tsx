@@ -140,10 +140,7 @@ const Waitlist = () => {
             </div>
           ) : (
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm">
-              <h2 className="text-lg font-semibold text-white mb-1 text-center">Join the Waitlist</h2>
-              <p className="text-white/50 text-xs text-center mb-4">
-                Be the first to experience the future of deal intelligence
-              </p>
+              <h2 className="text-lg font-semibold text-white mb-4 text-center">Join the Waitlist</h2>
               
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="space-y-2">
