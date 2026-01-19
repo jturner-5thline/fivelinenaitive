@@ -30,6 +30,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealsCalendar } from '@/components/deals/DealsCalendar';
 import { NewsFeedWidget } from '@/components/deals/NewsFeedWidget';
+import { NotificationCarousel } from '@/components/dashboard/NotificationCarousel';
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -188,6 +189,9 @@ export default function Dashboard() {
               }
             />
           </div>
+
+          {/* Notification Carousel */}
+          <NotificationCarousel />
 
           {/* Deals Calendar */}
           <DealsCalendar />
