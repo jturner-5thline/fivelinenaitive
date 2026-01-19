@@ -314,7 +314,12 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
                     : 'w-[280px] md:w-[320px] min-h-[320px] md:min-h-[360px] shadow-md'
                 }`}
                 onClick={() => {
-                  if (notification.dealId) {
+                  if (!isActive) {
+                    // Center the clicked card
+                    setActiveIndex(index);
+                    scrollToIndex(index);
+                  } else if (notification.dealId) {
+                    // Navigate only when clicking the already-active card
                     onClose?.();
                     onNavigate(notification.dealId);
                   }
