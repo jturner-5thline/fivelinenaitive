@@ -2516,6 +2516,42 @@ export type Database = {
           },
         ]
       }
+      user_quick_prompts: {
+        Row: {
+          category: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          position: number | null
+          prompt: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          position?: number | null
+          prompt: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          position?: number | null
+          prompt?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
