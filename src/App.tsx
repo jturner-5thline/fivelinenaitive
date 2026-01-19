@@ -15,6 +15,7 @@ import { WidgetsProvider } from "@/contexts/WidgetsContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChartsProvider } from "@/contexts/ChartsContext";
 import { AnalyticsWidgetsProvider } from "@/contexts/AnalyticsWidgetsContext";
+import { MetricsWidgetsProvider } from "@/contexts/MetricsWidgetsContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
@@ -72,6 +73,7 @@ const App = () => (
                   <DefaultMilestonesProvider>
                     <ChartsProvider>
                     <AnalyticsWidgetsProvider>
+                    <MetricsWidgetsProvider>
                     <WidgetsProvider>
                     <TooltipProvider>
                       <CopyProtection>
@@ -174,6 +176,7 @@ const App = () => (
                       </CopyProtection>
                     </TooltipProvider>
                     </WidgetsProvider>
+                    </MetricsWidgetsProvider>
                     </AnalyticsWidgetsProvider>
                     </ChartsProvider>
                   </DefaultMilestonesProvider>
