@@ -263,7 +263,7 @@ const Auth = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-16 md:pb-24 px-4">
-          <h1 className="absolute top-[15%] left-1/2 -translate-x-1/2 text-[30vw] font-bold text-white/[0.07] tracking-tighter whitespace-nowrap pointer-events-none select-none">
+          <h1 className="absolute top-[5%] left-1/2 -translate-x-1/2 text-[30vw] font-bold text-white/[0.07] tracking-tighter whitespace-nowrap pointer-events-none select-none">
             nAItive
           </h1>
           
