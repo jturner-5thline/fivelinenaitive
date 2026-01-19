@@ -1948,6 +1948,8 @@ export type Database = {
           notify_stale_alerts: boolean
           onboarding_completed: boolean
           phone: string | null
+          suspended_at: string | null
+          suspended_reason: string | null
           updated_at: string
           user_id: string
           weekly_summary_email: boolean
@@ -1984,6 +1986,8 @@ export type Database = {
           notify_stale_alerts?: boolean
           onboarding_completed?: boolean
           phone?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           updated_at?: string
           user_id: string
           weekly_summary_email?: boolean
@@ -2020,6 +2024,8 @@ export type Database = {
           notify_stale_alerts?: boolean
           onboarding_completed?: boolean
           phone?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           updated_at?: string
           user_id?: string
           weekly_summary_email?: boolean
@@ -2718,6 +2724,10 @@ export type Database = {
       }
       admin_toggle_company_suspension: {
         Args: { _company_id: string; _reason?: string; _suspend: boolean }
+        Returns: undefined
+      }
+      admin_toggle_user_suspension: {
+        Args: { _reason?: string; _suspend: boolean; _user_id: string }
         Returns: undefined
       }
       can_access_deal: {

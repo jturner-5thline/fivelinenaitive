@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users, UserX, Globe, Home } from "lucide-react";
-import { useConsolidatedUsers, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole, useDeleteUser } from "@/hooks/useAdminData";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users, UserX, Globe, Home, Ban, UserCheck } from "lucide-react";
+import { useConsolidatedUsers, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole, useDeleteUser, useToggleUserSuspension } from "@/hooks/useAdminData";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const UsersTable = () => {
@@ -23,6 +24,10 @@ export const UsersTable = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; isExternal: boolean } | null>(null);
   const [sourceFilter, setSourceFilter] = useState<"all" | "local" | "external">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended">("all");
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [userToSuspend, setUserToSuspend] = useState<{ id: string; name: string; isSuspended: boolean } | null>(null);
+  const [suspendReason, setSuspendReason] = useState("");
   
   const { data: users, isLoading: usersLoading } = useConsolidatedUsers();
   const { data: roles, isLoading: rolesLoading } = useUserRoles();
@@ -30,6 +35,7 @@ export const UsersTable = () => {
   const removeRole = useRemoveUserRole();
   const bulkAddRole = useBulkAddUserRole();
   const deleteUser = useDeleteUser();
+  const toggleSuspension = useToggleUserSuspension();
 
   const isLoading = usersLoading || rolesLoading;
 
@@ -46,7 +52,12 @@ export const UsersTable = () => {
     
     const matchesSource = sourceFilter === "all" || u.source === sourceFilter;
     
-    return matchesSearch && matchesSource;
+    const matchesStatus = 
+      statusFilter === "all" || 
+      (statusFilter === "suspended" && u.suspended_at) ||
+      (statusFilter === "active" && !u.suspended_at);
+    
+    return matchesSearch && matchesSource && matchesStatus;
   });
 
   const localUsersCount = users?.filter(u => u.source === 'local').length || 0;
@@ -109,6 +120,31 @@ export const UsersTable = () => {
   const openDeleteDialog = (userId: string, displayName: string, isExternal: boolean) => {
     setUserToDelete({ id: userId, name: displayName, isExternal });
     setDeleteDialogOpen(true);
+  };
+
+  const openSuspendDialog = (userId: string, displayName: string, isSuspended: boolean) => {
+    setUserToSuspend({ id: userId, name: displayName, isSuspended });
+    setSuspendReason("");
+    setSuspendDialogOpen(true);
+  };
+
+  const handleToggleSuspension = () => {
+    if (userToSuspend) {
+      toggleSuspension.mutate(
+        { 
+          userId: userToSuspend.id, 
+          suspend: !userToSuspend.isSuspended, 
+          reason: suspendReason || undefined 
+        },
+        {
+          onSuccess: () => {
+            setSuspendDialogOpen(false);
+            setUserToSuspend(null);
+            setSuspendReason("");
+          },
+        }
+      );
+    }
   };
 
   if (isLoading) {
@@ -184,6 +220,17 @@ export const UsersTable = () => {
               <SelectItem value="all">All Sources</SelectItem>
               <SelectItem value="local">Local Only</SelectItem>
               <SelectItem value="external">FLEx Only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active Only</SelectItem>
+              <SelectItem value="suspended">Suspended Only</SelectItem>
             </SelectContent>
           </Select>
 
@@ -263,7 +310,7 @@ export const UsersTable = () => {
                 const isExternal = user.source === 'external';
                 
                 return (
-                  <TableRow key={user.id} className={isExternal ? "bg-muted/30" : ""}>
+                  <TableRow key={user.id} className={`${isExternal ? "bg-muted/30" : ""} ${user.suspended_at ? "opacity-60" : ""}`}>
                     <TableCell>
                       {!isExternal ? (
                         <Checkbox 
@@ -292,7 +339,12 @@ export const UsersTable = () => {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{user.display_name || "No name"}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{user.display_name || "No name"}</p>
+                            {user.suspended_at && (
+                              <Badge variant="destructive" className="text-xs">Suspended</Badge>
+                            )}
+                          </div>
                           {user.first_name && (
                             <p className="text-xs text-muted-foreground">
                               {user.first_name} {user.last_name}
@@ -383,6 +435,21 @@ export const UsersTable = () => {
                               </div>
                             </DialogContent>
                           </Dialog>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className={user.suspended_at ? "text-green-600 hover:text-green-700 hover:bg-green-50" : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"}
+                                onClick={() => openSuspendDialog(user.user_id, user.display_name || user.email || "User", !!user.suspended_at)}
+                              >
+                                {user.suspended_at ? <UserCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{user.suspended_at ? "Unsuspend user" : "Suspend user"}</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <Button 
                             variant="ghost" 
                             size="sm"
@@ -436,6 +503,50 @@ export const UsersTable = () => {
                   {deleteUser.isPending ? "Deleting..." : "Delete User"}
                 </Button>
               )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Suspend User Confirmation Dialog */}
+        <Dialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {userToSuspend?.isSuspended ? "Unsuspend User" : "Suspend User"}
+              </DialogTitle>
+              <DialogDescription>
+                {userToSuspend?.isSuspended ? (
+                  <>This will restore access for <strong>{userToSuspend?.name}</strong>. They will be able to log in and use the platform again.</>
+                ) : (
+                  <>This will prevent <strong>{userToSuspend?.name}</strong> from accessing the platform. They will not be able to log in until unsuspended.</>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            {!userToSuspend?.isSuspended && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Reason (optional)</label>
+                <Textarea
+                  placeholder="Enter reason for suspension..."
+                  value={suspendReason}
+                  onChange={(e) => setSuspendReason(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSuspendDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant={userToSuspend?.isSuspended ? "default" : "destructive"}
+                onClick={handleToggleSuspension}
+                disabled={toggleSuspension.isPending}
+              >
+                {toggleSuspension.isPending 
+                  ? (userToSuspend?.isSuspended ? "Unsuspending..." : "Suspending...")
+                  : (userToSuspend?.isSuspended ? "Unsuspend User" : "Suspend User")
+                }
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
