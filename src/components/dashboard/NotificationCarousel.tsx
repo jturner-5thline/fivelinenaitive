@@ -123,11 +123,12 @@ interface CarouselContentProps {
   notifications: Notification[];
   onNavigate: (dealId: string) => void;
   onClose?: () => void;
+  initialIndex?: number;
 }
 
-function CarouselInner({ notifications, onNavigate, onClose }: CarouselContentProps) {
+function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }: CarouselContentProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
   const scrollToIndex = useCallback((index: number) => {
@@ -218,8 +219,8 @@ function CarouselInner({ notifications, onNavigate, onClose }: CarouselContentPr
   }, [handleKeyDown]);
 
   useEffect(() => {
-    setTimeout(() => scrollToIndex(0), 100);
-  }, [scrollToIndex]);
+    setTimeout(() => scrollToIndex(initialIndex), 100);
+  }, [scrollToIndex, initialIndex]);
 
   return (
     <div className="relative py-4 flex flex-col h-full">
@@ -366,11 +367,16 @@ function CarouselInner({ notifications, onNavigate, onClose }: CarouselContentPr
 export function NotificationCarousel() {
   const navigate = useNavigate();
   const notifications = mockNotifications;
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [isCarouselOpen, setIsCarouselOpen] = useState(false);
+  const [initialCarouselIndex, setInitialCarouselIndex] = useState(0);
 
   const handleNavigate = (dealId: string) => {
     navigate(`/deal/${dealId}`);
+  };
+
+  const openCarouselAtIndex = (index: number) => {
+    setInitialCarouselIndex(index);
+    setIsCarouselOpen(true);
   };
 
   if (notifications.length === 0) {
@@ -422,7 +428,7 @@ export function NotificationCarousel() {
           className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide pr-8"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {notifications.map((notification) => {
+          {notifications.map((notification, index) => {
             const IconComponent = getNotificationIcon(notification.type);
             const colorClass = getNotificationColor(notification.type);
 
@@ -430,7 +436,7 @@ export function NotificationCarousel() {
               <Card
                 key={notification.id}
                 className="flex-shrink-0 w-[200px] p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => setSelectedNotification(notification)}
+                onClick={() => openCarouselAtIndex(index)}
               >
                 <div className="flex flex-col h-full space-y-3">
                   {/* Icon and Priority */}
@@ -466,61 +472,6 @@ export function NotificationCarousel() {
         </div>
       </div>
 
-      {/* Detail Dialog */}
-      <Dialog open={!!selectedNotification} onOpenChange={() => setSelectedNotification(null)}>
-        <DialogContent className="sm:max-w-md">
-          {selectedNotification && (
-            <div className="space-y-4">
-              {/* Header */}
-              <div className="flex items-start gap-3">
-                <div className={`p-3 rounded-xl ${getNotificationColor(selectedNotification.type)}`}>
-                  {(() => {
-                    const IconComponent = getNotificationIcon(selectedNotification.type);
-                    return <IconComponent className="h-6 w-6" />;
-                  })()}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {selectedNotification.title}
-                  </h3>
-                  {getPriorityBadge(selectedNotification.priority)}
-                </div>
-              </div>
-
-              {/* Description */}
-              <p className="text-muted-foreground leading-relaxed">
-                {selectedNotification.description}
-              </p>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                {selectedNotification.dealName && (
-                  <span className="text-sm text-primary font-medium">
-                    {selectedNotification.dealName}
-                  </span>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(selectedNotification.timestamp, { addSuffix: true })}
-                </span>
-              </div>
-
-              {/* Action Button */}
-              {selectedNotification.dealId && (
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    setSelectedNotification(null);
-                    handleNavigate(selectedNotification.dealId!);
-                  }}
-                >
-                  View Deal
-                </Button>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
       {/* Fullscreen Carousel Dialog */}
       <Dialog open={isCarouselOpen} onOpenChange={setIsCarouselOpen}>
         <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
@@ -528,6 +479,7 @@ export function NotificationCarousel() {
             notifications={notifications} 
             onNavigate={handleNavigate}
             onClose={() => setIsCarouselOpen(false)}
+            initialIndex={initialCarouselIndex}
           />
         </DialogContent>
       </Dialog>
