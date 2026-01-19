@@ -131,17 +131,22 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
-  const scrollToIndex = useCallback((index: number, smooth = true) => {
+  const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior = 'smooth') => {
     if (!scrollRef.current) return;
     const container = scrollRef.current;
     const cards = container.querySelectorAll('[data-card-index]');
-    if (cards[index]) {
-      const card = cards[index] as HTMLElement;
-      const containerWidth = container.offsetWidth;
-      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-      const scrollPosition = cardCenter - containerWidth / 2;
-      container.scrollTo({ left: scrollPosition, behavior: smooth ? 'smooth' : 'instant' });
-    }
+    const target = cards[index] as HTMLElement | undefined;
+    if (!target) return;
+
+    // Use viewport-relative math to reliably center inside the visible container
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+
+    const containerCenter = containerRect.left + containerRect.width / 2;
+    const targetCenter = targetRect.left + targetRect.width / 2;
+    const delta = targetCenter - containerCenter;
+
+    container.scrollTo({ left: container.scrollLeft + delta, behavior });
   }, []);
 
   const handleScroll = useCallback(() => {
@@ -219,11 +224,21 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
   }, [handleKeyDown]);
 
   useEffect(() => {
-    // Initial scroll without animation to position correctly
-    scrollToIndex(initialIndex, false);
-    // Then do a small adjustment with animation for polish
-    const timer = setTimeout(() => scrollToIndex(initialIndex, false), 150);
-    return () => clearTimeout(timer);
+    setActiveIndex(initialIndex);
+
+    // Wait for the dialog + layout to paint, then center the selected card.
+    let raf1 = 0;
+    let raf2 = 0;
+
+    raf1 = requestAnimationFrame(() => {
+      scrollToIndex(initialIndex, 'auto');
+      raf2 = requestAnimationFrame(() => scrollToIndex(initialIndex, 'auto'));
+    });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
   }, [scrollToIndex, initialIndex]);
 
   return (
@@ -271,7 +286,7 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
         onTouchEnd={handleTouchEnd}
       >
         {/* Left Spacer */}
-        <div className="flex-shrink-0 w-[calc(50vw-240px)] md:w-[calc(50vw-280px)]" />
+        <div className="flex-shrink-0 w-[calc(50%-190px)] md:w-[calc(50%-240px)]" />
 
         {/* Cards */}
         {notifications.map((notification, index) => {
@@ -344,7 +359,7 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
         })}
 
         {/* Right Spacer */}
-        <div className="flex-shrink-0 w-[calc(50vw-240px)] md:w-[calc(50vw-280px)]" />
+        <div className="flex-shrink-0 w-[calc(50%-190px)] md:w-[calc(50%-240px)]" />
       </div>
 
       {/* Dot Indicators */}
