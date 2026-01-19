@@ -366,9 +366,7 @@ function CarouselInner({ notifications, onNavigate, onClose }: CarouselContentPr
 export function NotificationCarousel() {
   const navigate = useNavigate();
   const notifications = mockNotifications;
-  const [isOpen, setIsOpen] = useState(false);
-
-  const highPriorityCount = notifications.filter(n => n.priority === 'high').length;
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
   const handleNavigate = (dealId: string) => {
     navigate(`/deal/${dealId}`);
@@ -387,38 +385,110 @@ export function NotificationCarousel() {
 
   return (
     <>
-      {/* Trigger Card */}
-      <Card 
-        className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-        onClick={() => setIsOpen(true)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center relative">
-              <Bell className="h-6 w-6 text-primary" />
-              {highPriorityCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-medium">
-                  {highPriorityCount}
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-medium text-foreground">Notifications</h3>
+        <Badge variant="secondary" className="ml-1">{notifications.length}</Badge>
+      </div>
+
+      {/* Notification Tiles Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {notifications.map((notification) => {
+          const IconComponent = getNotificationIcon(notification.type);
+          const colorClass = getNotificationColor(notification.type);
+
+          return (
+            <Card
+              key={notification.id}
+              className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => setSelectedNotification(notification)}
+            >
+              <div className="flex flex-col h-full space-y-3">
+                {/* Icon and Priority */}
+                <div className="flex items-start justify-between">
+                  <div className={`p-2 rounded-lg ${colorClass}`}>
+                    <IconComponent className="h-4 w-4" />
+                  </div>
+                  {notification.priority === 'high' && (
+                    <span className="h-2 w-2 rounded-full bg-destructive" />
+                  )}
+                </div>
+
+                {/* Title */}
+                <h4 className="text-sm font-medium text-foreground line-clamp-2">
+                  {notification.title}
+                </h4>
+
+                {/* Deal Name & Time */}
+                <div className="mt-auto pt-2">
+                  {notification.dealName && (
+                    <p className="text-xs text-primary font-medium truncate mb-1">
+                      {notification.dealName}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedNotification} onOpenChange={() => setSelectedNotification(null)}>
+        <DialogContent className="sm:max-w-md">
+          {selectedNotification && (
+            <div className="space-y-4">
+              {/* Header */}
+              <div className="flex items-start gap-3">
+                <div className={`p-3 rounded-xl ${getNotificationColor(selectedNotification.type)}`}>
+                  {(() => {
+                    const IconComponent = getNotificationIcon(selectedNotification.type);
+                    return <IconComponent className="h-6 w-6" />;
+                  })()}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {selectedNotification.title}
+                  </h3>
+                  {getPriorityBadge(selectedNotification.priority)}
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="text-muted-foreground leading-relaxed">
+                {selectedNotification.description}
+              </p>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                {selectedNotification.dealName && (
+                  <span className="text-sm text-primary font-medium">
+                    {selectedNotification.dealName}
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(selectedNotification.timestamp, { addSuffix: true })}
                 </span>
+              </div>
+
+              {/* Action Button */}
+              {selectedNotification.dealId && (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setSelectedNotification(null);
+                    handleNavigate(selectedNotification.dealId!);
+                  }}
+                >
+                  View Deal
+                </Button>
               )}
             </div>
-            <div>
-              <h3 className="text-sm font-medium text-foreground">Notifications</h3>
-              <p className="text-xs text-muted-foreground">{notifications.length} items</p>
-            </div>
-          </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground" />
-        </div>
-      </Card>
-
-      {/* Fullscreen Dialog */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
-          <CarouselInner 
-            notifications={notifications} 
-            onNavigate={handleNavigate}
-            onClose={() => setIsOpen(false)}
-          />
+          )}
         </DialogContent>
       </Dialog>
     </>
