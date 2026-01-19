@@ -593,6 +593,13 @@ function NeuralNetwork() {
   const pulseWaveRef = useRef<THREE.Mesh>(null);
   const ribosomeGroupRef = useRef<THREE.Group>(null);
   
+  // Neural firing refs
+  const neuronFiringGroupRef = useRef<THREE.Group>(null);
+  const firingPulsesRef = useRef<THREE.Mesh[]>([]);
+  const firingProgressRef = useRef<number[]>([]);
+  const neuronNodesRef = useRef<THREE.Mesh[]>([]);
+  const axonMaterialsRef = useRef<THREE.LineBasicMaterial[]>([]);
+  
   // Create shader material for soft radial pulse
   const pulseShaderMaterial = useMemo(() => {
     return new THREE.ShaderMaterial({
@@ -617,13 +624,9 @@ function NeuralNetwork() {
         varying vec3 vNormal;
         varying vec3 vPosition;
         void main() {
-          // Calculate distance from center (0-1 range for unit sphere)
           float dist = length(vPosition);
-          // Create soft radial fade - stronger in center, fades to edges
           float centerFade = 1.0 - smoothstep(0.0, 1.0, dist);
-          // Add extra softness with power curve
           centerFade = pow(centerFade, 1.5);
-          // Edge fade based on phase (disperses more as it expands)
           float edgeSoftness = mix(0.3, 0.8, uPhase);
           float finalAlpha = uOpacity * centerFade * edgeSoftness;
           gl_FragColor = vec4(uColor, finalAlpha);
@@ -634,6 +637,94 @@ function NeuralNetwork() {
       depthWrite: false,
       blending: THREE.AdditiveBlending
     });
+  }, []);
+  
+  // Create neuron network in a planar arrangement
+  const { neuronPositions, axonCurves, axonLines } = useMemo(() => {
+    const neurons: THREE.Vector3[] = [];
+    const curves: THREE.QuadraticBezierCurve3[] = [];
+    const lines: THREE.Line[] = [];
+    const materials: THREE.LineBasicMaterial[] = [];
+    
+    // Create neurons in a rough plane with some depth variation
+    const neuronCount = 16;
+    const planeRadius = 0.55;
+    
+    for (let i = 0; i < neuronCount; i++) {
+      const angle = (i / neuronCount) * Math.PI * 2 + Math.random() * 0.3;
+      const r = 0.15 + Math.random() * (planeRadius - 0.15);
+      const x = Math.cos(angle) * r;
+      const z = Math.sin(angle) * r;
+      const y = (Math.random() - 0.5) * 0.15; // Slight vertical spread
+      neurons.push(new THREE.Vector3(x, y, z));
+    }
+    
+    // Add central hub neurons
+    neurons.push(new THREE.Vector3(0, 0, 0));
+    neurons.push(new THREE.Vector3(0.08, 0.02, 0.05));
+    neurons.push(new THREE.Vector3(-0.06, -0.03, 0.04));
+    
+    // Create axon connections between neurons
+    const connections: [number, number][] = [];
+    
+    // Connect each outer neuron to 2-3 nearby neurons and the center
+    for (let i = 0; i < neuronCount; i++) {
+      // Connect to center hub
+      connections.push([i, neuronCount]);
+      
+      // Connect to neighbors
+      const next = (i + 1) % neuronCount;
+      const prev = (i - 1 + neuronCount) % neuronCount;
+      connections.push([i, next]);
+      if (Math.random() > 0.5) {
+        connections.push([i, prev]);
+      }
+      
+      // Some cross connections
+      if (Math.random() > 0.7) {
+        const opposite = (i + Math.floor(neuronCount / 2)) % neuronCount;
+        connections.push([i, opposite]);
+      }
+    }
+    
+    // Connect central neurons
+    connections.push([neuronCount, neuronCount + 1]);
+    connections.push([neuronCount, neuronCount + 2]);
+    connections.push([neuronCount + 1, neuronCount + 2]);
+    
+    // Create curved axons
+    connections.forEach(([fromIdx, toIdx]) => {
+      const start = neurons[fromIdx];
+      const end = neurons[toIdx];
+      
+      // Create control point for curve (slight arc)
+      const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+      const perpendicular = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.08,
+        (Math.random() - 0.5) * 0.08,
+        (Math.random() - 0.5) * 0.08
+      );
+      mid.add(perpendicular);
+      
+      const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+      curves.push(curve);
+      
+      const points = curve.getPoints(20);
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+      const material = new THREE.LineBasicMaterial({
+        color: '#67e8f9',
+        transparent: true,
+        opacity: 0.4
+      });
+      materials.push(material);
+      lines.push(new THREE.Line(lineGeo, material));
+    });
+    
+    // Initialize firing progress
+    firingProgressRef.current = curves.map(() => Math.random());
+    axonMaterialsRef.current = materials;
+    
+    return { neuronPositions: neurons, axonCurves: curves, axonLines: lines };
   }, []);
   
   const { nodeGeometry, lineObjects, surfaceNodes, coreConnections } = useMemo(() => {
@@ -851,11 +942,47 @@ function NeuralNetwork() {
       const wavePhase = (t * 0.6) % 1;
       const waveScale = 0.15 + wavePhase * 0.55;
       pulseWaveRef.current.scale.setScalar(waveScale);
-      // Use eased falloff for softer dispersion
       const easedFade = Math.pow(1 - wavePhase, 2.5);
       (pulseWaveRef.current.material as THREE.ShaderMaterial).uniforms.uOpacity.value = easedFade * 0.35;
       (pulseWaveRef.current.material as THREE.ShaderMaterial).uniforms.uPhase.value = wavePhase;
     }
+    
+    // Neural firing animation - pulses traveling along axons
+    if (neuronFiringGroupRef.current) {
+      neuronFiringGroupRef.current.rotation.y += delta * 0.15;
+    }
+    
+    // Animate firing pulses along axons
+    firingProgressRef.current.forEach((progress, idx) => {
+      if (idx >= axonCurves.length || !firingPulsesRef.current[idx]) return;
+      
+      // Random firing speeds for organic feel
+      const speed = 0.4 + (idx % 5) * 0.15;
+      firingProgressRef.current[idx] = (progress + delta * speed) % 1;
+      
+      const point = axonCurves[idx].getPoint(firingProgressRef.current[idx]);
+      firingPulsesRef.current[idx].position.set(point.x, point.y, point.z);
+      
+      // Pulse brightness based on position
+      const brightness = Math.sin(firingProgressRef.current[idx] * Math.PI);
+      firingPulsesRef.current[idx].scale.setScalar(0.8 + brightness * 0.6);
+    });
+    
+    // Animate axon glow - simulate action potential traveling
+    axonMaterialsRef.current.forEach((material, idx) => {
+      const firingPhase = firingProgressRef.current[idx] || 0;
+      const glowIntensity = 0.3 + Math.sin(firingPhase * Math.PI) * 0.5;
+      material.opacity = glowIntensity;
+    });
+    
+    // Pulse neuron nodes when receiving signals
+    neuronNodesRef.current.forEach((node, idx) => {
+      if (!node) return;
+      // Random pulsing to simulate receiving signals
+      const pulsePhase = Math.sin(t * 3 + idx * 0.7);
+      const scale = 1.0 + pulsePhase * 0.3;
+      node.scale.setScalar(scale);
+    });
   });
 
   return (
@@ -953,6 +1080,53 @@ function NeuralNetwork() {
         <sphereGeometry args={[0.025, 12, 12]} />
         <meshBasicMaterial color="#06b6d4" transparent opacity={0.9} />
       </mesh>
+      
+      {/* === NEURAL FIRING NETWORK === */}
+      <group ref={neuronFiringGroupRef}>
+        {/* Neuron cell bodies - bright nodes that pulse */}
+        {neuronPositions.map((pos, idx) => (
+          <mesh 
+            key={`neuron-${idx}`} 
+            position={[pos.x, pos.y, pos.z]}
+            ref={(el) => { if (el) neuronNodesRef.current[idx] = el; }}
+          >
+            <sphereGeometry args={[idx >= neuronPositions.length - 3 ? 0.04 : 0.025, 12, 12]} />
+            <meshBasicMaterial 
+              color={idx >= neuronPositions.length - 3 ? "#f0fdfa" : "#67e8f9"} 
+              transparent 
+              opacity={idx >= neuronPositions.length - 3 ? 0.95 : 0.85} 
+            />
+          </mesh>
+        ))}
+        
+        {/* Axon lines - connections between neurons */}
+        {axonLines.map((line, idx) => (
+          <primitive key={`axon-${idx}`} object={line} />
+        ))}
+        
+        {/* Firing pulses - bright dots traveling along axons */}
+        {axonCurves.map((_, idx) => (
+          <mesh 
+            key={`firing-${idx}`}
+            ref={(el) => { if (el) firingPulsesRef.current[idx] = el; }}
+          >
+            <sphereGeometry args={[0.018, 8, 8]} />
+            <meshBasicMaterial color="#f0fdfa" transparent opacity={0.95} />
+          </mesh>
+        ))}
+        
+        {/* Glow ring around neuron cluster */}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.5, 0.008, 16, 64]} />
+          <meshBasicMaterial color="#22d3ee" transparent opacity={0.6} />
+        </mesh>
+        
+        {/* Second glow ring tilted */}
+        <mesh rotation={[Math.PI / 3, Math.PI / 4, 0]}>
+          <torusGeometry args={[0.45, 0.006, 16, 64]} />
+          <meshBasicMaterial color="#67e8f9" transparent opacity={0.4} />
+        </mesh>
+      </group>
       
       {/* Ribosome-like particles around envelope */}
       <group ref={ribosomeGroupRef}>
