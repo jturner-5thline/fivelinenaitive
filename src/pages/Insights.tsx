@@ -282,7 +282,8 @@ export default function Insights() {
       <Helmet>
         <title>Insights | 5thLine</title>
       </Helmet>
-      <div className="container mx-auto py-8 px-4 bg-card rounded-xl">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Insights</h1>
@@ -617,6 +618,7 @@ export default function Insights() {
             )}
           </DialogContent>
         </Dialog>
+        </div>
       </div>
     </>
   );
