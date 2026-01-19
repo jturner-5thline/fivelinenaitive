@@ -64,6 +64,7 @@ interface UserPermissionState {
   hr: boolean;
   operations: boolean;
   integrations: boolean;
+  admin: boolean;
   settings: boolean;
   help: boolean;
   lenders: boolean;
@@ -92,6 +93,7 @@ const DEFAULT_PERMISSIONS: UserPermissionState = {
   lenders: true,
   analytics: true,
   reports: true,
+  admin: true,
   canExport: true,
   canBulkEdit: true,
   canDelete: true,
@@ -122,6 +124,7 @@ const PAGE_SECTIONS: SectionConfig[] = [
   { key: 'integrations', label: 'Integrations', icon: Plug, description: 'Third-party integrations' },
   { key: 'settings', label: 'Settings', icon: Settings, description: 'App configuration' },
   { key: 'help', label: 'Help', icon: HelpCircle, description: 'Help and documentation' },
+  { key: 'admin', label: 'Admin', icon: Lock, description: 'System administration panel' },
 ];
 
 const CAPABILITY_SECTIONS: SectionConfig[] = [
