@@ -282,10 +282,6 @@ const Auth = () => {
           `}</style>
           
           <div className="w-full max-w-md">
-            <p className="text-white/60 text-center mb-6 font-light">
-              {getSubtitle()}
-            </p>
-            
             <form onSubmit={mode === "mfa" ? handleMFAVerify : mode === "gate" ? handleGateSubmit : handleSubmit} className="space-y-6">
               {mode === "mfa" ? (
                 <div className="space-y-4">
