@@ -231,7 +231,7 @@ export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-hidden flex flex-col w-[calc(100vw-2rem)]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-success" />
@@ -239,7 +239,7 @@ export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4">
           {/* Preset Prompts Section */}
           <div>
             <h4 className="text-sm font-medium text-muted-foreground mb-3">Preset Prompts</h4>
@@ -252,15 +252,15 @@ export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => handlePromptClick(prompt)}
                   >
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${getCategoryColor(prompt.category)}`}>
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <div className={`p-2 rounded-lg shrink-0 ${getCategoryColor(prompt.category)}`}>
                         <IconComponent className="h-4 w-4" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-foreground">{prompt.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{prompt.prompt}</p>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="font-medium text-sm text-foreground truncate">{prompt.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words">{prompt.prompt}</p>
                       </div>
-                      <Badge variant="outline" className="text-xs capitalize">
+                      <Badge variant="outline" className="text-xs capitalize shrink-0 hidden sm:inline-flex">
                         {prompt.category}
                       </Badge>
                     </CardContent>
@@ -338,19 +338,19 @@ export function QuickPromptsDialog({ trigger }: QuickPromptsDialogProps) {
                       key={prompt.id}
                       className="cursor-pointer hover:bg-muted/50 transition-colors group"
                     >
-                      <CardContent className="p-3 flex items-center gap-3">
+                      <CardContent className="p-3 flex items-start gap-3">
                         <div 
-                          className={`p-2 rounded-lg ${getCategoryColor(prompt.category)}`}
+                          className={`p-2 rounded-lg shrink-0 ${getCategoryColor(prompt.category)}`}
                           onClick={() => handlePromptClick(prompt)}
                         >
                           <IconComponent className="h-4 w-4" />
                         </div>
                         <div 
-                          className="flex-1 min-w-0"
+                          className="flex-1 min-w-0 overflow-hidden"
                           onClick={() => handlePromptClick(prompt)}
                         >
-                          <p className="font-medium text-sm text-foreground">{prompt.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{prompt.prompt}</p>
+                          <p className="font-medium text-sm text-foreground truncate">{prompt.title}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-2 break-words">{prompt.prompt}</p>
                         </div>
                         <Button
                           variant="ghost"
