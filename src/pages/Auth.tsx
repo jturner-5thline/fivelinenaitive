@@ -263,8 +263,8 @@ const Auth = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
-          <div className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 pointer-events-none select-none flex flex-col items-center">
-            <h1 className="text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap">
+          <div className="absolute top-[-5%] left-1/2 -translate-x-1/2 pointer-events-none select-none flex flex-col items-center">
+            <h1 className="text-[18vw] font-sans font-bold tracking-tighter whitespace-nowrap">
               <span className="text-white/[0.10]">n</span>
               <span 
                 className="bg-clip-text text-transparent"
@@ -276,7 +276,7 @@ const Auth = () => {
               >AI</span>
               <span className="text-white/[0.10]">tive</span>
             </h1>
-            <p className="text-white text-[2.5vw] font-light tracking-[0.3em] -mt-[3vw]">
+            <p className="text-white text-[2vw] font-light tracking-[0.3em] mt-1">
               Intelligence, by Design
             </p>
           </div>
