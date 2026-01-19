@@ -1915,6 +1915,42 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          created_at: string
+          device_type: string | null
+          id: string
+          page_path: string
+          page_title: string | null
+          referrer: string | null
+          session_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          page_path: string
+          page_title?: string | null
+          referrer?: string | null
+          session_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          page_path?: string
+          page_title?: string | null
+          referrer?: string | null
+          session_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2498,6 +2534,327 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      ux_accessibility_issues: {
+        Row: {
+          created_at: string
+          description: string | null
+          element_selector: string | null
+          id: string
+          is_resolved: boolean | null
+          issue_type: string
+          page_path: string
+          severity: string
+          user_id: string | null
+          wcag_criteria: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          element_selector?: string | null
+          id?: string
+          is_resolved?: boolean | null
+          issue_type: string
+          page_path: string
+          severity: string
+          user_id?: string | null
+          wcag_criteria?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          element_selector?: string | null
+          id?: string
+          is_resolved?: boolean | null
+          issue_type?: string
+          page_path?: string
+          severity?: string
+          user_id?: string | null
+          wcag_criteria?: string | null
+        }
+        Relationships: []
+      }
+      ux_click_heatmap: {
+        Row: {
+          click_count: number | null
+          created_at: string
+          device_type: string | null
+          element_selector: string
+          element_text: string | null
+          id: string
+          page_path: string
+          session_id: string
+          x_percent: number | null
+          y_percent: number | null
+        }
+        Insert: {
+          click_count?: number | null
+          created_at?: string
+          device_type?: string | null
+          element_selector: string
+          element_text?: string | null
+          id?: string
+          page_path: string
+          session_id: string
+          x_percent?: number | null
+          y_percent?: number | null
+        }
+        Update: {
+          click_count?: number | null
+          created_at?: string
+          device_type?: string | null
+          element_selector?: string
+          element_text?: string | null
+          id?: string
+          page_path?: string
+          session_id?: string
+          x_percent?: number | null
+          y_percent?: number | null
+        }
+        Relationships: []
+      }
+      ux_client_errors: {
+        Row: {
+          component_name: string | null
+          created_at: string
+          error_message: string | null
+          error_stack: string | null
+          error_type: string
+          id: string
+          page_path: string
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          component_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          error_stack?: string | null
+          error_type: string
+          id?: string
+          page_path: string
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          component_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          error_stack?: string | null
+          error_type?: string
+          id?: string
+          page_path?: string
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ux_feature_usage: {
+        Row: {
+          action_type: string
+          created_at: string
+          feature_name: string
+          id: string
+          metadata: Json | null
+          page_path: string | null
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          feature_name: string
+          id?: string
+          metadata?: Json | null
+          page_path?: string | null
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          feature_name?: string
+          id?: string
+          metadata?: Json | null
+          page_path?: string | null
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ux_navigation_events: {
+        Row: {
+          created_at: string
+          device_type: string | null
+          from_path: string | null
+          id: string
+          is_bounce: boolean | null
+          is_exit: boolean | null
+          scroll_depth_percent: number | null
+          session_id: string
+          time_on_previous_page_ms: number | null
+          to_path: string
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string | null
+          from_path?: string | null
+          id?: string
+          is_bounce?: boolean | null
+          is_exit?: boolean | null
+          scroll_depth_percent?: number | null
+          session_id: string
+          time_on_previous_page_ms?: number | null
+          to_path: string
+        }
+        Update: {
+          created_at?: string
+          device_type?: string | null
+          from_path?: string | null
+          id?: string
+          is_bounce?: boolean | null
+          is_exit?: boolean | null
+          scroll_depth_percent?: number | null
+          session_id?: string
+          time_on_previous_page_ms?: number | null
+          to_path?: string
+        }
+        Relationships: []
+      }
+      ux_performance_metrics: {
+        Row: {
+          created_at: string
+          device_type: string | null
+          id: string
+          metric_type: string
+          page_path: string
+          rating: string | null
+          session_id: string
+          value_ms: number | null
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          metric_type: string
+          page_path: string
+          rating?: string | null
+          session_id: string
+          value_ms?: number | null
+        }
+        Update: {
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          metric_type?: string
+          page_path?: string
+          rating?: string | null
+          session_id?: string
+          value_ms?: number | null
+        }
+        Relationships: []
+      }
+      ux_rage_clicks: {
+        Row: {
+          click_count: number | null
+          created_at: string
+          device_type: string | null
+          element_selector: string | null
+          element_text: string | null
+          id: string
+          page_path: string
+          session_id: string
+        }
+        Insert: {
+          click_count?: number | null
+          created_at?: string
+          device_type?: string | null
+          element_selector?: string | null
+          element_text?: string | null
+          id?: string
+          page_path: string
+          session_id: string
+        }
+        Update: {
+          click_count?: number | null
+          created_at?: string
+          device_type?: string | null
+          element_selector?: string | null
+          element_text?: string | null
+          id?: string
+          page_path?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
+      ux_search_events: {
+        Row: {
+          clicked_result_index: number | null
+          created_at: string
+          filters_used: Json | null
+          id: string
+          page_path: string
+          query: string
+          results_count: number | null
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          clicked_result_index?: number | null
+          created_at?: string
+          filters_used?: Json | null
+          id?: string
+          page_path: string
+          query: string
+          results_count?: number | null
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          clicked_result_index?: number | null
+          created_at?: string
+          filters_used?: Json | null
+          id?: string
+          page_path?: string
+          query?: string
+          results_count?: number | null
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ux_user_feedback: {
+        Row: {
+          category: string | null
+          comment: string | null
+          created_at: string
+          id: string
+          page_path: string
+          rating: number | null
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          page_path: string
+          rating?: number | null
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          page_path?: string
+          rating?: number | null
+          session_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
