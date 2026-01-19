@@ -290,7 +290,8 @@ export function NotificationCarousel() {
               className="flex-shrink-0 snap-center px-3"
               style={{
                 opacity,
-                transition: 'opacity 1.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                transform: isActive ? 'scale(1)' : `scale(${Math.max(0.85, 1 - distance * 0.05)})`,
+                transition: 'opacity 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
               }}
             >
               <Card
