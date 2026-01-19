@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, GitBranch, Monitor, MousePointer, BarChart3 } from "lucide-react";
+import { LayoutDashboard, GitBranch, Monitor, MousePointer, BarChart3, Lightbulb } from "lucide-react";
 import { useUXRecommendations } from "@/hooks/useUXAnalytics";
 import { HealthScoreCard } from "./HealthScoreCard";
 import { InsightsGrid } from "./InsightsGrid";
@@ -8,6 +8,7 @@ import { FunnelVisualization } from "./FunnelVisualization";
 import { DevicesTab } from "./DevicesTab";
 import { HeatmapsTab } from "./HeatmapsTab";
 import { AdvancedAnalyticsTab } from "./AdvancedAnalyticsTab";
+import { InsightsTab } from "./InsightsTab";
 
 export function UXRecommendationsPanel() {
   const {
@@ -29,10 +30,14 @@ export function UXRecommendationsPanel() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="insights" className="flex items-center gap-2">
+            <Lightbulb className="h-4 w-4" />
+            <span className="hidden sm:inline">Insights</span>
           </TabsTrigger>
           <TabsTrigger value="funnels" className="flex items-center gap-2">
             <GitBranch className="h-4 w-4" />
@@ -60,6 +65,10 @@ export function UXRecommendationsPanel() {
             </div>
           </div>
           <RecommendationsList recommendations={recommendations} />
+        </TabsContent>
+
+        <TabsContent value="insights">
+          <InsightsTab />
         </TabsContent>
 
         <TabsContent value="funnels" className="space-y-6">

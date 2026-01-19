@@ -1,5 +1,6 @@
 export { HealthScoreCard } from "./HealthScoreCard";
 export { InsightsGrid } from "./InsightsGrid";
+export { InsightsTab } from "./InsightsTab";
 export { RecommendationsList } from "./RecommendationsList";
 export { FunnelVisualization } from "./FunnelVisualization";
 export { DevicesTab } from "./DevicesTab";
