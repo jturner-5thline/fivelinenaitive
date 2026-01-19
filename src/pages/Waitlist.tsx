@@ -101,9 +101,21 @@ const Waitlist = () => {
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-16 md:pb-24 px-4 animate-fade-in">
           <h1 className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap pointer-events-none select-none">
             <span className="text-white/[0.07]">n</span>
-            <span className="text-primary/[0.15]">AI</span>
+            <span 
+              className="bg-gradient-to-r from-slate-500/30 via-primary/40 to-slate-400/30 bg-clip-text text-transparent"
+              style={{ 
+                backgroundSize: '200% 100%',
+                animation: 'shimmer 3s ease-in-out infinite',
+              }}
+            >AI</span>
             <span className="text-white/[0.07]">tive</span>
           </h1>
+          <style>{`
+            @keyframes shimmer {
+              0%, 100% { background-position: 200% 0; }
+              50% { background-position: 0% 0; }
+            }
+          `}</style>
 
           {isSubmitted ? (
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm text-center">
