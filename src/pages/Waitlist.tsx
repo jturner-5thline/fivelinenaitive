@@ -98,17 +98,17 @@ const Waitlist = () => {
         <SpinningGlobe />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
-        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 animate-fade-in">
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-white mb-2 tracking-tight">
+        <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-16 md:pb-24 px-4 animate-fade-in">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-1 tracking-tight">
             nAItive
           </h1>
           
-          <p className="text-white/60 text-lg md:text-xl font-light mb-8 tracking-wide">
+          <p className="text-white/60 text-base md:text-lg font-light mb-6 tracking-wide">
             AI-Powered Deal Intelligence
           </p>
 
           {isSubmitted ? (
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 w-full max-w-md text-center">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm text-center">
               <div className="flex justify-center mb-4">
                 <div className="p-3 rounded-full bg-green-500/20">
                   <CheckCircle2 className="h-8 w-8 text-green-400" />
@@ -128,13 +128,13 @@ const Waitlist = () => {
               </Button>
             </div>
           ) : (
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 w-full max-w-md">
-              <h2 className="text-xl font-semibold text-white mb-2 text-center">Join the Waitlist</h2>
-              <p className="text-white/50 text-sm text-center mb-6">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+              <h2 className="text-lg font-semibold text-white mb-1 text-center">Join the Waitlist</h2>
+              <p className="text-white/50 text-xs text-center mb-4">
                 Be the first to experience the future of deal intelligence
               </p>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-white/80 flex items-center gap-2">
                     <Mail className="h-4 w-4" />
@@ -197,7 +197,7 @@ const Waitlist = () => {
                 </Button>
               </form>
               
-              <div className="mt-6 pt-6 border-t border-white/10 text-center">
+              <div className="mt-4 pt-4 border-t border-white/10 text-center">
                 <Button
                   variant="ghost"
                   size="sm"
