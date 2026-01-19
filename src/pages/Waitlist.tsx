@@ -102,18 +102,19 @@ const Waitlist = () => {
           <h1 className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap pointer-events-none select-none">
             <span className="text-white/[0.07]">n</span>
             <span 
-              className="bg-gradient-to-r from-slate-500/30 via-primary/40 to-slate-400/30 bg-clip-text text-transparent"
+              className="bg-clip-text text-transparent"
               style={{ 
-                backgroundSize: '200% 100%',
-                animation: 'shimmer 3s ease-in-out infinite',
+                backgroundImage: 'linear-gradient(45deg, rgba(100,116,139,0.3) 0%, rgba(139,92,246,0.45) 50%, rgba(148,163,184,0.3) 100%)',
+                backgroundSize: '300% 300%',
+                animation: 'shimmer 8s ease-in-out infinite',
               }}
             >AI</span>
             <span className="text-white/[0.07]">tive</span>
           </h1>
           <style>{`
             @keyframes shimmer {
-              0%, 100% { background-position: 200% 0; }
-              50% { background-position: 0% 0; }
+              0%, 100% { background-position: 100% 100%; }
+              50% { background-position: 0% 0%; }
             }
           `}</style>
 
