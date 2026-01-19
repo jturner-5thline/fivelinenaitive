@@ -17,10 +17,12 @@ import {
   Mail,
   Zap,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Settings
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAllActivities } from '@/hooks/useAllActivities';
+import { useDashboardWidgets } from '@/contexts/DashboardWidgetsContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +34,7 @@ import { DealsCalendar } from '@/components/deals/DealsCalendar';
 import { NewsFeedWidget } from '@/components/deals/NewsFeedWidget';
 import { NotificationCarousel } from '@/components/dashboard/NotificationCarousel';
 import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
+import { DashboardWidgetSettings } from '@/components/dashboard/DashboardWidgetSettings';
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -67,6 +70,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { activities, isLoading: activitiesLoading } = useAllActivities(5);
+  const { isWidgetEnabled, getQuickActionWidgets } = useDashboardWidgets();
   const [inputValue, setInputValue] = useState('');
   const [activityOpen, setActivityOpen] = useState(() => {
     const saved = localStorage.getItem('dashboard-activity-open');
@@ -94,6 +98,70 @@ export default function Dashboard() {
     }
   };
 
+  const quickActionWidgets = getQuickActionWidgets();
+  const hasQuickActions = quickActionWidgets.length > 0;
+
+  const renderQuickActionWidget = (widgetId: string) => {
+    switch (widgetId) {
+      case 'calendar':
+        return (
+          <Card key="calendar" className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Calendar className="h-6 w-6 text-primary" />
+              </div>
+              <span className="text-sm font-medium text-foreground">Calendar</span>
+            </div>
+          </Card>
+        );
+      case 'email':
+        return (
+          <Card key="email" className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="h-12 w-12 rounded-xl bg-accent/50 flex items-center justify-center">
+                <Mail className="h-6 w-6 text-accent-foreground" />
+              </div>
+              <span className="text-sm font-medium text-foreground">Email</span>
+            </div>
+          </Card>
+        );
+      case 'quick-prompts':
+        return (
+          <QuickPromptsDialog
+            key="quick-prompts"
+            trigger={
+              <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center">
+                    <Zap className="h-6 w-6 text-success" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Quick Prompts</span>
+                </div>
+              </Card>
+            }
+          />
+        );
+      case 'create-deal':
+        return (
+          <CreateDealDialog 
+            key="create-deal"
+            trigger={
+              <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                    <Briefcase className="h-6 w-6 text-primary-foreground" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">Create New Deal</span>
+                </div>
+              </Card>
+            }
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -103,6 +171,18 @@ export default function Dashboard() {
 
       <div className="bg-background flex flex-col items-center px-4 py-12">
         <div className="w-full max-w-3xl space-y-8">
+          {/* Settings Button */}
+          <div className="flex justify-end">
+            <DashboardWidgetSettings
+              trigger={
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Customize
+                </Button>
+              }
+            />
+          </div>
+
           {/* Greeting */}
           <div className="text-center space-y-2">
             <p className="text-lg text-muted-foreground">
@@ -145,154 +225,112 @@ export default function Dashboard() {
           </Card>
 
           {/* Quick Widgets */}
-          <div className="grid grid-cols-4 gap-4">
-            {/* Calendar Widget */}
-            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Calendar className="h-6 w-6 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-foreground">Calendar</span>
-              </div>
-            </Card>
-
-            {/* Email Widget */}
-            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="h-12 w-12 rounded-xl bg-accent/50 flex items-center justify-center">
-                  <Mail className="h-6 w-6 text-accent-foreground" />
-                </div>
-                <span className="text-sm font-medium text-foreground">Email</span>
-              </div>
-            </Card>
-
-            {/* Quick Prompts Widget */}
-            <QuickPromptsDialog
-              trigger={
-                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center">
-                      <Zap className="h-6 w-6 text-success" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">Quick Prompts</span>
-                  </div>
-                </Card>
-              }
-            />
-
-            {/* Create New Deal Widget */}
-            <CreateDealDialog 
-              trigger={
-                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                      <Briefcase className="h-6 w-6 text-primary-foreground" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">Create New Deal</span>
-                  </div>
-                </Card>
-              }
-            />
-          </div>
+          {hasQuickActions && (
+            <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${Math.min(quickActionWidgets.length, 4)}, minmax(0, 1fr))` }}>
+              {quickActionWidgets.map(widget => renderQuickActionWidget(widget.id))}
+            </div>
+          )}
 
           {/* Notification Carousel */}
-          <NotificationCarousel />
+          {isWidgetEnabled('notifications') && <NotificationCarousel />}
 
           {/* Deals Calendar */}
-          <DealsCalendar />
+          {isWidgetEnabled('deals-calendar') && <DealsCalendar />}
 
           {/* News Feed */}
-          <NewsFeedWidget />
+          {isWidgetEnabled('news-feed') && <NewsFeedWidget />}
 
           {/* Recent Activity - Collapsible */}
-          <Collapsible open={activityOpen} onOpenChange={handleActivityToggle}>
-            <Card>
-              <CollapsibleTrigger asChild>
-                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                  <CardTitle className="text-lg font-medium flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-primary" />
-                      Recent Activity
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      {activityOpen ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="space-y-1">
-                  {activitiesLoading ? (
-                    <div className="space-y-3">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="flex items-center gap-3">
-                          <Skeleton className="h-8 w-8 rounded-full" />
-                          <div className="flex-1 space-y-1">
-                            <Skeleton className="h-4 w-3/4" />
-                            <Skeleton className="h-3 w-1/4" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : activities.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-6">
-                      No recent activity yet. Start by creating a deal!
-                    </p>
-                  ) : (
-                    <div className="space-y-1">
-                      {activities.map((activity) => {
-                        const IconComponent = getActivityIcon(activity.activity_type);
-                        const colorClass = getActivityColor(activity.activity_type);
-                        
-                        return (
-                          <button
-                            key={activity.id}
-                            onClick={() => navigate(`/deal/${activity.deal_id}`)}
-                            className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-                          >
-                            <div className={`mt-0.5 p-1.5 rounded-full bg-muted ${colorClass}`}>
-                              <IconComponent className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-foreground line-clamp-1">
-                                {activity.description}
-                              </p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {activity.deal_name && (
-                                  <span className="text-xs text-primary font-medium truncate max-w-[150px]">
-                                    {activity.deal_name}
-                                  </span>
-                                )}
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
-                                </span>
-                              </div>
-                            </div>
-                            <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                          </button>
-                        );
-                      })}
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full mt-2 text-muted-foreground"
-                        onClick={() => navigate('/deals')}
-                      >
-                        View all activity
-                        <ArrowUpRight className="h-4 w-4 ml-1" />
+          {isWidgetEnabled('recent-activity') && (
+            <Collapsible open={activityOpen} onOpenChange={handleActivityToggle}>
+              <Card>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardTitle className="text-lg font-medium flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-primary" />
+                        Recent Activity
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        {activityOpen ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
                       </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+                    </CardTitle>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="space-y-1">
+                    {activitiesLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="flex items-center gap-3">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <div className="flex-1 space-y-1">
+                              <Skeleton className="h-4 w-3/4" />
+                              <Skeleton className="h-3 w-1/4" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : activities.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        No recent activity yet. Start by creating a deal!
+                      </p>
+                    ) : (
+                      <div className="space-y-1">
+                        {activities.map((activity) => {
+                          const IconComponent = getActivityIcon(activity.activity_type);
+                          const colorClass = getActivityColor(activity.activity_type);
+                          
+                          return (
+                            <button
+                              key={activity.id}
+                              onClick={() => navigate(`/deal/${activity.deal_id}`)}
+                              className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                            >
+                              <div className={`mt-0.5 p-1.5 rounded-full bg-muted ${colorClass}`}>
+                                <IconComponent className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-foreground line-clamp-1">
+                                  {activity.description}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {activity.deal_name && (
+                                    <span className="text-xs text-primary font-medium truncate max-w-[150px]">
+                                      {activity.deal_name}
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                                  </span>
+                                </div>
+                              </div>
+                              <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            </button>
+                          );
+                        })}
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full mt-2 text-muted-foreground"
+                          onClick={() => navigate('/deals')}
+                        >
+                          View all activity
+                          <ArrowUpRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
         </div>
       </div>
     </>
