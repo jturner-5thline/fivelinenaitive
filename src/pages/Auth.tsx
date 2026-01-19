@@ -144,6 +144,15 @@ const Auth = () => {
           
           if (error) throw error;
 
+          // Store remember me preference for session handling
+          if (rememberMe) {
+            localStorage.setItem('naitive_remember_me', 'true');
+          } else {
+            localStorage.removeItem('naitive_remember_me');
+            // Mark this as a session-only login
+            sessionStorage.setItem('naitive_session_only', 'true');
+          }
+
           // Check if MFA is required
           const { data: factorsData } = await supabase.auth.mfa.listFactors();
           const verifiedFactors = factorsData?.totp?.filter(f => f.status === 'verified') || [];

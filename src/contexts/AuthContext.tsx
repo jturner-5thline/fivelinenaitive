@@ -75,6 +75,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const processedUsersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    // Handle session-only logins (Remember Me unchecked)
+    // If the user closed the browser and reopened, clear the session
+    const isSessionOnly = sessionStorage.getItem('naitive_session_only') === 'true';
+    const rememberMe = localStorage.getItem('naitive_remember_me') === 'true';
+    
+    // If we don't have a session marker and remember me is not set,
+    // this might be a new browser session - we should clear auth
+    const handleBeforeUnload = () => {
+      // This runs when tab/window is closing
+      // We can't reliably sign out here, but we set a flag
+      if (!rememberMe && sessionStorage.getItem('naitive_session_only') === 'true') {
+        // The session will be cleared on next load since sessionStorage is gone
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -99,12 +116,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Clear processed users on sign out
         if (event === 'SIGNED_OUT') {
           processedUsersRef.current.clear();
+          localStorage.removeItem('naitive_remember_me');
+          sessionStorage.removeItem('naitive_session_only');
         }
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // Check if this is a session-only login that should be cleared
+      // (browser was closed and reopened without Remember Me)
+      const wasSessionOnly = !localStorage.getItem('naitive_remember_me');
+      const hasSessionMarker = sessionStorage.getItem('naitive_session_active') === 'true';
+      
+      if (session && wasSessionOnly && !hasSessionMarker) {
+        // User had a session but didn't check "Remember Me" and this is a new browser session
+        // Sign them out
+        supabase.auth.signOut().then(() => {
+          setSession(null);
+          setUser(null);
+          setIsLoading(false);
+        });
+        return;
+      }
+      
+      // Mark this browser session as active
+      if (session) {
+        sessionStorage.setItem('naitive_session_active', 'true');
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
@@ -116,7 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
 
   const signOut = async () => {
