@@ -18,59 +18,8 @@ interface Notification {
   priority?: 'low' | 'medium' | 'high';
 }
 
-// Mock notifications for demo - replace with real data hook
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'reminder',
-    title: 'Follow up with Acme Corp',
-    description: 'Scheduled reminder to check on term sheet status. The lender has been reviewing documents for over a week.',
-    dealId: '1',
-    dealName: 'Acme Corp',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    priority: 'high',
-  },
-  {
-    id: '2',
-    type: 'deal',
-    title: 'Deal Stage Updated',
-    description: 'TechStart Inc moved to Due Diligence stage. All initial documentation has been submitted and approved.',
-    dealId: '2',
-    dealName: 'TechStart Inc',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    priority: 'medium',
-  },
-  {
-    id: '3',
-    type: 'lender',
-    title: 'New Lender Response',
-    description: 'Capital Bank has submitted initial interest and requested additional financial statements for Q3.',
-    dealId: '3',
-    dealName: 'GlobalTech Solutions',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5),
-    priority: 'medium',
-  },
-  {
-    id: '4',
-    type: 'milestone',
-    title: 'Milestone Due Tomorrow',
-    description: 'Financial documents submission deadline is approaching. Ensure all quarterly reports are finalized.',
-    dealId: '1',
-    dealName: 'Acme Corp',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8),
-    priority: 'high',
-  },
-  {
-    id: '5',
-    type: 'alert',
-    title: 'Stale Deal Alert',
-    description: 'No activity for 14 days on this deal. Consider reaching out to the borrower for an update.',
-    dealId: '4',
-    dealName: 'Venture Labs',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    priority: 'low',
-  },
-];
+// Real notifications would come from a hook or props
+const realNotifications: Notification[] = [];
 
 const getNotificationIcon = (type: Notification['type']) => {
   switch (type) {
@@ -390,7 +339,7 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
 
 export function NotificationCarousel() {
   const navigate = useNavigate();
-  const notifications = mockNotifications;
+  const notifications = realNotifications;
   const [isCarouselOpen, setIsCarouselOpen] = useState(false);
   const [initialCarouselIndex, setInitialCarouselIndex] = useState(0);
 
