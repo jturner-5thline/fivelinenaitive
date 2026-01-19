@@ -652,17 +652,19 @@ function NeuralNetwork() {
   const lineMaterialsRef = useRef<THREE.LineBasicMaterial[]>([]);
   const corePulseRef = useRef<number>(0);
   
-  // Core cell refs
+  // Cellular nucleus refs
   const nucleusRef = useRef<THREE.Mesh>(null);
-  const membraneRef = useRef<THREE.Mesh>(null);
-  const outerMembraneRef = useRef<THREE.Mesh>(null);
+  const nucleolusRef = useRef<THREE.Mesh>(null);
+  const nuclearEnvelopeRef = useRef<THREE.Mesh>(null);
+  const outerEnvelopeRef = useRef<THREE.Mesh>(null);
+  const chromatinGroupRef = useRef<THREE.Group>(null);
   const haloRing1Ref = useRef<THREE.Mesh>(null);
   const haloRing2Ref = useRef<THREE.Mesh>(null);
   const haloRing3Ref = useRef<THREE.Mesh>(null);
   const dataOrbitRef = useRef<THREE.Group>(null);
   const electronOrbitRef = useRef<THREE.Group>(null);
   const pulseWaveRef = useRef<THREE.Mesh>(null);
-  const innerGlowRef = useRef<THREE.Mesh>(null);
+  const ribosomeGroupRef = useRef<THREE.Group>(null);
   
   // Create shader material for soft radial pulse
   const pulseShaderMaterial = useMemo(() => {
@@ -850,33 +852,45 @@ function NeuralNetwork() {
     const t = corePulseRef.current;
     
     // Nucleus pulsing
+    // Nucleus pulsing - the main nuclear body
     if (nucleusRef.current) {
-      const scale = 1.0 + Math.sin(t * 3) * 0.08;
+      const scale = 1.0 + Math.sin(t * 2.5) * 0.06;
       nucleusRef.current.scale.setScalar(scale);
     }
     
-    // Inner glow breathing
-    if (innerGlowRef.current) {
-      const scale = 1.0 + Math.sin(t * 2.5) * 0.12;
-      innerGlowRef.current.scale.setScalar(scale);
-      (innerGlowRef.current.material as THREE.MeshBasicMaterial).opacity = 
-        0.5 + Math.sin(t * 2) * 0.2;
+    // Nucleolus - darker center, slower pulse
+    if (nucleolusRef.current) {
+      const scale = 1.0 + Math.sin(t * 1.8) * 0.1;
+      nucleolusRef.current.scale.setScalar(scale);
     }
     
-    // Cell membrane pulsing
-    if (membraneRef.current) {
-      const scale = 1.0 + Math.sin(t * 1.8) * 0.06;
-      membraneRef.current.scale.setScalar(scale);
-      (membraneRef.current.material as THREE.MeshBasicMaterial).opacity = 
-        0.25 + Math.sin(t * 2.2) * 0.1;
+    // Nuclear envelope breathing
+    if (nuclearEnvelopeRef.current) {
+      const scale = 1.0 + Math.sin(t * 1.5) * 0.04;
+      nuclearEnvelopeRef.current.scale.setScalar(scale);
+      (nuclearEnvelopeRef.current.material as THREE.MeshBasicMaterial).opacity = 
+        0.2 + Math.sin(t * 2) * 0.08;
     }
     
-    // Outer membrane
-    if (outerMembraneRef.current) {
-      const scale = 1.0 + Math.sin(t * 1.5 + 0.5) * 0.08;
-      outerMembraneRef.current.scale.setScalar(scale);
-      (outerMembraneRef.current.material as THREE.MeshBasicMaterial).opacity = 
-        0.15 + Math.sin(t * 1.8) * 0.08;
+    // Outer envelope
+    if (outerEnvelopeRef.current) {
+      const scale = 1.0 + Math.sin(t * 1.2 + 0.5) * 0.05;
+      outerEnvelopeRef.current.scale.setScalar(scale);
+      (outerEnvelopeRef.current.material as THREE.MeshBasicMaterial).opacity = 
+        0.12 + Math.sin(t * 1.5) * 0.05;
+    }
+    
+    // Chromatin rotation - slow tumbling motion
+    if (chromatinGroupRef.current) {
+      chromatinGroupRef.current.rotation.x += delta * 0.15;
+      chromatinGroupRef.current.rotation.y += delta * 0.1;
+      chromatinGroupRef.current.rotation.z += delta * 0.08;
+    }
+    
+    // Ribosome-like particles orbiting
+    if (ribosomeGroupRef.current) {
+      ribosomeGroupRef.current.rotation.y += delta * 0.3;
+      ribosomeGroupRef.current.rotation.x = Math.sin(t * 0.5) * 0.2;
     }
     
     // Halo rings rotation
@@ -919,78 +933,154 @@ function NeuralNetwork() {
 
   return (
     <group ref={groupRef}>
-      {/* === INTELLIGENT CELL CORE === */}
+      {/* === CELLULAR NUCLEUS === */}
       
       {/* Expanding pulse wave with soft radial fade */}
       <mesh ref={pulseWaveRef} position={[0, 0, 0]} material={pulseShaderMaterial}>
         <sphereGeometry args={[1, 48, 48]} />
       </mesh>
       
-      {/* Outer membrane - translucent cell wall */}
-      <mesh ref={outerMembraneRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[0.5, 48, 48]} />
-        <meshBasicMaterial color="#0891b2" transparent opacity={0.15} wireframe />
+      {/* Outer nuclear envelope - double membrane appearance */}
+      <mesh ref={outerEnvelopeRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.48, 48, 48]} />
+        <meshBasicMaterial color="#0891b2" transparent opacity={0.12} />
       </mesh>
       
-      {/* Middle membrane */}
-      <mesh ref={membraneRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[0.38, 40, 40]} />
-        <meshBasicMaterial color="#06b6d4" transparent opacity={0.25} />
+      {/* Inner nuclear envelope */}
+      <mesh ref={nuclearEnvelopeRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.42, 40, 40]} />
+        <meshBasicMaterial color="#06b6d4" transparent opacity={0.18} />
       </mesh>
       
-      {/* Inner glow layer */}
-      <mesh ref={innerGlowRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[0.28, 32, 32]} />
+      {/* Nuclear pores - small dots on envelope */}
+      {Array.from({ length: 24 }).map((_, i) => {
+        const phi = Math.acos(1 - 2 * (i + 0.5) / 24);
+        const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+        const r = 0.44;
+        return (
+          <mesh key={`pore-${i}`} position={[
+            r * Math.sin(phi) * Math.cos(theta),
+            r * Math.sin(phi) * Math.sin(theta),
+            r * Math.cos(phi)
+          ]}>
+            <sphereGeometry args={[0.012, 8, 8]} />
+            <meshBasicMaterial color="#67e8f9" transparent opacity={0.6} />
+          </mesh>
+        );
+      })}
+      
+      {/* Nucleoplasm - the internal matrix */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.35, 32, 32]} />
+        <meshBasicMaterial color="#0e7490" transparent opacity={0.15} />
+      </mesh>
+      
+      {/* Nucleus main body - slightly irregular */}
+      <mesh ref={nucleusRef} position={[0, 0, 0]}>
+        <sphereGeometry args={[0.28, 24, 24]} />
+        <meshBasicMaterial color="#22d3ee" transparent opacity={0.35} />
+      </mesh>
+      
+      {/* Chromatin network - tangled strand-like structures */}
+      <group ref={chromatinGroupRef}>
+        {Array.from({ length: 8 }).map((_, i) => {
+          const baseAngle = (i / 8) * Math.PI * 2;
+          const tilt = (i % 3) * 0.4 - 0.4;
+          return (
+            <mesh key={`chromatin-${i}`} position={[0, 0, 0]} rotation={[tilt, baseAngle, tilt * 0.5]}>
+              <torusGeometry args={[0.12 + (i % 3) * 0.04, 0.008, 8, 32]} />
+              <meshBasicMaterial color="#67e8f9" transparent opacity={0.4 + (i % 3) * 0.1} />
+            </mesh>
+          );
+        })}
+        {/* Additional chromatin strands */}
+        {Array.from({ length: 6 }).map((_, i) => {
+          const angle = (i / 6) * Math.PI * 2;
+          return (
+            <mesh key={`strand-${i}`} position={[
+              Math.cos(angle) * 0.1,
+              Math.sin(angle) * 0.08,
+              Math.sin(angle + 0.5) * 0.1
+            ]} rotation={[angle, angle * 0.5, 0]}>
+              <torusKnotGeometry args={[0.05, 0.006, 32, 8, 2, 3]} />
+              <meshBasicMaterial color="#a5f3fc" transparent opacity={0.3} />
+            </mesh>
+          );
+        })}
+      </group>
+      
+      {/* Nucleolus - dense central body */}
+      <mesh ref={nucleolusRef} position={[0.02, 0.01, 0]}>
+        <sphereGeometry args={[0.1, 20, 20]} />
+        <meshBasicMaterial color="#0e7490" transparent opacity={0.7} />
+      </mesh>
+      
+      {/* Nucleolus inner core */}
+      <mesh position={[0.02, 0.01, 0]}>
+        <sphereGeometry args={[0.055, 16, 16]} />
+        <meshBasicMaterial color="#164e63" transparent opacity={0.85} />
+      </mesh>
+      
+      {/* Nucleolus bright center */}
+      <mesh position={[0.02, 0.01, 0]}>
+        <sphereGeometry args={[0.025, 12, 12]} />
+        <meshBasicMaterial color="#06b6d4" transparent opacity={0.9} />
+      </mesh>
+      
+      {/* Ribosome-like particles around envelope */}
+      <group ref={ribosomeGroupRef}>
+        {Array.from({ length: 16 }).map((_, i) => {
+          const phi = Math.acos(1 - 2 * (i + 0.5) / 16);
+          const theta = Math.PI * (1 + Math.sqrt(5)) * i * 1.3;
+          const r = 0.52;
+          return (
+            <mesh key={`ribosome-${i}`} position={[
+              r * Math.sin(phi) * Math.cos(theta),
+              r * Math.sin(phi) * Math.sin(theta),
+              r * Math.cos(phi)
+            ]}>
+              <sphereGeometry args={[0.015, 8, 8]} />
+              <meshBasicMaterial color="#22d3ee" transparent opacity={0.7} />
+            </mesh>
+          );
+        })}
+      </group>
+      
+      {/* === ORBITAL RINGS (ER-like structures) === */}
+      
+      {/* Ring 1 - equatorial */}
+      <mesh ref={haloRing1Ref} position={[0, 0, 0]} rotation={[0, 0, 0]}>
+        <torusGeometry args={[0.58, 0.006, 16, 100]} />
         <meshBasicMaterial color="#22d3ee" transparent opacity={0.5} />
       </mesh>
       
-      {/* Nucleus - bright core */}
-      <mesh ref={nucleusRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[0.15, 24, 24]} />
-        <meshBasicMaterial color="#67e8f9" transparent opacity={0.95} />
-      </mesh>
-      
-      {/* Nucleus center - white hot */}
-      <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.07, 16, 16]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-      
-      {/* === ORBITAL RINGS === */}
-      
-      {/* Halo ring 1 - equatorial */}
-      <mesh ref={haloRing1Ref} position={[0, 0, 0]} rotation={[0, 0, 0]}>
-        <torusGeometry args={[0.42, 0.008, 16, 100]} />
-        <meshBasicMaterial color="#22d3ee" transparent opacity={0.7} />
-      </mesh>
-      
-      {/* Halo ring 2 - tilted */}
+      {/* Ring 2 - tilted */}
       <mesh ref={haloRing2Ref} position={[0, 0, 0]} rotation={[Math.PI / 3, 0, 0]}>
-        <torusGeometry args={[0.48, 0.006, 16, 100]} />
-        <meshBasicMaterial color="#06b6d4" transparent opacity={0.5} />
+        <torusGeometry args={[0.62, 0.005, 16, 100]} />
+        <meshBasicMaterial color="#06b6d4" transparent opacity={0.4} />
       </mesh>
       
-      {/* Halo ring 3 - perpendicular */}
+      {/* Ring 3 - perpendicular */}
       <mesh ref={haloRing3Ref} position={[0, 0, 0]} rotation={[Math.PI / 2, Math.PI / 4, 0]}>
-        <torusGeometry args={[0.55, 0.005, 16, 100]} />
-        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.4} />
+        <torusGeometry args={[0.66, 0.004, 16, 100]} />
+        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.3} />
       </mesh>
       
-      {/* === ORBITING DATA PARTICLES === */}
+      {/* === ORBITING VESICLES === */}
       
-      {/* Data orbit group */}
+      {/* Vesicle orbit group */}
       <group ref={dataOrbitRef}>
         {[0, 1, 2, 3, 4, 5].map((i) => {
           const angle = (i / 6) * Math.PI * 2;
-          const radius = 0.35;
+          const radius = 0.72;
           return (
-            <mesh key={`data-${i}`} position={[
+            <mesh key={`vesicle-${i}`} position={[
               Math.cos(angle) * radius,
               Math.sin(angle) * radius * 0.3,
               Math.sin(angle) * radius
             ]}>
-              <sphereGeometry args={[0.025, 12, 12]} />
-              <meshBasicMaterial color="#67e8f9" transparent opacity={0.9} />
+              <sphereGeometry args={[0.02, 12, 12]} />
+              <meshBasicMaterial color="#67e8f9" transparent opacity={0.8} />
             </mesh>
           );
         })}
