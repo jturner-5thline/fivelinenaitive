@@ -262,12 +262,13 @@ const Auth = () => {
         <SpinningGlobe />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
-        <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-16 md:pb-24 px-4">
+          <h1 className="absolute top-[15%] left-1/2 -translate-x-1/2 text-[30vw] font-bold text-white/[0.07] tracking-tighter whitespace-nowrap pointer-events-none select-none">
+            nAItive
+          </h1>
+          
           <div className="w-full max-w-md">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 text-center tracking-tight">
-              nAItive
-            </h1>
-            <p className="text-white/60 text-center mb-8 font-light">
+            <p className="text-white/60 text-center mb-6 font-light">
               {getSubtitle()}
             </p>
             
