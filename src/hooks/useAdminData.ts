@@ -34,6 +34,8 @@ interface AdminCompany {
   member_count: number;
   suspended_at: string | null;
   suspended_reason: string | null;
+  archived_at: string | null;
+  archived_reason: string | null;
 }
 
 interface CompanyMember {
@@ -122,22 +124,24 @@ export const useAllCompanies = () => {
   return useQuery({
     queryKey: ["admin-all-companies"],
     queryFn: async () => {
-      // Fetch from admin RPC and also get suspension status directly
+      // Fetch from admin RPC and also get suspension/archive status directly
       const { data: rpcData, error: rpcError } = await supabase.rpc("admin_get_all_companies");
       if (rpcError) throw rpcError;
       
-      // Get suspension info directly from companies table
-      const { data: suspensionData, error: suspError } = await supabase
+      // Get suspension and archive info directly from companies table
+      const { data: statusData, error: statusError } = await supabase
         .from("companies")
-        .select("id, suspended_at, suspended_reason");
-      if (suspError) throw suspError;
+        .select("id, suspended_at, suspended_reason, archived_at, archived_reason");
+      if (statusError) throw statusError;
       
-      const suspensionMap = new Map(suspensionData?.map(c => [c.id, c]) || []);
+      const statusMap = new Map(statusData?.map(c => [c.id, c]) || []);
       
       return (rpcData as AdminCompany[]).map(company => ({
         ...company,
-        suspended_at: suspensionMap.get(company.id)?.suspended_at || null,
-        suspended_reason: suspensionMap.get(company.id)?.suspended_reason || null,
+        suspended_at: statusMap.get(company.id)?.suspended_at || null,
+        suspended_reason: statusMap.get(company.id)?.suspended_reason || null,
+        archived_at: statusMap.get(company.id)?.archived_at || null,
+        archived_reason: statusMap.get(company.id)?.archived_reason || null,
       }));
     },
   });
@@ -219,6 +223,28 @@ export const useDeleteCompany = () => {
     },
     onError: (error) => {
       toast.error("Failed to delete company: " + error.message);
+    },
+  });
+};
+
+export const useToggleCompanyArchive = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ companyId, archive, reason }: { companyId: string; archive: boolean; reason?: string }) => {
+      const { error } = await supabase.rpc("admin_archive_company", { 
+        _company_id: companyId, 
+        _archive: archive, 
+        _reason: reason || null 
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-all-companies"] });
+      toast.success(variables.archive ? "Company archived" : "Company unarchived");
+    },
+    onError: (error) => {
+      toast.error("Failed to update company: " + error.message);
     },
   });
 };

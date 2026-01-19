@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Users, ExternalLink, Ban, Eye } from "lucide-react";
+import { Search, Users, ExternalLink, Ban, Eye, Archive } from "lucide-react";
 import { useAllCompanies } from "@/hooks/useAdminData";
 import { CompanyDetailDialog } from "./CompanyDetailDialog";
 
@@ -21,6 +21,8 @@ interface Company {
   member_count: number;
   suspended_at: string | null;
   suspended_reason: string | null;
+  archived_at: string | null;
+  archived_reason: string | null;
 }
 
 export const CompaniesTable = () => {
@@ -112,7 +114,7 @@ export const CompaniesTable = () => {
               </TableRow>
             ) : (
               filteredCompanies?.map((company) => (
-                <TableRow key={company.id} className={company.suspended_at ? "opacity-60" : ""}>
+                <TableRow key={company.id} className={company.suspended_at || company.archived_at ? "opacity-60" : ""}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
@@ -150,7 +152,12 @@ export const CompaniesTable = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {company.suspended_at ? (
+                    {company.archived_at ? (
+                      <Badge variant="outline" className="flex items-center gap-1 w-fit border-muted-foreground text-muted-foreground">
+                        <Archive className="h-3 w-3" />
+                        Archived
+                      </Badge>
+                    ) : company.suspended_at ? (
                       <Badge variant="destructive" className="flex items-center gap-1 w-fit">
                         <Ban className="h-3 w-3" />
                         Suspended
