@@ -9,113 +9,141 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { 
   Shield, 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
-  Plus,
   Search,
   User,
-  Building2,
+  LayoutDashboard,
+  Briefcase,
+  Newspaper,
+  Sparkles,
+  BarChart3,
+  Lightbulb,
+  Users,
+  UserCog,
+  Cog,
+  Plug,
+  Settings,
+  HelpCircle,
+  FileText,
+  Download,
+  Pencil,
+  Trash2,
   Eye,
-  EyeOff,
-  Lock
+  DollarSign,
+  Lock,
+  ChevronRight,
+  Check,
+  X
 } from 'lucide-react';
-
-interface UserPermission {
-  id: string;
-  user_id: string;
-  company_id: string | null;
-  deals_scope: 'all' | 'team' | 'own' | 'none';
-  lenders_scope: 'all' | 'team' | 'own' | 'none';
-  analytics_scope: 'all' | 'team' | 'own' | 'none';
-  reports_scope: 'all' | 'team' | 'own' | 'none';
-  insights_scope: 'all' | 'team' | 'own' | 'none';
-  can_export: boolean;
-  can_bulk_edit: boolean;
-  can_delete: boolean;
-  can_view_financials: boolean;
-  can_view_sensitive: boolean;
-  assigned_deal_ids: string[];
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 interface UserProfile {
   id: string;
-  email: string;
+  user_id: string;
+  email: string | null;
   display_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
 }
 
-const SCOPE_OPTIONS = [
-  { value: 'all', label: 'All Data', description: 'Can see all company data' },
-  { value: 'team', label: 'Team Only', description: 'Can see assigned data only' },
-  { value: 'own', label: 'Own Only', description: 'Can see only own data' },
-  { value: 'none', label: 'No Access', description: 'Cannot access this data' },
+interface UserPermissionState {
+  // Page Access
+  dashboard: boolean;
+  deals: boolean;
+  newsFeed: boolean;
+  research: boolean;
+  metrics: boolean;
+  insights: boolean;
+  salesBd: boolean;
+  hr: boolean;
+  operations: boolean;
+  integrations: boolean;
+  settings: boolean;
+  help: boolean;
+  lenders: boolean;
+  analytics: boolean;
+  reports: boolean;
+  // Capabilities
+  canExport: boolean;
+  canBulkEdit: boolean;
+  canDelete: boolean;
+  canViewFinancials: boolean;
+  canViewSensitive: boolean;
+}
+
+const DEFAULT_PERMISSIONS: UserPermissionState = {
+  dashboard: true,
+  deals: true,
+  newsFeed: true,
+  research: true,
+  metrics: true,
+  insights: true,
+  salesBd: true,
+  hr: true,
+  operations: true,
+  integrations: true,
+  settings: true,
+  help: true,
+  lenders: true,
+  analytics: true,
+  reports: true,
+  canExport: true,
+  canBulkEdit: true,
+  canDelete: true,
+  canViewFinancials: true,
+  canViewSensitive: true,
+};
+
+const PAGE_SECTIONS = [
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Main overview and stats' },
+  { key: 'deals', label: 'Deals', icon: Briefcase, description: 'Deal management and pipeline' },
+  { key: 'newsFeed', label: 'News Feed', icon: Newspaper, description: 'Industry news and updates' },
+  { key: 'research', label: 'AI Research', icon: Sparkles, description: 'AI-powered research tools' },
+  { key: 'metrics', label: 'Metrics', icon: BarChart3, description: 'Performance metrics and KPIs' },
+  { key: 'insights', label: 'Insights', icon: Lightbulb, description: 'AI-generated insights' },
+  { key: 'salesBd', label: 'Sales & BD', icon: Users, description: 'Sales and business development' },
+  { key: 'hr', label: 'HR', icon: UserCog, description: 'Human resources tools' },
+  { key: 'operations', label: 'Operations', icon: Cog, description: 'Operational management' },
+  { key: 'lenders', label: 'Lenders Database', icon: Users, description: 'Master lender database' },
+  { key: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Detailed analytics and charts' },
+  { key: 'reports', label: 'Reports', icon: FileText, description: 'Custom report generation' },
+  { key: 'integrations', label: 'Integrations', icon: Plug, description: 'Third-party integrations' },
+  { key: 'settings', label: 'Settings', icon: Settings, description: 'App configuration' },
+  { key: 'help', label: 'Help', icon: HelpCircle, description: 'Help and documentation' },
 ];
 
-const getScopeBadgeVariant = (scope: string) => {
-  switch (scope) {
-    case 'all': return 'default';
-    case 'team': return 'secondary';
-    case 'own': return 'outline';
-    case 'none': return 'destructive';
-    default: return 'outline';
-  }
+const CAPABILITY_SECTIONS = [
+  { key: 'canExport', label: 'Export Data', icon: Download, description: 'Export to CSV/PDF' },
+  { key: 'canBulkEdit', label: 'Bulk Edit', icon: Pencil, description: 'Edit multiple records at once' },
+  { key: 'canDelete', label: 'Delete Records', icon: Trash2, description: 'Permanently delete data' },
+  { key: 'canViewFinancials', label: 'View Financials', icon: DollarSign, description: 'Access financial data' },
+  { key: 'canViewSensitive', label: 'View Sensitive Info', icon: Eye, description: 'Access sensitive information' },
+];
+
+// Store permissions in localStorage for now, can be migrated to DB later
+const getStoredPermissions = (): Record<string, UserPermissionState> => {
+  const stored = localStorage.getItem('user_page_permissions');
+  return stored ? JSON.parse(stored) : {};
+};
+
+const saveStoredPermissions = (permissions: Record<string, UserPermissionState>) => {
+  localStorage.setItem('user_page_permissions', JSON.stringify(permissions));
 };
 
 export function UserPermissionsPanel() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingPermission, setEditingPermission] = useState<UserPermission | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-
-  // Fetch all permissions
-  const { data: permissions, isLoading: permissionsLoading } = useQuery({
-    queryKey: ['user-permissions'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_data_permissions')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as UserPermission[];
-    },
-  });
+  const [userPermissions, setUserPermissions] = useState<Record<string, UserPermissionState>>({});
+  const [expandedUsers, setExpandedUsers] = useState<string[]>([]);
 
   // Fetch all users (profiles)
   const { data: users, isLoading: usersLoading } = useQuery({
@@ -123,7 +151,7 @@ export function UserPermissionsPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, email, display_name')
+        .select('id, user_id, email, display_name, avatar_url, created_at')
         .order('email');
       
       if (error) throw error;
@@ -131,440 +159,242 @@ export function UserPermissionsPanel() {
     },
   });
 
-  // Create/update permission
-  const saveMutation = useMutation({
-    mutationFn: async (permission: Partial<UserPermission>) => {
-      if (permission.id) {
-        const { id, created_at, updated_at, ...updateData } = permission;
-        const { error } = await supabase
-          .from('user_data_permissions')
-          .update(updateData as any)
-          .eq('id', id);
-        if (error) throw error;
-      } else {
-        const { id, created_at, updated_at, ...insertData } = permission;
-        const { error } = await supabase
-          .from('user_data_permissions')
-          .insert(insertData as any);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-permissions'] });
-      setIsDialogOpen(false);
-      setEditingPermission(null);
-      toast.success('Permission saved successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to save permission', { description: error.message });
-    },
-  });
+  // Load stored permissions on mount
+  useEffect(() => {
+    const stored = getStoredPermissions();
+    setUserPermissions(stored);
+  }, []);
 
-  // Delete permission
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('user_data_permissions')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-permissions'] });
-      toast.success('Permission deleted');
-    },
-    onError: (error) => {
-      toast.error('Failed to delete permission', { description: error.message });
-    },
-  });
-
-  const getUserEmail = (userId: string) => {
-    const user = users?.find(u => u.id === userId);
-    return user?.email || user?.display_name || userId.slice(0, 8);
+  // Get permissions for a user (default to all enabled)
+  const getUserPermissions = (userId: string): UserPermissionState => {
+    return userPermissions[userId] || DEFAULT_PERMISSIONS;
   };
 
-  const filteredPermissions = permissions?.filter(p => {
-    const userEmail = getUserEmail(p.user_id).toLowerCase();
-    return userEmail.includes(searchQuery.toLowerCase());
+  // Update a single permission for a user
+  const updatePermission = (userId: string, key: keyof UserPermissionState, value: boolean) => {
+    const currentPerms = getUserPermissions(userId);
+    const newPerms = { ...currentPerms, [key]: value };
+    const allPerms = { ...userPermissions, [userId]: newPerms };
+    setUserPermissions(allPerms);
+    saveStoredPermissions(allPerms);
+    toast.success('Permission updated');
+  };
+
+  // Toggle all permissions for a user
+  const toggleAllPermissions = (userId: string, enabled: boolean) => {
+    const newPerms = Object.keys(DEFAULT_PERMISSIONS).reduce((acc, key) => {
+      acc[key as keyof UserPermissionState] = enabled;
+      return acc;
+    }, {} as UserPermissionState);
+    const allPerms = { ...userPermissions, [userId]: newPerms };
+    setUserPermissions(allPerms);
+    saveStoredPermissions(allPerms);
+    toast.success(enabled ? 'All permissions enabled' : 'All permissions disabled');
+  };
+
+  // Count enabled permissions
+  const countEnabledPermissions = (userId: string): { pages: number; caps: number; total: number } => {
+    const perms = getUserPermissions(userId);
+    const pageKeys = PAGE_SECTIONS.map(s => s.key);
+    const capKeys = CAPABILITY_SECTIONS.map(s => s.key);
+    
+    const pages = pageKeys.filter(k => perms[k as keyof UserPermissionState]).length;
+    const caps = capKeys.filter(k => perms[k as keyof UserPermissionState]).length;
+    
+    return { pages, caps, total: pages + caps };
+  };
+
+  const filteredUsers = users?.filter(u => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      u.email?.toLowerCase().includes(searchLower) ||
+      u.display_name?.toLowerCase().includes(searchLower)
+    );
   });
 
-  const handleEdit = (permission: UserPermission) => {
-    setEditingPermission(permission);
-    setSelectedUserId(permission.user_id);
-    setIsDialogOpen(true);
-  };
-
-  const handleAddNew = () => {
-    setEditingPermission(null);
-    setSelectedUserId('');
-    setIsDialogOpen(true);
-  };
-
-  const handleSave = () => {
-    const permission = editingPermission || {
-      user_id: selectedUserId,
-      deals_scope: 'own' as const,
-      lenders_scope: 'all' as const,
-      analytics_scope: 'own' as const,
-      reports_scope: 'own' as const,
-      insights_scope: 'own' as const,
-      can_export: true,
-      can_bulk_edit: true,
-      can_delete: false,
-      can_view_financials: true,
-      can_view_sensitive: true,
-    };
-
-    if (!selectedUserId && !editingPermission) {
-      toast.error('Please select a user');
-      return;
+  const getUserInitials = (user: UserProfile) => {
+    if (user.display_name) {
+      return user.display_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     }
-
-    saveMutation.mutate({
-      ...permission,
-      user_id: selectedUserId || editingPermission?.user_id,
-    });
+    return user.email?.slice(0, 2).toUpperCase() || 'U';
   };
 
-  if (permissionsLoading || usersLoading) {
+  if (usersLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by user..."
+            placeholder="Search users..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
           />
         </div>
-        <Button onClick={handleAddNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Permission
-        </Button>
+        <Badge variant="outline" className="text-xs">
+          {users?.length || 0} users
+        </Badge>
       </div>
 
-      <ScrollArea className="h-[500px]">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Deals</TableHead>
-              <TableHead>Lenders</TableHead>
-              <TableHead>Analytics</TableHead>
-              <TableHead>Capabilities</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredPermissions?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  No permissions configured. Add one to restrict user data access.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredPermissions?.map((permission) => (
-                <TableRow key={permission.id}>
-                  <TableCell>
+      <ScrollArea className="h-[600px] pr-4">
+        <Accordion 
+          type="multiple" 
+          value={expandedUsers}
+          onValueChange={setExpandedUsers}
+          className="space-y-2"
+        >
+          {filteredUsers?.map((user) => {
+            const perms = getUserPermissions(user.user_id);
+            const counts = countEnabledPermissions(user.user_id);
+            const allEnabled = counts.total === PAGE_SECTIONS.length + CAPABILITY_SECTIONS.length;
+
+            return (
+              <AccordionItem 
+                key={user.user_id} 
+                value={user.user_id}
+                className="border rounded-lg bg-card px-4"
+              >
+                <AccordionTrigger className="hover:no-underline py-3">
+                  <div className="flex items-center gap-3 flex-1">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.avatar_url || ''} />
+                      <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                        {getUserInitials(user)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col items-start text-left">
+                      <span className="font-medium text-sm">
+                        {user.display_name || user.email?.split('@')[0]}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {user.email}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-auto mr-4">
+                      <Badge variant={allEnabled ? 'default' : 'secondary'} className="text-xs">
+                        {counts.pages}/{PAGE_SECTIONS.length} pages
+                      </Badge>
+                      <Badge variant={counts.caps === CAPABILITY_SECTIONS.length ? 'default' : 'outline'} className="text-xs">
+                        {counts.caps}/{CAPABILITY_SECTIONS.length} capabilities
+                      </Badge>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 pb-4">
+                  <div className="space-y-4">
+                    {/* Quick Actions */}
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{getUserEmail(permission.user_id)}</span>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => toggleAllPermissions(user.user_id, true)}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Enable All
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => toggleAllPermissions(user.user_id, false)}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Disable All
+                      </Button>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getScopeBadgeVariant(permission.deals_scope)}>
-                      {permission.deals_scope}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getScopeBadgeVariant(permission.lenders_scope)}>
-                      {permission.lenders_scope}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getScopeBadgeVariant(permission.analytics_scope)}>
-                      {permission.analytics_scope}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {permission.can_export && (
-                        <Badge variant="outline" className="text-xs">Export</Badge>
-                      )}
-                      {permission.can_delete && (
-                        <Badge variant="destructive" className="text-xs">Delete</Badge>
-                      )}
-                      {!permission.can_view_financials && (
-                        <Badge variant="secondary" className="text-xs">
-                          <EyeOff className="h-3 w-3 mr-1" />
-                          Financials
-                        </Badge>
-                      )}
+
+                    <Separator />
+
+                    {/* Page Access */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <LayoutDashboard className="h-4 w-4" />
+                        Page Access
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {PAGE_SECTIONS.map((section) => {
+                          const Icon = section.icon;
+                          const enabled = perms[section.key as keyof UserPermissionState];
+                          return (
+                            <div 
+                              key={section.key}
+                              className="flex items-center justify-between rounded-lg border p-2.5 bg-background"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">{section.label}</span>
+                              </div>
+                              <Switch
+                                checked={enabled}
+                                onCheckedChange={(checked) => 
+                                  updatePermission(user.user_id, section.key as keyof UserPermissionState, checked)
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(permission)}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => deleteMutation.mutate(permission.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </ScrollArea>
 
-      {/* Edit/Create Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              {editingPermission ? 'Edit User Permissions' : 'Add User Permissions'}
-            </DialogTitle>
-            <DialogDescription>
-              Configure what data this user can access across the platform.
-            </DialogDescription>
-          </DialogHeader>
+                    <Separator />
 
-          <div className="space-y-6 py-4">
-            {/* User Selection */}
-            {!editingPermission && (
-              <div className="space-y-2">
-                <Label>User</Label>
-                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a user" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users?.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.email || user.display_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Scope Settings */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Deals Access</Label>
-                <Select 
-                  value={editingPermission?.deals_scope || 'own'}
-                  onValueChange={(value) => setEditingPermission(prev => ({
-                    ...prev!,
-                    deals_scope: value as any,
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SCOPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Lenders Access</Label>
-                <Select 
-                  value={editingPermission?.lenders_scope || 'all'}
-                  onValueChange={(value) => setEditingPermission(prev => ({
-                    ...prev!,
-                    lenders_scope: value as any,
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SCOPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Analytics Access</Label>
-                <Select 
-                  value={editingPermission?.analytics_scope || 'own'}
-                  onValueChange={(value) => setEditingPermission(prev => ({
-                    ...prev!,
-                    analytics_scope: value as any,
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SCOPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Reports Access</Label>
-                <Select 
-                  value={editingPermission?.reports_scope || 'own'}
-                  onValueChange={(value) => setEditingPermission(prev => ({
-                    ...prev!,
-                    reports_scope: value as any,
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SCOPE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Capability Toggles */}
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Capabilities</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <p className="font-medium">Export Data</p>
-                    <p className="text-sm text-muted-foreground">Can export to CSV/PDF</p>
+                    {/* Capabilities */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        Capabilities
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {CAPABILITY_SECTIONS.map((section) => {
+                          const Icon = section.icon;
+                          const enabled = perms[section.key as keyof UserPermissionState];
+                          return (
+                            <div 
+                              key={section.key}
+                              className="flex items-center justify-between rounded-lg border p-2.5 bg-background"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                  <span className="text-sm">{section.label}</span>
+                                  <span className="text-xs text-muted-foreground">{section.description}</span>
+                                </div>
+                              </div>
+                              <Switch
+                                checked={enabled}
+                                onCheckedChange={(checked) => 
+                                  updatePermission(user.user_id, section.key as keyof UserPermissionState, checked)
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                  <Switch 
-                    checked={editingPermission?.can_export ?? true}
-                    onCheckedChange={(checked) => setEditingPermission(prev => ({
-                      ...prev!,
-                      can_export: checked,
-                    }))}
-                  />
-                </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
 
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <p className="font-medium">Bulk Edit</p>
-                    <p className="text-sm text-muted-foreground">Can edit multiple items</p>
-                  </div>
-                  <Switch 
-                    checked={editingPermission?.can_bulk_edit ?? true}
-                    onCheckedChange={(checked) => setEditingPermission(prev => ({
-                      ...prev!,
-                      can_bulk_edit: checked,
-                    }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <p className="font-medium">Delete Records</p>
-                    <p className="text-sm text-muted-foreground">Can permanently delete</p>
-                  </div>
-                  <Switch 
-                    checked={editingPermission?.can_delete ?? false}
-                    onCheckedChange={(checked) => setEditingPermission(prev => ({
-                      ...prev!,
-                      can_delete: checked,
-                    }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <p className="font-medium">View Financials</p>
-                    <p className="text-sm text-muted-foreground">Can see deal values</p>
-                  </div>
-                  <Switch 
-                    checked={editingPermission?.can_view_financials ?? true}
-                    onCheckedChange={(checked) => setEditingPermission(prev => ({
-                      ...prev!,
-                      can_view_financials: checked,
-                    }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border p-3 col-span-2">
-                  <div>
-                    <p className="font-medium">View Sensitive Data</p>
-                    <p className="text-sm text-muted-foreground">Can see emails, contacts, notes</p>
-                  </div>
-                  <Switch 
-                    checked={editingPermission?.can_view_sensitive ?? true}
-                    onCheckedChange={(checked) => setEditingPermission(prev => ({
-                      ...prev!,
-                      can_view_sensitive: checked,
-                    }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Textarea
-                placeholder="Reason for these permissions..."
-                value={editingPermission?.notes || ''}
-                onChange={(e) => setEditingPermission(prev => ({
-                  ...prev!,
-                  notes: e.target.value,
-                }))}
-              />
-            </div>
+        {filteredUsers?.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>No users found</p>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? 'Saving...' : 'Save Permissions'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+      </ScrollArea>
     </div>
   );
 }
