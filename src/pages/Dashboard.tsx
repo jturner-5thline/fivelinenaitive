@@ -31,6 +31,7 @@ import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DealsCalendar } from '@/components/deals/DealsCalendar';
 import { NewsFeedWidget } from '@/components/deals/NewsFeedWidget';
 import { NotificationCarousel } from '@/components/dashboard/NotificationCarousel';
+import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -165,15 +166,19 @@ export default function Dashboard() {
               </div>
             </Card>
 
-            {/* Quick Props Widget */}
-            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center">
-                  <Zap className="h-6 w-6 text-success" />
-                </div>
-                <span className="text-sm font-medium text-foreground">Quick Props</span>
-              </div>
-            </Card>
+            {/* Quick Prompts Widget */}
+            <QuickPromptsDialog
+              trigger={
+                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center">
+                      <Zap className="h-6 w-6 text-success" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">Quick Prompts</span>
+                  </div>
+                </Card>
+              }
+            />
 
             {/* Create New Deal Widget */}
             <CreateDealDialog 
