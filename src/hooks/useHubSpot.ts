@@ -402,7 +402,17 @@ export function useHubSpotContact(contactId: string) {
 
 // ===== DEAL HOOKS =====
 
-export function useHubSpotDeals(limit = 100) {
+// Fetches ALL deals with pagination (up to 1000)
+export function useHubSpotDeals() {
+  return useQuery({
+    queryKey: ['hubspot', 'deals', 'all'],
+    queryFn: () => hubspotRequest<PaginatedResponse<HubSpotDeal>>('getAllDeals'),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// Fetches a limited number of deals (for backward compatibility)
+export function useHubSpotDealsLimited(limit = 100) {
   return useQuery({
     queryKey: ['hubspot', 'deals', limit],
     queryFn: () => hubspotRequest<PaginatedResponse<HubSpotDeal>>('getDeals', { limit }),

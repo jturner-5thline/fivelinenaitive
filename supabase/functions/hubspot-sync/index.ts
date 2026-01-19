@@ -90,6 +90,30 @@ async function getDeals(limit: number = 100, after?: string): Promise<any> {
   return hubspotRequest(endpoint);
 }
 
+// Fetch ALL deals with pagination (up to 1000 to avoid timeout)
+async function getAllDeals(): Promise<any> {
+  const allResults: any[] = [];
+  let after: string | undefined = undefined;
+  let pageCount = 0;
+  const maxPages = 10; // 10 pages * 100 = up to 1000 deals
+
+  do {
+    const response = await getDeals(100, after);
+    if (response.results) {
+      allResults.push(...response.results);
+    }
+    after = response.paging?.next?.after;
+    pageCount++;
+  } while (after && pageCount < maxPages);
+
+  console.log(`Fetched ${allResults.length} total deals across ${pageCount} pages`);
+
+  return {
+    results: allResults,
+    total: allResults.length,
+  };
+}
+
 async function getDeal(dealId: string): Promise<any> {
   return hubspotRequest(`/crm/v3/objects/deals/${dealId}?properties=dealname,amount,dealstage,pipeline,closedate,createdate,hs_lastmodifieddate,hubspot_owner_id,deal_currency_code,hs_priority,hs_deal_stage_probability,hs_forecast_amount,hs_forecast_probability,hs_projected_amount,notes_last_updated,num_associated_contacts,num_notes,hs_is_closed,hs_is_closed_won&associations=contacts,companies,line_items`);
 }
@@ -571,6 +595,9 @@ Deno.serve(async (req) => {
       // Deals
       case 'getDeals':
         result = await getDeals(params.limit || 100, params.after);
+        break;
+      case 'getAllDeals':
+        result = await getAllDeals();
         break;
       case 'getDeal':
         result = await getDeal(params.dealId);
