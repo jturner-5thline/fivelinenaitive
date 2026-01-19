@@ -263,18 +263,23 @@ const Auth = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
-          <h1 className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap pointer-events-none select-none">
-            <span className="text-white/[0.10]">n</span>
-            <span 
-              className="bg-clip-text text-transparent"
-              style={{ 
-                backgroundImage: 'linear-gradient(45deg, rgba(100,116,139,0.3) 0%, rgba(139,92,246,0.45) 50%, rgba(148,163,184,0.3) 100%)',
-                backgroundSize: '300% 300%',
-                animation: 'shimmer 8s ease-in-out infinite',
-              }}
-            >AI</span>
-            <span className="text-white/[0.10]">tive</span>
-          </h1>
+          <div className="absolute top-[-7.5%] left-1/2 -translate-x-1/2 pointer-events-none select-none flex flex-col items-center">
+            <h1 className="text-[22.5vw] font-sans font-bold tracking-tighter whitespace-nowrap">
+              <span className="text-white/[0.10]">n</span>
+              <span 
+                className="bg-clip-text text-transparent"
+                style={{ 
+                  backgroundImage: 'linear-gradient(45deg, rgba(100,116,139,0.3) 0%, rgba(139,92,246,0.45) 50%, rgba(148,163,184,0.3) 100%)',
+                  backgroundSize: '300% 300%',
+                  animation: 'shimmer 8s ease-in-out infinite',
+                }}
+              >AI</span>
+              <span className="text-white/[0.10]">tive</span>
+            </h1>
+            <p className="text-white text-[2.5vw] font-light tracking-[0.3em] -mt-[3vw]">
+              Intelligence, by Design
+            </p>
+          </div>
           <style>{`
             @keyframes shimmer {
               0%, 100% { background-position: 100% 100%; }
