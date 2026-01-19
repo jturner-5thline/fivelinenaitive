@@ -702,14 +702,16 @@ function NeuralNetwork() {
     // Central core at origin
     const corePosition = new THREE.Vector3(0, 0, 0);
     
-    // Surface nodes - distributed on the globe surface for connection points
-    const surfaceNodeCount = 80;
+    // Surface nodes - distributed on the globe surface for connection points (Fibonacci sphere)
+    const surfaceNodeCount = 120;
     const surfaceRadius = 1.95;
     const surfacePositions: THREE.Vector3[] = [];
     
+    // Use golden ratio for even distribution
+    const goldenRatio = (1 + Math.sqrt(5)) / 2;
     for (let i = 0; i < surfaceNodeCount; i++) {
+      const theta = 2 * Math.PI * i / goldenRatio;
       const phi = Math.acos(1 - 2 * (i + 0.5) / surfaceNodeCount);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
       
       const x = surfaceRadius * Math.sin(phi) * Math.cos(theta);
       const y = surfaceRadius * Math.sin(phi) * Math.sin(theta);
@@ -718,13 +720,16 @@ function NeuralNetwork() {
       surfacePositions.push(new THREE.Vector3(x, y, z));
     }
     
-    // Interior relay nodes
-    const relayNodeCount = 30;
+    // Interior relay nodes - use layered spherical distribution for even spread
+    const relayNodeCount = 50;
     const relayPositions: THREE.Vector3[] = [];
     for (let i = 0; i < relayNodeCount; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const radius = 0.6 + Math.random() * 1.1;
+      // Use Fibonacci sphere for relay nodes too
+      const theta = 2 * Math.PI * i / goldenRatio;
+      const phi = Math.acos(1 - 2 * (i + 0.5) / relayNodeCount);
+      // Distribute across multiple radii layers
+      const layer = i % 3;
+      const radius = 0.7 + layer * 0.4;
       
       const x = radius * Math.sin(phi) * Math.cos(theta);
       const y = radius * Math.sin(phi) * Math.sin(theta);
@@ -747,17 +752,18 @@ function NeuralNetwork() {
     
     const lines: THREE.Line[] = [];
     const materials: THREE.LineBasicMaterial[] = [];
-    const maxConnectionDistance = 1.0;
+    const maxConnectionDistance = 0.9;
     
+    // Connect nearby nodes with lines
     for (let i = 0; i < allNodes.length; i++) {
       for (let j = i + 1; j < allNodes.length; j++) {
         const dist = allNodes[i].distanceTo(allNodes[j]);
-        if (dist < maxConnectionDistance && Math.random() > 0.5) {
+        if (dist < maxConnectionDistance && Math.random() > 0.6) {
           const lineGeo = new THREE.BufferGeometry().setFromPoints([allNodes[i], allNodes[j]]);
           const material = new THREE.LineBasicMaterial({ 
             color: '#06b6d4', 
             transparent: true, 
-            opacity: 0.3 
+            opacity: 0.25 
           });
           materials.push(material);
           lines.push(new THREE.Line(lineGeo, material));
