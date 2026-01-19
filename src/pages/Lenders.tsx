@@ -56,6 +56,7 @@ import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary
 import { useAuth } from '@/contexts/AuthContext';
 import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
+import { BankLendersImportButton } from '@/components/lenders/BankLendersImportButton';
 import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
 import { LenderGridCard } from '@/components/lenders/LenderGridCard';
 import { LenderListCard } from '@/components/lenders/LenderListCard';
@@ -589,6 +590,7 @@ export default function Lenders() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <BankLendersImportButton onImport={importLenders} />
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
                   Configuration
