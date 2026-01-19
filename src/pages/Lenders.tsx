@@ -550,7 +550,7 @@ export default function Lenders() {
         className="hidden"
       />
 
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DealsHeader />
 
         <main className="px-4 py-6 sm:px-6 lg:px-8">

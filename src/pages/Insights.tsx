@@ -282,7 +282,7 @@ export default function Insights() {
       <Helmet>
         <title>Insights | 5thLine</title>
       </Helmet>
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>

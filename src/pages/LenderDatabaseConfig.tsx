@@ -347,7 +347,7 @@ export default function LenderDatabaseConfig() {
         <meta name="description" content="Configure lender database dropdown options" />
       </Helmet>
 
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <DealsHeader />
 
         <main className="px-4 py-6 sm:px-6 lg:px-8">
