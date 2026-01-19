@@ -127,6 +127,8 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          archived_at: string | null
+          archived_reason: string | null
           city: string | null
           country: string | null
           created_at: string
@@ -144,6 +146,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          archived_at?: string | null
+          archived_reason?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
@@ -161,6 +165,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          archived_at?: string | null
+          archived_reason?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
@@ -2601,6 +2607,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_archive_company: {
+        Args: { _archive: boolean; _company_id: string; _reason?: string }
+        Returns: undefined
+      }
       admin_delete_company: {
         Args: { _company_id: string }
         Returns: undefined

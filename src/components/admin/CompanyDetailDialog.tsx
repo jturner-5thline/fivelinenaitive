@@ -11,9 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Building2, Users, Activity, TrendingUp, Ban, CheckCircle,
-  DollarSign, Briefcase, Clock, AlertTriangle, Trash2
+  DollarSign, Briefcase, Clock, AlertTriangle, Trash2, Archive, ArchiveRestore
 } from "lucide-react";
-import { useCompanyMembers, useCompanyStats, useCompanyActivity, useToggleCompanySuspension, useDeleteCompany } from "@/hooks/useAdminData";
+import { useCompanyMembers, useCompanyStats, useCompanyActivity, useToggleCompanySuspension, useDeleteCompany, useToggleCompanyArchive } from "@/hooks/useAdminData";
 
 interface Company {
   id: string;
@@ -26,6 +26,8 @@ interface Company {
   member_count: number;
   suspended_at: string | null;
   suspended_reason: string | null;
+  archived_at: string | null;
+  archived_reason: string | null;
 }
 
 interface CompanyDetailDialogProps {
@@ -36,18 +38,22 @@ interface CompanyDetailDialogProps {
 
 export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDetailDialogProps) => {
   const [suspendReason, setSuspendReason] = useState("");
+  const [archiveReason, setArchiveReason] = useState("");
   const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const { data: members, isLoading: membersLoading } = useCompanyMembers(company?.id || null);
   const { data: stats, isLoading: statsLoading } = useCompanyStats(company?.id || null);
   const { data: activity, isLoading: activityLoading } = useCompanyActivity(company?.id || null);
   const toggleSuspension = useToggleCompanySuspension();
+  const toggleArchive = useToggleCompanyArchive();
   const deleteCompany = useDeleteCompany();
 
   if (!company) return null;
 
   const isSuspended = !!company.suspended_at;
+  const isArchived = !!company.archived_at;
 
   const handleSuspend = () => {
     toggleSuspension.mutate(
@@ -74,6 +80,22 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
     });
   };
 
+  const handleArchive = () => {
+    toggleArchive.mutate(
+      { companyId: company.id, archive: true, reason: archiveReason },
+      {
+        onSuccess: () => {
+          setShowArchiveConfirm(false);
+          setArchiveReason("");
+        },
+      }
+    );
+  };
+
+  const handleUnarchive = () => {
+    toggleArchive.mutate({ companyId: company.id, archive: false });
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -95,6 +117,12 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
             <div className="flex-1">
               <DialogTitle className="flex items-center gap-2">
                 {company.name}
+                {isArchived && (
+                  <Badge variant="outline" className="ml-2 border-muted-foreground text-muted-foreground">
+                    <Archive className="h-3 w-3 mr-1" />
+                    Archived
+                  </Badge>
+                )}
                 {isSuspended && (
                   <Badge variant="destructive" className="ml-2">
                     <Ban className="h-3 w-3 mr-1" />
@@ -108,6 +136,16 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
             </div>
           </div>
         </DialogHeader>
+
+        {isArchived && company.archived_reason && (
+          <div className="bg-muted border border-border rounded-lg p-3 flex items-start gap-2">
+            <Archive className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">Archive Reason</p>
+              <p className="text-sm text-muted-foreground">{company.archived_reason}</p>
+            </div>
+          </div>
+        )}
 
         {isSuspended && company.suspended_reason && (
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-start gap-2">
@@ -285,6 +323,28 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
                 </Button>
               </div>
             </div>
+          ) : showArchiveConfirm ? (
+            <div className="flex-1 space-y-3">
+              <Textarea
+                placeholder="Reason for archiving (optional)..."
+                value={archiveReason}
+                onChange={(e) => setArchiveReason(e.target.value)}
+                className="resize-none"
+                rows={2}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowArchiveConfirm(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  onClick={handleArchive}
+                  disabled={toggleArchive.isPending}
+                >
+                  {toggleArchive.isPending ? "Archiving..." : "Confirm Archive"}
+                </Button>
+              </div>
+            </div>
           ) : showDeleteConfirm ? (
             <div className="flex-1 space-y-3">
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
@@ -322,6 +382,30 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Close
               </Button>
+              
+              {/* Archive/Unarchive Button */}
+              {isArchived ? (
+                <Button 
+                  variant="outline" 
+                  onClick={handleUnarchive}
+                  disabled={toggleArchive.isPending}
+                  className="gap-2"
+                >
+                  <ArchiveRestore className="h-4 w-4" />
+                  {toggleArchive.isPending ? "Unarchiving..." : "Unarchive"}
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowArchiveConfirm(true)}
+                  className="gap-2"
+                >
+                  <Archive className="h-4 w-4" />
+                  Archive
+                </Button>
+              )}
+              
+              {/* Suspend/Unsuspend Button */}
               {isSuspended ? (
                 <Button 
                   variant="default" 
@@ -330,7 +414,7 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
                   className="gap-2"
                 >
                   <CheckCircle className="h-4 w-4" />
-                  {toggleSuspension.isPending ? "Unsuspending..." : "Unsuspend Company"}
+                  {toggleSuspension.isPending ? "Unsuspending..." : "Unsuspend"}
                 </Button>
               ) : (
                 <Button 
@@ -339,7 +423,7 @@ export const CompanyDetailDialog = ({ company, open, onOpenChange }: CompanyDeta
                   className="gap-2"
                 >
                   <Ban className="h-4 w-4" />
-                  Suspend Company
+                  Suspend
                 </Button>
               )}
             </>
