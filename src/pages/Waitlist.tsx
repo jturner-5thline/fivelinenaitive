@@ -119,7 +119,7 @@ const Waitlist = () => {
           `}</style>
 
           {isSubmitted ? (
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm text-center">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-md text-center">
               <div className="flex justify-center mb-4">
                 <div className="p-3 rounded-full bg-green-500/20">
                   <CheckCircle2 className="h-8 w-8 text-green-400" />
@@ -139,7 +139,7 @@ const Waitlist = () => {
               </Button>
             </div>
           ) : (
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-md">
               <h2 className="text-lg font-semibold text-white mb-1 text-center">Join the Waitlist</h2>
               <p className="text-white/50 text-xs text-center mb-4">
                 Be the first to experience the future of deal intelligence
