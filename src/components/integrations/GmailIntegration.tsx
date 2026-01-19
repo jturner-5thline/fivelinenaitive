@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -565,7 +566,15 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
                 {selectedMessage.body_html ? (
                   <div 
                     className="prose prose-sm dark:prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: selectedMessage.body_html }}
+                    dangerouslySetInnerHTML={{ 
+                      __html: DOMPurify.sanitize(selectedMessage.body_html, {
+                        ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'hr', 'img'],
+                        ALLOWED_ATTR: ['href', 'target', 'style', 'class', 'src', 'alt', 'width', 'height'],
+                        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):)/i,
+                        ADD_ATTR: ['target'],
+                        FORCE_BODY: true
+                      })
+                    }}
                   />
                 ) : (
                   <pre className="whitespace-pre-wrap text-sm">{selectedMessage.body_text || selectedMessage.snippet}</pre>
