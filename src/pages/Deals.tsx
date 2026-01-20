@@ -17,6 +17,7 @@ import { DemoBanner } from '@/components/deals/DemoBanner';
 import { DemoTour } from '@/components/deals/DemoTour';
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
 import { AllSuggestionsWidget } from '@/components/deals/AllSuggestionsWidget';
+import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
@@ -54,6 +55,7 @@ export default function Dashboard() {
     const stored = localStorage.getItem('special-widgets-section-expanded');
     return stored !== null ? stored === 'true' : true;
   });
+  const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
@@ -292,7 +294,12 @@ export default function Dashboard() {
                     <TooltipTrigger asChild>
                       <Toggle
                         pressed={filters.flaggedOnly}
-                        onPressedChange={(pressed) => updateFilters({ flaggedOnly: pressed })}
+                        onPressedChange={(pressed) => {
+                          updateFilters({ flaggedOnly: pressed });
+                          if (pressed) {
+                            setFlaggedCarouselOpen(true);
+                          }
+                        }}
                         variant="outline"
                         size="sm"
                         className={`h-8 w-8 p-0 ${filters.flaggedOnly ? 'bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30' : ''}`}
@@ -418,6 +425,13 @@ export default function Dashboard() {
             Dismiss all hints
           </button>
         )}
+
+        {/* Flagged Deals Carousel */}
+        <FlaggedDealsCarousel
+          deals={allDeals}
+          isOpen={flaggedCarouselOpen}
+          onClose={() => setFlaggedCarouselOpen(false)}
+        />
       </div>
     </>
   );
