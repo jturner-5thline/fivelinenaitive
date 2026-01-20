@@ -7,7 +7,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   Tooltip,
@@ -170,7 +169,7 @@ export function FiltersPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[min(20rem,calc(100vw-2rem))] p-0 bg-popover border border-border shadow-lg max-h-[min(520px,var(--radix-popper-available-height))] overflow-hidden flex flex-col" 
+        className="w-[min(20rem,calc(100vw-2rem))] p-0 bg-popover border border-border shadow-lg max-h-[70vh] overflow-y-auto overscroll-contain" 
         align="start"
         side="bottom"
         sideOffset={8}
@@ -196,52 +195,50 @@ export function FiltersPopover({
             </Button>
           )}
         </div>
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="p-3 space-y-3">
-            {filterConfigs.map((config, index) => {
-              const pinned = isPinned(config.key);
-              return (
-                <div key={config.key}>
-                  {index === 3 && <Separator className="my-3" />}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-muted-foreground">
-                        {FILTER_LABELS[config.key]}
-                      </label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => onTogglePin(config.key)}
-                            disabled={!pinned && !canPin}
-                          >
-                            {pinned ? (
-                              <PinOff className="h-3 w-3 text-primary" />
-                            ) : (
-                              <Pin className="h-3 w-3 text-muted-foreground" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          {pinned ? 'Unpin from toolbar' : canPin ? 'Pin to toolbar' : 'Max 4 pinned'}
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <MultiSelectFilter
-                      label={`Select ${FILTER_LABELS[config.key].toLowerCase()}`}
-                      options={config.options}
-                      selected={filters[config.key] as string[]}
-                      onChange={config.onChange}
-                      className="w-full"
-                    />
+        <div className="p-3 space-y-3">
+          {filterConfigs.map((config, index) => {
+            const pinned = isPinned(config.key);
+            return (
+              <div key={config.key}>
+                {index === 3 && <Separator className="my-3" />}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      {FILTER_LABELS[config.key]}
+                    </label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => onTogglePin(config.key)}
+                          disabled={!pinned && !canPin}
+                        >
+                          {pinned ? (
+                            <PinOff className="h-3 w-3 text-primary" />
+                          ) : (
+                            <Pin className="h-3 w-3 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">
+                        {pinned ? 'Unpin from toolbar' : canPin ? 'Pin to toolbar' : 'Max 4 pinned'}
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
+                  <MultiSelectFilter
+                    label={`Select ${FILTER_LABELS[config.key].toLowerCase()}`}
+                    options={config.options}
+                    selected={filters[config.key] as string[]}
+                    onChange={config.onChange}
+                    className="w-full"
+                  />
                 </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
+              </div>
+            );
+          })}
+        </div>
       </PopoverContent>
     </Popover>
   );
