@@ -58,7 +58,7 @@ export function AllSuggestionsWidget({ deals }: AllSuggestionsWidgetProps) {
   const [filterType, setFilterType] = useState<'all' | 'warning' | 'action' | 'opportunity' | 'reminder'>('all');
   const [filterPriority, setFilterPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [isExpanded, setIsExpanded] = useState(true);
-  const [showLimit, setShowLimit] = useState(5);
+  const [showLimit, setShowLimit] = useState(3);
 
   const visibleSuggestions = useMemo(() => {
     return suggestions
