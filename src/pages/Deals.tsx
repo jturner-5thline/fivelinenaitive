@@ -186,12 +186,33 @@ export default function Dashboard() {
                       />
                       <span className="font-medium">Insights & Alerts</span>
                     </button>
-                    {specialWidgetsSectionExpanded && (
+                    {specialWidgetsSectionExpanded ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
                         {specialWidgets['milestones'] && <MilestonesWidget />}
                         {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
                         <AllSuggestionsWidget deals={allDeals} />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {specialWidgets['stale-deals'] && (
+                          <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
+                            <h3 className="text-sm font-semibold">Stale Deals Alert</h3>
+                          </div>
+                        )}
+                        {specialWidgets['milestones'] && (
+                          <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
+                            <h3 className="text-sm font-semibold">Milestones</h3>
+                          </div>
+                        )}
+                        {specialWidgets['flex-leaderboard'] && (
+                          <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
+                            <h3 className="text-sm font-semibold">FLEx Leaderboard</h3>
+                          </div>
+                        )}
+                        <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
+                          <h3 className="text-sm font-semibold">Smart Suggestions</h3>
+                        </div>
                       </div>
                     )}
                   </div>
