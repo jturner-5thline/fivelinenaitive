@@ -1,15 +1,26 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, Clock, AlertTriangle, CheckCircle2, ChevronRight, Loader2 } from 'lucide-react';
+import { Target, Clock, AlertTriangle, CheckCircle2, ChevronRight, Loader2, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAllMilestones } from '@/hooks/useAllMilestones';
-import { differenceInDays, format, isAfter, isBefore, addDays } from 'date-fns';
+import { differenceInDays, format, isBefore, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+const STORAGE_KEY = 'milestones-widget-expanded';
 
 export function MilestonesWidget() {
   const { milestones, isLoading } = useAllMilestones();
+  const [isExpanded, setIsExpanded] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored !== null ? stored === 'true' : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, String(isExpanded));
+  }, [isExpanded]);
 
   const { overdue, upcoming, completed } = useMemo(() => {
     const now = new Date();
@@ -56,80 +67,92 @@ export function MilestonesWidget() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Target className="h-5 w-5" />
-          Milestones
-          {overdue.length > 0 && (
-            <Badge variant="destructive" className="ml-auto">
-              {overdue.length} overdue
-            </Badge>
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <CardHeader className={cn("pb-3", !isExpanded && "pb-4")}>
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 w-full text-left hover:opacity-80 transition-opacity">
+              <CardTitle className="text-base flex items-center gap-2 flex-1">
+                <Target className="h-5 w-5" />
+                Milestones
+                {overdue.length > 0 && (
+                  <Badge variant="destructive" className="ml-auto">
+                    {overdue.length} overdue
+                  </Badge>
+                )}
+              </CardTitle>
+              <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground", isExpanded && "rotate-180")} />
+            </button>
+          </CollapsibleTrigger>
+          {isExpanded && (
+            <CardDescription>
+              {totalActive > 0 
+                ? `${upcoming.length} upcoming, ${overdue.length} overdue`
+                : 'No upcoming milestones'
+              }
+            </CardDescription>
           )}
-        </CardTitle>
-        <CardDescription>
-          {totalActive > 0 
-            ? `${upcoming.length} upcoming, ${overdue.length} overdue`
-            : 'No upcoming milestones'
-          }
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {totalActive === 0 && completed.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No milestones to display</p>
-          </div>
-        ) : (
-          <ScrollArea className="h-[280px]">
-            <div className="space-y-4">
-              {/* Overdue Section */}
-              {overdue.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                    <span className="text-sm font-medium text-destructive">Overdue</span>
-                  </div>
-                  <div className="space-y-2">
-                    {overdue.map(m => (
-                      <MilestoneItem key={m.id} milestone={m} variant="overdue" />
-                    ))}
-                  </div>
-                </div>
-              )}
+        </CardHeader>
 
-              {/* Upcoming Section */}
-              {upcoming.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="h-4 w-4 text-warning" />
-                    <span className="text-sm font-medium text-warning">Due This Week</span>
-                  </div>
-                  <div className="space-y-2">
-                    {upcoming.map(m => (
-                      <MilestoneItem key={m.id} milestone={m} variant="upcoming" />
-                    ))}
-                  </div>
-                </div>
-              )}
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            {totalActive === 0 && completed.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No milestones to display</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[200px]">
+                <div className="space-y-4">
+                  {/* Overdue Section */}
+                  {overdue.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                        <span className="text-sm font-medium text-destructive">Overdue</span>
+                      </div>
+                      <div className="space-y-2">
+                        {overdue.map(m => (
+                          <MilestoneItem key={m.id} milestone={m} variant="overdue" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Recently Completed */}
-              {completed.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                    <span className="text-sm font-medium text-success">Recently Completed</span>
-                  </div>
-                  <div className="space-y-2">
-                    {completed.map(m => (
-                      <MilestoneItem key={m.id} milestone={m} variant="completed" />
-                    ))}
-                  </div>
+                  {/* Upcoming Section */}
+                  {upcoming.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="h-4 w-4 text-warning" />
+                        <span className="text-sm font-medium text-warning">Due This Week</span>
+                      </div>
+                      <div className="space-y-2">
+                        {upcoming.map(m => (
+                          <MilestoneItem key={m.id} milestone={m} variant="upcoming" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recently Completed */}
+                  {completed.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="h-4 w-4 text-success" />
+                        <span className="text-sm font-medium text-success">Recently Completed</span>
+                      </div>
+                      <div className="space-y-2">
+                        {completed.map(m => (
+                          <MilestoneItem key={m.id} milestone={m} variant="completed" />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

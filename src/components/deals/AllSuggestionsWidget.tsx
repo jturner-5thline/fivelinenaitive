@@ -57,8 +57,15 @@ export function AllSuggestionsWidget({ deals }: AllSuggestionsWidgetProps) {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [filterType, setFilterType] = useState<'all' | 'warning' | 'action' | 'opportunity' | 'reminder'>('all');
   const [filterPriority, setFilterPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all');
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(() => {
+    const stored = localStorage.getItem('smart-suggestions-widget-expanded');
+    return stored !== null ? stored === 'true' : true;
+  });
   const [showLimit, setShowLimit] = useState(3);
+
+  useEffect(() => {
+    localStorage.setItem('smart-suggestions-widget-expanded', String(isExpanded));
+  }, [isExpanded]);
 
   const visibleSuggestions = useMemo(() => {
     return suggestions
