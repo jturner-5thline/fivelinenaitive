@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,10 +13,14 @@ import {
   ENGAGEMENT_TYPE_CONFIG,
 } from '@/types/deal';
 import { mockReferrers } from '@/data/mockDeals';
-import { FiltersPopover } from './FiltersPopover';
+import { FiltersPopover, FilterKey, FILTER_LABELS, useFilterConfigs } from './FiltersPopover';
+import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useDealTypes } from '@/contexts/DealTypesContext';
+
+const PINNED_FILTERS_KEY = 'deals-pinned-filters';
+const DEFAULT_PINNED: FilterKey[] = ['stage', 'status'];
 
 interface DealFiltersProps {
   filters: FilterType;
@@ -28,7 +33,34 @@ export function DealFilters({
 }: DealFiltersProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { dealTypes: availableDealTypes } = useDealTypes();
+  const filterConfigs = useFilterConfigs();
   
+  const [pinnedFilters, setPinnedFilters] = useState<FilterKey[]>(() => {
+    const stored = localStorage.getItem(PINNED_FILTERS_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return DEFAULT_PINNED;
+      }
+    }
+    return DEFAULT_PINNED;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(PINNED_FILTERS_KEY, JSON.stringify(pinnedFilters));
+  }, [pinnedFilters]);
+
+  const togglePin = (key: FilterKey) => {
+    setPinnedFilters(prev => {
+      if (prev.includes(key)) {
+        return prev.filter(k => k !== key);
+      }
+      if (prev.length >= 4) return prev;
+      return [...prev, key];
+    });
+  };
+
   const activeFiltersCount = [
     filters.stage.length > 0,
     filters.status.length > 0,
@@ -104,13 +136,32 @@ export function DealFilters({
     return chips;
   };
 
+  const getFilterOnChange = (key: FilterKey) => {
+    switch (key) {
+      case 'stage':
+        return (values: string[]) => onFilterChange({ stage: values as DealStage[] });
+      case 'status':
+        return (values: string[]) => onFilterChange({ status: values as DealStatus[] });
+      case 'engagementType':
+        return (values: string[]) => onFilterChange({ engagementType: values as EngagementType[] });
+      case 'dealType':
+        return (values: string[]) => onFilterChange({ dealType: values });
+      case 'manager':
+        return (values: string[]) => onFilterChange({ manager: values });
+      case 'lender':
+        return (values: string[]) => onFilterChange({ lender: values });
+      case 'referredBy':
+        return (values: string[]) => onFilterChange({ referredBy: values });
+    }
+  };
+
   const activeChips = getActiveFilterChips();
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Search */}
-        <div className="relative w-full max-w-[200px]">
+        <div className="relative w-full max-w-[180px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search..."
@@ -120,9 +171,21 @@ export function DealFilters({
           />
         </div>
 
+        {/* Quick Filters (Pinned) */}
+        {pinnedFilters.map((key) => (
+          <MultiSelectFilter
+            key={key}
+            label={FILTER_LABELS[key]}
+            options={filterConfigs[key]}
+            selected={filters[key] as string[]}
+            onChange={getFilterOnChange(key)}
+            className="w-[130px]"
+          />
+        ))}
+
         {/* Consolidated Filters Popover */}
         <HintTooltip
-          hint="Use filters to quickly find deals by stage, status, manager, and more."
+          hint="Use filters to quickly find deals by stage, status, manager, and more. Pin your favorites for quick access!"
           visible={isHintVisible('filters')}
           onDismiss={() => dismissHint('filters')}
           side="bottom"
@@ -133,6 +196,8 @@ export function DealFilters({
             filters={filters}
             onFilterChange={onFilterChange}
             activeFiltersCount={activeFiltersCount}
+            pinnedFilters={pinnedFilters}
+            onTogglePin={togglePin}
           />
         </HintTooltip>
 
