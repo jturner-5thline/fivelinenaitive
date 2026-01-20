@@ -275,7 +275,13 @@ export default function Dashboard() {
                     <TooltipTrigger asChild>
                       <Toggle
                         pressed={filters.staleOnly}
-                        onPressedChange={(pressed) => updateFilters({ staleOnly: pressed })}
+                        onPressedChange={(pressed) => {
+                          if (pressed) {
+                            updateFilters({ staleOnly: true, flaggedOnly: false });
+                          } else {
+                            updateFilters({ staleOnly: false });
+                          }
+                        }}
                         variant="outline"
                         size="sm"
                         className={`h-8 w-8 p-0 ${filters.staleOnly ? 'bg-warning/20 border-warning text-warning hover:bg-warning/30' : ''}`}
@@ -295,9 +301,11 @@ export default function Dashboard() {
                       <Toggle
                         pressed={filters.flaggedOnly}
                         onPressedChange={(pressed) => {
-                          updateFilters({ flaggedOnly: pressed });
                           if (pressed) {
+                            updateFilters({ flaggedOnly: true, staleOnly: false });
                             setFlaggedCarouselOpen(true);
+                          } else {
+                            updateFilters({ flaggedOnly: false });
                           }
                         }}
                         variant="outline"
