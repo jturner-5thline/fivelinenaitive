@@ -42,7 +42,6 @@ const usersSubPages = [
   { id: "companies", label: "Companies", icon: Building2 },
   { id: "external", label: "External", icon: Cloud },
   { id: "invitations", label: "Invites", icon: Mail },
-  { id: "feedback", label: "Feedback", icon: MessageSquare },
 ];
 
 const accessSubPages = [
@@ -66,7 +65,8 @@ const settingsSubPages = [
 ];
 
 const productEnhancementSubPages = [
-  { id: "enhancement", label: "Product Enhancement", icon: Lightbulb },
+  { id: "enhancement", label: "UX Analytics", icon: Lightbulb },
+  { id: "feedback", label: "Feedback", icon: MessageSquare },
 ];
 
 type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement";
