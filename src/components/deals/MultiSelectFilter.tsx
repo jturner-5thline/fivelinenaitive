@@ -57,8 +57,15 @@ export function MultiSelectFilter({
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="start">
-        <div className="max-h-[300px] overflow-auto p-1">
+      <PopoverContent 
+        className="w-[200px] p-0 bg-popover z-50" 
+        align="start"
+        side="bottom"
+        sideOffset={4}
+        avoidCollisions={true}
+        collisionPadding={16}
+      >
+        <div className="max-h-[min(300px,50vh)] overflow-auto p-1">
           {options.map((option) => {
             const isSelected = selected.includes(option.value);
             return (
