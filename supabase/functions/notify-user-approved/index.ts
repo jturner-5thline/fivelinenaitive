@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +26,6 @@ serve(async (req) => {
       );
     }
 
-    const resend = new Resend(resendApiKey);
     const { user_email, user_name } = await req.json() as ApprovalNotification;
 
     if (!user_email) {
@@ -83,17 +81,34 @@ serve(async (req) => {
       </html>
     `;
 
-    const emailResponse = await resend.emails.send({
-      from: "nAItive <notifications@5thline.co>",
-      to: [user_email],
-      subject: "Your nAItive Account Has Been Approved! 🎉",
-      html: emailHtml,
+    const emailResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resendApiKey}`,
+      },
+      body: JSON.stringify({
+        from: "nAItive <notifications@5thline.co>",
+        to: [user_email],
+        subject: "Your nAItive Account Has Been Approved! 🎉",
+        html: emailHtml,
+      }),
     });
 
-    console.log("Approval email sent to:", user_email, emailResponse);
+    if (!emailResponse.ok) {
+      const errorText = await emailResponse.text();
+      console.error("Failed to send approval email:", errorText);
+      return new Response(
+        JSON.stringify({ error: "Failed to send email" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const result = await emailResponse.json();
+    console.log("Approval email sent to:", user_email, result);
 
     return new Response(
-      JSON.stringify({ success: true, emailId: emailResponse.id }),
+      JSON.stringify({ success: true, emailId: result.id }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {

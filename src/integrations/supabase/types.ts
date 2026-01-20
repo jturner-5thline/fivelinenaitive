@@ -3020,6 +3020,14 @@ export type Database = {
         Args: { _archive: boolean; _company_id: string; _reason?: string }
         Returns: undefined
       }
+      admin_bulk_approve_users: {
+        Args: { _user_ids: string[] }
+        Returns: {
+          display_name: string
+          email: string
+          user_id: string
+        }[]
+      }
       admin_delete_company: {
         Args: { _company_id: string }
         Returns: undefined

@@ -1,11 +1,13 @@
-import { usePendingApprovals, useApproveUser, useRevokeApproval } from "@/hooks/useUserApproval";
+import { useState } from "react";
+import { usePendingApprovals, useApproveUser, useBulkApproveUsers, useRevokeApproval } from "@/hooks/useUserApproval";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, X, Clock, UserCheck, Mail } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Check, X, Clock, UserCheck, Mail, Users } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import {
   Table,
   TableBody,
@@ -29,7 +31,8 @@ import {
 export function PendingApprovalsPanel() {
   const { data: pendingUsers, isLoading, error } = usePendingApprovals();
   const approveUser = useApproveUser();
-  const revokeApproval = useRevokeApproval();
+  const bulkApproveUsers = useBulkApproveUsers();
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
 
   const getInitials = (name: string | null, email: string) => {
     if (name) {
@@ -41,6 +44,33 @@ export function PendingApprovalsPanel() {
         .slice(0, 2);
     }
     return email.slice(0, 2).toUpperCase();
+  };
+
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUsers((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (!pendingUsers) return;
+    if (selectedUsers.size === pendingUsers.length) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(pendingUsers.map((u) => u.user_id)));
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedUsers.size === 0) return;
+    await bulkApproveUsers.mutateAsync(Array.from(selectedUsers));
+    setSelectedUsers(new Set());
   };
 
   if (isLoading) {
@@ -103,6 +133,15 @@ export function PendingApprovalsPanel() {
             </CardTitle>
             <CardDescription>Users awaiting account approval</CardDescription>
           </div>
+          {pendingUsers && pendingUsers.length > 0 && selectedUsers.size > 0 && (
+            <Button
+              onClick={handleBulkApprove}
+              disabled={bulkApproveUsers.isPending}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Approve {selectedUsers.size} Selected
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -116,6 +155,12 @@ export function PendingApprovalsPanel() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={selectedUsers.size === pendingUsers.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Requested</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -124,6 +169,12 @@ export function PendingApprovalsPanel() {
             <TableBody>
               {pendingUsers.map((user) => (
                 <TableRow key={user.user_id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedUsers.has(user.user_id)}
+                      onCheckedChange={() => toggleUserSelection(user.user_id)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
@@ -161,7 +212,11 @@ export function PendingApprovalsPanel() {
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         size="sm"
-                        onClick={() => approveUser.mutate(user.user_id)}
+                        onClick={() => approveUser.mutate({
+                          userId: user.user_id,
+                          userEmail: user.email,
+                          userName: user.display_name || undefined,
+                        })}
                         disabled={approveUser.isPending}
                       >
                         <Check className="h-4 w-4 mr-1" />
@@ -188,8 +243,8 @@ export function PendingApprovalsPanel() {
                             <AlertDialogAction
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               onClick={() => {
-                                // For now, just delete the user
-                                // Could also just leave them in pending state
+                                // For now, just leave in pending state
+                                // Could implement delete functionality
                               }}
                             >
                               Reject & Delete
