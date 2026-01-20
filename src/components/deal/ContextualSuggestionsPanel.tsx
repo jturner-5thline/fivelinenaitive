@@ -1,9 +1,7 @@
-import { AlertTriangle, Lightbulb, Bell, Target, ChevronRight, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle, Lightbulb, Bell, Target, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useContextualSuggestions, Suggestion } from '@/hooks/useContextualSuggestions';
 import { useState, useCallback } from 'react';
@@ -32,8 +30,6 @@ interface ContextualSuggestionsPanelProps {
     notes?: string;
   } | null;
   onAction?: (suggestion: Suggestion) => void;
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
 }
 
 const typeIcons = {
@@ -56,14 +52,10 @@ const priorityBadges = {
   low: 'bg-muted text-muted-foreground border-muted',
 };
 
-export function ContextualSuggestionsPanel({ deal, onAction, isOpen: externalIsOpen, onOpenChange: externalOnOpenChange }: ContextualSuggestionsPanelProps) {
+export function ContextualSuggestionsPanel({ deal, onAction }: ContextualSuggestionsPanelProps) {
   const { suggestions } = useContextualSuggestions(deal);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [, setSearchParams] = useSearchParams();
-  const [internalIsOpen, setInternalIsOpen] = useState(true);
-  
-  const isPanelOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
-  const setIsPanelOpen = externalOnOpenChange || setInternalIsOpen;
 
   const visibleSuggestions = suggestions.filter(s => !dismissedIds.has(s.id));
 
@@ -82,83 +74,57 @@ export function ContextualSuggestionsPanel({ deal, onAction, isOpen: externalIsO
     }
   }, [onAction, setSearchParams]);
 
+  if (visibleSuggestions.length === 0) {
+    return (
+      <div className="text-center py-6">
+        <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-3">
+          <Lightbulb className="h-5 w-5 text-green-500" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          All caught up! No suggestions at this time.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <Card>
-      <Collapsible open={isPanelOpen} onOpenChange={setIsPanelOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-primary" />
-                Smart Suggestions
-                {visibleSuggestions.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {visibleSuggestions.length}
-                  </Badge>
-                )}
-              </CardTitle>
-              {isPanelOpen ? (
-                <ChevronUp className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-              )}
-            </div>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="p-0 pt-0">
-            {visibleSuggestions.length === 0 ? (
-              <div className="text-center py-6 px-4">
-                <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-3">
-                  <Lightbulb className="h-5 w-5 text-green-500" />
+    <ScrollArea className="max-h-[400px]">
+      <div className="divide-y divide-border -mx-4">
+        {visibleSuggestions.map((suggestion) => {
+          const Icon = typeIcons[suggestion.type];
+          return (
+            <div
+              key={suggestion.id}
+              className="group relative px-4 py-4 hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={() => handleAction(suggestion)}
+            >
+              <div className="flex gap-3">
+                <div className={cn('flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center', typeColors[suggestion.type])}>
+                  <Icon className="h-4 w-4" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  All caught up! No suggestions at this time.
-                </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-sm font-medium leading-tight">{suggestion.title}</h4>
+                    <Badge variant="outline" className={cn('text-xs flex-shrink-0', priorityBadges[suggestion.priority])}>
+                      {suggestion.priority}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{suggestion.description}</p>
+                  {suggestion.actionLabel && (
+                    <Button variant="ghost" size="sm" className="h-6 px-0 mt-2 text-xs text-primary hover:text-primary/80 hover:bg-transparent">
+                      {suggestion.actionLabel}
+                      <ChevronRight className="h-3 w-3 ml-0.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            ) : (
-              <ScrollArea className="max-h-[400px]">
-                <div className="divide-y divide-border">
-                  {visibleSuggestions.map((suggestion) => {
-                    const Icon = typeIcons[suggestion.type];
-                    return (
-                      <div
-                        key={suggestion.id}
-                        className="group relative p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => handleAction(suggestion)}
-                      >
-                        <div className="flex gap-3">
-                          <div className={cn('flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center', typeColors[suggestion.type])}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-sm font-medium leading-tight">{suggestion.title}</h4>
-                              <Badge variant="outline" className={cn('text-xs flex-shrink-0', priorityBadges[suggestion.priority])}>
-                                {suggestion.priority}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{suggestion.description}</p>
-                            {suggestion.actionLabel && (
-                              <Button variant="ghost" size="sm" className="h-6 px-0 mt-2 text-xs text-primary hover:text-primary/80 hover:bg-transparent">
-                                {suggestion.actionLabel}
-                                <ChevronRight className="h-3 w-3 ml-0.5" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                        <button onClick={(e) => handleDismiss(suggestion.id, e)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted">
-                          <X className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+              <button onClick={(e) => handleDismiss(suggestion.id, e)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted">
+                <X className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </ScrollArea>
   );
 }
