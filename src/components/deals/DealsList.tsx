@@ -15,7 +15,7 @@ interface DealsListProps {
   deals: Deal[];
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
   onMarkReviewed?: (dealId: string) => void;
-  onToggleFlag?: (dealId: string, isFlagged: boolean) => void;
+  onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   groupByStatus?: boolean;
   sortField?: SortField;
   sortDirection?: SortDirection;

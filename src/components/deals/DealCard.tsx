@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Flame, Thermometer, Snowflake } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link, useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
+import { FlagNoteDialog } from './FlagNoteDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,11 +37,12 @@ interface DealCardProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
   onMarkReviewed?: (dealId: string) => void;
-  onToggleFlag?: (dealId: string, isFlagged: boolean) => void;
+  onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;
 }
 
 export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement }: DealCardProps) {
+  const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
@@ -146,37 +149,50 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">{formatCurrencyValue(deal.value)}</span>
             {onToggleFlag && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`h-8 w-8 relative ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onToggleFlag(deal.id, !deal.isFlagged);
-                      }}
-                    >
-                      <Flag className={`h-4 w-4 ${deal.isFlagged ? 'fill-current' : ''}`} />
-                      {deal.isFlagged && deal.flagNotes && (
-                        <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+              <>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-8 w-8 relative ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsFlagDialogOpen(true);
+                        }}
+                      >
+                        <Flag className={`h-4 w-4 ${deal.isFlagged ? 'fill-current' : ''}`} />
+                        {deal.isFlagged && deal.flagNotes && (
+                          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      {deal.isFlagged ? (
+                        <div>
+                          <p className="font-medium">Flagged for discussion</p>
+                          {deal.flagNotes && <p className="text-xs mt-1 opacity-90">{deal.flagNotes}</p>}
+                        </div>
+                      ) : (
+                        <p>Flag for discussion</p>
                       )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    {deal.isFlagged ? (
-                      <div>
-                        <p className="font-medium">Flagged for discussion</p>
-                        {deal.flagNotes && <p className="text-xs mt-1 opacity-90">{deal.flagNotes}</p>}
-                      </div>
-                    ) : (
-                      <p>Flag for discussion</p>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <FlagNoteDialog
+                  dealId={deal.id}
+                  dealName={deal.company}
+                  isOpen={isFlagDialogOpen}
+                  onClose={() => setIsFlagDialogOpen(false)}
+                  currentFlagNotes={deal.flagNotes}
+                  isFlagged={deal.isFlagged}
+                  onSave={async (isFlagged, flagNotes) => {
+                    await onToggleFlag(deal.id, isFlagged, flagNotes);
+                  }}
+                />
+              </>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
