@@ -25,13 +25,13 @@ export function DashboardAIInput() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Debounced search
+  // Debounced search - trigger faster for better UX
   useEffect(() => {
-    if (inputValue.length >= 8) {
+    if (inputValue.length >= 5) {
       const timer = setTimeout(() => {
         search(inputValue);
         setShowResults(true);
-      }, 600);
+      }, 300);
       return () => clearTimeout(timer);
     } else {
       clear();
