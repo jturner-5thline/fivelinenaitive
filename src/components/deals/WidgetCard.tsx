@@ -65,39 +65,39 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
     <Card
       ref={setNodeRef}
       style={style}
-      className={`relative ${isEditMode ? 'ring-2 ring-primary/50' : ''} ${isDragging ? 'z-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      className={`relative group ${isDragging ? 'z-50 opacity-50' : ''} ${isClickable && !isEditMode ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
       onClick={handleClick}
     >
+      {isEditMode && (
+        <div className="absolute -top-2 -right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-5 w-5 rounded-full shadow-sm cursor-grab active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-5 w-5 rounded-full shadow-sm"
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          >
+            <Pencil className="h-2.5 w-2.5" />
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-5 w-5 rounded-full shadow-sm hover:bg-destructive hover:text-destructive-foreground"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Trash2 className="h-2.5 w-2.5" />
+          </Button>
+        </div>
+      )}
       <CardContent className="flex items-center gap-4 p-4">
-        {isEditMode && (
-          <div className="flex flex-col gap-0.5 -ml-1 mr-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 cursor-grab active:cursor-grabbing"
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            >
-              <Pencil className="h-3 w-3 text-muted-foreground" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
         <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${colors.bg} flex-shrink-0`}>
           <Icon className={`h-6 w-6 ${colors.text}`} />
         </div>
