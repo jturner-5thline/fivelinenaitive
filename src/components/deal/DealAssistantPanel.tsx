@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Trash2, Sparkles, User, Bot, Loader2 } from 'lucide-react';
+import { MessageSquare, Send, Trash2, Sparkles, User, Bot, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useDealAssistant } from '@/hooks/useDealAssistant';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -23,6 +24,8 @@ interface DealContext {
 
 interface DealAssistantPanelProps {
   dealContext: DealContext;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const SUGGESTED_PROMPTS = [
@@ -33,11 +36,16 @@ const SUGGESTED_PROMPTS = [
   "Draft an update email for stakeholders",
 ];
 
-export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
+export function DealAssistantPanel({ dealContext, isOpen: externalIsOpen, onOpenChange: externalOnOpenChange }: DealAssistantPanelProps) {
   const { messages, sendMessage, clearMessages, isLoading } = useDealAssistant();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [internalIsOpen, setInternalIsOpen] = useState(true);
+  
+  // Use external control if provided, otherwise use internal state
+  const isExpanded = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+  const setIsExpanded = externalOnOpenChange || setInternalIsOpen;
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -95,43 +103,151 @@ export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            AI Deal Assistant
-            <Badge variant="secondary" className="text-xs font-normal">Beta</Badge>
-          </CardTitle>
-          {messages.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs gap-1 text-muted-foreground"
-              onClick={clearMessages}
-            >
-              <Trash2 className="h-3 w-3" />
-              Clear
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        {/* Messages Area */}
-        <ScrollArea className="h-[300px] pr-4" ref={scrollRef}>
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center py-8">
-              <Sparkles className="h-10 w-10 text-primary/50 mb-4" />
-              <p className="text-sm text-muted-foreground mb-4">
-                Ask me anything about this deal
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center max-w-sm">
-                {SUGGESTED_PROMPTS.slice(0, 3).map((prompt, i) => (
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                AI Deal Assistant
+                <Badge variant="secondary" className="text-xs font-normal">Beta</Badge>
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {messages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs gap-1 text-muted-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearMessages();
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Clear
+                  </Button>
+                )}
+                {isExpanded ? (
+                  <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        
+        <CollapsibleContent>
+          <CardContent className="space-y-4 pt-0">
+            {/* Messages Area */}
+            <ScrollArea className="h-[300px] pr-4" ref={scrollRef}>
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center py-8">
+                  <Sparkles className="h-10 w-10 text-primary/50 mb-4" />
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Ask me anything about this deal
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center max-w-sm">
+                    {SUGGESTED_PROMPTS.slice(0, 3).map((prompt, i) => (
+                      <Button
+                        key={i}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={() => handleSuggestedPrompt(prompt)}
+                        disabled={isLoading}
+                      >
+                        {prompt}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'flex gap-3',
+                        message.role === 'user' ? 'justify-end' : 'justify-start'
+                      )}
+                    >
+                      {message.role === 'assistant' && (
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Bot className="h-4 w-4 text-primary" />
+                        </div>
+                      )}
+                      <div
+                        className={cn(
+                          'rounded-lg px-4 py-2.5 max-w-[80%]',
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted'
+                        )}
+                      >
+                        <div className="text-sm">
+                          {message.role === 'assistant' ? formatContent(message.content) : message.content}
+                        </div>
+                        <p className={cn(
+                          'text-[10px] mt-1',
+                          message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                        )}>
+                          {format(message.timestamp, 'h:mm a')}
+                        </p>
+                      </div>
+                      {message.role === 'user' && (
+                        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                          <User className="h-4 w-4 text-primary-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="bg-muted rounded-lg px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <span className="text-sm text-muted-foreground">Thinking...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </ScrollArea>
+
+            {/* Input Area */}
+            <div className="flex gap-2">
+              <Input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about this deal..."
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSend}
+                disabled={!input.trim() || isLoading}
+                size="icon"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* More suggested prompts */}
+            {messages.length > 0 && messages.length < 4 && (
+              <div className="flex flex-wrap gap-1">
+                {SUGGESTED_PROMPTS.slice(3).map((prompt, i) => (
                   <Button
                     key={i}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="text-xs h-7"
+                    className="text-xs h-6 text-muted-foreground"
                     onClick={() => handleSuggestedPrompt(prompt)}
                     disabled={isLoading}
                   >
@@ -139,102 +255,10 @@ export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
                   </Button>
                 ))}
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {messages.map((message, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'flex gap-3',
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  )}
-                >
-                  {message.role === 'assistant' && (
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Bot className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                  <div
-                    className={cn(
-                      'rounded-lg px-4 py-2.5 max-w-[80%]',
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    )}
-                  >
-                    <div className="text-sm">
-                      {message.role === 'assistant' ? formatContent(message.content) : message.content}
-                    </div>
-                    <p className={cn(
-                      'text-[10px] mt-1',
-                      message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                    )}>
-                      {format(message.timestamp, 'h:mm a')}
-                    </p>
-                  </div>
-                  {message.role === 'user' && (
-                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                      <User className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                  )}
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Bot className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="bg-muted rounded-lg px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground">Thinking...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </ScrollArea>
-
-        {/* Input Area */}
-        <div className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about this deal..."
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            size="icon"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* More suggested prompts */}
-        {messages.length > 0 && messages.length < 4 && (
-          <div className="flex flex-wrap gap-1">
-            {SUGGESTED_PROMPTS.slice(3).map((prompt, i) => (
-              <Button
-                key={i}
-                variant="ghost"
-                size="sm"
-                className="text-xs h-6 text-muted-foreground"
-                onClick={() => handleSuggestedPrompt(prompt)}
-                disabled={isLoading}
-              >
-                {prompt}
-              </Button>
-            ))}
-          </div>
-        )}
-      </CardContent>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

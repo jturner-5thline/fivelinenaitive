@@ -16,6 +16,8 @@ interface DealResearchPanelProps {
   industry?: string;
   dealValue?: number;
   lenders?: { name: string }[];
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const researchTypeConfig = {
@@ -125,12 +127,18 @@ export function DealResearchPanel({
   industry,
   dealValue,
   lenders = [],
+  isOpen: externalIsOpen,
+  onOpenChange: externalOnOpenChange,
 }: DealResearchPanelProps) {
   const { fetchResearch, isLoading, error } = useDealResearch();
   const [activeType, setActiveType] = useState<ResearchType>('company');
   const [selectedLender, setSelectedLender] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, ResearchResult>>({});
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [internalIsExpanded, setInternalIsExpanded] = useState(true);
+  
+  // Use external control if provided, otherwise use internal state
+  const isExpanded = externalIsOpen !== undefined ? externalIsOpen : internalIsExpanded;
+  const setIsExpanded = externalOnOpenChange || setInternalIsExpanded;
 
   const handleResearch = async (type: ResearchType, lenderName?: string) => {
     setActiveType(type);
