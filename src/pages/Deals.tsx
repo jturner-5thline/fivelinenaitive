@@ -118,7 +118,7 @@ export default function Dashboard() {
           <CreateCompanyBanner />
           <div className="space-y-6">
             {/* Page Header & Widgets */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div 
                 className="flex items-center justify-between opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
