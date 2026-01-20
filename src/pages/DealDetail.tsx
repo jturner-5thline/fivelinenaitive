@@ -411,6 +411,38 @@ export default function DealDetail() {
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
   
+  // AI panel collapsed states with localStorage persistence
+  const [isResearchPanelOpen, setIsResearchPanelOpen] = useState(() => {
+    const saved = localStorage.getItem('deal-research-panel-open');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [isAssistantPanelOpen, setIsAssistantPanelOpen] = useState(() => {
+    const saved = localStorage.getItem('deal-assistant-panel-open');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [isActivitySummaryOpen, setIsActivitySummaryOpen] = useState(() => {
+    const saved = localStorage.getItem('deal-activity-summary-open');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [isSuggestionsPanelOpen, setIsSuggestionsPanelOpen] = useState(() => {
+    const saved = localStorage.getItem('deal-suggestions-panel-open');
+    return saved !== null ? saved === 'true' : true;
+  });
+  
+  // Persist AI panel states
+  useEffect(() => {
+    localStorage.setItem('deal-research-panel-open', String(isResearchPanelOpen));
+  }, [isResearchPanelOpen]);
+  useEffect(() => {
+    localStorage.setItem('deal-assistant-panel-open', String(isAssistantPanelOpen));
+  }, [isAssistantPanelOpen]);
+  useEffect(() => {
+    localStorage.setItem('deal-activity-summary-open', String(isActivitySummaryOpen));
+  }, [isActivitySummaryOpen]);
+  useEffect(() => {
+    localStorage.setItem('deal-suggestions-panel-open', String(isSuggestionsPanelOpen));
+  }, [isSuggestionsPanelOpen]);
+  
   // Mark info requests as read when Deal Management tab is viewed
   useEffect(() => {
     if (dealInfoTab === 'deal-management' && infoRequestPendingCount > 0) {
@@ -2025,75 +2057,168 @@ export default function DealDetail() {
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
                   {/* AI Panels Row 1 - Research and Assistant side by side */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <DealResearchPanel
-                      companyName={deal.company}
-                      companyUrl={deal.companyUrl}
-                      industry={deal.dealTypes?.[0]}
-                      dealValue={deal.value}
-                      lenders={deal.lenders?.map(l => ({ name: l.name })) || []}
-                    />
-                    <DealAssistantPanel
-                      dealContext={{
-                        company: deal.company,
-                        value: deal.value,
-                        stage: deal.stage,
-                        status: deal.status,
-                        manager: deal.manager,
-                        lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage, notes: l.notes })),
-                        milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed, dueDate: m.dueDate })),
-                        notes: deal.notes,
-                      }}
-                    />
+                    <Collapsible open={isResearchPanelOpen} onOpenChange={setIsResearchPanelOpen}>
+                      <Card>
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <Search className="h-4 w-4" />
+                                AI Research
+                              </CardTitle>
+                              {isResearchPanelOpen ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <DealResearchPanel
+                              companyName={deal.company}
+                              companyUrl={deal.companyUrl}
+                              industry={deal.dealTypes?.[0]}
+                              dealValue={deal.value}
+                              lenders={deal.lenders?.map(l => ({ name: l.name })) || []}
+                            />
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                    <Collapsible open={isAssistantPanelOpen} onOpenChange={setIsAssistantPanelOpen}>
+                      <Card>
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4" />
+                                AI Deal Assistant
+                              </CardTitle>
+                              {isAssistantPanelOpen ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <DealAssistantPanel
+                              dealContext={{
+                                company: deal.company,
+                                value: deal.value,
+                                stage: deal.stage,
+                                status: deal.status,
+                                manager: deal.manager,
+                                lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage, notes: l.notes })),
+                                milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed, dueDate: m.dueDate })),
+                                notes: deal.notes,
+                              }}
+                            />
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
                   </div>
                   
                   {/* AI Panels Row 2 - Activity Summary and Contextual Suggestions */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <ActivitySummaryPanel
-                      dealInfo={{
-                        company: deal.company,
-                        value: deal.value,
-                        stage: deal.stage,
-                        status: deal.status,
-                      }}
-                      activities={activityLogs.map(log => ({
-                        type: log.activity_type,
-                        description: log.description,
-                        timestamp: format(new Date(log.created_at), 'MMM d, h:mm a'),
-                      }))}
-                      lenders={deal.lenders?.map(l => ({
-                        name: l.name,
-                        stage: l.stage,
-                        updatedAt: l.updatedAt,
-                      })) || []}
-                      milestones={dbMilestones?.map(m => ({
-                        title: m.title,
-                        completed: m.completed,
-                        dueDate: m.dueDate,
-                      })) || []}
-                    />
-                    <ContextualSuggestionsPanel
-                      deal={{
-                        id: deal.id,
-                        company: deal.company,
-                        stage: deal.stage,
-                        status: deal.status,
-                        updatedAt: deal.updatedAt,
-                        lenders: deal.lenders?.map(l => ({
-                          id: l.id,
-                          name: l.name,
-                          stage: l.stage,
-                          updatedAt: l.updatedAt,
-                          notes: l.notes,
-                        })),
-                        milestones: dbMilestones?.map(m => ({
-                          id: m.id,
-                          title: m.title,
-                          completed: m.completed,
-                          dueDate: m.dueDate,
-                        })),
-                        notes: deal.notes,
-                      }}
-                    />
+                    <Collapsible open={isActivitySummaryOpen} onOpenChange={setIsActivitySummaryOpen}>
+                      <Card>
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                AI Activity Summary
+                              </CardTitle>
+                              {isActivitySummaryOpen ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <ActivitySummaryPanel
+                              dealInfo={{
+                                company: deal.company,
+                                value: deal.value,
+                                stage: deal.stage,
+                                status: deal.status,
+                              }}
+                              activities={activityLogs.map(log => ({
+                                type: log.activity_type,
+                                description: log.description,
+                                timestamp: format(new Date(log.created_at), 'MMM d, h:mm a'),
+                              }))}
+                              lenders={deal.lenders?.map(l => ({
+                                name: l.name,
+                                stage: l.stage,
+                                updatedAt: l.updatedAt,
+                              })) || []}
+                              milestones={dbMilestones?.map(m => ({
+                                title: m.title,
+                                completed: m.completed,
+                                dueDate: m.dueDate,
+                              })) || []}
+                            />
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                    <Collapsible open={isSuggestionsPanelOpen} onOpenChange={setIsSuggestionsPanelOpen}>
+                      <Card>
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4" />
+                                AI Smart Suggestions
+                              </CardTitle>
+                              {isSuggestionsPanelOpen ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <ContextualSuggestionsPanel
+                              deal={{
+                                id: deal.id,
+                                company: deal.company,
+                                stage: deal.stage,
+                                status: deal.status,
+                                updatedAt: deal.updatedAt,
+                                lenders: deal.lenders?.map(l => ({
+                                  id: l.id,
+                                  name: l.name,
+                                  stage: l.stage,
+                                  updatedAt: l.updatedAt,
+                                  notes: l.notes,
+                                })),
+                                milestones: dbMilestones?.map(m => ({
+                                  id: m.id,
+                                  title: m.title,
+                                  completed: m.completed,
+                                  dueDate: m.dueDate,
+                                })),
+                                notes: deal.notes,
+                              }}
+                              
+                            />
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
                   </div>
                   {statusNotes.length > 0 && (
                     <Card>
