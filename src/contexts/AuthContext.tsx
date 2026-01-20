@@ -6,6 +6,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
+  justSignedIn: boolean;
+  clearJustSignedIn: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -72,7 +74,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [justSignedIn, setJustSignedIn] = useState(false);
   const processedUsersRef = useRef<Set<string>>(new Set());
+
+  const clearJustSignedIn = () => setJustSignedIn(false);
 
   useEffect(() => {
     // Handle session-only logins (Remember Me unchecked)
@@ -102,6 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // For OAuth logins (Google, etc.), always treat as "remember me"
         // since there's no checkbox shown during OAuth flow
         if (event === 'SIGNED_IN' && session?.user) {
+          // Trigger welcome screen
+          setJustSignedIn(true);
+          
           const provider = session.user.app_metadata?.provider;
           if (provider && provider !== 'email') {
             // OAuth login - always remember
@@ -192,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, session, isLoading, justSignedIn, clearJustSignedIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

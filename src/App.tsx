@@ -22,6 +22,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { CookieConsent } from "@/components/CookieConsent";
 import { CopyProtection } from "@/components/CopyProtection";
+import { WelcomeScreenWrapper } from "@/components/WelcomeScreenWrapper";
 import { AppLayout } from "@/components/AppLayout";
 import Waitlist from "./pages/Waitlist";
 import Index from "./pages/Index";
@@ -79,6 +80,7 @@ const App = () => (
                     <DashboardWidgetsProvider>
                     <TooltipProvider>
                       <CopyProtection>
+                      <WelcomeScreenWrapper />
                       <Toaster />
                       <Sonner />
                       <FeedbackWidget />
