@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Search, Briefcase, Users, FileText, Settings, Lightbulb, BarChart3,
-  Sparkles, Loader2, TrendingUp, Target, Scale, Building2, Bell, Calendar
+  Sparkles, Loader2, TrendingUp, Target, Scale, Building2, Bell, Calendar,
+  HelpCircle, BookOpen, Shield, ExternalLink, ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   CommandDialog,
   CommandEmpty,
@@ -19,6 +21,7 @@ import { useDealsContext } from "@/contexts/DealsContext";
 import { useLenders } from "@/contexts/LendersContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const quickActions = [
   { name: "Dashboard", icon: Briefcase, path: "/dashboard" },
@@ -31,24 +34,27 @@ const quickActions = [
   { name: "Reports", icon: FileText, path: "/reports" },
   { name: "Notifications", icon: Bell, path: "/notifications" },
   { name: "Settings", icon: Settings, path: "/settings" },
+  { name: "Help", icon: HelpCircle, path: "/help" },
 ];
 
 const aiSuggestions = [
+  { query: "How do I create a new deal?", icon: HelpCircle },
   { query: "Show me deals closing this month", icon: Calendar },
+  { query: "What is the privacy policy?", icon: Shield },
   { query: "Find stale deals that need attention", icon: Target },
-  { query: "Which lenders are most active?", icon: Users },
-  { query: "Compare my pipeline to last quarter", icon: TrendingUp },
-  { query: "Find deals over $10M in SaaS", icon: Briefcase },
-  { query: "Show term sheet benchmarks", icon: Scale },
+  { query: "How do I invite team members?", icon: Users },
+  { query: "Which lenders are most active?", icon: Building2 },
 ];
 
 interface AISearchResult {
-  intent: string;
+  type: 'answer' | 'navigation' | 'data_query' | 'help';
+  answer: string;
   dataTypes: string[];
   filters: Record<string, string | null>;
-  suggestedQuery: string;
-  explanation: string;
+  navigation?: { page: string; description: string } | null;
   suggestedActions: string[];
+  sources: string[];
+  originalQuery: string;
 }
 
 export function GlobalSearchAI() {
@@ -93,10 +99,20 @@ export function GlobalSearchAI() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('429') || error.message?.includes('Rate limit')) {
+          toast.error("Too many requests. Please wait a moment.");
+        } else if (error.message?.includes('402')) {
+          toast.error("AI credits exhausted. Please contact your administrator.");
+        } else {
+          throw error;
+        }
+        return;
+      }
       setAIResult(data);
     } catch (err) {
       console.error('AI search error:', err);
+      toast.error("Search failed. Please try again.");
     } finally {
       setIsAISearching(false);
     }
@@ -104,8 +120,8 @@ export function GlobalSearchAI() {
 
   // Debounced AI search
   useEffect(() => {
-    if (query.length >= 10) {
-      const timer = setTimeout(handleAISearch, 800);
+    if (query.length >= 8) {
+      const timer = setTimeout(handleAISearch, 600);
       return () => clearTimeout(timer);
     } else {
       setAIResult(null);
@@ -122,6 +138,10 @@ export function GlobalSearchAI() {
   };
 
   const getNavigationFromAI = (result: AISearchResult): string | null => {
+    if (result.navigation?.page) {
+      return result.navigation.page;
+    }
+    
     const dataType = result.dataTypes[0];
     const filters = result.filters;
     
@@ -142,6 +162,13 @@ export function GlobalSearchAI() {
         return '/notifications';
       case 'reports':
         return '/reports';
+      case 'help':
+      case 'documentation':
+        return '/help';
+      case 'privacy':
+        return '/privacy';
+      case 'terms':
+        return '/terms';
       default:
         return null;
     }
@@ -155,6 +182,19 @@ export function GlobalSearchAI() {
     }
   };
 
+  const getSourceIcon = (source: string) => {
+    if (source.includes('policy') || source.includes('privacy') || source.includes('terms')) {
+      return Shield;
+    }
+    if (source.includes('docs') || source.includes('platform') || source.includes('help')) {
+      return BookOpen;
+    }
+    if (source.includes('data') || source.includes('deals') || source.includes('lenders')) {
+      return Briefcase;
+    }
+    return Sparkles;
+  };
+
   return (
     <>
       <Button
@@ -163,8 +203,8 @@ export function GlobalSearchAI() {
         onClick={() => setOpen(true)}
       >
         <Sparkles className="mr-2 h-4 w-4 text-primary" />
-        <span className="hidden lg:inline-flex">Ask anything or search...</span>
-        <span className="inline-flex lg:hidden">Search</span>
+        <span className="hidden lg:inline-flex">Describe what you want to accomplish...</span>
+        <span className="inline-flex lg:hidden">Ask AI</span>
         <kbd className="pointer-events-none absolute right-[0.3rem] top-[0.4rem] hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
           <span className="text-xs">⌘</span>K
         </kbd>
@@ -178,7 +218,7 @@ export function GlobalSearchAI() {
         }
       }}>
         <CommandInput 
-          placeholder="Describe what you're looking for..." 
+          placeholder="Describe what you want to accomplish..." 
           value={query}
           onValueChange={setQuery}
         />
@@ -187,50 +227,85 @@ export function GlobalSearchAI() {
             {isAISearching ? (
               <div className="flex items-center justify-center gap-2 py-6">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Understanding your request...</span>
+                <span>Understanding your question...</span>
               </div>
             ) : (
               <div className="py-6 text-center">
                 <p>No results found.</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Try describing what you want to find or do
+                  Try asking about deals, lenders, how to use features, or policies
                 </p>
               </div>
             )}
           </CommandEmpty>
 
-          {/* AI Search Result */}
+          {/* AI Answer Result */}
           {aiResult && !isAISearching && (
             <>
-              <CommandGroup heading="AI Understanding">
-                <CommandItem 
-                  onSelect={handleAIResultClick}
-                  className="flex flex-col items-start gap-2 py-3"
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <span className="font-medium">{aiResult.explanation}</span>
+              <CommandGroup heading="AI Answer">
+                <div className="px-2 py-3 space-y-3">
+                  {/* Main Answer */}
+                  <div className="flex gap-3">
+                    <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <div className="space-y-2 flex-1">
+                      <ScrollArea className="max-h-[200px]">
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                          {aiResult.answer}
+                        </p>
+                      </ScrollArea>
+                      
+                      {/* Sources */}
+                      {aiResult.sources && aiResult.sources.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {aiResult.sources.map((source, i) => {
+                            const Icon = getSourceIcon(source);
+                            return (
+                              <Badge key={i} variant="outline" className="text-xs gap-1">
+                                <Icon className="h-3 w-3" />
+                                {source}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 ml-6">
-                    {aiResult.dataTypes.map((type) => (
-                      <Badge key={type} variant="secondary" className="text-xs">
-                        {type}
-                      </Badge>
-                    ))}
-                    {Object.entries(aiResult.filters).map(([key, value]) => 
-                      value && (
-                        <Badge key={key} variant="outline" className="text-xs">
-                          {key}: {value}
-                        </Badge>
-                      )
-                    )}
-                  </div>
-                  {aiResult.suggestedActions.length > 0 && (
-                    <div className="text-xs text-muted-foreground ml-6">
-                      Try: {aiResult.suggestedActions.slice(0, 2).join(' • ')}
+
+                  {/* Navigation suggestion */}
+                  {aiResult.navigation && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-between"
+                      onClick={handleAIResultClick}
+                    >
+                      <span className="flex items-center gap-2">
+                        <ArrowRight className="h-4 w-4" />
+                        Go to {aiResult.navigation.description}
+                      </span>
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+
+                  {/* Suggested Actions */}
+                  {aiResult.suggestedActions && aiResult.suggestedActions.length > 0 && (
+                    <div className="border-t pt-2">
+                      <p className="text-xs text-muted-foreground mb-1">Related actions:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {aiResult.suggestedActions.slice(0, 3).map((action, i) => (
+                          <Badge 
+                            key={i} 
+                            variant="secondary" 
+                            className="text-xs cursor-pointer hover:bg-secondary/80"
+                            onClick={() => setQuery(action)}
+                          >
+                            {action}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   )}
-                </CommandItem>
+                </div>
               </CommandGroup>
               <CommandSeparator />
             </>
@@ -253,7 +328,7 @@ export function GlobalSearchAI() {
               </CommandGroup>
               <CommandSeparator />
               <CommandGroup heading="Try asking...">
-                {aiSuggestions.slice(0, 4).map((suggestion) => (
+                {aiSuggestions.map((suggestion) => (
                   <CommandItem
                     key={suggestion.query}
                     value={suggestion.query}
@@ -269,10 +344,10 @@ export function GlobalSearchAI() {
           )}
 
           {/* Deals */}
-          {deals && deals.length > 0 && (
+          {deals && deals.length > 0 && query && !aiResult && (
             <CommandGroup heading="Deals">
               {deals
-                .filter(d => !query || d.company.toLowerCase().includes(query.toLowerCase()))
+                .filter(d => d.company.toLowerCase().includes(query.toLowerCase()))
                 .slice(0, 5)
                 .map((deal) => (
                   <CommandItem
@@ -292,13 +367,11 @@ export function GlobalSearchAI() {
             </CommandGroup>
           )}
 
-          <CommandSeparator />
-
           {/* Lenders */}
-          {lenders && lenders.length > 0 && (
+          {lenders && lenders.length > 0 && query && !aiResult && (
             <CommandGroup heading="Lenders">
               {lenders
-                .filter(l => !query || l.name.toLowerCase().includes(query.toLowerCase()))
+                .filter(l => l.name.toLowerCase().includes(query.toLowerCase()))
                 .slice(0, 5)
                 .map((lender) => (
                   <CommandItem
@@ -321,7 +394,7 @@ export function GlobalSearchAI() {
           )}
 
           {/* More Navigation */}
-          {query && (
+          {query && !aiResult && (
             <CommandGroup heading="Pages">
               {quickActions
                 .filter(a => a.name.toLowerCase().includes(query.toLowerCase()))
