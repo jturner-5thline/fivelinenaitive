@@ -2056,9 +2056,9 @@ export default function DealDetail() {
 
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
                   {/* AI Panels Row 1 - Research and Assistant side by side */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Collapsible open={isResearchPanelOpen} onOpenChange={setIsResearchPanelOpen}>
-                      <Card>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                    <Collapsible open={isResearchPanelOpen} onOpenChange={setIsResearchPanelOpen} className="h-full">
+                      <Card className="h-full flex flex-col">
                         <CollapsibleTrigger asChild>
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
                             <div className="flex items-center justify-between">
@@ -2074,8 +2074,8 @@ export default function DealDetail() {
                             </div>
                           </CardHeader>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="pt-0">
+                        <CollapsibleContent className="flex-1 flex flex-col">
+                          <CardContent className="pt-0 flex-1">
                             <DealResearchPanel
                               companyName={deal.company}
                               companyUrl={deal.companyUrl}
@@ -2087,8 +2087,8 @@ export default function DealDetail() {
                         </CollapsibleContent>
                       </Card>
                     </Collapsible>
-                    <Collapsible open={isAssistantPanelOpen} onOpenChange={setIsAssistantPanelOpen}>
-                      <Card>
+                    <Collapsible open={isAssistantPanelOpen} onOpenChange={setIsAssistantPanelOpen} className="h-full">
+                      <Card className="h-full flex flex-col">
                         <CollapsibleTrigger asChild>
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
                             <div className="flex items-center justify-between">
@@ -2104,8 +2104,8 @@ export default function DealDetail() {
                             </div>
                           </CardHeader>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="pt-0">
+                        <CollapsibleContent className="flex-1 flex flex-col">
+                          <CardContent className="pt-0 flex-1">
                             <DealAssistantPanel
                               dealContext={{
                                 company: deal.company,
@@ -2125,9 +2125,9 @@ export default function DealDetail() {
                   </div>
                   
                   {/* AI Panels Row 2 - Activity Summary and Contextual Suggestions */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Collapsible open={isActivitySummaryOpen} onOpenChange={setIsActivitySummaryOpen}>
-                      <Card>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                    <Collapsible open={isActivitySummaryOpen} onOpenChange={setIsActivitySummaryOpen} className="h-full">
+                      <Card className="h-full flex flex-col">
                         <CollapsibleTrigger asChild>
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
                             <div className="flex items-center justify-between">
@@ -2143,8 +2143,8 @@ export default function DealDetail() {
                             </div>
                           </CardHeader>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="pt-0">
+                        <CollapsibleContent className="flex-1 flex flex-col">
+                          <CardContent className="pt-0 flex-1">
                             <ActivitySummaryPanel
                               dealInfo={{
                                 company: deal.company,
@@ -2172,8 +2172,8 @@ export default function DealDetail() {
                         </CollapsibleContent>
                       </Card>
                     </Collapsible>
-                    <Collapsible open={isSuggestionsPanelOpen} onOpenChange={setIsSuggestionsPanelOpen}>
-                      <Card>
+                    <Collapsible open={isSuggestionsPanelOpen} onOpenChange={setIsSuggestionsPanelOpen} className="h-full">
+                      <Card className="h-full flex flex-col">
                         <CollapsibleTrigger asChild>
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
                             <div className="flex items-center justify-between">
@@ -2189,8 +2189,8 @@ export default function DealDetail() {
                             </div>
                           </CardHeader>
                         </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="pt-0">
+                        <CollapsibleContent className="flex-1 flex flex-col">
+                          <CardContent className="pt-0 flex-1">
                             <ContextualSuggestionsPanel
                               deal={{
                                 id: deal.id,
