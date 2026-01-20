@@ -6,10 +6,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface ActionCondition {
+  field: string;
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'not_contains';
+  value: string;
+}
+
 interface WorkflowAction {
   id: string;
-  type: "send_notification" | "send_email" | "webhook" | "update_field";
+  type: "send_notification" | "send_email" | "webhook" | "update_field" | "trigger_workflow";
   config: Record<string, any>;
+  condition?: ActionCondition;
+  delay?: { amount: number; unit: 'minutes' | 'hours' | 'days' };
 }
 
 interface ExecuteWorkflowRequest {
@@ -209,6 +217,73 @@ async function executeUpdateFieldAction(
     return { success: false, message: `Update failed: ${message}` };
   }
 }
+function evaluateCondition(condition: ActionCondition, triggerData: Record<string, any>): boolean {
+  const fieldValue = triggerData[condition.field] ?? triggerData.dealValue ?? triggerData.deal_value;
+  const condValue = condition.value;
+
+  switch (condition.operator) {
+    case 'equals': return String(fieldValue).toLowerCase() === condValue.toLowerCase();
+    case 'not_equals': return String(fieldValue).toLowerCase() !== condValue.toLowerCase();
+    case 'greater_than': return Number(fieldValue) > Number(condValue);
+    case 'less_than': return Number(fieldValue) < Number(condValue);
+    case 'contains': return String(fieldValue).toLowerCase().includes(condValue.toLowerCase());
+    case 'not_contains': return !String(fieldValue).toLowerCase().includes(condValue.toLowerCase());
+    default: return true;
+  }
+}
+
+async function executeTriggerWorkflowAction(
+  supabase: any,
+  config: Record<string, any>,
+  triggerData: Record<string, any>,
+  authHeader: string
+): Promise<{ success: boolean; message: string }> {
+  const targetWorkflowId = config.workflowId;
+  if (!targetWorkflowId) {
+    return { success: false, message: "No target workflow ID configured" };
+  }
+
+  try {
+    const { data: workflow, error } = await supabase
+      .from('workflows')
+      .select('*')
+      .eq('id', targetWorkflowId)
+      .single();
+
+    if (error || !workflow) {
+      return { success: false, message: "Target workflow not found" };
+    }
+
+    if (!workflow.is_active) {
+      return { success: false, message: "Target workflow is inactive" };
+    }
+
+    // Call execute-workflow recursively
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const response = await fetch(`${supabaseUrl}/functions/v1/execute-workflow`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": authHeader,
+      },
+      body: JSON.stringify({
+        workflowId: targetWorkflowId,
+        triggerType: workflow.trigger_type,
+        triggerData: { ...triggerData, chainedFrom: true },
+        actions: workflow.actions,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Chained workflow failed: ${response.status}`);
+    }
+
+    return { success: true, message: `Triggered workflow: ${workflow.name}` };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return { success: false, message: `Chain failed: ${message}` };
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -270,6 +345,36 @@ serve(async (req) => {
     for (const action of actions) {
       let result: { success: boolean; message: string };
 
+      // Check condition if present
+      if (action.condition) {
+        const conditionMet = evaluateCondition(action.condition, triggerData);
+        if (!conditionMet) {
+          results.push({ actionId: action.id, type: action.type, success: true, message: 'Skipped: condition not met' });
+          continue;
+        }
+      }
+
+      // Handle delayed actions
+      if (action.delay) {
+        const delayMs = action.delay.amount * (action.delay.unit === 'minutes' ? 60000 : action.delay.unit === 'hours' ? 3600000 : 86400000);
+        const scheduledFor = new Date(Date.now() + delayMs).toISOString();
+        
+        await supabase.from('scheduled_actions').insert({
+          workflow_run_id: runId,
+          workflow_id: workflowId,
+          user_id: user.id,
+          action_id: action.id,
+          action_type: action.type,
+          action_config: action.config,
+          trigger_data: triggerData,
+          scheduled_for: scheduledFor,
+          status: 'pending',
+        });
+        
+        results.push({ actionId: action.id, type: action.type, success: true, message: `Scheduled for ${scheduledFor}` });
+        continue;
+      }
+
       switch (action.type) {
         case "webhook":
           result = await executeWebhookAction(action.config, triggerData);
@@ -283,16 +388,14 @@ serve(async (req) => {
         case "update_field":
           result = await executeUpdateFieldAction(supabase, action.config, triggerData);
           break;
+        case "trigger_workflow":
+          result = await executeTriggerWorkflowAction(supabase, action.config, triggerData, authHeader);
+          break;
         default:
           result = { success: false, message: `Unknown action type: ${action.type}` };
       }
 
-      results.push({
-        actionId: action.id,
-        type: action.type,
-        ...result,
-      });
-
+      results.push({ actionId: action.id, type: action.type, ...result });
       console.log(`Action ${action.type} result:`, result);
     }
 

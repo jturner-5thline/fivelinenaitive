@@ -75,6 +75,7 @@ const ACTION_ICONS: Record<ActionType, React.ReactNode> = {
   send_email: <Mail className="h-3 w-3" />,
   webhook: <Zap className="h-3 w-3" />,
   update_field: <Zap className="h-3 w-3" />,
+  trigger_workflow: <Zap className="h-3 w-3" />,
 };
 
 const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; className: string }> = {

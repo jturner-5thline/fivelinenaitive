@@ -2382,6 +2382,72 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_actions: {
+        Row: {
+          action_config: Json
+          action_id: string
+          action_type: string
+          created_at: string
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          result: Json | null
+          scheduled_for: string
+          status: string
+          trigger_data: Json
+          user_id: string
+          workflow_id: string
+          workflow_run_id: string | null
+        }
+        Insert: {
+          action_config?: Json
+          action_id: string
+          action_type: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          result?: Json | null
+          scheduled_for: string
+          status?: string
+          trigger_data?: Json
+          user_id: string
+          workflow_id: string
+          workflow_run_id?: string | null
+        }
+        Update: {
+          action_config?: Json
+          action_id?: string
+          action_type?: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          result?: Json | null
+          scheduled_for?: string
+          status?: string
+          trigger_data?: Json
+          user_id?: string
+          workflow_id?: string
+          workflow_run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_actions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_workflow_run_id_fkey"
+            columns: ["workflow_run_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_announcements: {
         Row: {
           created_at: string
@@ -2964,6 +3030,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "workflow_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_versions: {
+        Row: {
+          actions: Json
+          change_summary: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          trigger_config: Json
+          trigger_type: string
+          version_number: number
+          workflow_id: string
+        }
+        Insert: {
+          actions?: Json
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          trigger_config?: Json
+          trigger_type: string
+          version_number?: number
+          workflow_id: string
+        }
+        Update: {
+          actions?: Json
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          trigger_config?: Json
+          trigger_type?: string
+          version_number?: number
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_versions_workflow_id_fkey"
             columns: ["workflow_id"]
             isOneToOne: false
             referencedRelation: "workflows"
