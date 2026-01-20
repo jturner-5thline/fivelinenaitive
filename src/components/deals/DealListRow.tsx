@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Flame, Thermometer, Snowflake } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -10,6 +11,7 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { FlagNoteDialog } from './FlagNoteDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,11 +31,12 @@ interface DealListRowProps {
   deal: Deal;
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
   onMarkReviewed?: (dealId: string) => void;
-  onToggleFlag?: (dealId: string, isFlagged: boolean) => void;
+  onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;
 }
 
 export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement }: DealListRowProps) {
+  const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
@@ -231,26 +234,39 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
       <TableCell>
         <div className="flex items-center gap-1">
           {onToggleFlag && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-7 w-7 ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleFlag(deal.id, !deal.isFlagged);
-                    }}
-                  >
-                    <Flag className={`h-3.5 w-3.5 ${deal.isFlagged ? 'fill-current' : ''}`} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{deal.isFlagged ? 'Remove flag' : 'Flag for discussion'}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-7 w-7 ${deal.isFlagged ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsFlagDialogOpen(true);
+                      }}
+                    >
+                      <Flag className={`h-3.5 w-3.5 ${deal.isFlagged ? 'fill-current' : ''}`} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{deal.isFlagged ? 'Edit flag' : 'Flag for discussion'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <FlagNoteDialog
+                dealId={deal.id}
+                dealName={deal.company}
+                isOpen={isFlagDialogOpen}
+                onClose={() => setIsFlagDialogOpen(false)}
+                currentFlagNotes={deal.flagNotes}
+                isFlagged={deal.isFlagged}
+                onSave={async (isFlagged, flagNotes) => {
+                  await onToggleFlag(deal.id, isFlagged, flagNotes);
+                }}
+              />
+            </>
           )}
           
           {timeAgoData.isStale && onMarkReviewed && (

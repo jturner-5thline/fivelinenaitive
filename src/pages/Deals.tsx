@@ -99,19 +99,11 @@ export default function Dashboard() {
     }
   };
 
-  const handleToggleFlag = async (dealId: string, isFlagged: boolean) => {
+  const handleToggleFlag = async (dealId: string, isFlagged: boolean, flagNotes?: string) => {
     try {
-      await updateDeal(dealId, { isFlagged });
-      toast({ 
-        title: isFlagged ? "Deal flagged" : "Flag removed", 
-        description: isFlagged ? "Deal marked for discussion." : "Flag has been removed from the deal." 
-      });
+      await updateDeal(dealId, { isFlagged, flagNotes: flagNotes ?? '' });
     } catch (error) {
-      toast({ 
-        title: "Failed to update flag", 
-        description: "Please try again.",
-        variant: "destructive"
-      });
+      throw error;
     }
   };
 
