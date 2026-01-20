@@ -58,6 +58,7 @@ import Research from "./pages/Research";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import PendingApproval from "./pages/PendingApproval";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,9 @@ const App = () => (
                           <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<Auth />} />
                           <Route path="/auth" element={<Auth />} />
+                          <Route path="/pending-approval" element={
+                            <ProtectedRoute skipOnboarding skipApprovalCheck><PendingApproval /></ProtectedRoute>
+                          } />
                           <Route path="/onboarding" element={
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
