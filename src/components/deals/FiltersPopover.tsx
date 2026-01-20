@@ -170,9 +170,12 @@ export function FiltersPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-80 p-0 bg-popover border border-border shadow-lg" 
+        className="w-[min(20rem,calc(100vw-2rem))] p-0 bg-popover border border-border shadow-lg max-h-[min(520px,var(--radix-popper-available-height))] overflow-hidden flex flex-col" 
         align="start"
+        side="bottom"
         sideOffset={8}
+        avoidCollisions
+        collisionPadding={16}
       >
         <div className="flex items-center justify-between p-3 border-b border-border">
           <div className="flex items-center gap-2">
@@ -193,7 +196,7 @@ export function FiltersPopover({
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-[400px]">
+        <ScrollArea className="flex-1">
           <div className="p-3 space-y-3">
             {filterConfigs.map((config, index) => {
               const pinned = isPinned(config.key);
