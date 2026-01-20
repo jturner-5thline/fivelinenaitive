@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity } from 'lucide-react';
+import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity, Sparkles, MessageSquare, Lightbulb, Send } from 'lucide-react';
 import { formatDistanceToNow, format, subDays, startOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,17 @@ import { WorkflowBuilder, WorkflowData, TriggerType, ActionType, WorkflowAction 
 import { useWorkflows, Workflow as WorkflowType } from '@/hooks/useWorkflows';
 import { useWorkflowRuns } from '@/hooks/useWorkflowRuns';
 import { supabase } from '@/integrations/supabase/client';
+
+interface WorkflowSuggestion {
+  id: string;
+  title: string;
+  description: string;
+  reasoning: string;
+  triggerType: TriggerType;
+  triggerConfig: Record<string, unknown>;
+  actions: Array<{ type: ActionType; config: Record<string, unknown> }>;
+  priority: 'high' | 'medium' | 'low';
+}
 
 const TRIGGER_LABELS: Record<TriggerType, string> = {
   deal_stage_change: 'Deal Stage Change',
@@ -193,6 +205,16 @@ export default function Workflows() {
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [templateData, setTemplateData] = useState<WorkflowData | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  
+  // Natural language workflow builder
+  const [nlDescription, setNlDescription] = useState('');
+  const [isParsingNL, setIsParsingNL] = useState(false);
+  const [showNLInput, setShowNLInput] = useState(false);
+  
+  // AI Suggestions
+  const [suggestions, setSuggestions] = useState<WorkflowSuggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   // Test trigger state
   const [testingWorkflow, setTestingWorkflow] = useState<WorkflowType | null>(null);
@@ -352,6 +374,83 @@ export default function Workflows() {
     }
   };
 
+  // Parse natural language workflow description
+  const handleParseNL = useCallback(async () => {
+    if (!nlDescription.trim()) return;
+    
+    setIsParsingNL(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-workflow-description', {
+        body: { description: nlDescription.trim() },
+      });
+
+      if (error) throw error;
+      
+      if (data?.workflow) {
+        setTemplateData(data.workflow);
+        setShowNLInput(false);
+        setNlDescription('');
+        setIsDialogOpen(true);
+        toast.success('Workflow parsed! Review and customize below.');
+      }
+    } catch (error: any) {
+      console.error('Error parsing workflow:', error);
+      if (error.message?.includes('429') || error.status === 429) {
+        toast.error('Rate limit exceeded. Please try again later.');
+      } else if (error.message?.includes('402') || error.status === 402) {
+        toast.error('AI credits exhausted. Please add credits.');
+      } else {
+        toast.error('Failed to parse workflow description');
+      }
+    } finally {
+      setIsParsingNL(false);
+    }
+  }, [nlDescription]);
+
+  // Fetch AI suggestions
+  const handleFetchSuggestions = useCallback(async () => {
+    setIsLoadingSuggestions(true);
+    setShowSuggestions(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-workflows');
+
+      if (error) throw error;
+      
+      if (data?.suggestions) {
+        setSuggestions(data.suggestions);
+      }
+    } catch (error: any) {
+      console.error('Error fetching suggestions:', error);
+      if (error.message?.includes('429') || error.status === 429) {
+        toast.error('Rate limit exceeded. Please try again later.');
+      } else if (error.message?.includes('402') || error.status === 402) {
+        toast.error('AI credits exhausted. Please add credits.');
+      } else {
+        toast.error('Failed to generate suggestions');
+      }
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, []);
+
+  // Use an AI suggestion
+  const handleUseSuggestion = (suggestion: WorkflowSuggestion) => {
+    setTemplateData({
+      name: suggestion.title,
+      description: suggestion.description,
+      isActive: true,
+      triggerType: suggestion.triggerType,
+      triggerConfig: suggestion.triggerConfig as Record<string, any>,
+      actions: suggestion.actions.map((a, idx) => ({
+        id: `action-${Date.now()}-${idx}`,
+        type: a.type,
+        config: a.config as Record<string, any>,
+      })),
+    });
+    setShowSuggestions(false);
+    setIsDialogOpen(true);
+  };
+
   return (
     <>
       <Helmet>
@@ -378,7 +477,15 @@ export default function Workflows() {
                 </h1>
                 <p className="text-muted-foreground">Automate your deal and lender processes</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => setShowNLInput(true)}>
+                  <MessageSquare className="h-4 w-4" />
+                  Describe Workflow
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={handleFetchSuggestions}>
+                  <Lightbulb className="h-4 w-4" />
+                  AI Suggestions
+                </Button>
                 <Button variant="outline" className="gap-2" onClick={() => setShowTemplates(true)}>
                   <FileText className="h-4 w-4" />
                   Templates
@@ -868,6 +975,163 @@ export default function Workflows() {
             <Button onClick={handleCreateNew}>
               <Plus className="h-4 w-4 mr-2" />
               Create from Scratch
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Natural Language Input Dialog */}
+      <Dialog open={showNLInput} onOpenChange={setShowNLInput}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Describe Your Workflow
+            </DialogTitle>
+            <DialogDescription>
+              Describe what you want your workflow to do in plain English. AI will parse it into a workflow configuration.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea
+              placeholder='e.g., "When a deal is closed won, send me an email notification and update the status to completed"'
+              value={nlDescription}
+              onChange={(e) => setNlDescription(e.target.value)}
+              rows={4}
+              className="resize-none"
+            />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-medium">Tips:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground/80">
+                <li>Mention the trigger: "when a deal closes", "when a new deal is created"</li>
+                <li>Describe actions: "send email", "notify me", "call webhook"</li>
+                <li>Be specific about conditions if needed</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNLInput(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleParseNL} 
+              disabled={!nlDescription.trim() || isParsingNL} 
+              className="gap-2"
+            >
+              {isParsingNL ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Parsing...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Generate Workflow
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Suggestions Dialog */}
+      <Dialog open={showSuggestions} onOpenChange={setShowSuggestions}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-primary" />
+              AI Workflow Suggestions
+            </DialogTitle>
+            <DialogDescription>
+              Based on your deal activity patterns, here are some workflows that might help you.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            {isLoadingSuggestions ? (
+              <div className="space-y-3 py-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4 border rounded-lg space-y-2">
+                    <Skeleton className="h-5 w-1/3" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : suggestions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Lightbulb className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No suggestions available</p>
+                <p className="text-sm mt-1">
+                  Create some deals and activity to get personalized suggestions
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 py-4">
+                {suggestions.map((suggestion) => (
+                  <div
+                    key={suggestion.id}
+                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                    onClick={() => handleUseSuggestion(suggestion)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{suggestion.title}</h3>
+                          <Badge 
+                            variant={suggestion.priority === 'high' ? 'default' : suggestion.priority === 'medium' ? 'secondary' : 'outline'}
+                            className="text-xs"
+                          >
+                            {suggestion.priority}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {TRIGGER_LABELS[suggestion.triggerType]}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {suggestion.description}
+                        </p>
+                        <p className="text-xs text-primary/80 mt-2 italic">
+                          💡 {suggestion.reasoning}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {suggestion.actions.map((action, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-xs gap-1">
+                              {ACTION_ICONS[action.type]}
+                              <span className="capitalize">{action.type.replace('_', ' ')}</span>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="opacity-0 group-hover:opacity-100 transition-opacity gap-1 shrink-0"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Use
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSuggestions(false)}>
+              Close
+            </Button>
+            <Button onClick={handleFetchSuggestions} disabled={isLoadingSuggestions} className="gap-2">
+              {isLoadingSuggestions ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Refresh Suggestions
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

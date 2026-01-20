@@ -110,3 +110,9 @@ verify_jwt = false
 
 [functions.universal-search]
 verify_jwt = false
+
+[functions.parse-workflow-description]
+verify_jwt = false
+
+[functions.suggest-workflows]
+verify_jwt = true
