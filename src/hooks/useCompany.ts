@@ -88,21 +88,35 @@ export function useCompany() {
 
       if (membersError) throw membersError;
 
-      // Fetch profile data for each member to get display names, emails, and avatars
+      // Fetch profile data for each member using the profiles_public view
+      // This view only exposes non-sensitive fields (excludes phone, emails, etc.)
       if (membersData && membersData.length > 0) {
         const userIds = membersData.map(m => m.user_id);
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, first_name, last_name, avatar_url, email')
+        
+        // Query the profiles_public view - cast as any since view isn't in generated types
+        const { data: rawProfilesData, error: profilesError } = await supabase
+          .from('profiles_public' as any)
+          .select('user_id, display_name, first_name, last_name, avatar_url')
           .in('user_id', userIds);
 
         if (profilesError) {
           console.error('Error fetching profiles:', profilesError);
         }
 
+        // Type the profiles data
+        interface PublicProfile {
+          user_id: string;
+          display_name: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          avatar_url: string | null;
+        }
+        
+        const profilesData = (rawProfilesData || []) as unknown as PublicProfile[];
+
         // Generate signed URLs for avatars stored in Supabase storage
         const profilesWithSignedUrls = await Promise.all(
-          (profilesData || []).map(async (profile) => {
+          profilesData.map(async (profile) => {
             let signedAvatarUrl = profile.avatar_url;
             
             // If avatar_url is a storage path (not a full URL), generate signed URL
@@ -129,7 +143,8 @@ export function useCompany() {
             ...member,
             display_name: displayName,
             avatar_url: profile?.avatar_url || null,
-            email: profile?.email || null
+            // Email is no longer exposed through the public view for security
+            email: member.user_id === user.id ? user.email : null
           };
         });
 
