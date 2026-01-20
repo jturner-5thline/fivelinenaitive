@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { DealsList } from '@/components/deals/DealsList';
@@ -47,11 +47,19 @@ import { useWidgets } from '@/contexts/WidgetsContext';
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [specialWidgetsSectionExpanded, setSpecialWidgetsSectionExpanded] = useState(() => {
+    const stored = localStorage.getItem('special-widgets-section-expanded');
+    return stored !== null ? stored === 'true' : true;
+  });
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
   const { specialWidgets } = useWidgets();
   const { preferences } = usePreferences();
+  
+  useEffect(() => {
+    localStorage.setItem('special-widgets-section-expanded', String(specialWidgetsSectionExpanded));
+  }, [specialWidgetsSectionExpanded]);
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
   
@@ -168,11 +176,24 @@ export default function Dashboard() {
                   style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
                 >
                   <WidgetsSection deals={allDeals} />
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                    {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
-                    {specialWidgets['milestones'] && <MilestonesWidget />}
-                    {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
-                    <AllSuggestionsWidget deals={allDeals} />
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setSpecialWidgetsSectionExpanded(!specialWidgetsSectionExpanded)}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+                    >
+                      <ChevronRight 
+                        className={`h-4 w-4 transition-transform duration-200 ${specialWidgetsSectionExpanded ? 'rotate-90' : ''}`} 
+                      />
+                      <span className="font-medium">Insights & Alerts</span>
+                    </button>
+                    {specialWidgetsSectionExpanded && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
+                        {specialWidgets['milestones'] && <MilestonesWidget />}
+                        {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
+                        <AllSuggestionsWidget deals={allDeals} />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
