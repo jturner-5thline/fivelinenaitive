@@ -362,7 +362,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
         <Button
           variant={isEditMode ? 'default' : 'ghost'}
           size="icon"
-          className="absolute top-1 right-1 h-6 w-6"
+          className="absolute top-2 right-2 h-6 w-6"
           onClick={() => setIsEditMode(!isEditMode)}
         >
           <Settings2 className="h-3 w-3" />
