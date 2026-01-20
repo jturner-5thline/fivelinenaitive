@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Search, Building2, Landmark, TrendingUp, RefreshCw, ExternalLink, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
+import { Search, Building2, Landmark, TrendingUp, RefreshCw, ExternalLink, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useDealResearch, ResearchType, ResearchResult } from '@/hooks/useDealResearch';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -16,8 +14,6 @@ interface DealResearchPanelProps {
   industry?: string;
   dealValue?: number;
   lenders?: { name: string }[];
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
 }
 
 const researchTypeConfig = {
@@ -83,10 +79,8 @@ function ResearchContent({ content, citations }: { content: string; citations: s
   };
 
   return (
-    <div className="space-y-2">
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        {formatContent(content)}
-      </div>
+    <div>
+      {formatContent(content)}
       
       {citations.length > 0 && (
         <div className="pt-3 border-t border-border mt-4">
@@ -127,18 +121,11 @@ export function DealResearchPanel({
   industry,
   dealValue,
   lenders = [],
-  isOpen: externalIsOpen,
-  onOpenChange: externalOnOpenChange,
 }: DealResearchPanelProps) {
   const { fetchResearch, isLoading, error } = useDealResearch();
   const [activeType, setActiveType] = useState<ResearchType>('company');
   const [selectedLender, setSelectedLender] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, ResearchResult>>({});
-  const [internalIsExpanded, setInternalIsExpanded] = useState(true);
-  
-  // Use external control if provided, otherwise use internal state
-  const isExpanded = externalIsOpen !== undefined ? externalIsOpen : internalIsExpanded;
-  const setIsExpanded = externalOnOpenChange || setInternalIsExpanded;
 
   const handleResearch = async (type: ResearchType, lenderName?: string) => {
     setActiveType(type);
@@ -186,153 +173,135 @@ export function DealResearchPanel({
   const currentResult = getCurrentResult();
 
   return (
-    <Card>
-      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                AI Research
-                <Badge variant="secondary" className="text-xs font-normal">
-                  Powered by Perplexity
-                </Badge>
-              </CardTitle>
-              {isExpanded ? (
-                <ChevronUp className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-              )}
-            </div>
-          </CardHeader>
-        </CollapsibleTrigger>
-        
-        <CollapsibleContent>
-          <CardContent className="pt-0 space-y-4">
-            {/* Research Type Tabs */}
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(researchTypeConfig) as ResearchType[]).map((type) => {
-                const config = researchTypeConfig[type];
-                const Icon = config.icon;
-                const isActive = activeType === type && (type !== 'lender' || selectedLender);
-                
-                if (type === 'lender' && lenders.length === 0) return null;
-                if (type === 'industry' && !industry) return null;
-                
-                return (
-                  <Button
-                    key={type}
-                    variant={isActive ? 'default' : 'outline'}
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => {
-                      if (type === 'lender') {
-                        // Show first lender by default
-                        handleResearch(type, lenders[0]?.name);
-                      } else {
-                        handleResearch(type);
-                      }
-                    }}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {config.label}
-                  </Button>
-                );
-              })}
-            </div>
+    <div className="space-y-4">
+      {/* Header with badge */}
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary" className="text-xs font-normal">
+          Powered by Perplexity
+        </Badge>
+      </div>
 
-            {/* Lender Selector (if lender type selected) */}
-            {activeType === 'lender' && lenders.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {lenders.slice(0, 8).map((lender) => (
-                  <Button
-                    key={lender.name}
-                    variant={selectedLender === lender.name ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleResearch('lender', lender.name)}
-                  >
-                    {lender.name}
-                  </Button>
-                ))}
-                {lenders.length > 8 && (
-                  <span className="text-xs text-muted-foreground self-center">
-                    +{lenders.length - 8} more
-                  </span>
-                )}
+      {/* Research Type Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(researchTypeConfig) as ResearchType[]).map((type) => {
+          const config = researchTypeConfig[type];
+          const Icon = config.icon;
+          const isActive = activeType === type && (type !== 'lender' || selectedLender);
+          
+          if (type === 'lender' && lenders.length === 0) return null;
+          if (type === 'industry' && !industry) return null;
+          
+          return (
+            <Button
+              key={type}
+              variant={isActive ? 'default' : 'outline'}
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                if (type === 'lender') {
+                  // Show first lender by default
+                  handleResearch(type, lenders[0]?.name);
+                } else {
+                  handleResearch(type);
+                }
+              }}
+            >
+              <Icon className="h-4 w-4" />
+              {config.label}
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* Lender Selector (if lender type selected) */}
+      {activeType === 'lender' && lenders.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {lenders.slice(0, 8).map((lender) => (
+            <Button
+              key={lender.name}
+              variant={selectedLender === lender.name ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => handleResearch('lender', lender.name)}
+            >
+              {lender.name}
+            </Button>
+          ))}
+          {lenders.length > 8 && (
+            <span className="text-xs text-muted-foreground self-center">
+              +{lenders.length - 8} more
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Research Results */}
+      <div className="min-h-[200px]">
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p className="text-sm">{error}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4 gap-2"
+              onClick={refreshResearch}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Try Again
+            </Button>
+          </div>
+        ) : currentResult ? (
+          <ScrollArea className="h-[350px] pr-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Last updated: {format(new Date(currentResult.timestamp), 'MMM d, h:mm a')}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs gap-1"
+                  onClick={refreshResearch}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Refresh
+                </Button>
               </div>
-            )}
-
-            {/* Research Results */}
-            <div className="min-h-[200px]">
-              {isLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
-              ) : error ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p className="text-sm">{error}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4 gap-2"
-                    onClick={refreshResearch}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Try Again
-                  </Button>
-                </div>
-              ) : currentResult ? (
-                <ScrollArea className="h-[350px] pr-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        Last updated: {format(new Date(currentResult.timestamp), 'MMM d, h:mm a')}
-                      </p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs gap-1"
-                        onClick={refreshResearch}
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        Refresh
-                      </Button>
-                    </div>
-                    <ResearchContent 
-                      content={currentResult.content} 
-                      citations={currentResult.citations} 
-                    />
-                  </div>
-                </ScrollArea>
-              ) : (
-                <div className="text-center py-12">
-                  <Search className="h-10 w-10 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-muted-foreground text-sm mb-1">
-                    Get AI-powered research insights
-                  </p>
-                  <p className="text-muted-foreground/70 text-xs mb-4">
-                    Click a research type above to start
-                  </p>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => handleResearch('company')}
-                  >
-                    <Building2 className="h-4 w-4" />
-                    Research {companyName}
-                  </Button>
-                </div>
-              )}
+              <ResearchContent 
+                content={currentResult.content} 
+                citations={currentResult.citations} 
+              />
             </div>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+          </ScrollArea>
+        ) : (
+          <div className="text-center py-12">
+            <Search className="h-10 w-10 text-muted-foreground/50 mx-auto mb-4" />
+            <p className="text-muted-foreground text-sm mb-1">
+              Get AI-powered research insights
+            </p>
+            <p className="text-muted-foreground/70 text-xs mb-4">
+              Click a research type above to start
+            </p>
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-2"
+              onClick={() => handleResearch('company')}
+            >
+              <Building2 className="h-4 w-4" />
+              Research {companyName}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
