@@ -349,7 +349,26 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   return (
-    <div className="relative border border-border rounded-lg p-4 pb-12">
+    <div className="relative border border-border rounded-lg p-4">
+      {/* Settings button - top right corner */}
+      <HintTooltip
+        hint="Click the gear icon to customize these widgets. Add, remove, or rearrange metrics to match your workflow."
+        visible={isHintVisible('widgets-section')}
+        onDismiss={() => dismissHint('widgets-section')}
+        side="left"
+        align="center"
+        showDelay={3000}
+      >
+        <Button
+          variant={isEditMode ? 'default' : 'ghost'}
+          size="icon"
+          className="absolute top-1 right-1 h-6 w-6"
+          onClick={() => setIsEditMode(!isEditMode)}
+        >
+          <Settings2 className="h-3 w-3" />
+        </Button>
+      </HintTooltip>
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -378,52 +397,33 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
         </SortableContext>
       </DndContext>
 
-      <div className="absolute bottom-2 right-2 flex items-center gap-2">
-        {isEditMode && (
-          <>
-            {/* Special widgets toggles */}
-            <div className="flex items-center gap-4 mr-4 border-r border-border pr-4">
-              {SPECIAL_WIDGET_OPTIONS.map((option) => (
-                <div key={option.value} className="flex items-center gap-2">
-                  <Switch
-                    id={`toggle-${option.value}`}
-                    checked={specialWidgets[option.value]}
-                    onCheckedChange={() => toggleSpecialWidget(option.value)}
-                  />
-                  <Label 
-                    htmlFor={`toggle-${option.value}`} 
-                    className="text-xs text-muted-foreground cursor-pointer"
-                    title={option.description}
-                  >
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
-            <Button variant="outline" size="sm" className="gap-1" onClick={handleAdd}>
-              <Plus className="h-4 w-4" />
-              Add Widget
-            </Button>
-          </>
-        )}
-        <HintTooltip
-          hint="Click the gear icon to customize these widgets. Add, remove, or rearrange metrics to match your workflow."
-          visible={isHintVisible('widgets-section')}
-          onDismiss={() => dismissHint('widgets-section')}
-          side="left"
-          align="center"
-          showDelay={3000}
-        >
-          <Button
-            variant={isEditMode ? 'default' : 'ghost'}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setIsEditMode(!isEditMode)}
-          >
-            <Settings2 className="h-4 w-4" />
+      {isEditMode && (
+        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
+          {/* Special widgets toggles */}
+          <div className="flex items-center gap-4 flex-1">
+            {SPECIAL_WIDGET_OPTIONS.map((option) => (
+              <div key={option.value} className="flex items-center gap-2">
+                <Switch
+                  id={`toggle-${option.value}`}
+                  checked={specialWidgets[option.value]}
+                  onCheckedChange={() => toggleSpecialWidget(option.value)}
+                />
+                <Label 
+                  htmlFor={`toggle-${option.value}`} 
+                  className="text-xs text-muted-foreground cursor-pointer"
+                  title={option.description}
+                >
+                  {option.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="gap-1" onClick={handleAdd}>
+            <Plus className="h-4 w-4" />
+            Add Widget
           </Button>
-        </HintTooltip>
-      </div>
+        </div>
+      )}
 
       <WidgetEditor
         widget={editingWidget}
