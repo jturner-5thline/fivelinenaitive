@@ -172,10 +172,6 @@ export default function Dashboard() {
                     {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
                     {specialWidgets['milestones'] && <MilestonesWidget />}
                     {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
-                  </div>
-                  
-                  {/* Smart Suggestions Widget - spans full width */}
-                  <div className="mt-4">
                     <AllSuggestionsWidget deals={allDeals} />
                   </div>
                 </div>
