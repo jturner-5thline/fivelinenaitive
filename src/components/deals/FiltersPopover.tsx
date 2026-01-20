@@ -169,7 +169,7 @@ export function FiltersPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[min(20rem,calc(100vw-2rem))] p-0 bg-popover border border-border shadow-lg max-h-[70vh] overflow-y-auto overscroll-contain" 
+        className="w-[min(20rem,calc(100vw-2rem))] p-0 bg-popover border border-border shadow-lg max-h-[calc(var(--radix-popover-content-available-height)-16px)] overflow-y-auto overscroll-contain" 
         align="start"
         side="bottom"
         sideOffset={8}
