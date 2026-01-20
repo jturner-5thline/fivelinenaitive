@@ -56,27 +56,73 @@ export const usePendingApprovals = () => {
   });
 };
 
-// Approve a user (admin only)
+// Approve a user (admin only) - also sends notification email
 export const useApproveUser = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (userId: string) => {
+    mutationFn: async ({ userId, userEmail, userName }: { 
+      userId: string; 
+      userEmail: string; 
+      userName?: string;
+    }) => {
       const { error } = await supabase.rpc("admin_approve_user", {
         _user_id: userId,
       });
       
       if (error) throw error;
+      
+      // Send approval notification email
+      await supabase.functions.invoke("notify-user-approved", {
+        body: { user_email: userEmail, user_name: userName },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-approvals"] });
       queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
       queryClient.invalidateQueries({ queryKey: ["consolidated-users"] });
-      toast.success("User approved successfully");
+      toast.success("User approved and notified");
     },
     onError: (error) => {
       console.error("Error approving user:", error);
       toast.error("Failed to approve user");
+    },
+  });
+};
+
+// Bulk approve users (admin only)
+export const useBulkApproveUsers = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (userIds: string[]) => {
+      const { data, error } = await supabase.rpc("admin_bulk_approve_users", {
+        _user_ids: userIds,
+      });
+      
+      if (error) throw error;
+      
+      // Send notification emails to all approved users
+      const approvedUsers = data as Array<{ user_id: string; email: string; display_name: string | null }>;
+      await Promise.all(
+        approvedUsers.map((user) =>
+          supabase.functions.invoke("notify-user-approved", {
+            body: { user_email: user.email, user_name: user.display_name },
+          })
+        )
+      );
+      
+      return approvedUsers.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["pending-approvals"] });
+      queryClient.invalidateQueries({ queryKey: ["all-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["consolidated-users"] });
+      toast.success(`${count} user(s) approved and notified`);
+    },
+    onError: (error) => {
+      console.error("Error bulk approving users:", error);
+      toast.error("Failed to approve users");
     },
   });
 };
