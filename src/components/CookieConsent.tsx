@@ -89,10 +89,13 @@ export function CookieConsent() {
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleAcceptAll}>
+                  <Button 
+                    onClick={handleAcceptAll}
+                    className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(292,46%,72%)] hover:opacity-90 transition-opacity"
+                  >
                     Accept All
                   </Button>
-                  <Button variant="outline" onClick={handleAcceptNecessary}>
+                  <Button variant="secondary" onClick={handleAcceptNecessary}>
                     Necessary Only
                   </Button>
                   <Button variant="ghost" onClick={() => setShowCustomize(true)}>
@@ -161,10 +164,13 @@ export function CookieConsent() {
                 </div>
                 
                 <div className="flex gap-2 pt-2">
-                  <Button onClick={handleSavePreferences}>
+                  <Button 
+                    onClick={handleSavePreferences}
+                    className="bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(292,46%,72%)] hover:opacity-90 transition-opacity"
+                  >
                     Save Preferences
                   </Button>
-                  <Button variant="outline" onClick={handleAcceptAll}>
+                  <Button variant="secondary" onClick={handleAcceptAll}>
                     Accept All
                   </Button>
                 </div>

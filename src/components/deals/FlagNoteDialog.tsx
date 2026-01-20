@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Flag, Save, Clock, Trash2, Check } from 'lucide-react';
+import { Flag, Save, Clock, Trash2, Check, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -222,7 +222,11 @@ export function FlagNoteDialog({
                 disabled={isSaving}
                 className="h-7 text-xs"
               >
-                <Save className="h-3 w-3 mr-1" />
+                {isSaving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3 mr-1" />
+                )}
                 {isFlagged ? 'Save' : 'Flag Deal'}
               </Button>
             </div>
