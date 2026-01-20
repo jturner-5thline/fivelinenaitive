@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb
+  ShieldCheck, Cog, Lightbulb, UserCheck
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -35,9 +35,11 @@ import { PageAccessPanel } from "@/components/admin/PageAccessPanel";
 import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
+import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
 
 // Sub-page configurations
 const usersSubPages = [
+  { id: "pending-approvals", label: "Pending Approvals", icon: UserCheck },
   { id: "users", label: "Users", icon: Users },
   { id: "companies", label: "Companies", icon: Building2 },
   { id: "external", label: "External", icon: Cloud },
@@ -77,7 +79,7 @@ const Admin = () => {
   
   const [activeCategory, setActiveCategory] = useState<TabCategory>("users");
   const [activeSubPage, setActiveSubPage] = useState<Record<TabCategory, string>>({
-    users: "users",
+    users: "pending-approvals",
     access: "pages",
     "data-security": "data",
     settings: "settings",
@@ -140,6 +142,8 @@ const Admin = () => {
 
   const renderSubPageContent = (subPageId: string) => {
     switch (subPageId) {
+      case "pending-approvals":
+        return <PendingApprovalsPanel />;
       case "users":
         return (
           <Card>

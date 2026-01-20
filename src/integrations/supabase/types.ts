@@ -1953,6 +1953,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approval_requested_at: string | null
+          approved_at: string | null
+          approved_by: string | null
           avatar_url: string | null
           backup_email: string | null
           company_name: string | null
@@ -1991,6 +1994,9 @@ export type Database = {
           weekly_summary_email: boolean
         }
         Insert: {
+          approval_requested_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           backup_email?: string | null
           company_name?: string | null
@@ -2029,6 +2035,9 @@ export type Database = {
           weekly_summary_email?: boolean
         }
         Update: {
+          approval_requested_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           backup_email?: string | null
           company_name?: string | null
@@ -3006,6 +3015,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_user: { Args: { _user_id: string }; Returns: undefined }
       admin_archive_company: {
         Args: { _archive: boolean; _company_id: string; _reason?: string }
         Returns: undefined
@@ -3104,6 +3114,19 @@ export type Database = {
           total_lenders: number
         }[]
       }
+      admin_get_pending_approvals: {
+        Args: never
+        Returns: {
+          approval_requested_at: string
+          avatar_url: string
+          created_at: string
+          display_name: string
+          email: string
+          first_name: string
+          last_name: string
+          user_id: string
+        }[]
+      }
       admin_get_system_stats: {
         Args: never
         Returns: {
@@ -3115,6 +3138,7 @@ export type Database = {
           waitlist_count: number
         }[]
       }
+      admin_revoke_approval: { Args: { _user_id: string }; Returns: undefined }
       admin_toggle_company_suspension: {
         Args: { _company_id: string; _reason?: string; _suspend: boolean }
         Returns: undefined
@@ -3158,6 +3182,7 @@ export type Database = {
         Args: { _current_user_id: string; _deal_owner_id: string }
         Returns: boolean
       }
+      is_user_approved: { Args: { _user_id: string }; Returns: boolean }
       log_admin_action: {
         Args: {
           _action_type: string

@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
@@ -125,6 +125,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           // Mark session as active
           sessionStorage.setItem('naitive_session_active', 'true');
+          
+          // Check if this is a new user who needs approval (non-5thline.co)
+          const userEmail = session.user.email;
+          if (userEmail && !userEmail.endsWith('@5thline.co')) {
+            // Check if user was just created (within last minute) - indicates new signup
+            const createdAt = new Date(session.user.created_at);
+            const now = new Date();
+            const isNewUser = (now.getTime() - createdAt.getTime()) < 60000; // 1 minute
+            
+            if (isNewUser && !sessionStorage.getItem('naitive_approval_requested')) {
+              sessionStorage.setItem('naitive_approval_requested', 'true');
+              // Request approval notification (fire and forget)
+              supabase.functions.invoke('notify-admin-approval', {
+                body: {
+                  user_id: session.user.id,
+                  user_email: userEmail,
+                  user_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
+                },
+              }).catch(console.error);
+            }
+          }
         }
 
         // Process pending invitations on sign in (deferred to avoid deadlock)
@@ -148,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('naitive_remember_me');
           sessionStorage.removeItem('naitive_session_only');
           sessionStorage.removeItem('naitive_session_active');
+          sessionStorage.removeItem('naitive_approval_requested');
         }
       }
     );

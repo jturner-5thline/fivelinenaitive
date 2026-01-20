@@ -1,18 +1,28 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useIsApproved } from '@/hooks/useUserApproval';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   skipOnboarding?: boolean;
+  skipApprovalCheck?: boolean;
 }
 
-export function ProtectedRoute({ children, skipOnboarding = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ 
+  children, 
+  skipOnboarding = false,
+  skipApprovalCheck = false 
+}: ProtectedRouteProps) {
   const { user, isLoading: authLoading } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
+  const { data: isApproved, isLoading: approvalLoading } = useIsApproved();
 
-  const isLoading = authLoading || profileLoading;
+  // Check if user is a 5thline.co user (auto-approved)
+  const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
+
+  const isLoading = authLoading || profileLoading || (!is5thLineUser && !skipApprovalCheck && approvalLoading);
 
   if (isLoading) {
     return (
@@ -28,6 +38,11 @@ export function ProtectedRoute({ children, skipOnboarding = false }: ProtectedRo
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Check approval status (skip for 5thline.co users or if explicitly skipped)
+  if (!skipApprovalCheck && !is5thLineUser && isApproved === false) {
+    return <Navigate to="/pending-approval" replace />;
   }
 
   // Redirect to onboarding if not completed (unless skipOnboarding is true)
