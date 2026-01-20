@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -59,8 +59,10 @@ import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
+import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
+import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import {
   Select,
@@ -442,6 +444,10 @@ export default function DealDetail() {
   useEffect(() => {
     localStorage.setItem('deal-suggestions-panel-open', String(isSuggestionsPanelOpen));
   }, [isSuggestionsPanelOpen]);
+  
+  // Panel reorder functionality
+  const { panelOrder, reorderPanels, resetToDefault } = useDealPanelOrder();
+  const [isPanelReorderDialogOpen, setIsPanelReorderDialogOpen] = useState(false);
   
   // Mark info requests as read when Deal Management tab is viewed
   useEffect(() => {
@@ -2055,13 +2061,409 @@ export default function DealDetail() {
                 </TabsList>
 
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
-                  {/* AI Panels Row 1 - Research and Assistant side by side */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                    <Collapsible open={isResearchPanelOpen} onOpenChange={setIsResearchPanelOpen} className="h-full">
-                      <Card className="h-full flex flex-col">
-                        <CollapsibleTrigger asChild>
-                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
-                            <div className="flex items-center justify-between">
+                  {/* Customize Layout Button */}
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 gap-2 text-muted-foreground"
+                      onClick={() => setIsPanelReorderDialogOpen(true)}
+                    >
+                      <Settings2 className="h-4 w-4" />
+                      Customize Layout
+                    </Button>
+                  </div>
+
+                  {/* Panels rendered in custom order */}
+                  {panelOrder.reduce((acc: React.ReactNode[], panelId, index) => {
+                    // Pair panels together for 2-column layout
+                    const nextPanelId = panelOrder[index + 1];
+                    
+                    // Only process even indices to create pairs
+                    if (index % 2 !== 0) return acc;
+                    
+                    const renderPanel = (id: DealPanelId) => {
+                      switch (id) {
+                        case 'ai-research':
+                          return (
+                            <Collapsible key={id} open={isResearchPanelOpen} onOpenChange={setIsResearchPanelOpen} className="h-full">
+                              <Card className="h-full flex flex-col">
+                                <CollapsibleTrigger asChild>
+                                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                                    <div className="flex items-center justify-between">
+                                      <CardTitle className="text-base flex items-center gap-2">
+                                        <Search className="h-4 w-4" />
+                                        AI Research
+                                      </CardTitle>
+                                      {isResearchPanelOpen ? (
+                                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="flex-1 flex flex-col">
+                                  <CardContent className="pt-0 flex-1">
+                                    <DealResearchPanel
+                                      companyName={deal.company}
+                                      companyUrl={deal.companyUrl}
+                                      industry={deal.dealTypes?.[0]}
+                                      dealValue={deal.value}
+                                      lenders={deal.lenders?.map(l => ({ name: l.name })) || []}
+                                    />
+                                  </CardContent>
+                                </CollapsibleContent>
+                              </Card>
+                            </Collapsible>
+                          );
+                        case 'ai-assistant':
+                          return (
+                            <Collapsible key={id} open={isAssistantPanelOpen} onOpenChange={setIsAssistantPanelOpen} className="h-full">
+                              <Card className="h-full flex flex-col">
+                                <CollapsibleTrigger asChild>
+                                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                                    <div className="flex items-center justify-between">
+                                      <CardTitle className="text-base flex items-center gap-2">
+                                        <MessageSquare className="h-4 w-4" />
+                                        AI Deal Assistant
+                                      </CardTitle>
+                                      {isAssistantPanelOpen ? (
+                                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="flex-1 flex flex-col">
+                                  <CardContent className="pt-0 flex-1">
+                                    <DealAssistantPanel
+                                      dealContext={{
+                                        company: deal.company,
+                                        value: deal.value,
+                                        stage: deal.stage,
+                                        status: deal.status,
+                                        manager: deal.manager,
+                                        lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage, notes: l.notes })),
+                                        milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed, dueDate: m.dueDate })),
+                                        notes: deal.notes,
+                                      }}
+                                    />
+                                  </CardContent>
+                                </CollapsibleContent>
+                              </Card>
+                            </Collapsible>
+                          );
+                        case 'ai-activity-summary':
+                          return (
+                            <Collapsible key={id} open={isActivitySummaryOpen} onOpenChange={setIsActivitySummaryOpen} className="h-full">
+                              <Card className="h-full flex flex-col">
+                                <CollapsibleTrigger asChild>
+                                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                                    <div className="flex items-center justify-between">
+                                      <CardTitle className="text-base flex items-center gap-2">
+                                        <Clock className="h-4 w-4" />
+                                        AI Activity Summary
+                                      </CardTitle>
+                                      {isActivitySummaryOpen ? (
+                                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="flex-1 flex flex-col">
+                                  <CardContent className="pt-0 flex-1">
+                                    <ActivitySummaryPanel
+                                      dealInfo={{
+                                        company: deal.company,
+                                        value: deal.value,
+                                        stage: deal.stage,
+                                        status: deal.status,
+                                      }}
+                                      activities={activityLogs.map(log => ({
+                                        type: log.activity_type,
+                                        description: log.description,
+                                        timestamp: format(new Date(log.created_at), 'MMM d, h:mm a'),
+                                      }))}
+                                      lenders={deal.lenders?.map(l => ({
+                                        name: l.name,
+                                        stage: l.stage,
+                                        updatedAt: l.updatedAt,
+                                      })) || []}
+                                      milestones={dbMilestones?.map(m => ({
+                                        title: m.title,
+                                        completed: m.completed,
+                                        dueDate: m.dueDate,
+                                      })) || []}
+                                    />
+                                  </CardContent>
+                                </CollapsibleContent>
+                              </Card>
+                            </Collapsible>
+                          );
+                        case 'ai-suggestions':
+                          return (
+                            <Collapsible key={id} open={isSuggestionsPanelOpen} onOpenChange={setIsSuggestionsPanelOpen} className="h-full">
+                              <Card className="h-full flex flex-col">
+                                <CollapsibleTrigger asChild>
+                                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                                    <div className="flex items-center justify-between">
+                                      <CardTitle className="text-base flex items-center gap-2">
+                                        <AlertCircle className="h-4 w-4" />
+                                        AI Smart Suggestions
+                                      </CardTitle>
+                                      {isSuggestionsPanelOpen ? (
+                                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </div>
+                                  </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="flex-1 flex flex-col">
+                                  <CardContent className="pt-0 flex-1">
+                                    <ContextualSuggestionsPanel
+                                      deal={{
+                                        id: deal.id,
+                                        company: deal.company,
+                                        stage: deal.stage,
+                                        status: deal.status,
+                                        updatedAt: deal.updatedAt,
+                                        lenders: deal.lenders?.map(l => ({
+                                          id: l.id,
+                                          name: l.name,
+                                          stage: l.stage,
+                                          updatedAt: l.updatedAt,
+                                          notes: l.notes,
+                                        })),
+                                        milestones: dbMilestones?.map(m => ({
+                                          id: m.id,
+                                          title: m.title,
+                                          completed: m.completed,
+                                          dueDate: m.dueDate,
+                                        })),
+                                        notes: deal.notes,
+                                      }}
+                                    />
+                                  </CardContent>
+                                </CollapsibleContent>
+                              </Card>
+                            </Collapsible>
+                          );
+                        case 'deal-information':
+                          return (
+                            <Card key={id}>
+                              <CardHeader>
+                                <CardTitle className="text-lg">Deal Information</CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="space-y-1.5">
+                                  <label className="text-sm text-muted-foreground">Narrative</label>
+                                  <DebouncedTextarea
+                                    value={deal.narrative || ''}
+                                    onValueChange={(value) => updateDeal('narrative', value)}
+                                    placeholder="Enter deal narrative..."
+                                    className="w-full min-h-[80px] resize-none"
+                                    debounceMs={800}
+                                    showSaveIndicator
+                                  />
+                                </div>
+                                
+                                {/* Two-column layout for deal details */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  {/* Left Column - Deal Management */}
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Deal Manager</span>
+                                      <User className="h-4 w-4 text-muted-foreground" />
+                                      <Select
+                                        value={deal.manager}
+                                        onValueChange={(value) => updateDeal('manager', value)}
+                                      >
+                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                          <SelectValue placeholder="Select manager" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {memberOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                              {option.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Deal Owner</span>
+                                      <User className="h-4 w-4 text-muted-foreground" />
+                                      <Select
+                                        value={deal.dealOwner || ''}
+                                        onValueChange={(value) => updateDeal('dealOwner', value)}
+                                      >
+                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                          <SelectValue placeholder="Select owner" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {memberOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                              {option.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Engagement</span>
+                                      <Select
+                                        value={deal.engagementType}
+                                        onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
+                                      >
+                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                                            <SelectItem key={key} value={key}>
+                                              {config.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Exclusivity</span>
+                                      <Select
+                                        value={deal.exclusivity || ''}
+                                        onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
+                                      >
+                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                          <SelectValue placeholder="Select..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
+                                            <SelectItem key={key} value={key}>
+                                              {config.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Right Column - Company Info */}
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Company URL</span>
+                                      <Input
+                                        value={deal.companyUrl || ''}
+                                        onChange={(e) => updateDeal('companyUrl', e.target.value)}
+                                        placeholder="https://example.com"
+                                        className="flex-1 h-8 text-sm"
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Business Model</span>
+                                      <Input
+                                        value={deal.businessModel || ''}
+                                        onChange={(e) => updateDeal('businessModel', e.target.value)}
+                                        placeholder="Enter business model..."
+                                        className="flex-1 h-8 text-sm"
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Client Contact</span>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <Popover>
+                                            <TooltipTrigger asChild>
+                                              <PopoverTrigger asChild>
+                                                <Button
+                                                  variant="outline"
+                                                  className="flex-1 justify-start h-8 px-3 font-normal text-sm"
+                                                >
+                                                  <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                                                  <span className="truncate">
+                                                    {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
+                                                  </span>
+                                                </Button>
+                                              </PopoverTrigger>
+                                            </TooltipTrigger>
+                                            {deal.contact && deal.contactInfo && (
+                                              <TooltipContent side="left" className="max-w-[200px]">
+                                                <p className="font-medium">{deal.contact}</p>
+                                                <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
+                                              </TooltipContent>
+                                            )}
+                                            <PopoverContent className="w-72 p-4 bg-popover" align="start">
+                                              <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                  <label className="text-sm font-medium">Contact Name</label>
+                                                  <Input
+                                                    value={deal.contact || ''}
+                                                    onChange={(e) => updateDeal('contact', e.target.value)}
+                                                    placeholder="Enter contact name"
+                                                  />
+                                                </div>
+                                                <div className="space-y-2">
+                                                  <label className="text-sm font-medium">Contact Info</label>
+                                                  <Input
+                                                    value={deal.contactInfo || ''}
+                                                    onChange={(e) => updateDeal('contactInfo', e.target.value)}
+                                                    placeholder="Email or phone number"
+                                                  />
+                                                </div>
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Referral Source</span>
+                                      <div className="flex-1">
+                                        <ReferralSourceInput
+                                          value={deal.referredBy || null}
+                                          onChange={(referrer) => updateDeal('referredBy', referrer)}
+                                          className="[&_input]:h-8 [&_input]:text-sm"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        case 'outstanding-items':
+                          return (
+                            <div key={id} className="space-y-6">
+                              <FlexInfoNotificationsPanel dealId={id} />
+                              <OutstandingItems
+                                items={outstandingItems}
+                                lenderNames={deal.lenders?.map(l => l.name) || []}
+                                onAdd={addOutstandingItem}
+                                onUpdate={updateOutstandingItem}
+                                onDelete={deleteOutstandingItem}
+                              />
+                            </div>
+                          );
+                        default:
+                          return null;
+                      }
+                    };
+
+                    return [
+                      ...acc,
+                      <div key={`row-${index}`} className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                        {renderPanel(panelId)}
+                        {nextPanelId && renderPanel(nextPanelId)}
+                      </div>
+                    ];
+                  }, [])}
+
+                  {/* Status History - Always shown after panels if present */}
+                  {statusNotes.length > 0 && (
                               <CardTitle className="text-base flex items-center gap-2">
                                 <Search className="h-4 w-4" />
                                 AI Research
