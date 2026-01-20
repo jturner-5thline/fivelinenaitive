@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity, Sparkles, MessageSquare, Lightbulb, Send } from 'lucide-react';
+import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity, Sparkles, MessageSquare, Lightbulb, Send, BarChart3, RotateCcw, Timer } from 'lucide-react';
 import { formatDistanceToNow, format, subDays, startOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
@@ -47,9 +47,13 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { WorkflowBuilder, WorkflowData, TriggerType, ActionType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
+import { WorkflowAnalytics } from '@/components/workflows/WorkflowAnalytics';
+import { WorkflowVersionHistory } from '@/components/workflows/WorkflowVersionHistory';
 import { useWorkflows, Workflow as WorkflowType } from '@/hooks/useWorkflows';
 import { useWorkflowRuns } from '@/hooks/useWorkflowRuns';
+import { useScheduledActions } from '@/hooks/useScheduledActions';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface WorkflowSuggestion {
   id: string;
@@ -199,6 +203,7 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
 export default function Workflows() {
   const { workflows, isLoading, createWorkflow, updateWorkflow, deleteWorkflow, toggleWorkflow } = useWorkflows();
   const { runs, isLoading: isLoadingRuns } = useWorkflowRuns();
+  const { scheduledActions, isLoading: isLoadingScheduled } = useScheduledActions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowType | null>(null);
   const [deletingWorkflow, setDeletingWorkflow] = useState<WorkflowType | null>(null);
@@ -221,6 +226,12 @@ export default function Workflows() {
   const [testingWorkflow, setTestingWorkflow] = useState<WorkflowType | null>(null);
   const [testDealName, setTestDealName] = useState('Test Deal');
   const [isRunningTest, setIsRunningTest] = useState(false);
+
+  // Version history state
+  const [versionHistoryWorkflow, setVersionHistoryWorkflow] = useState<WorkflowType | null>(null);
+
+  // Active tab
+  const [activeTab, setActiveTab] = useState('workflows');
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -336,6 +347,12 @@ export default function Workflows() {
     if (result) {
       toast.success(`Workflow "${workflow.name}" duplicated`);
     }
+  };
+
+  const handleVersionRestore = async (data: WorkflowData) => {
+    if (!versionHistoryWorkflow) return;
+    await updateWorkflow(versionHistoryWorkflow.id, data);
+    toast.success('Workflow restored to previous version');
   };
 
   const handleTestWorkflow = async () => {
@@ -498,7 +515,28 @@ export default function Workflows() {
               </div>
             </div>
 
-            {/* Stats Cards */}
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList>
+                <TabsTrigger value="workflows" className="gap-2">
+                  <Workflow className="h-4 w-4" />
+                  Workflows
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger value="scheduled" className="gap-2">
+                  <Timer className="h-4 w-4" />
+                  Scheduled
+                  {scheduledActions.filter(a => a.status === 'pending').length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-xs">
+                      {scheduledActions.filter(a => a.status === 'pending').length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="workflows" className="space-y-6 mt-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="p-4">
                 <div className="flex items-center gap-3">
@@ -708,6 +746,10 @@ export default function Workflows() {
                                 <Copy className="h-4 w-4 mr-2" />
                                 Duplicate
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setVersionHistoryWorkflow(workflow)}>
+                                <History className="h-4 w-4 mr-2" />
+                                Version History
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive"
@@ -823,6 +865,81 @@ export default function Workflows() {
                 )}
               </CardContent>
             </Card>
+              </TabsContent>
+
+              <TabsContent value="analytics" className="mt-6">
+                <WorkflowAnalytics runs={runs} workflows={workflows} />
+              </TabsContent>
+
+              <TabsContent value="scheduled" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Timer className="h-5 w-5" />
+                      Scheduled Actions
+                    </CardTitle>
+                    <CardDescription>
+                      Delayed workflow actions waiting to be executed
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingScheduled ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-3 w-48" />
+                            </div>
+                            <Skeleton className="h-5 w-16" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : scheduledActions.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Clock className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                        <p className="font-medium">No scheduled actions</p>
+                        <p className="text-sm mt-1">
+                          Delayed workflow actions will appear here
+                        </p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="max-h-[400px]">
+                        <div className="space-y-2">
+                          {scheduledActions.map(action => (
+                            <div
+                              key={action.id}
+                              className="flex items-center justify-between p-3 border rounded-lg"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    {ACTION_ICONS[action.action_type as ActionType] || <Zap className="h-3 w-3" />}
+                                    <span className="capitalize">{action.action_type.replace('_', ' ')}</span>
+                                  </Badge>
+                                  <span className="text-sm font-medium truncate">
+                                    {action.trigger_data.dealName || 'Unknown deal'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Scheduled for {format(new Date(action.scheduled_for), 'MMM d, yyyy h:mm a')}
+                                </p>
+                              </div>
+                              <Badge 
+                                variant={action.status === 'pending' ? 'secondary' : action.status === 'completed' ? 'default' : 'destructive'}
+                                className="text-xs"
+                              >
+                                {action.status}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         </main>
       </div>
@@ -1137,6 +1254,15 @@ export default function Workflows() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Version History Dialog */}
+      <WorkflowVersionHistory
+        workflowId={versionHistoryWorkflow?.id || ''}
+        workflowName={versionHistoryWorkflow?.name || ''}
+        isOpen={!!versionHistoryWorkflow}
+        onClose={() => setVersionHistoryWorkflow(null)}
+        onRestoreVersion={handleVersionRestore}
+      />
     </>
   );
 }
