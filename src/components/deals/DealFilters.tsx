@@ -10,11 +10,9 @@ import {
   STAGE_CONFIG, 
   STATUS_CONFIG, 
   ENGAGEMENT_TYPE_CONFIG,
-  MANAGERS,
-  LENDERS,
 } from '@/types/deal';
 import { mockReferrers } from '@/data/mockDeals';
-import { MultiSelectFilter } from './MultiSelectFilter';
+import { FiltersPopover } from './FiltersPopover';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -57,41 +55,6 @@ export function DealFilters({
       flaggedOnly: false,
     });
   };
-
-  const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
-    value: key,
-    label,
-  }));
-
-  const statusOptions = Object.entries(STATUS_CONFIG).map(([key, { label }]) => ({
-    value: key,
-    label,
-  }));
-
-  const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
-    value: key,
-    label,
-  }));
-
-  const dealTypeOptions = availableDealTypes.map(dt => ({
-    value: dt.id,
-    label: dt.label,
-  }));
-
-  const managerOptions = MANAGERS.map((manager) => ({
-    value: manager,
-    label: manager,
-  }));
-
-  const lenderOptions = LENDERS.map((lender) => ({
-    value: lender,
-    label: lender,
-  }));
-
-  const referredByOptions = mockReferrers.map((referrer) => ({
-    value: referrer.id,
-    label: referrer.name,
-  }));
 
   const removeFilter = (type: keyof FilterType, value: string) => {
     if (type === 'search') {
@@ -144,8 +107,8 @@ export function DealFilters({
   const activeChips = getActiveFilterChips();
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
         {/* Search */}
         <div className="relative w-full max-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -153,85 +116,32 @@ export function DealFilters({
             placeholder="Search..."
             value={filters.search}
             onChange={(e) => onFilterChange({ search: e.target.value })}
-            className="pl-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 hover:border-[1.5px] focus:border-[hsl(292,46%,72%)]/60"
+            className="pl-9 h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 hover:border-[1.5px] focus:border-[hsl(292,46%,72%)]/60"
           />
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <HintTooltip
-            hint="Use these filters to quickly find deals by stage, status, manager, and more."
-            visible={isHintVisible('filters')}
-            onDismiss={() => dismissHint('filters')}
-            side="bottom"
-            align="start"
-            showDelay={2500}
-          >
-            <MultiSelectFilter
-              label="Stages"
-              options={stageOptions}
-              selected={filters.stage}
-              onChange={(stage) => onFilterChange({ stage: stage as DealStage[] })}
-              className="w-[150px]"
-            />
-          </HintTooltip>
-
-          <MultiSelectFilter
-            label="Statuses"
-            options={statusOptions}
-            selected={filters.status}
-            onChange={(status) => onFilterChange({ status: status as DealStatus[] })}
-            className="w-[140px]"
+        {/* Consolidated Filters Popover */}
+        <HintTooltip
+          hint="Use filters to quickly find deals by stage, status, manager, and more."
+          visible={isHintVisible('filters')}
+          onDismiss={() => dismissHint('filters')}
+          side="bottom"
+          align="start"
+          showDelay={2500}
+        >
+          <FiltersPopover
+            filters={filters}
+            onFilterChange={onFilterChange}
+            activeFiltersCount={activeFiltersCount}
           />
+        </HintTooltip>
 
-          <MultiSelectFilter
-            label="Engagement"
-            options={engagementTypeOptions}
-            selected={filters.engagementType}
-            onChange={(engagementType) => onFilterChange({ engagementType: engagementType as EngagementType[] })}
-            className="w-[150px]"
-          />
-
-          <MultiSelectFilter
-            label="Deal Type"
-            options={dealTypeOptions}
-            selected={filters.dealType}
-            onChange={(dealType) => onFilterChange({ dealType })}
-            className="w-[150px]"
-          />
-
-          <MultiSelectFilter
-            label="Managers"
-            options={managerOptions}
-            selected={filters.manager}
-            onChange={(manager) => onFilterChange({ manager })}
-            className="w-[150px]"
-          />
-
-          <MultiSelectFilter
-            label="Lenders"
-            options={lenderOptions}
-            selected={filters.lender}
-            onChange={(lender) => onFilterChange({ lender })}
-            className="w-[160px]"
-          />
-
-          <MultiSelectFilter
-            label="Referred by"
-            options={referredByOptions}
-            selected={filters.referredBy}
-            onChange={(referredBy) => onFilterChange({ referredBy })}
-            className="w-[160px]"
-          />
-
-
-          {activeFiltersCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
-              <X className="h-4 w-4" />
-              Clear ({activeFiltersCount})
-            </Button>
-          )}
-        </div>
+        {activeFiltersCount > 0 && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-9">
+            <X className="h-4 w-4" />
+            Clear ({activeFiltersCount})
+          </Button>
+        )}
       </div>
 
       {/* Active Filter Chips */}
