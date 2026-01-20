@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Zap, Bell, Mail, Clock, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Zap, Bell, Mail, Clock, ArrowRight, GitBranch, Timer, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,15 +8,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 export type TriggerType = 'deal_stage_change' | 'lender_stage_change' | 'new_deal' | 'deal_closed' | 'scheduled';
 
-export type ActionType = 'send_notification' | 'send_email' | 'webhook' | 'update_field';
+export type ActionType = 'send_notification' | 'send_email' | 'webhook' | 'update_field' | 'trigger_workflow';
+
+export interface ActionCondition {
+  field: string;
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'not_contains';
+  value: string;
+}
 
 export interface WorkflowAction {
   id: string;
   type: ActionType;
   config: Record<string, any>;
+  condition?: ActionCondition;
+  delay?: {
+    amount: number;
+    unit: 'minutes' | 'hours' | 'days';
+  };
 }
 
 export interface WorkflowData {
@@ -33,6 +45,7 @@ interface WorkflowBuilderProps {
   onSave: (data: WorkflowData) => void;
   onCancel: () => void;
   isSaving?: boolean;
+  availableWorkflows?: { id: string; name: string }[];
 }
 
 const TRIGGER_OPTIONS: { value: TriggerType; label: string; icon: React.ReactNode; description: string }[] = [
@@ -48,9 +61,28 @@ const ACTION_OPTIONS: { value: ActionType; label: string; icon: React.ReactNode;
   { value: 'send_email', label: 'Send Email', icon: <Mail className="h-4 w-4" />, description: 'Send an email notification' },
   { value: 'webhook', label: 'Webhook (Zapier)', icon: <Zap className="h-4 w-4" />, description: 'Call an external webhook URL' },
   { value: 'update_field', label: 'Update Field', icon: <Zap className="h-4 w-4" />, description: 'Update a field on the deal or lender' },
+  { value: 'trigger_workflow', label: 'Trigger Workflow', icon: <Link2 className="h-4 w-4" />, description: 'Chain to another workflow' },
 ];
 
-export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving }: WorkflowBuilderProps) {
+const CONDITION_FIELDS = [
+  { value: 'deal_value', label: 'Deal Value' },
+  { value: 'deal_stage', label: 'Deal Stage' },
+  { value: 'lender_count', label: 'Lender Count' },
+  { value: 'deal_type', label: 'Deal Type' },
+  { value: 'company_name', label: 'Company Name' },
+  { value: 'manager', label: 'Manager' },
+];
+
+const CONDITION_OPERATORS = [
+  { value: 'equals', label: 'Equals' },
+  { value: 'not_equals', label: 'Not Equals' },
+  { value: 'greater_than', label: 'Greater Than' },
+  { value: 'less_than', label: 'Less Than' },
+  { value: 'contains', label: 'Contains' },
+  { value: 'not_contains', label: 'Does Not Contain' },
+];
+
+export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving, availableWorkflows = [] }: WorkflowBuilderProps) {
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
@@ -73,6 +105,14 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving }: Wor
 
   const updateActionConfig = (id: string, config: Record<string, any>) => {
     setActions(actions.map(a => a.id === id ? { ...a, config } : a));
+  };
+
+  const updateActionCondition = (id: string, condition: ActionCondition | undefined) => {
+    setActions(actions.map(a => a.id === id ? { ...a, condition } : a));
+  };
+
+  const updateActionDelay = (id: string, delay: WorkflowAction['delay'] | undefined) => {
+    setActions(actions.map(a => a.id === id ? { ...a, delay } : a));
   };
 
   const handleSave = () => {
@@ -243,9 +283,168 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving }: Wor
             </div>
           </div>
         );
+      case 'trigger_workflow':
+        return (
+          <div className="space-y-3">
+            <div>
+              <Label>Workflow to Trigger</Label>
+              <Select
+                value={action.config.workflowId || ''}
+                onValueChange={(v) => updateActionConfig(action.id, { ...action.config, workflowId: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select workflow" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableWorkflows.length === 0 ? (
+                    <SelectItem value="" disabled>No other workflows available</SelectItem>
+                  ) : (
+                    availableWorkflows.map(w => (
+                      <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This will trigger another workflow, passing along the current context
+            </p>
+          </div>
+        );
       default:
         return null;
     }
+  };
+
+  const renderConditionConfig = (action: WorkflowAction) => {
+    const hasCondition = !!action.condition;
+
+    return (
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="gap-2 text-xs w-full justify-start">
+            <GitBranch className="h-3 w-3" />
+            {hasCondition ? 'Edit Condition' : 'Add Condition'}
+            {hasCondition && (
+              <Badge variant="secondary" className="ml-auto text-xs">
+                {action.condition?.field} {action.condition?.operator} {action.condition?.value}
+              </Badge>
+            )}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2 space-y-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Switch
+              checked={hasCondition}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  updateActionCondition(action.id, { field: 'deal_value', operator: 'greater_than', value: '' });
+                } else {
+                  updateActionCondition(action.id, undefined);
+                }
+              }}
+            />
+            <Label className="text-sm">Only run if condition is met</Label>
+          </div>
+          {hasCondition && (
+            <div className="grid grid-cols-3 gap-2">
+              <Select
+                value={action.condition?.field || 'deal_value'}
+                onValueChange={(v) => updateActionCondition(action.id, { ...action.condition!, field: v })}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONDITION_FIELDS.map(f => (
+                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={action.condition?.operator || 'equals'}
+                onValueChange={(v) => updateActionCondition(action.id, { ...action.condition!, operator: v as ActionCondition['operator'] })}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONDITION_OPERATORS.map(o => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Value"
+                className="text-xs"
+                value={action.condition?.value || ''}
+                onChange={(e) => updateActionCondition(action.id, { ...action.condition!, value: e.target.value })}
+              />
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
+  const renderDelayConfig = (action: WorkflowAction) => {
+    const hasDelay = !!action.delay;
+
+    return (
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="gap-2 text-xs w-full justify-start">
+            <Timer className="h-3 w-3" />
+            {hasDelay ? 'Edit Delay' : 'Add Delay'}
+            {hasDelay && (
+              <Badge variant="secondary" className="ml-auto text-xs">
+                {action.delay?.amount} {action.delay?.unit}
+              </Badge>
+            )}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2 space-y-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Switch
+              checked={hasDelay}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  updateActionDelay(action.id, { amount: 1, unit: 'hours' });
+                } else {
+                  updateActionDelay(action.id, undefined);
+                }
+              }}
+            />
+            <Label className="text-sm">Delay execution</Label>
+          </div>
+          {hasDelay && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                className="w-20 text-xs"
+                value={action.delay?.amount || 1}
+                onChange={(e) => updateActionDelay(action.id, { ...action.delay!, amount: parseInt(e.target.value) || 1 })}
+              />
+              <Select
+                value={action.delay?.unit || 'hours'}
+                onValueChange={(v) => updateActionDelay(action.id, { ...action.delay!, unit: v as 'minutes' | 'hours' | 'days' })}
+              >
+                <SelectTrigger className="w-28 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="minutes">Minutes</SelectItem>
+                  <SelectItem value="hours">Hours</SelectItem>
+                  <SelectItem value="days">Days</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">after trigger</span>
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+    );
   };
 
   const selectedTrigger = TRIGGER_OPTIONS.find(t => t.value === triggerType);
@@ -349,12 +548,28 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving }: Wor
                           {actionDef?.label}
                         </Badge>
                         <span className="text-xs text-muted-foreground">Action {index + 1}</span>
+                        {action.condition && (
+                          <Badge variant="outline" className="text-xs gap-1">
+                            <GitBranch className="h-3 w-3" />
+                            Conditional
+                          </Badge>
+                        )}
+                        {action.delay && (
+                          <Badge variant="outline" className="text-xs gap-1">
+                            <Timer className="h-3 w-3" />
+                            Delayed
+                          </Badge>
+                        )}
                       </div>
                       <Button variant="ghost" size="icon" onClick={() => removeAction(action.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                     {renderActionConfig(action)}
+                    <div className="border-t pt-3 space-y-1">
+                      {renderConditionConfig(action)}
+                      {renderDelayConfig(action)}
+                    </div>
                   </div>
                 );
               })}
