@@ -4,9 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { 
   ArrowUpRight,
-  Send,
-  Plus,
-  Globe,
   Activity,
   FileText,
   Users,
@@ -25,8 +22,6 @@ import { useAllActivities } from '@/hooks/useAllActivities';
 import { useDashboardWidgets } from '@/contexts/DashboardWidgetsContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
@@ -35,6 +30,7 @@ import { NewsFeedWidget } from '@/components/deals/NewsFeedWidget';
 import { NotificationCarousel } from '@/components/dashboard/NotificationCarousel';
 import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { DashboardWidgetSettings } from '@/components/dashboard/DashboardWidgetSettings';
+import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -71,7 +67,6 @@ export default function Dashboard() {
   const { profile } = useProfile();
   const { activities, isLoading: activitiesLoading } = useAllActivities(5);
   const { isWidgetEnabled, getQuickActionWidgets } = useDashboardWidgets();
-  const [inputValue, setInputValue] = useState('');
   const [activityOpen, setActivityOpen] = useState(() => {
     const saved = localStorage.getItem('dashboard-activity-open');
     return saved !== null ? JSON.parse(saved) : true;
@@ -89,13 +84,6 @@ export default function Dashboard() {
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputValue.trim()) {
-      navigate('/deals');
-    }
   };
 
   const quickActionWidgets = getQuickActionWidgets();
@@ -193,36 +181,8 @@ export default function Dashboard() {
             </h1>
           </div>
 
-          {/* Input Card */}
-          <Card className="p-4 shadow-lg">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                placeholder="Describe what you want to accomplish..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                className="border-0 text-base placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-              />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Badge variant="outline" className="gap-1.5 cursor-pointer hover:bg-accent">
-                    <Globe className="h-3.5 w-3.5" />
-                    Website
-                  </Badge>
-                </div>
-                <Button 
-                  type="submit" 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-8 w-8 rounded-full bg-muted hover:bg-muted/80"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </form>
-          </Card>
+          {/* AI Search Input */}
+          <DashboardAIInput />
 
           {/* Quick Widgets */}
           {hasQuickActions && (
