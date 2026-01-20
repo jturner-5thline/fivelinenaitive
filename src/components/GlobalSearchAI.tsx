@@ -118,10 +118,10 @@ export function GlobalSearchAI() {
     }
   }, [query, user?.id]);
 
-  // Debounced AI search
+  // Debounced AI search - faster response
   useEffect(() => {
-    if (query.length >= 8) {
-      const timer = setTimeout(handleAISearch, 600);
+    if (query.length >= 5) {
+      const timer = setTimeout(handleAISearch, 300);
       return () => clearTimeout(timer);
     } else {
       setAIResult(null);
