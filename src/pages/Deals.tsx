@@ -46,7 +46,10 @@ import { useWidgets } from '@/contexts/WidgetsContext';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    const stored = localStorage.getItem('deals-view-mode');
+    return (stored === 'grid' || stored === 'list') ? stored : 'grid';
+  });
   const [specialWidgetsSectionExpanded, setSpecialWidgetsSectionExpanded] = useState(() => {
     const stored = localStorage.getItem('special-widgets-section-expanded');
     return stored !== null ? stored === 'true' : true;
@@ -60,6 +63,11 @@ export default function Dashboard() {
   useEffect(() => {
     localStorage.setItem('special-widgets-section-expanded', String(specialWidgetsSectionExpanded));
   }, [specialWidgetsSectionExpanded]);
+
+  useEffect(() => {
+    localStorage.setItem('deals-view-mode', viewMode);
+  }, [viewMode]);
+  
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
   
