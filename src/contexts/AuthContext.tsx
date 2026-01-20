@@ -76,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [justSignedIn, setJustSignedIn] = useState(false);
   const processedUsersRef = useRef<Set<string>>(new Set());
+  const hasShownWelcomeRef = useRef(false);
 
   const clearJustSignedIn = () => setJustSignedIn(false);
 
@@ -107,15 +108,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // For OAuth logins (Google, etc.), always treat as "remember me"
         // since there's no checkbox shown during OAuth flow
         if (event === 'SIGNED_IN' && session?.user) {
-          // Trigger welcome screen
-          setJustSignedIn(true);
+          // Only trigger welcome screen on actual new login, not session restoration
+          // Check if we already had a session marker (meaning user was already logged in)
+          const hadExistingSession = sessionStorage.getItem('naitive_session_active') === 'true';
+          
+          if (!hadExistingSession && !hasShownWelcomeRef.current) {
+            // This is a genuine new login
+            setJustSignedIn(true);
+            hasShownWelcomeRef.current = true;
+          }
           
           const provider = session.user.app_metadata?.provider;
           if (provider && provider !== 'email') {
             // OAuth login - always remember
             localStorage.setItem('naitive_remember_me', 'true');
-            sessionStorage.setItem('naitive_session_active', 'true');
           }
+          // Mark session as active
+          sessionStorage.setItem('naitive_session_active', 'true');
         }
 
         // Process pending invitations on sign in (deferred to avoid deadlock)
@@ -135,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Clear processed users on sign out
         if (event === 'SIGNED_OUT') {
           processedUsersRef.current.clear();
+          hasShownWelcomeRef.current = false;
           localStorage.removeItem('naitive_remember_me');
           sessionStorage.removeItem('naitive_session_only');
           sessionStorage.removeItem('naitive_session_active');
