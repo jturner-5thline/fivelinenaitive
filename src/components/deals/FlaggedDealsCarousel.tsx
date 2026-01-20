@@ -5,7 +5,8 @@ import { Flag, ChevronLeft, ChevronRight, MessageSquare, X, DollarSign, Building
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Deal } from '@/types/deal';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
@@ -324,6 +325,11 @@ export function FlaggedDealsCarousel({ deals, isOpen, onClose, initialIndex = 0 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+        <VisuallyHidden>
+          <DialogHeader>
+            <DialogTitle>Flagged Deals</DialogTitle>
+          </DialogHeader>
+        </VisuallyHidden>
         <CarouselInner 
           deals={flaggedDeals} 
           onClose={onClose}

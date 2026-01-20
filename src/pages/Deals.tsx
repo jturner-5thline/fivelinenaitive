@@ -430,7 +430,10 @@ export default function Dashboard() {
         <FlaggedDealsCarousel
           deals={allDeals}
           isOpen={flaggedCarouselOpen}
-          onClose={() => setFlaggedCarouselOpen(false)}
+          onClose={() => {
+            setFlaggedCarouselOpen(false);
+            updateFilters({ flaggedOnly: false });
+          }}
         />
       </div>
     </>
