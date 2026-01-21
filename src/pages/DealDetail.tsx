@@ -2159,7 +2159,7 @@ export default function DealDetail() {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="deal-info" className="mt-6 space-y-6">
+                <TabsContent value="deal-info" className="mt-6 space-y-3">
                   {/* Milestones Card */}
                   <Card>
                     <CardContent className="pt-4">
