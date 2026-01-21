@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Zap, Mail, CheckCircle2, Clock, Send, ChevronDown, ChevronUp, Search, FileCode, Users, Trash2, Bookmark, Star, Share2, Edit, BarChart2 } from 'lucide-react';
+import { Bell, Zap, Mail, CheckCircle2, Clock, Send, ChevronDown, ChevronUp, Search, FileCode, Users, Trash2, Bookmark, Star, Share2, Edit, BarChart2, Eye, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useWorkflowTemplates, useDeleteWorkflowTemplate, useUpdateWorkflowTemplate, useIncrementTemplateUsage, CustomWorkflowTemplate } from '@/hooks/useWorkflowTemplates';
 import { EditTemplateDialog, EditTemplateData } from './SaveTemplateDialog';
+import { TemplatePreviewDialog } from './TemplatePreviewDialog';
+import { TemplateImportDialog, useTemplateExport } from './TemplateImportExport';
 import type { TriggerType, WorkflowAction, WorkflowData } from './WorkflowBuilder';
 
 export interface WorkflowTemplate {
@@ -298,11 +300,14 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<CustomWorkflowTemplate | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<WorkflowTemplate | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
-  const { data: customTemplates = [], isLoading } = useWorkflowTemplates();
+  const { data: customTemplates = [], isLoading, refetch } = useWorkflowTemplates();
   const deleteTemplate = useDeleteWorkflowTemplate();
   const updateTemplate = useUpdateWorkflowTemplate();
   const incrementUsage = useIncrementTemplateUsage();
+  const { exportTemplates } = useTemplateExport();
 
   // Separate own templates from shared templates
   const ownTemplates = customTemplates.filter(t => t.isOwn);
@@ -430,15 +435,61 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     }
   };
 
+  const handleExportAll = () => {
+    const exportableTemplates = ownTemplates.map(t => ({
+      name: t.name,
+      description: t.description,
+      category: t.category,
+      trigger_type: t.trigger_type,
+      trigger_config: t.trigger_config,
+      actions: t.actions,
+      tags: t.tags,
+    }));
+    exportTemplates(exportableTemplates);
+  };
+
+  const handlePreviewAndUse = () => {
+    if (previewTemplate) {
+      handleSelectTemplate(previewTemplate);
+      setPreviewTemplate(null);
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Workflow Templates</DialogTitle>
-            <DialogDescription>
-              Choose a pre-built template or use one of your saved templates
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Workflow Templates</DialogTitle>
+                <DialogDescription>
+                  Choose a pre-built template or use one of your saved templates
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => setShowImportDialog(true)}
+                >
+                  <Upload className="h-3 w-3" />
+                  Import
+                </Button>
+                {ownTemplates.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={handleExportAll}
+                  >
+                    <Download className="h-3 w-3" />
+                    Export
+                  </Button>
+                )}
+              </div>
+            </div>
           </DialogHeader>
 
           <div className="relative">
@@ -520,6 +571,18 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                                     )}
                                   </div>
                                   <div className="flex items-center gap-1 shrink-0">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPreviewTemplate(template);
+                                      }}
+                                      title="Preview template"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                    </Button>
                                     {template.isOwn && (
                                       <>
                                         <Button
@@ -630,6 +693,21 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
           isSaving={isUpdating}
         />
       )}
+
+      {/* Template Preview Dialog */}
+      <TemplatePreviewDialog
+        open={!!previewTemplate}
+        onOpenChange={(open) => !open && setPreviewTemplate(null)}
+        onUseTemplate={handlePreviewAndUse}
+        template={previewTemplate}
+      />
+
+      {/* Import Dialog */}
+      <TemplateImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onImportComplete={() => refetch()}
+      />
     </>
   );
 }
