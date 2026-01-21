@@ -2107,9 +2107,14 @@ export default function DealDetail() {
                     </p>
                   )}
                 </div>
-                <div className={`flex items-center gap-2 text-sm text-muted-foreground shrink-0 ${timeAgoData.highlightClass}`}>
-                  <Clock className="h-4 w-4" />
-                  <span>{timeAgoData.text}</span>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <div className={`flex items-center gap-2 text-sm text-muted-foreground ${timeAgoData.highlightClass}`}>
+                    <Clock className="h-4 w-4" />
+                    <span>{timeAgoData.text}</span>
+                  </div>
+                  {deal.manager && (
+                    <span className="text-sm text-white">{deal.manager}</span>
+                  )}
                 </div>
               </div>
             </CardHeader>
