@@ -122,6 +122,7 @@ export function useCreateWorkflowTemplate() {
 export function useUpdateWorkflowTemplate() {
   const queryClient = useQueryClient();
   const { company } = useCompany();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({
@@ -135,6 +136,45 @@ export function useUpdateWorkflowTemplate() {
       tags?: string[];
       is_shared?: boolean;
     }) => {
+      // First, get the current template to save as a version
+      const { data: currentTemplate, error: fetchError } = await supabase
+        .from("workflow_templates")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Save current state as a version before updating
+      if (currentTemplate && user) {
+        // Get the latest version number
+        const { data: latestVersion } = await supabase
+          .from("template_versions")
+          .select("version_number")
+          .eq("template_id", id)
+          .order("version_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const nextVersion = (latestVersion?.version_number || 0) + 1;
+
+        await supabase
+          .from("template_versions")
+          .insert({
+            template_id: id,
+            version_number: nextVersion,
+            name: currentTemplate.name,
+            description: currentTemplate.description,
+            category: currentTemplate.category,
+            trigger_type: currentTemplate.trigger_type,
+            trigger_config: currentTemplate.trigger_config,
+            actions: currentTemplate.actions,
+            tags: currentTemplate.tags || [],
+            change_summary: "Pre-update snapshot",
+            created_by: user.id,
+          });
+      }
+
       const updateData: Record<string, any> = { ...updates };
       
       // If sharing is being enabled and we have a company, set company_id

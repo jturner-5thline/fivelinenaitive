@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Zap, Mail, CheckCircle2, Clock, Send, ChevronDown, ChevronUp, Search, FileCode, Users, Trash2, Bookmark, Star, Share2, Edit, BarChart2, Eye, Download, Upload } from 'lucide-react';
+import { Bell, Zap, Mail, CheckCircle2, Clock, Send, ChevronDown, ChevronUp, Search, FileCode, Users, Trash2, Bookmark, Star, Share2, Edit, BarChart2, Eye, Download, Upload, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,9 +28,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useWorkflowTemplates, useDeleteWorkflowTemplate, useUpdateWorkflowTemplate, useIncrementTemplateUsage, CustomWorkflowTemplate } from '@/hooks/useWorkflowTemplates';
+import { useTemplateFavorites } from '@/hooks/useTemplateFavorites';
 import { EditTemplateDialog, EditTemplateData } from './SaveTemplateDialog';
 import { TemplatePreviewDialog } from './TemplatePreviewDialog';
 import { TemplateImportDialog, useTemplateExport } from './TemplateImportExport';
+import { TemplateVersionHistory } from './TemplateVersionHistory';
 import type { TriggerType, WorkflowAction, WorkflowData } from './WorkflowBuilder';
 
 export interface WorkflowTemplate {
@@ -47,6 +49,7 @@ export interface WorkflowTemplate {
   isOwn?: boolean;
   isShared?: boolean;
   usageCount?: number;
+  isFavorite?: boolean;
 }
 
 const BUILTIN_TEMPLATES: WorkflowTemplate[] = [
@@ -271,7 +274,8 @@ const BUILTIN_TEMPLATES: WorkflowTemplate[] = [
 ];
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
-  custom: { label: 'My Templates', icon: <Star className="h-4 w-4" /> },
+  favorites: { label: 'Favorites', icon: <Star className="h-4 w-4" /> },
+  custom: { label: 'My Templates', icon: <Bookmark className="h-4 w-4" /> },
   shared: { label: 'Shared by Team', icon: <Share2 className="h-4 w-4" /> },
   notifications: { label: 'Notifications', icon: <Bell className="h-4 w-4" /> },
   integrations: { label: 'Integrations', icon: <Zap className="h-4 w-4" /> },
@@ -296,18 +300,20 @@ interface WorkflowTemplatesLibraryProps {
 
 export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate }: WorkflowTemplatesLibraryProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['custom', 'shared', 'notifications', 'deal-management']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['favorites', 'custom', 'shared', 'notifications', 'deal-management']);
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<CustomWorkflowTemplate | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<WorkflowTemplate | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [versionHistoryTemplate, setVersionHistoryTemplate] = useState<{ id: string; name: string } | null>(null);
 
   const { data: customTemplates = [], isLoading, refetch } = useWorkflowTemplates();
   const deleteTemplate = useDeleteWorkflowTemplate();
   const updateTemplate = useUpdateWorkflowTemplate();
   const incrementUsage = useIncrementTemplateUsage();
   const { exportTemplates } = useTemplateExport();
+  const { favorites, toggleFavorite, isFavorite } = useTemplateFavorites();
 
   // Separate own templates from shared templates
   const ownTemplates = customTemplates.filter(t => t.isOwn);
@@ -347,8 +353,11 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     usageCount: t.usage_count,
   }));
 
-  // Combine all templates
-  const allTemplates = [...ownTemplatesFormatted, ...sharedTemplatesFormatted, ...BUILTIN_TEMPLATES];
+  // Combine all templates with favorite status
+  const allTemplates = [...ownTemplatesFormatted, ...sharedTemplatesFormatted, ...BUILTIN_TEMPLATES].map(t => ({
+    ...t,
+    isFavorite: isFavorite(t.id),
+  }));
 
   const filteredTemplates = allTemplates.filter(template => {
     if (!searchQuery) return true;
@@ -360,6 +369,9 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     );
   });
 
+  // Create favorites category from favorited templates
+  const favoriteTemplates = filteredTemplates.filter(t => t.isFavorite);
+
   const templatesByCategory = filteredTemplates.reduce((acc, template) => {
     if (!acc[template.category]) {
       acc[template.category] = [];
@@ -368,8 +380,13 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     return acc;
   }, {} as Record<string, WorkflowTemplate[]>);
 
-  // Sort categories to show custom first, then shared, then others
-  const categoryOrder = ['custom', 'shared', 'notifications', 'integrations', 'deal-management', 'team', 'other'];
+  // Add favorites as a virtual category if there are any
+  if (favoriteTemplates.length > 0) {
+    templatesByCategory['favorites'] = favoriteTemplates;
+  }
+
+  // Sort categories to show favorites first, then custom, then shared, then others
+  const categoryOrder = ['favorites', 'custom', 'shared', 'notifications', 'integrations', 'deal-management', 'team', 'other'];
   const sortedCategories = Object.keys(templatesByCategory).sort((a, b) => {
     const aIndex = categoryOrder.indexOf(a);
     const bIndex = categoryOrder.indexOf(b);
@@ -521,7 +538,11 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                         className="w-full justify-between p-3 h-auto"
                       >
                         <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded ${category === 'custom' ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'}`}>
+                          <div className={`p-1.5 rounded ${
+                            category === 'favorites' ? 'bg-yellow-500/10 text-yellow-600' :
+                            category === 'custom' ? 'bg-amber-500/10 text-amber-600' : 
+                            'bg-primary/10 text-primary'
+                          }`}>
                             {config.icon}
                           </div>
                           <span className="font-medium">{config.label}</span>
@@ -538,6 +559,13 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                     </CollapsibleTrigger>
 
                     <CollapsibleContent className="mt-2 space-y-2">
+                      {category === 'favorites' && templates.length === 0 && (
+                        <div className="text-center py-4 text-muted-foreground text-sm">
+                          <Star className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                          <p>No favorites yet.</p>
+                          <p className="text-xs mt-1">Star templates to add them to favorites.</p>
+                        </div>
+                      )}
                       {category === 'custom' && templates.length === 0 && (
                         <div className="text-center py-4 text-muted-foreground text-sm">
                           <Bookmark className="h-6 w-6 mx-auto mb-2 opacity-50" />
@@ -554,6 +582,7 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
                               <div className={`p-2 rounded-lg shrink-0 ${
+                                template.isFavorite && category === 'favorites' ? 'bg-yellow-500/10 text-yellow-600' :
                                 template.category === 'shared' ? 'bg-blue-500/10 text-blue-600' :
                                 template.isCustom ? 'bg-amber-500/10 text-amber-600' : 
                                 'bg-primary/10 text-primary'
@@ -574,6 +603,18 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                                     <Button
                                       variant="ghost"
                                       size="icon"
+                                      className={`h-6 w-6 transition-opacity ${template.isFavorite ? 'opacity-100 text-yellow-500' : 'opacity-0 group-hover:opacity-100'}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleFavorite(template.id);
+                                      }}
+                                      title={template.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                                    >
+                                      <Star className={`h-3 w-3 ${template.isFavorite ? 'fill-current' : ''}`} />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
                                       className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -591,11 +632,24 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                                           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                                           onClick={(e) => {
                                             e.stopPropagation();
+                                            setVersionHistoryTemplate({ id: template.id, name: template.name });
+                                          }}
+                                          title="Version history"
+                                        >
+                                          <History className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
                                             const originalTemplate = customTemplates.find(t => t.id === template.id);
                                             if (originalTemplate) {
                                               handleEditTemplate(originalTemplate);
                                             }
                                           }}
+                                          title="Edit template"
                                         >
                                           <Edit className="h-3 w-3" />
                                         </Button>
@@ -603,6 +657,7 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                                           variant="ghost"
                                           size="icon"
                                           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          title="Delete template"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setDeletingTemplate(template.id);
@@ -708,6 +763,29 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
         onOpenChange={setShowImportDialog}
         onImportComplete={() => refetch()}
       />
+
+      {/* Version History Dialog */}
+      {versionHistoryTemplate && (
+        <TemplateVersionHistory
+          templateId={versionHistoryTemplate.id}
+          templateName={versionHistoryTemplate.name}
+          isOpen={!!versionHistoryTemplate}
+          onClose={() => setVersionHistoryTemplate(null)}
+          onRestoreVersion={(data) => {
+            // Find the template and update it with restored data
+            const template = customTemplates.find(t => t.id === versionHistoryTemplate.id);
+            if (template) {
+              updateTemplate.mutate({
+                id: template.id,
+                name: data.name,
+                description: data.description,
+                category: data.category,
+                tags: data.tags,
+              });
+            }
+          }}
+        />
+      )}
     </>
   );
 }
