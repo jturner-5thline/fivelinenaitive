@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Zap, Mail, CheckCircle2, Clock, Send, ChevronDown, ChevronUp, Search, FileCode, Users, Trash2, Bookmark, Star, Share2 } from 'lucide-react';
+import { Bell, Zap, Mail, CheckCircle2, Clock, Send, ChevronDown, ChevronUp, Search, FileCode, Users, Trash2, Bookmark, Star, Share2, Edit, BarChart2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useWorkflowTemplates, useDeleteWorkflowTemplate, CustomWorkflowTemplate } from '@/hooks/useWorkflowTemplates';
+import { useWorkflowTemplates, useDeleteWorkflowTemplate, useUpdateWorkflowTemplate, useIncrementTemplateUsage, CustomWorkflowTemplate } from '@/hooks/useWorkflowTemplates';
+import { EditTemplateDialog, EditTemplateData } from './SaveTemplateDialog';
 import type { TriggerType, WorkflowAction, WorkflowData } from './WorkflowBuilder';
 
 export interface WorkflowTemplate {
@@ -43,6 +44,7 @@ export interface WorkflowTemplate {
   isCustom?: boolean;
   isOwn?: boolean;
   isShared?: boolean;
+  usageCount?: number;
 }
 
 const BUILTIN_TEMPLATES: WorkflowTemplate[] = [
@@ -294,9 +296,13 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['custom', 'shared', 'notifications', 'deal-management']);
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<CustomWorkflowTemplate | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const { data: customTemplates = [], isLoading } = useWorkflowTemplates();
   const deleteTemplate = useDeleteWorkflowTemplate();
+  const updateTemplate = useUpdateWorkflowTemplate();
+  const incrementUsage = useIncrementTemplateUsage();
 
   // Separate own templates from shared templates
   const ownTemplates = customTemplates.filter(t => t.isOwn);
@@ -316,6 +322,7 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     isCustom: true,
     isOwn: true,
     isShared: t.is_shared,
+    usageCount: t.usage_count,
   }));
 
   // Convert shared templates to WorkflowTemplate format
@@ -332,6 +339,7 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     isCustom: true,
     isOwn: false,
     isShared: true,
+    usageCount: t.usage_count,
   }));
 
   // Combine all templates
@@ -383,6 +391,12 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
         id: `action-${Date.now()}-${idx}`,
       })),
     };
+    
+    // Increment usage count for custom templates
+    if (template.isCustom) {
+      incrementUsage.mutate(template.id);
+    }
+    
     onSelectTemplate(data);
     onOpenChange(false);
   };
@@ -391,6 +405,28 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     if (deletingTemplate) {
       await deleteTemplate.mutateAsync(deletingTemplate);
       setDeletingTemplate(null);
+    }
+  };
+
+  const handleEditTemplate = (template: CustomWorkflowTemplate) => {
+    setEditingTemplate(template);
+  };
+
+  const handleUpdateTemplate = async (data: EditTemplateData) => {
+    if (!editingTemplate) return;
+    setIsUpdating(true);
+    try {
+      await updateTemplate.mutateAsync({
+        id: editingTemplate.id,
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        tags: data.tags,
+        is_shared: data.is_shared,
+      });
+      setEditingTemplate(null);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -483,19 +519,35 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                                       </span>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-2 shrink-0">
+                                  <div className="flex items-center gap-1 shrink-0">
                                     {template.isOwn && (
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDeletingTemplate(template.id);
-                                        }}
-                                      >
-                                        <Trash2 className="h-3 w-3 text-destructive" />
-                                      </Button>
+                                      <>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const originalTemplate = customTemplates.find(t => t.id === template.id);
+                                            if (originalTemplate) {
+                                              handleEditTemplate(originalTemplate);
+                                            }
+                                          }}
+                                        >
+                                          <Edit className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDeletingTemplate(template.id);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3 text-destructive" />
+                                        </Button>
+                                      </>
                                     )}
                                     <Badge variant="outline" className="text-xs">
                                       {TRIGGER_LABELS[template.triggerType]}
@@ -505,7 +557,13 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                                 <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                                   {template.description}
                                 </p>
-                                <div className="flex flex-wrap gap-1 mt-2">
+                                <div className="flex flex-wrap items-center gap-1 mt-2">
+                                  {template.usageCount !== undefined && template.usageCount > 0 && (
+                                    <Badge variant="outline" className="text-xs gap-1">
+                                      <BarChart2 className="h-3 w-3" />
+                                      {template.usageCount} {template.usageCount === 1 ? 'use' : 'uses'}
+                                    </Badge>
+                                  )}
                                   {template.tags.slice(0, 3).map(tag => (
                                     <Badge key={tag} variant="secondary" className="text-xs">
                                       {tag}
@@ -554,6 +612,24 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Template Dialog */}
+      {editingTemplate && (
+        <EditTemplateDialog
+          open={!!editingTemplate}
+          onOpenChange={(open) => !open && setEditingTemplate(null)}
+          onSave={handleUpdateTemplate}
+          initialData={{
+            id: editingTemplate.id,
+            name: editingTemplate.name,
+            description: editingTemplate.description || '',
+            category: editingTemplate.category,
+            tags: editingTemplate.tags,
+            is_shared: editingTemplate.is_shared,
+          }}
+          isSaving={isUpdating}
+        />
+      )}
     </>
   );
 }

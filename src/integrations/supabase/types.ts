@@ -3051,6 +3051,7 @@ export type Database = {
           trigger_config: Json
           trigger_type: string
           updated_at: string
+          usage_count: number
           user_id: string
         }
         Insert: {
@@ -3066,6 +3067,7 @@ export type Database = {
           trigger_config?: Json
           trigger_type: string
           updated_at?: string
+          usage_count?: number
           user_id: string
         }
         Update: {
@@ -3081,6 +3083,7 @@ export type Database = {
           trigger_config?: Json
           trigger_type?: string
           updated_at?: string
+          usage_count?: number
           user_id?: string
         }
         Relationships: [
@@ -3154,6 +3157,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          template_id: string | null
           trigger_config: Json
           trigger_type: string
           updated_at: string
@@ -3166,6 +3170,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          template_id?: string | null
           trigger_config?: Json
           trigger_type: string
           updated_at?: string
@@ -3178,12 +3183,21 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          template_id?: string | null
           trigger_config?: Json
           trigger_type?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workflows_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
