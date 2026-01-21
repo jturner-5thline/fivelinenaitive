@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity, Sparkles, MessageSquare, Lightbulb, Send, BarChart3, RotateCcw, Timer } from 'lucide-react';
+import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity, Sparkles, MessageSquare, Lightbulb, Send, BarChart3, RotateCcw, Timer, Bookmark } from 'lucide-react';
 import { formatDistanceToNow, format, subDays, startOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
@@ -53,6 +53,7 @@ import { WorkflowTemplatesLibrary } from '@/components/workflows/WorkflowTemplat
 import { useWorkflows, Workflow as WorkflowType } from '@/hooks/useWorkflows';
 import { useWorkflowRuns } from '@/hooks/useWorkflowRuns';
 import { useScheduledActions } from '@/hooks/useScheduledActions';
+import { useCreateWorkflowTemplate } from '@/hooks/useWorkflowTemplates';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -95,6 +96,7 @@ export default function Workflows() {
   const { workflows, isLoading, createWorkflow, updateWorkflow, deleteWorkflow, toggleWorkflow } = useWorkflows();
   const { runs, isLoading: isLoadingRuns } = useWorkflowRuns();
   const { scheduledActions, isLoading: isLoadingScheduled } = useScheduledActions();
+  const createTemplate = useCreateWorkflowTemplate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowType | null>(null);
   const [deletingWorkflow, setDeletingWorkflow] = useState<WorkflowType | null>(null);
@@ -231,6 +233,17 @@ export default function Workflows() {
     if (result) {
       toast.success(`Workflow "${workflow.name}" duplicated`);
     }
+  };
+
+  const handleSaveAsTemplate = async (workflow: WorkflowType) => {
+    await createTemplate.mutateAsync({
+      name: workflow.name,
+      description: workflow.description || undefined,
+      trigger_type: workflow.trigger_type,
+      trigger_config: workflow.trigger_config,
+      actions: workflow.actions,
+      tags: [workflow.trigger_type.replace(/_/g, ' ')],
+    });
   };
 
   const handleVersionRestore = async (data: WorkflowData) => {
@@ -633,6 +646,10 @@ export default function Workflows() {
                               <DropdownMenuItem onClick={() => setVersionHistoryWorkflow(workflow)}>
                                 <History className="h-4 w-4 mr-2" />
                                 Version History
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSaveAsTemplate(workflow)}>
+                                <Bookmark className="h-4 w-4 mr-2" />
+                                Save as Template
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
