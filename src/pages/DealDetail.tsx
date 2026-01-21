@@ -623,6 +623,18 @@ export default function DealDetail() {
   const [isDeleteFlagDialogOpen, setIsDeleteFlagDialogOpen] = useState(false);
   const [flagDraftNote, setFlagDraftNote] = useState('');
   const [isPushingDataRoom, setIsPushingDataRoom] = useState(false);
+  
+  // Failed saves tracking for retry functionality
+  const [failedLenderSaves, setFailedLenderSaves] = useState<Set<string>>(new Set());
+  
+  // Undo state for lender stage changes
+  const [lastLenderChange, setLastLenderChange] = useState<{
+    lenderId: string;
+    previousStage: string;
+    previousTrackingStatus: string;
+    previousPassReason?: string;
+    lenderName: string;
+  } | null>(null);
 
   // Handle delete action from query param
   useEffect(() => {
@@ -1199,18 +1211,41 @@ export default function DealDetail() {
     const targetStage = configuredStages.find(s => s.group === newGroup);
     if (!targetStage) return;
     
-    // Get lender name for activity log
+    // Get lender info for activity log and undo
     const lender = deal?.lenders?.find(l => l.id === lenderId);
     const oldStage = lender?.stage ? configuredStages.find(s => s.id === lender.stage) : undefined;
     
+    // Store previous state for undo
+    if (lender) {
+      setLastLenderChange({
+        lenderId,
+        previousStage: lender.stage,
+        previousTrackingStatus: lender.trackingStatus || 'active',
+        previousPassReason: lender.passReason,
+        lenderName: lender.name,
+      });
+    }
+    
+    // Clear from failed saves if retrying
+    setFailedLenderSaves(prev => {
+      const next = new Set(prev);
+      next.delete(lenderId);
+      return next;
+    });
+    
     // Persist to database with loading indicator
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
-      await updateLenderInDb(lenderId, { 
-        stage: targetStage.id, 
-        trackingStatus: newGroup,
-        // Explicitly pass null to clear pass reason when not passed, or the value when passed
-        passReason: newGroup === 'passed' ? (passReason || null) : null 
-      });
+      try {
+        await updateLenderInDb(lenderId, { 
+          stage: targetStage.id, 
+          trackingStatus: newGroup,
+          passReason: newGroup === 'passed' ? (passReason || null) : null 
+        });
+      } catch (err) {
+        // Mark as failed for retry UI
+        setFailedLenderSaves(prev => new Set(prev).add(lenderId));
+        throw err;
+      }
     });
     
     // Log activity (fire-and-forget)
@@ -1222,6 +1257,7 @@ export default function DealDetail() {
       });
     }
     
+    // Optimistically update local state
     setDeal(prev => {
       if (!prev) return prev;
       const updatedLenders = prev.lenders?.map(l => 
@@ -1231,7 +1267,78 @@ export default function DealDetail() {
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
+    
+    // Show undo toast for non-passed changes (passed has its own dialog)
+    if (lender && newGroup !== 'passed') {
+      toast({
+        title: "Stage updated",
+        description: `${lender.name} moved to ${targetStage.label}`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => undoLenderChange(lenderId, lender.stage, lender.trackingStatus || 'active', lender.passReason)}
+          >
+            Undo
+          </Button>
+        ),
+      });
+    }
   }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity, withSavingAsync]);
+
+  const undoLenderChange = useCallback((lenderId: string, previousStage: string, previousTrackingStatus: string, previousPassReason?: string) => {
+    // Persist undo to database
+    withSavingAsync(`lender-stage-${lenderId}`, async () => {
+      await updateLenderInDb(lenderId, { 
+        stage: previousStage, 
+        trackingStatus: previousTrackingStatus as StageGroup,
+        passReason: previousPassReason || null 
+      });
+    });
+    
+    // Update local state
+    setDeal(prev => {
+      if (!prev) return prev;
+      const updatedLenders = prev.lenders?.map(l => 
+        l.id === lenderId 
+          ? { ...l, stage: previousStage as any, trackingStatus: previousTrackingStatus as any, passReason: previousPassReason, updatedAt: new Date().toISOString() } 
+          : l
+      );
+      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    });
+    
+    setLastLenderChange(null);
+    
+    toast({
+      title: "Change undone",
+      description: "Lender stage has been reverted.",
+    });
+  }, [updateLenderInDb, withSavingAsync]);
+
+  const retryLenderSave = useCallback((lenderId: string) => {
+    const lender = deal?.lenders?.find(l => l.id === lenderId);
+    if (!lender) return;
+    
+    // Retry the current state
+    setFailedLenderSaves(prev => {
+      const next = new Set(prev);
+      next.delete(lenderId);
+      return next;
+    });
+    
+    withSavingAsync(`lender-stage-${lenderId}`, async () => {
+      try {
+        await updateLenderInDb(lenderId, { 
+          stage: lender.stage, 
+          trackingStatus: lender.trackingStatus,
+          passReason: lender.passReason || null 
+        });
+      } catch (err) {
+        setFailedLenderSaves(prev => new Set(prev).add(lenderId));
+        throw err;
+      }
+    });
+  }, [deal?.lenders, updateLenderInDb, withSavingAsync]);
 
   const addMilestone = useCallback(async (milestone: Omit<DealMilestone, 'id'>) => {
     if (!deal) return;
@@ -4121,6 +4228,8 @@ export default function DealDetail() {
               passReasons={passReasons}
               onUpdateLenderGroup={updateLenderGroup}
               isSaving={isSaving}
+              failedSaves={failedLenderSaves}
+              onRetry={retryLenderSave}
             />
           )}
         </DialogContent>
