@@ -17,6 +17,7 @@ export interface CustomWorkflowTemplate {
   actions: WorkflowAction[];
   tags: string[];
   is_shared: boolean;
+  usage_count: number;
   created_at: string;
   updated_at: string;
   isOwn?: boolean;
@@ -114,6 +115,80 @@ export function useCreateWorkflowTemplate() {
     onError: (error) => {
       console.error("Error creating template:", error);
       toast.error("Failed to save template");
+    },
+  });
+}
+
+export function useUpdateWorkflowTemplate() {
+  const queryClient = useQueryClient();
+  const { company } = useCompany();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...updates
+    }: {
+      id: string;
+      name?: string;
+      description?: string;
+      category?: string;
+      tags?: string[];
+      is_shared?: boolean;
+    }) => {
+      const updateData: Record<string, any> = { ...updates };
+      
+      // If sharing is being enabled and we have a company, set company_id
+      if (updates.is_shared && company?.id) {
+        updateData.company_id = company.id;
+      } else if (updates.is_shared === false) {
+        updateData.company_id = null;
+      }
+
+      const { data, error } = await supabase
+        .from("workflow_templates")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workflow-templates"] });
+      toast.success("Template updated successfully");
+    },
+    onError: (error) => {
+      console.error("Error updating template:", error);
+      toast.error("Failed to update template");
+    },
+  });
+}
+
+export function useIncrementTemplateUsage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      // First get current usage count
+      const { data: template, error: fetchError } = await supabase
+        .from("workflow_templates")
+        .select("usage_count")
+        .eq("id", templateId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Increment the count
+      const { error } = await supabase
+        .from("workflow_templates")
+        .update({ usage_count: (template?.usage_count || 0) + 1 })
+        .eq("id", templateId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workflow-templates"] });
     },
   });
 }
