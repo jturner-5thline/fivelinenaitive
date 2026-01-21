@@ -3989,17 +3989,40 @@ export default function DealDetail() {
             </Button>
             <Button 
               onClick={() => {
-                if (pendingPassStageChange && deal) {
-                  const updatedLenders = deal.lenders?.map(l => 
-                    l.id === pendingPassStageChange.lenderId 
-                      ? { ...l, stage: pendingPassStageChange.newStageId as LenderStage, passReason: selectedPassReason || undefined, updatedAt: new Date().toISOString() } 
+                if (!pendingPassStageChange) return;
+
+                const lenderId = pendingPassStageChange.lenderId;
+                const stageId = pendingPassStageChange.newStageId as LenderStage;
+
+                // Optimistically update local state
+                setDeal((prev) => {
+                  if (!prev) return prev;
+                  const updatedLenders = prev.lenders?.map((l) =>
+                    l.id === lenderId
+                      ? {
+                          ...l,
+                          stage: stageId,
+                          trackingStatus: 'passed' as DealLender['trackingStatus'],
+                          passReason: selectedPassReason || undefined,
+                          updatedAt: new Date().toISOString(),
+                        }
                       : l
                   );
-                  updateDeal('lenders', updatedLenders as any);
-                  setPassReasonDialogOpen(false);
-                  setPendingPassStageChange(null);
-                  setSelectedPassReason(null);
-                }
+                  return { ...prev, lenders: updatedLenders };
+                });
+
+                // Persist to database
+                withSavingAsync(`lender-stage-${lenderId}`, async () => {
+                  await updateLenderInDb(lenderId, {
+                    stage: stageId,
+                    trackingStatus: 'passed',
+                    passReason: selectedPassReason || null,
+                  });
+                });
+
+                setPassReasonDialogOpen(false);
+                setPendingPassStageChange(null);
+                setSelectedPassReason(null);
               }}
               disabled={!selectedPassReason && passReasons.length > 0}
             >
