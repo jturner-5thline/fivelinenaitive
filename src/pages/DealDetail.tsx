@@ -319,17 +319,15 @@ export default function DealDetail() {
     return masterLenderNames.length > 0 ? masterLenderNames : staticNames;
   }, [masterLenders, getLenderNames]);
   
-  // Get member options for manager/owner dropdowns - always include current user
+  // Get member options for manager/owner dropdowns - show all company team members
   const memberOptions = useMemo(() => {
-    const options = members
-      .filter(member => member.display_name || member.email) // Only show members with names/emails
-      .map(member => {
-        const label = member.display_name || member.email || 'Team Member';
-        return {
-          value: label,
-          label: label,
-        };
-      });
+    const options = members.map(member => {
+      const label = member.display_name || member.email || 'Team Member';
+      return {
+        value: label,
+        label: label,
+      };
+    });
     
     // If current user is not in the list, add them
     const currentUserLabel = profile?.display_name || user?.email || 'Me';
