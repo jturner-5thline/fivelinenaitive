@@ -14,7 +14,6 @@ import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
 import { DefaultMilestonesSettings } from '@/components/settings/DefaultMilestonesSettings';
 import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
-import { RolePermissionsSettings } from '@/components/settings/RolePermissionsSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -69,10 +68,6 @@ const SETTINGS_SECTIONS = [
   {
     id: 'suggestions',
     keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders', 'opportunities', 'ai'],
-  },
-  {
-    id: 'permissions',
-    keywords: ['permissions', 'roles', 'role', 'access', 'control', 'member', 'admin', 'owner', 'security'],
   },
   {
     id: 'preferences',
@@ -294,8 +289,6 @@ export default function Settings() {
             {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
 
             {isVisible('suggestions') && <SuggestionSettings />}
-
-            {isVisible('permissions') && <RolePermissionsSettings />}
 
             {isVisible('preferences') && (
               <Card>

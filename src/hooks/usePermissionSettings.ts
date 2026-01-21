@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from '@/hooks/use-toast';
-import { Json } from '@/integrations/supabase/types';
 
 export interface LenderEditPermissions {
   allowedRoles: ('owner' | 'admin' | 'member')[];
@@ -79,21 +78,18 @@ export function usePermissionSettings() {
     try {
       const { data, error } = await supabase
         .from('company_settings')
-        .select('permission_settings')
+        .select('*')
         .eq('company_id', company.id)
+        .eq('setting_key', 'permissions')
         .maybeSingle();
 
       if (error) throw error;
 
-      // Parse the JSON column if it exists
-      if (data?.permission_settings) {
-        const parsed = data.permission_settings as unknown as CompanyPermissionSettings;
-        if (parsed?.lenderEdit) {
-          setSettings({
-            ...DEFAULT_PERMISSIONS,
-            ...parsed,
-          });
-        }
+      if (data?.setting_value) {
+        setSettings({
+          ...DEFAULT_PERMISSIONS,
+          ...(data.setting_value as unknown as CompanyPermissionSettings),
+        });
       }
     } catch (error) {
       console.error('Error fetching permission settings:', error);
@@ -115,34 +111,17 @@ export function usePermissionSettings() {
 
     setIsSaving(true);
     try {
-      // Check if settings row exists
-      const { data: existing } = await supabase
+      const { error } = await supabase
         .from('company_settings')
-        .select('id')
-        .eq('company_id', company.id)
-        .maybeSingle();
+        .upsert({
+          company_id: company.id,
+          setting_key: 'permissions',
+          setting_value: newSettings as unknown as Record<string, unknown>,
+        }, {
+          onConflict: 'company_id,setting_key',
+        });
 
-      const permissionSettingsJson = newSettings as unknown as Json;
-
-      if (existing) {
-        // Update
-        const { error } = await supabase
-          .from('company_settings')
-          .update({ permission_settings: permissionSettingsJson })
-          .eq('company_id', company.id);
-
-        if (error) throw error;
-      } else {
-        // Insert - need to use upsert pattern
-        const { error } = await supabase
-          .from('company_settings')
-          .upsert({ 
-            company_id: company.id,
-            permission_settings: permissionSettingsJson,
-          });
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       setSettings(newSettings);
       toast({

@@ -777,22 +777,13 @@ export function useDealsDatabase() {
           { ...previousLender, deal_id: dealId } as unknown as Record<string, unknown>
         );
       }
-    } catch (err: any) {
+    } catch (err) {
       // Rollback on error
       setDeals(previousDeals);
       console.error('Error updating lender:', err);
-      
-      // Provide more specific error messages
-      let errorMessage = "Failed to update lender";
-      if (err?.message?.includes('row-level security') || err?.code === '42501') {
-        errorMessage = "Permission denied. Your changes were not saved. Contact your admin.";
-      } else if (err?.message?.includes('network') || err?.code === 'NETWORK_ERROR') {
-        errorMessage = "Network error. Please check your connection and try again.";
-      }
-      
       toast({
-        title: "Save Failed",
-        description: errorMessage,
+        title: "Error",
+        description: "Failed to update lender",
         variant: "destructive",
       });
     } finally {
