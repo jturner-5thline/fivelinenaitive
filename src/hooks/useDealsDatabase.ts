@@ -119,7 +119,7 @@ interface DbDeal {
   flag_notes: string | null;
   notes: string | null;
   notes_updated_at: string | null;
-  narrative: string | null;
+  narrative?: string | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -334,6 +334,7 @@ export function useDealsDatabase() {
           postSigningHours: Number(dbDeal.post_signing_hours || 0),
           notes: dbDeal.notes || undefined,
           notesUpdatedAt: dbDeal.notes_updated_at || undefined,
+          narrative: dbDeal.narrative || undefined,
           contact: '',
           createdAt: dbDeal.created_at,
           updatedAt: dbDeal.updated_at,
@@ -495,6 +496,9 @@ export function useDealsDatabase() {
       if (updates.notes !== undefined) {
         dbUpdates.notes = updates.notes;
         dbUpdates.notes_updated_at = new Date().toISOString();
+      }
+      if (updates.narrative !== undefined) {
+        dbUpdates.narrative = updates.narrative;
       }
 
       const { error } = await supabase
