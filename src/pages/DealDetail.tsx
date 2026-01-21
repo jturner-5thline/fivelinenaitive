@@ -347,43 +347,37 @@ export default function DealDetail() {
   const contextDeal = getDealById(id || '');
   const [deal, setDeal] = useState<Deal | undefined>(contextDeal);
   
-  // Update local deal state when context deal changes, but preserve local edits
+  // Update local deal state when context deal changes
+  // Use the context (database) as source of truth, only preserve local order
   useEffect(() => {
     if (contextDeal) {
       setDeal(prev => {
         if (!prev) return contextDeal;
         
-        // Preserve lender order from local state while merging updated data from context
-        let mergedLenders = prev.lenders;
+        // Preserve lender order from local state while taking data from context (DB)
+        let mergedLenders = contextDeal.lenders;
         if (prev.lenders && contextDeal.lenders) {
           // Create a map of context lenders for quick lookup
           const contextLenderMap = new Map(contextDeal.lenders.map(l => [l.id, l]));
-          // Keep local order, update with context data, filter out deleted lenders
+          const prevLenderIds = new Set(prev.lenders.map(l => l.id));
+          
+          // Keep local order but use context data (DB is source of truth)
           mergedLenders = prev.lenders
             .filter(l => contextLenderMap.has(l.id))
             .map(localLender => {
-              const contextLender = contextLenderMap.get(localLender.id);
-              // Merge context data but preserve local edits that may not have synced yet
-              return contextLender ? {
-                ...contextLender,
-                // Preserve local stage/trackingStatus during optimistic updates
-                stage: localLender.stage,
-                trackingStatus: localLender.trackingStatus,
-                substage: localLender.substage,
-                passReason: localLender.passReason,
-                notes: localLender.notes, // Preserve local notes during editing
-                notesHistory: contextLender.notesHistory, // Use context history (persisted)
-              } : localLender;
+              // Use context lender data (from DB) as source of truth
+              return contextLenderMap.get(localLender.id)!;
             });
+          
           // Add any new lenders from context that aren't in local state
           contextDeal.lenders.forEach(cl => {
-            if (!prev.lenders?.find(l => l.id === cl.id)) {
+            if (!prevLenderIds.has(cl.id)) {
               mergedLenders = [...(mergedLenders || []), cl];
             }
           });
         }
         
-        // Merge context changes with local state, preserving local edits for fee fields
+        // Merge context changes with local state, preserving local edits for fee fields only
         return {
           ...contextDeal,
           lenders: mergedLenders,

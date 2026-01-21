@@ -80,10 +80,34 @@ export function useStatusNotes(dealId: string | undefined) {
     }
   }, []);
 
-  // Fetch on mount
+  // Fetch on mount and subscribe to realtime changes
   useEffect(() => {
     fetchStatusNotes();
-  }, [fetchStatusNotes]);
+
+    // Subscribe to realtime changes for this deal's status notes
+    if (dealId) {
+      const channel = supabase
+        .channel(`deal-status-notes-${dealId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'deal_status_notes',
+            filter: `deal_id=eq.${dealId}`,
+          },
+          (payload) => {
+            console.log('[Realtime] Status note change for deal:', dealId, payload.eventType);
+            fetchStatusNotes();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [fetchStatusNotes, dealId]);
 
   return {
     statusNotes,
