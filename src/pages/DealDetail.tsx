@@ -4287,6 +4287,15 @@ export default function DealDetail() {
           }}
         />
       )}
+
+      {/* Panel Reorder Dialog */}
+      <DealPanelReorderDialog
+        open={isPanelReorderDialogOpen}
+        onOpenChange={setIsPanelReorderDialogOpen}
+        panelOrder={panelOrder}
+        onReorder={reorderPanels}
+        onReset={resetToDefault}
+      />
     </>
   );
 }
