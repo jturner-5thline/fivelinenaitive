@@ -2115,19 +2115,6 @@ export default function DealDetail() {
             </CardHeader>
           </Card>
 
-          {/* Milestones Card */}
-          <Card className="mb-6">
-            <CardContent className="pt-4">
-              <DealMilestones
-                milestones={dbMilestones}
-                onAdd={addMilestone}
-                onUpdate={updateMilestone}
-                onDelete={deleteMilestone}
-                onReorder={reorderMilestones}
-              />
-            </CardContent>
-          </Card>
-
           {/* Main Content Grid */}
           <div className="grid gap-6">
             {/* Main Content */}
@@ -2168,6 +2155,19 @@ export default function DealDetail() {
                 </TabsList>
 
                 <TabsContent value="deal-info" className="mt-6 space-y-6">
+                  {/* Milestones Card */}
+                  <Card>
+                    <CardContent className="pt-4">
+                      <DealMilestones
+                        milestones={dbMilestones}
+                        onAdd={addMilestone}
+                        onUpdate={updateMilestone}
+                        onDelete={deleteMilestone}
+                        onReorder={reorderMilestones}
+                      />
+                    </CardContent>
+                  </Card>
+
                   {/* Customize Layout Button */}
                   <div className="flex justify-end">
                     <Button 
