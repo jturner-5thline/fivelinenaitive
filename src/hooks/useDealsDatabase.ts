@@ -202,6 +202,10 @@ export function useDealsDatabase() {
   
   // Keep a ref to track previous deal states for detecting stage changes
   const previousDealsRef = useRef<Map<string, Deal>>(new Map());
+  
+  // Track when optimistic updates are in progress to skip realtime refetches
+  const pendingOptimisticUpdatesRef = useRef<Set<string>>(new Set());
+  const realtimeRefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get current user
   useEffect(() => {
@@ -613,6 +617,9 @@ export function useDealsDatabase() {
     // Store previous state for rollback
     const previousDeals = deals;
     
+    // Mark this lender as having a pending optimistic update
+    pendingOptimisticUpdatesRef.current.add(lenderId);
+    
     // Find the lender and its deal for workflow triggering
     let previousLender: DealLender | undefined;
     let dealId: string | undefined;
@@ -764,6 +771,11 @@ export function useDealsDatabase() {
         description: "Failed to update lender",
         variant: "destructive",
       });
+    } finally {
+      // Clear the pending optimistic update after a delay to allow realtime to settle
+      setTimeout(() => {
+        pendingOptimisticUpdatesRef.current.delete(lenderId);
+      }, 2000);
     }
   }, [deals]);
 
@@ -920,6 +932,30 @@ export function useDealsDatabase() {
     return deals.find(d => d.id === dealId);
   }, [deals]);
 
+  // Debounced refetch for realtime updates - skips if optimistic updates are pending
+  const debouncedRealtimeRefetch = useCallback(() => {
+    // Clear any pending refetch
+    if (realtimeRefetchTimeoutRef.current) {
+      clearTimeout(realtimeRefetchTimeoutRef.current);
+    }
+    
+    // If there are pending optimistic updates, delay the refetch
+    if (pendingOptimisticUpdatesRef.current.size > 0) {
+      // Schedule a delayed refetch after optimistic updates should be complete
+      realtimeRefetchTimeoutRef.current = setTimeout(() => {
+        if (pendingOptimisticUpdatesRef.current.size === 0) {
+          fetchDeals();
+        }
+      }, 2500);
+      return;
+    }
+    
+    // Debounce rapid realtime events
+    realtimeRefetchTimeoutRef.current = setTimeout(() => {
+      fetchDeals();
+    }, 300);
+  }, [fetchDeals]);
+
   // Initial fetch and realtime subscription
   useEffect(() => {
     fetchDeals();
@@ -935,7 +971,7 @@ export function useDealsDatabase() {
           table: 'deals'
         },
         () => {
-          fetchDeals();
+          debouncedRealtimeRefetch();
         }
       )
       .subscribe();
@@ -951,7 +987,7 @@ export function useDealsDatabase() {
           table: 'deal_lenders'
         },
         () => {
-          fetchDeals();
+          debouncedRealtimeRefetch();
         }
       )
       .subscribe();
@@ -960,6 +996,9 @@ export function useDealsDatabase() {
     return () => {
       supabase.removeChannel(dealsChannel);
       supabase.removeChannel(lendersChannel);
+      if (realtimeRefetchTimeoutRef.current) {
+        clearTimeout(realtimeRefetchTimeoutRef.current);
+      }
     };
   }, [fetchDeals]);
 
