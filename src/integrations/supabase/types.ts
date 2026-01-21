@@ -3037,6 +3037,62 @@ export type Database = {
           },
         ]
       }
+      workflow_templates: {
+        Row: {
+          actions: Json
+          category: string
+          company_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_shared: boolean
+          name: string
+          tags: string[] | null
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actions?: Json
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_shared?: boolean
+          name: string
+          tags?: string[] | null
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actions?: Json
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_shared?: boolean
+          name?: string
+          tags?: string[] | null
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_versions: {
         Row: {
           actions: Json
