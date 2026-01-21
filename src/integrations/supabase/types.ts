@@ -2520,6 +2520,91 @@ export type Database = {
         }
         Relationships: []
       }
+      template_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_favorites_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_versions: {
+        Row: {
+          actions: Json
+          category: string
+          change_summary: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          tags: string[] | null
+          template_id: string
+          trigger_config: Json
+          trigger_type: string
+          version_number: number
+        }
+        Insert: {
+          actions?: Json
+          category: string
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          tags?: string[] | null
+          template_id: string
+          trigger_config?: Json
+          trigger_type: string
+          version_number?: number
+        }
+        Update: {
+          actions?: Json
+          category?: string
+          change_summary?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          tags?: string[] | null
+          template_id?: string
+          trigger_config?: Json
+          trigger_type?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_data_permissions: {
         Row: {
           analytics_scope: Database["public"]["Enums"]["data_access_scope"]
