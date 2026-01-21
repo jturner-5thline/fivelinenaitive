@@ -31,6 +31,7 @@ import { NotificationCarousel } from '@/components/dashboard/NotificationCarouse
 import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { DashboardWidgetSettings } from '@/components/dashboard/DashboardWidgetSettings';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
+import { WorkflowSuggestionsWidget } from '@/components/dashboard/WorkflowSuggestionsWidget';
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -196,6 +197,9 @@ export default function Dashboard() {
 
           {/* Deals Calendar */}
           {isWidgetEnabled('deals-calendar') && <DealsCalendar />}
+
+          {/* Workflow Suggestions */}
+          <WorkflowSuggestionsWidget />
 
           {/* News Feed */}
           {isWidgetEnabled('news-feed') && <NewsFeedWidget />}

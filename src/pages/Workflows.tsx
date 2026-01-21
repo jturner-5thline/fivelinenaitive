@@ -50,6 +50,8 @@ import { WorkflowBuilder, WorkflowData, TriggerType, ActionType, WorkflowAction 
 import { WorkflowAnalytics } from '@/components/workflows/WorkflowAnalytics';
 import { WorkflowVersionHistory } from '@/components/workflows/WorkflowVersionHistory';
 import { WorkflowTemplatesLibrary } from '@/components/workflows/WorkflowTemplatesLibrary';
+import { WorkflowSuggestionsPanel } from '@/components/workflows/WorkflowSuggestionsPanel';
+import { TeamMetricsPanel } from '@/components/workflows/TeamMetricsPanel';
 import { useWorkflows, Workflow as WorkflowType } from '@/hooks/useWorkflows';
 import { useWorkflowRuns } from '@/hooks/useWorkflowRuns';
 import { useScheduledActions } from '@/hooks/useScheduledActions';
@@ -438,6 +440,10 @@ export default function Workflows() {
                   <Workflow className="h-4 w-4" />
                   Workflows
                 </TabsTrigger>
+                <TabsTrigger value="suggestions" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  AI Insights
+                </TabsTrigger>
                 <TabsTrigger value="analytics" className="gap-2">
                   <BarChart3 className="h-4 w-4" />
                   Analytics
@@ -452,6 +458,19 @@ export default function Workflows() {
                   )}
                 </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="suggestions" className="space-y-6 mt-6">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <WorkflowSuggestionsPanel 
+                    onCreateWorkflow={(data) => {
+                      setTemplateData(data);
+                      setEditingWorkflow(null);
+                      setIsDialogOpen(true);
+                    }} 
+                  />
+                  <TeamMetricsPanel />
+                </div>
+              </TabsContent>
 
               <TabsContent value="workflows" className="space-y-6 mt-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
