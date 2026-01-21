@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from '@/hooks/use-toast';
+import { Json } from '@/integrations/supabase/types';
 
 export interface LenderEditPermissions {
   allowedRoles: ('owner' | 'admin' | 'member')[];
@@ -78,17 +79,16 @@ export function usePermissionSettings() {
     try {
       const { data, error } = await supabase
         .from('company_settings')
-        .select('*')
+        .select('permission_settings')
         .eq('company_id', company.id)
-        .eq('setting_key', 'permissions')
         .maybeSingle();
 
       if (error) throw error;
 
-      if (data?.setting_value) {
+      if (data?.permission_settings) {
         setSettings({
           ...DEFAULT_PERMISSIONS,
-          ...(data.setting_value as unknown as CompanyPermissionSettings),
+          ...(data.permission_settings as unknown as CompanyPermissionSettings),
         });
       }
     } catch (error) {
@@ -111,15 +111,33 @@ export function usePermissionSettings() {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      // First check if settings exist
+      const { data: existing } = await supabase
         .from('company_settings')
-        .upsert({
-          company_id: company.id,
-          setting_key: 'permissions',
-          setting_value: newSettings as unknown as Record<string, unknown>,
-        }, {
-          onConflict: 'company_id,setting_key',
-        });
+        .select('id')
+        .eq('company_id', company.id)
+        .maybeSingle();
+
+      let error;
+      if (existing) {
+        // Update existing
+        const result = await supabase
+          .from('company_settings')
+          .update({
+            permission_settings: newSettings as unknown as Json,
+          })
+          .eq('company_id', company.id);
+        error = result.error;
+      } else {
+        // Insert new
+        const result = await supabase
+          .from('company_settings')
+          .insert([{
+            company_id: company.id,
+            permission_settings: newSettings as unknown as Json,
+          }]);
+        error = result.error;
+      }
 
       if (error) throw error;
 
