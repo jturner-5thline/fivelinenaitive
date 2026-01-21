@@ -54,6 +54,8 @@ import { useWorkflows, Workflow as WorkflowType } from '@/hooks/useWorkflows';
 import { useWorkflowRuns } from '@/hooks/useWorkflowRuns';
 import { useScheduledActions } from '@/hooks/useScheduledActions';
 import { useCreateWorkflowTemplate } from '@/hooks/useWorkflowTemplates';
+import { useCompany } from '@/hooks/useCompany';
+import { SaveTemplateDialog, SaveTemplateData } from '@/components/workflows/SaveTemplateDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -97,6 +99,7 @@ export default function Workflows() {
   const { runs, isLoading: isLoadingRuns } = useWorkflowRuns();
   const { scheduledActions, isLoading: isLoadingScheduled } = useScheduledActions();
   const createTemplate = useCreateWorkflowTemplate();
+  const { company } = useCompany();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowType | null>(null);
   const [deletingWorkflow, setDeletingWorkflow] = useState<WorkflowType | null>(null);
@@ -122,6 +125,10 @@ export default function Workflows() {
 
   // Version history state
   const [versionHistoryWorkflow, setVersionHistoryWorkflow] = useState<WorkflowType | null>(null);
+
+  // Save as template dialog
+  const [savingTemplateWorkflow, setSavingTemplateWorkflow] = useState<WorkflowType | null>(null);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Active tab
   const [activeTab, setActiveTab] = useState('workflows');
@@ -235,15 +242,28 @@ export default function Workflows() {
     }
   };
 
-  const handleSaveAsTemplate = async (workflow: WorkflowType) => {
-    await createTemplate.mutateAsync({
-      name: workflow.name,
-      description: workflow.description || undefined,
-      trigger_type: workflow.trigger_type,
-      trigger_config: workflow.trigger_config,
-      actions: workflow.actions,
-      tags: [workflow.trigger_type.replace(/_/g, ' ')],
-    });
+  const handleOpenSaveTemplate = (workflow: WorkflowType) => {
+    setSavingTemplateWorkflow(workflow);
+  };
+
+  const handleSaveAsTemplate = async (data: SaveTemplateData) => {
+    setIsSavingTemplate(true);
+    try {
+      await createTemplate.mutateAsync({
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        trigger_type: data.trigger_type,
+        trigger_config: data.trigger_config,
+        actions: data.actions,
+        tags: data.tags,
+        is_shared: data.is_shared,
+        company_id: data.is_shared ? company?.id : undefined,
+      });
+      setSavingTemplateWorkflow(null);
+    } finally {
+      setIsSavingTemplate(false);
+    }
   };
 
   const handleVersionRestore = async (data: WorkflowData) => {
@@ -647,7 +667,7 @@ export default function Workflows() {
                                 <History className="h-4 w-4 mr-2" />
                                 Version History
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSaveAsTemplate(workflow)}>
+                              <DropdownMenuItem onClick={() => handleOpenSaveTemplate(workflow)}>
                                 <Bookmark className="h-4 w-4 mr-2" />
                                 Save as Template
                               </DropdownMenuItem>
@@ -1112,6 +1132,23 @@ export default function Workflows() {
         onClose={() => setVersionHistoryWorkflow(null)}
         onRestoreVersion={handleVersionRestore}
       />
+
+      {/* Save as Template Dialog */}
+      {savingTemplateWorkflow && (
+        <SaveTemplateDialog
+          open={!!savingTemplateWorkflow}
+          onOpenChange={(open) => !open && setSavingTemplateWorkflow(null)}
+          onSave={handleSaveAsTemplate}
+          initialData={{
+            name: savingTemplateWorkflow.name,
+            description: savingTemplateWorkflow.description || undefined,
+            trigger_type: savingTemplateWorkflow.trigger_type,
+            trigger_config: savingTemplateWorkflow.trigger_config,
+            actions: savingTemplateWorkflow.actions,
+          }}
+          isSaving={isSavingTemplate}
+        />
+      )}
     </>
   );
 }
