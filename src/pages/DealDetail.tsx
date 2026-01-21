@@ -607,7 +607,7 @@ export default function DealDetail() {
     lenderId: string;
     newStageId: string;
   } | null>(null);
-  const [selectedPassReason, setSelectedPassReason] = useState<string | null>(null);
+  const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
   
   // Term Sheet milestone confirmation dialog state
@@ -2645,7 +2645,7 @@ export default function DealDetail() {
                                       const newStage = configuredStages.find(s => s.id === value);
                                       if (newStage?.group === 'passed') {
                                         setPendingPassStageChange({ lenderId: lender.id, newStageId: value });
-                                        setSelectedPassReason(null);
+                                        setSelectedPassReasons([]);
                                         setPassReasonDialogOpen(true);
                                       } else {
                                         // Update local state optimistically
@@ -3016,7 +3016,7 @@ export default function DealDetail() {
                                               const newStage = configuredStages.find(s => s.id === value);
                                               if (newStage?.group === 'passed') {
                                                 setPendingPassStageChange({ lenderId: lender.id, newStageId: value });
-                                                setSelectedPassReason(null);
+                                                setSelectedPassReasons([]);
                                                 setPassReasonDialogOpen(true);
                                               } else {
                                                 // Update local state optimistically
@@ -3935,7 +3935,7 @@ export default function DealDetail() {
         if (!open) {
           setPassReasonDialogOpen(false);
           setPendingPassStageChange(null);
-          setSelectedPassReason(null);
+          setSelectedPassReasons([]);
           setPassReasonSearch('');
         }
       }}>
@@ -3953,20 +3953,32 @@ export default function DealDetail() {
                 className="pl-9"
               />
             </div>
+            <p className="text-sm text-muted-foreground mb-2">Select up to 3 reasons ({selectedPassReasons.length}/3)</p>
             <div className="grid grid-cols-3 gap-2 max-h-[50vh] overflow-auto pr-1">
               {passReasons
                 .filter((reason) => reason.label.toLowerCase().includes(passReasonSearch.toLowerCase()))
-                .map((reason) => (
-                <Button
-                  key={reason.id}
-                  type="button"
-                  variant={selectedPassReason === reason.id ? "default" : "outline"}
-                  className="h-auto min-h-[2.5rem] py-2 px-3 text-xs leading-tight whitespace-normal text-left justify-start break-words"
-                  onClick={() => setSelectedPassReason(reason.id)}
-                >
-                  {reason.label}
-                </Button>
-              ))}
+                .map((reason) => {
+                  const isSelected = selectedPassReasons.includes(reason.id);
+                  const isDisabled = !isSelected && selectedPassReasons.length >= 3;
+                  return (
+                    <Button
+                      key={reason.id}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      className="h-auto min-h-[2.5rem] py-2 px-3 text-xs leading-tight whitespace-normal text-left justify-start break-words"
+                      disabled={isDisabled}
+                      onClick={() => {
+                        setSelectedPassReasons((prev) =>
+                          isSelected
+                            ? prev.filter((id) => id !== reason.id)
+                            : [...prev, reason.id]
+                        );
+                      }}
+                    >
+                      {reason.label}
+                    </Button>
+                  );
+                })}
               {passReasons.length === 0 && (
                 <p className="col-span-3 text-sm text-muted-foreground text-center py-4">
                   No pass reasons configured. Add them in Settings.
@@ -3983,7 +3995,7 @@ export default function DealDetail() {
             <Button variant="outline" onClick={() => {
               setPassReasonDialogOpen(false);
               setPendingPassStageChange(null);
-              setSelectedPassReason(null);
+              setSelectedPassReasons([]);
             }}>
               Cancel
             </Button>
@@ -4003,7 +4015,7 @@ export default function DealDetail() {
                           ...l,
                           stage: stageId,
                           trackingStatus: 'passed' as DealLender['trackingStatus'],
-                          passReason: selectedPassReason || undefined,
+                          passReason: selectedPassReasons.length > 0 ? selectedPassReasons.map(id => passReasons.find(r => r.id === id)?.label || id).join(', ') : undefined,
                           updatedAt: new Date().toISOString(),
                         }
                       : l
@@ -4016,15 +4028,15 @@ export default function DealDetail() {
                   await updateLenderInDb(lenderId, {
                     stage: stageId,
                     trackingStatus: 'passed',
-                    passReason: selectedPassReason || null,
+                    passReason: selectedPassReasons.length > 0 ? selectedPassReasons.map(id => passReasons.find(r => r.id === id)?.label || id).join(', ') : null,
                   });
                 });
 
                 setPassReasonDialogOpen(false);
                 setPendingPassStageChange(null);
-                setSelectedPassReason(null);
+                setSelectedPassReasons([]);
               }}
-              disabled={!selectedPassReason && passReasons.length > 0}
+              disabled={selectedPassReasons.length === 0 && passReasons.length > 0}
             >
               Confirm Pass
             </Button>
