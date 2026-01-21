@@ -263,6 +263,15 @@ const Waitlist = () => {
             Already have an account? Sign in
           </Button>
 
+          <Button
+            variant="ghost"
+            size="sm"
+            className="fixed bottom-6 left-6 z-[60] text-white/40 hover:text-white/60 hover:bg-white/5"
+            onClick={() => navigate('/homepage')}
+          >
+            Learn More
+          </Button>
+
           <Dialog open={showGateDialog} onOpenChange={setShowGateDialog}>
             <DialogContent className="bg-[#0a0a1a] border-white/10 text-white max-w-sm">
               <DialogHeader>
