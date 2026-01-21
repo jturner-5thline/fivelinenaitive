@@ -985,7 +985,8 @@ export function useDealsDatabase() {
           schema: 'public',
           table: 'deals'
         },
-        () => {
+        (payload) => {
+          console.log('[Realtime] Deals change detected:', payload.eventType);
           debouncedRealtimeRefetch();
         }
       )
@@ -1001,7 +1002,42 @@ export function useDealsDatabase() {
           schema: 'public',
           table: 'deal_lenders'
         },
-        () => {
+        (payload) => {
+          console.log('[Realtime] Deal lenders change detected:', payload.eventType);
+          debouncedRealtimeRefetch();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to realtime changes on deal_milestones table
+    const milestonesChannel = supabase
+      .channel('deal-milestones-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deal_milestones'
+        },
+        (payload) => {
+          console.log('[Realtime] Deal milestones change detected:', payload.eventType);
+          debouncedRealtimeRefetch();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to realtime changes on deal_status_notes table
+    const statusNotesChannel = supabase
+      .channel('deal-status-notes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deal_status_notes'
+        },
+        (payload) => {
+          console.log('[Realtime] Deal status notes change detected:', payload.eventType);
           debouncedRealtimeRefetch();
         }
       )
@@ -1011,6 +1047,8 @@ export function useDealsDatabase() {
     return () => {
       supabase.removeChannel(dealsChannel);
       supabase.removeChannel(lendersChannel);
+      supabase.removeChannel(milestonesChannel);
+      supabase.removeChannel(statusNotesChannel);
       if (realtimeRefetchTimeoutRef.current) {
         clearTimeout(realtimeRefetchTimeoutRef.current);
       }

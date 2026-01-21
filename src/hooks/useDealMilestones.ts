@@ -176,10 +176,34 @@ export function useDealMilestones(dealId: string | undefined) {
     }
   }, []);
 
-  // Fetch on mount
+  // Fetch on mount and subscribe to realtime changes
   useEffect(() => {
     fetchMilestones();
-  }, [fetchMilestones]);
+
+    // Subscribe to realtime changes for this deal's milestones
+    if (dealId) {
+      const channel = supabase
+        .channel(`deal-milestones-${dealId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'deal_milestones',
+            filter: `deal_id=eq.${dealId}`,
+          },
+          (payload) => {
+            console.log('[Realtime] Milestone change for deal:', dealId, payload.eventType);
+            fetchMilestones();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [fetchMilestones, dealId]);
 
   return {
     milestones,
