@@ -87,31 +87,33 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
   }
 
   return (
-    <div className="flex flex-wrap gap-3">
-      {staleDeals.map((deal) => (
-        <Link
-          key={deal.dealId}
-          to={`/deal/${deal.dealId}?highlight=stale`}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer w-64 group"
-        >
-          <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-          <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-sm font-medium text-destructive truncate">
-              {deal.companyName}
-            </span>
-            <span className="text-xs text-destructive/70">
-              {deal.lenderCount} lender{deal.lenderCount !== 1 ? 's' : ''} need update ({deal.maxDaysSinceUpdate}d)
-            </span>
-          </div>
-          <button
-            onClick={(e) => handleDismiss(e, deal.dealId)}
-            className="h-5 w-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-opacity"
-            title="Dismiss for 24 hours"
+    <div className="relative">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-destructive/30 scrollbar-track-transparent">
+        {staleDeals.map((deal) => (
+          <Link
+            key={deal.dealId}
+            to={`/deal/${deal.dealId}?highlight=stale`}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer w-64 shrink-0 group"
           >
-            <X className="h-3 w-3 text-destructive" />
-          </button>
-        </Link>
-      ))}
+            <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-sm font-medium text-destructive truncate">
+                {deal.companyName}
+              </span>
+              <span className="text-xs text-destructive/70">
+                {deal.lenderCount} lender{deal.lenderCount !== 1 ? 's' : ''} need update ({deal.maxDaysSinceUpdate}d)
+              </span>
+            </div>
+            <button
+              onClick={(e) => handleDismiss(e, deal.dealId)}
+              className="h-5 w-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-opacity"
+              title="Dismiss for 24 hours"
+            >
+              <X className="h-3 w-3 text-destructive" />
+            </button>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
