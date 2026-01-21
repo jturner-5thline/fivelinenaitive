@@ -120,11 +120,17 @@ export function useDealMilestones(dealId: string | undefined) {
       });
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating milestone:', error);
+      
+      let errorMessage = "Failed to update milestone";
+      if (error?.message?.includes('row-level security') || error?.code === '42501') {
+        errorMessage = "Permission denied. Your changes were not saved. Contact your admin.";
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to update milestone",
+        title: "Save Failed",
+        description: errorMessage,
         variant: "destructive",
       });
       return false;
