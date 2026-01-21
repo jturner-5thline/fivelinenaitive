@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { GripVertical, Clock, MessageSquare, Search } from 'lucide-react';
+import { GripVertical, Clock, MessageSquare, Search, RefreshCw } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
 import { STAGE_GROUPS, StageGroup, PassReasonOption } from '@/contexts/LenderStagesContext';
@@ -14,12 +14,19 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SaveIndicator } from '@/components/ui/save-indicator';
 
 interface LendersKanbanProps {
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
   passReasons: PassReasonOption[];
   onUpdateLenderGroup: (lenderId: string, newGroup: StageGroup, passReason?: string) => void;
+  /** Optional: function to check if a lender is being saved */
+  isSaving?: (id: string) => boolean;
+  /** Optional: set of lender IDs that failed to save */
+  failedSaves?: Set<string>;
+  /** Optional: retry handler for failed saves */
+  onRetry?: (lenderId: string) => void;
 }
 
 // Helper to get relative time string
@@ -46,7 +53,19 @@ const getRelativeTime = (updatedAt?: string) => {
 };
 
 // Draggable Lender Tile
-function DraggableLenderTile({ lender, configuredStages }: { lender: DealLender; configuredStages: { id: string; label: string; group: StageGroup }[] }) {
+function DraggableLenderTile({ 
+  lender, 
+  configuredStages, 
+  isSaving, 
+  hasFailed, 
+  onRetry 
+}: { 
+  lender: DealLender; 
+  configuredStages: { id: string; label: string; group: StageGroup }[]; 
+  isSaving?: boolean;
+  hasFailed?: boolean;
+  onRetry?: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lender.id,
     data: { lender },
@@ -64,15 +83,33 @@ function DraggableLenderTile({ lender, configuredStages }: { lender: DealLender;
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card border border-border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-50 shadow-lg"
+        "bg-card border border-border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing relative",
+        isDragging && "opacity-50 shadow-lg",
+        hasFailed && "border-destructive/50 bg-destructive/5"
       )}
       {...listeners}
       {...attributes}
     >
+      {/* Save status indicator */}
+      <div className="absolute right-2 top-2 flex items-center gap-1">
+        {isSaving && <SaveIndicator isSaving={true} size="sm" />}
+        {hasFailed && !isSaving && onRetry && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRetry();
+            }}
+            className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors"
+            title="Retry save"
+          >
+            <RefreshCw className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
       <div className="flex items-start gap-2">
         <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-6">
           <p className="text-sm font-medium mb-1 truncate">{lender.name}</p>
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span className="bg-secondary px-1.5 py-0.5 rounded text-[10px]">
@@ -100,6 +137,9 @@ function DraggableLenderTile({ lender, configuredStages }: { lender: DealLender;
               ))}
             </div>
           )}
+          {hasFailed && (
+            <p className="text-xs text-destructive mt-2">Save failed — tap retry</p>
+          )}
         </div>
       </div>
     </div>
@@ -111,10 +151,16 @@ function DroppableColumn({
   group, 
   lenders,
   configuredStages,
+  isSaving,
+  failedSaves,
+  onRetry,
 }: { 
   group: { id: StageGroup; label: string; color: string }; 
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
+  isSaving?: (id: string) => boolean;
+  failedSaves?: Set<string>;
+  onRetry?: (lenderId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.id,
@@ -142,14 +188,21 @@ function DroppableColumn({
           </p>
         )}
         {lenders.map((lender) => (
-          <DraggableLenderTile key={lender.id} lender={lender} configuredStages={configuredStages} />
+          <DraggableLenderTile 
+            key={lender.id} 
+            lender={lender} 
+            configuredStages={configuredStages}
+            isSaving={isSaving?.(`lender-stage-${lender.id}`)}
+            hasFailed={failedSaves?.has(lender.id)}
+            onRetry={onRetry ? () => onRetry(lender.id) : undefined}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-export function LendersKanban({ lenders, configuredStages, passReasons, onUpdateLenderGroup }: LendersKanbanProps) {
+export function LendersKanban({ lenders, configuredStages, passReasons, onUpdateLenderGroup, isSaving, failedSaves, onRetry }: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
   const [pendingPassChange, setPendingPassChange] = useState<{ lenderId: string } | null>(null);
@@ -261,6 +314,9 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
               group={group} 
               lenders={getLendersByGroup(group.id)}
               configuredStages={configuredStages}
+              isSaving={isSaving}
+              failedSaves={failedSaves}
+              onRetry={onRetry}
             />
           ))}
         </div>
