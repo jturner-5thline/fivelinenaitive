@@ -226,9 +226,20 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
     });
   };
 
+  const isStageGroup = (value: unknown): value is StageGroup =>
+    value === 'active' || value === 'on-deck' || value === 'passed' || value === 'on-hold';
+
   const getLendersByGroup = (groupId: StageGroup) => {
-    return lenders.filter(lender => {
-      const stage = configuredStages.find(s => s.id === lender.stage);
+    return lenders.filter((lender) => {
+      // Prefer persisted trackingStatus (group) if available.
+      // This prevents “Passed” lenders from reverting on refresh when stage config
+      // doesn’t include a dedicated “passed” stage.
+      if (isStageGroup(lender.trackingStatus) && lender.trackingStatus === groupId) {
+        return true;
+      }
+
+      // Fallback to deriving group from configured stage.
+      const stage = configuredStages.find((s) => s.id === lender.stage);
       return stage?.group === groupId;
     });
   };
