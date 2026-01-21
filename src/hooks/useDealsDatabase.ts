@@ -673,25 +673,40 @@ export function useDealsDatabase() {
       if (updates.stage !== undefined) dbUpdates.stage = updates.stage;
       if (updates.substage !== undefined) dbUpdates.substage = updates.substage;
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
-      if (updates.passReason !== undefined) dbUpdates.pass_reason = updates.passReason;
+      // Handle passReason - use null to clear, or the value to set
+      if ('passReason' in updates) dbUpdates.pass_reason = updates.passReason ?? null;
       if (updates.trackingStatus !== undefined) dbUpdates.tracking_status = updates.trackingStatus;
+      
+      // Always update the updated_at timestamp
+      dbUpdates.updated_at = new Date().toISOString();
 
-      // Only make db call if we have updates
-      if (Object.keys(dbUpdates).length > 0) {
+      // Only make db call if we have meaningful updates (beyond just updated_at)
+      if (Object.keys(dbUpdates).length > 1) {
+        console.log(`[updateLender] Updating lender ${lenderId} with:`, dbUpdates);
+        
         const { data, error } = await supabase
           .from('deal_lenders')
           .update(dbUpdates)
           .eq('id', lenderId)
           .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error(`[updateLender] Database error for lender ${lenderId}:`, error);
+          throw error;
+        }
         
         // Log warning if no rows were updated
         if (!data || data.length === 0) {
-          console.warn(`Lender update returned no rows for id: ${lenderId}`);
+          console.warn(`[updateLender] No rows updated for lender ${lenderId}. This may indicate RLS policy blocking the update.`);
+          toast({
+            title: "Update may have failed",
+            description: "The lender update did not return data. Please try again.",
+            variant: "destructive",
+          });
         } else {
+          console.log(`[updateLender] Successfully updated lender ${lenderId}:`, data[0]);
           // Show success toast based on what was updated
-          if (updates.stage !== undefined) {
+          if (updates.stage !== undefined || updates.trackingStatus !== undefined) {
             toast({
               title: "Stage updated",
               description: `Lender stage saved successfully`,

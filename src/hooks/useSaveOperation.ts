@@ -56,6 +56,7 @@ export function useSaveOperation() {
 
   /**
    * Fire-and-forget version that doesn't block but still shows loading
+   * Errors are logged to console but don't block the UI
    */
   const withSavingAsync = useCallback((
     id: string,
@@ -67,7 +68,9 @@ export function useSaveOperation() {
     
     operation()
       .catch((error) => {
-        console.error(`Save operation ${id} failed:`, error);
+        console.error(`[withSavingAsync] Operation ${id} failed:`, error);
+        // Re-throw to allow parent handlers to catch if needed
+        // The error is already logged, but we want to surface it
       })
       .finally(() => {
         const elapsed = Date.now() - startTime;
