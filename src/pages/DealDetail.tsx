@@ -321,10 +321,15 @@ export default function DealDetail() {
   
   // Get member options for manager/owner dropdowns - always include current user
   const memberOptions = useMemo(() => {
-    const options = members.map(member => ({
-      value: member.display_name || member.email || member.user_id.slice(0, 8),
-      label: member.display_name || member.email || member.user_id.slice(0, 8),
-    }));
+    const options = members
+      .filter(member => member.display_name || member.email) // Only show members with names/emails
+      .map(member => {
+        const label = member.display_name || member.email || 'Team Member';
+        return {
+          value: label,
+          label: label,
+        };
+      });
     
     // If current user is not in the list, add them
     const currentUserLabel = profile?.display_name || user?.email || 'Me';

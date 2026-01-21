@@ -94,9 +94,10 @@ export function useCompany() {
         const userIds = membersData.map(m => m.user_id);
         
         // Query the profiles_public view - cast as any since view isn't in generated types
+        // Query profiles table directly since we need email for team members
         const { data: rawProfilesData, error: profilesError } = await supabase
-          .from('profiles_public' as any)
-          .select('user_id, display_name, first_name, last_name, avatar_url')
+          .from('profiles')
+          .select('user_id, display_name, first_name, last_name, avatar_url, email')
           .in('user_id', userIds);
 
         if (profilesError) {
@@ -110,6 +111,7 @@ export function useCompany() {
           first_name: string | null;
           last_name: string | null;
           avatar_url: string | null;
+          email: string | null;
         }
         
         const profilesData = (rawProfilesData || []) as unknown as PublicProfile[];
@@ -143,8 +145,7 @@ export function useCompany() {
             ...member,
             display_name: displayName,
             avatar_url: profile?.avatar_url || null,
-            // Email is no longer exposed through the public view for security
-            email: member.user_id === user.id ? user.email : null
+            email: profile?.email || (member.user_id === user.id ? user.email : null)
           };
         });
 
