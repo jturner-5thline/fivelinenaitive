@@ -2520,6 +2520,44 @@ export type Database = {
         }
         Relationships: []
       }
+      team_interaction_metrics: {
+        Row: {
+          breakdown: Json | null
+          company_id: string
+          created_at: string
+          id: string
+          metric_date: string
+          metric_type: string
+          metric_value: number
+        }
+        Insert: {
+          breakdown?: Json | null
+          company_id: string
+          created_at?: string
+          id?: string
+          metric_date?: string
+          metric_type: string
+          metric_value: number
+        }
+        Update: {
+          breakdown?: Json | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          metric_date?: string
+          metric_type?: string
+          metric_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_interaction_metrics_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       template_favorites: {
         Row: {
           created_at: string
@@ -2601,6 +2639,72 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_behavior_insights: {
+        Row: {
+          category: string
+          company_id: string | null
+          created_at: string
+          data: Json
+          description: string
+          dismissed_at: string | null
+          expires_at: string | null
+          id: string
+          insight_type: string
+          is_dismissed: boolean
+          severity: string
+          suggested_workflow_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          company_id?: string | null
+          created_at?: string
+          data?: Json
+          description: string
+          dismissed_at?: string | null
+          expires_at?: string | null
+          id?: string
+          insight_type: string
+          is_dismissed?: boolean
+          severity?: string
+          suggested_workflow_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          company_id?: string | null
+          created_at?: string
+          data?: Json
+          description?: string
+          dismissed_at?: string | null
+          expires_at?: string | null
+          id?: string
+          insight_type?: string
+          is_dismissed?: boolean
+          severity?: string
+          suggested_workflow_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_behavior_insights_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_behavior_insights_suggested_workflow_id_fkey"
+            columns: ["suggested_workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
             referencedColumns: ["id"]
           },
         ]
@@ -3118,6 +3222,78 @@ export type Database = {
             columns: ["workflow_id"]
             isOneToOne: false
             referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_suggestions: {
+        Row: {
+          actions: Json
+          applied_at: string | null
+          company_id: string | null
+          created_at: string
+          description: string
+          dismissed_at: string | null
+          id: string
+          insight_id: string | null
+          is_applied: boolean
+          is_dismissed: boolean
+          name: string
+          priority: string
+          reasoning: string
+          trigger_config: Json
+          trigger_type: string
+          user_id: string
+        }
+        Insert: {
+          actions?: Json
+          applied_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          description: string
+          dismissed_at?: string | null
+          id?: string
+          insight_id?: string | null
+          is_applied?: boolean
+          is_dismissed?: boolean
+          name: string
+          priority?: string
+          reasoning: string
+          trigger_config?: Json
+          trigger_type: string
+          user_id: string
+        }
+        Update: {
+          actions?: Json
+          applied_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          description?: string
+          dismissed_at?: string | null
+          id?: string
+          insight_id?: string | null
+          is_applied?: boolean
+          is_dismissed?: boolean
+          name?: string
+          priority?: string
+          reasoning?: string
+          trigger_config?: Json
+          trigger_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_suggestions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_suggestions_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "user_behavior_insights"
             referencedColumns: ["id"]
           },
         ]
