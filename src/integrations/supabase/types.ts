@@ -281,6 +281,7 @@ export type Database = {
           created_at: string
           default_deal_stage_id: string | null
           id: string
+          permission_settings: Json | null
           updated_at: string
         }
         Insert: {
@@ -288,6 +289,7 @@ export type Database = {
           created_at?: string
           default_deal_stage_id?: string | null
           id?: string
+          permission_settings?: Json | null
           updated_at?: string
         }
         Update: {
@@ -295,6 +297,7 @@ export type Database = {
           created_at?: string
           default_deal_stage_id?: string | null
           id?: string
+          permission_settings?: Json | null
           updated_at?: string
         }
         Relationships: [

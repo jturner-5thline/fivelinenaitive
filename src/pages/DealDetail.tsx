@@ -60,9 +60,11 @@ import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
+import { AuditTrailPanel } from '@/components/deal/AuditTrailPanel';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
+import { usePermissionSettings } from '@/hooks/usePermissionSettings';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import {
   Select,
@@ -447,6 +449,9 @@ export default function DealDetail() {
   // Panel reorder functionality
   const { panelOrder, reorderPanels, resetToDefault } = useDealPanelOrder();
   const [isPanelReorderDialogOpen, setIsPanelReorderDialogOpen] = useState(false);
+  
+  // Permission settings for role-based access control
+  const { canEditLenderStage, canEditMilestones, canEditNotes } = usePermissionSettings();
   
   // Mark info requests as read when Deal Management tab is viewed
   useEffect(() => {
@@ -1195,6 +1200,16 @@ export default function DealDetail() {
   }, [deal?.lenders, updateLenderInDb, logActivity, withSavingAsync]);
 
   const updateLenderGroup = useCallback((lenderId: string, newGroup: StageGroup, passReason?: string) => {
+    // Check permission
+    if (!canEditLenderStage()) {
+      toast({
+        title: "Permission denied",
+        description: "You don't have permission to edit lender stages. Contact your admin.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Find the first stage in the target group
     const targetStage = configuredStages.find(s => s.group === newGroup);
     if (!targetStage) return;
@@ -1231,7 +1246,7 @@ export default function DealDetail() {
       );
       return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
     });
-  }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity, withSavingAsync]);
+  }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity, withSavingAsync, canEditLenderStage]);
 
   const addMilestone = useCallback(async (milestone: Omit<DealMilestone, 'id'>) => {
     if (!deal) return;
@@ -3322,7 +3337,10 @@ export default function DealDetail() {
 
                 <TabsContent value="deal-management" className="mt-6 space-y-6">
                   <FlexInfoNotificationsPanel dealId={id} />
-                  <DealActivityTab dealId={id!} />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <DealActivityTab dealId={id!} />
+                    <AuditTrailPanel dealId={id!} />
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="deal-writeup" className="mt-6">

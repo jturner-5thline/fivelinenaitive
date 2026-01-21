@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 export interface StatusNote {
   id: string;
@@ -55,8 +56,19 @@ export function useStatusNotes(dealId: string | undefined) {
       // Add to local state
       setStatusNotes(prev => [data, ...prev]);
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding status note:', error);
+      
+      let errorMessage = "Failed to add status note";
+      if (error?.message?.includes('row-level security') || error?.code === '42501') {
+        errorMessage = "Permission denied. Your changes were not saved. Contact your admin.";
+      }
+      
+      toast({
+        title: "Save Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
       return null;
     }
   }, [dealId, user]);
