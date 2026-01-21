@@ -1648,7 +1648,7 @@ export default function DealDetail() {
           {/* Back button and Undo */}
           <div className="flex items-center justify-between mb-3">
             <Button variant="ghost" size="sm" className="gap-2" asChild>
-              <Link to="/dashboard">
+              <Link to="/deals">
                 <ArrowLeft className="h-4 w-4" />
                 Back to Pipeline
               </Link>
