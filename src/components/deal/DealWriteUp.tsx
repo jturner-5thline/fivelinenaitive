@@ -74,7 +74,7 @@ export interface DealDataForWriteUp {
   company?: string;
   dealTypes?: string[] | null;
   value?: number;
-  notes?: string | null;
+  narrative?: string | null;
   status?: string;
 }
 
@@ -97,7 +97,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   status: deal?.status === 'active' ? 'Published' : deal?.status === 'closed' ? 'Closed' : 'Draft',
   useOfFunds: '',
   existingDebtDetails: '',
-  description: deal?.notes || '',
+  description: deal?.narrative || '',
   keyItems: [],
   publishAsAnonymous: false,
 });
