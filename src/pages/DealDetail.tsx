@@ -509,7 +509,7 @@ export default function DealDetail() {
         company: deal.company,
         dealTypes: deal.dealTypes,
         value: deal.value,
-        notes: deal.notes,
+        narrative: deal.narrative,
         status: deal.status,
       };
       setDealWriteUpData(getEmptyDealWriteUpData(dealData));
