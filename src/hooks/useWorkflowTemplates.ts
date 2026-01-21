@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompany } from "@/hooks/useCompany";
 import { toast } from "sonner";
 import type { TriggerType, WorkflowAction } from "@/components/workflows/WorkflowBuilder";
 
@@ -18,28 +19,50 @@ export interface CustomWorkflowTemplate {
   is_shared: boolean;
   created_at: string;
   updated_at: string;
+  isOwn?: boolean;
 }
 
 export function useWorkflowTemplates() {
   const { user } = useAuth();
+  const { company } = useCompany();
 
   return useQuery({
-    queryKey: ["workflow-templates", user?.id],
+    queryKey: ["workflow-templates", user?.id, company?.id],
     queryFn: async () => {
       if (!user) return [];
 
-      const { data, error } = await supabase
+      // Fetch user's own templates
+      const { data: ownTemplates, error: ownError } = await supabase
         .from("workflow_templates")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (ownError) throw ownError;
 
-      return (data || []).map((t) => ({
+      // Fetch shared templates from company members (excluding own)
+      let sharedTemplates: any[] = [];
+      if (company?.id) {
+        const { data: shared, error: sharedError } = await supabase
+          .from("workflow_templates")
+          .select("*")
+          .eq("company_id", company.id)
+          .eq("is_shared", true)
+          .neq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (sharedError) throw sharedError;
+        sharedTemplates = shared || [];
+      }
+
+      const allTemplates = [...(ownTemplates || []), ...sharedTemplates];
+
+      return allTemplates.map((t) => ({
         ...t,
         trigger_type: t.trigger_type as TriggerType,
         actions: t.actions as unknown as WorkflowAction[],
         tags: t.tags || [],
+        isOwn: t.user_id === user.id,
       })) as CustomWorkflowTemplate[];
     },
     enabled: !!user,

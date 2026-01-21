@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Zap, Mail, CheckCircle2, Clock, Send, ChevronDown, ChevronUp, Search, FileCode, Users, Trash2, Bookmark, Star } from 'lucide-react';
+import { Bell, Zap, Mail, CheckCircle2, Clock, Send, ChevronDown, ChevronUp, Search, FileCode, Users, Trash2, Bookmark, Star, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,8 @@ export interface WorkflowTemplate {
   actions: WorkflowAction[];
   tags: string[];
   isCustom?: boolean;
+  isOwn?: boolean;
+  isShared?: boolean;
 }
 
 const BUILTIN_TEMPLATES: WorkflowTemplate[] = [
@@ -266,10 +268,12 @@ const BUILTIN_TEMPLATES: WorkflowTemplate[] = [
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
   custom: { label: 'My Templates', icon: <Star className="h-4 w-4" /> },
+  shared: { label: 'Shared by Team', icon: <Share2 className="h-4 w-4" /> },
   notifications: { label: 'Notifications', icon: <Bell className="h-4 w-4" /> },
   integrations: { label: 'Integrations', icon: <Zap className="h-4 w-4" /> },
   'deal-management': { label: 'Deal Management', icon: <FileCode className="h-4 w-4" /> },
   team: { label: 'Team', icon: <Users className="h-4 w-4" /> },
+  other: { label: 'Other', icon: <FileCode className="h-4 w-4" /> },
 };
 
 const TRIGGER_LABELS: Record<TriggerType, string> = {
@@ -288,14 +292,18 @@ interface WorkflowTemplatesLibraryProps {
 
 export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate }: WorkflowTemplatesLibraryProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['custom', 'notifications', 'deal-management']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['custom', 'shared', 'notifications', 'deal-management']);
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
 
   const { data: customTemplates = [], isLoading } = useWorkflowTemplates();
   const deleteTemplate = useDeleteWorkflowTemplate();
 
-  // Convert custom templates to WorkflowTemplate format
-  const customTemplatesFormatted: WorkflowTemplate[] = customTemplates.map((t) => ({
+  // Separate own templates from shared templates
+  const ownTemplates = customTemplates.filter(t => t.isOwn);
+  const sharedTemplates = customTemplates.filter(t => !t.isOwn);
+
+  // Convert own templates to WorkflowTemplate format
+  const ownTemplatesFormatted: WorkflowTemplate[] = ownTemplates.map((t) => ({
     id: t.id,
     name: t.name,
     description: t.description || '',
@@ -306,10 +314,28 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     actions: t.actions,
     tags: t.tags,
     isCustom: true,
+    isOwn: true,
+    isShared: t.is_shared,
   }));
 
-  // Combine custom and built-in templates
-  const allTemplates = [...customTemplatesFormatted, ...BUILTIN_TEMPLATES];
+  // Convert shared templates to WorkflowTemplate format
+  const sharedTemplatesFormatted: WorkflowTemplate[] = sharedTemplates.map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description || '',
+    category: 'shared',
+    icon: <Share2 className="h-5 w-5" />,
+    triggerType: t.trigger_type,
+    triggerConfig: t.trigger_config,
+    actions: t.actions,
+    tags: t.tags,
+    isCustom: true,
+    isOwn: false,
+    isShared: true,
+  }));
+
+  // Combine all templates
+  const allTemplates = [...ownTemplatesFormatted, ...sharedTemplatesFormatted, ...BUILTIN_TEMPLATES];
 
   const filteredTemplates = allTemplates.filter(template => {
     if (!searchQuery) return true;
@@ -329,11 +355,12 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
     return acc;
   }, {} as Record<string, WorkflowTemplate[]>);
 
-  // Sort categories to show custom first
+  // Sort categories to show custom first, then shared, then others
+  const categoryOrder = ['custom', 'shared', 'notifications', 'integrations', 'deal-management', 'team', 'other'];
   const sortedCategories = Object.keys(templatesByCategory).sort((a, b) => {
-    if (a === 'custom') return -1;
-    if (b === 'custom') return 1;
-    return 0;
+    const aIndex = categoryOrder.indexOf(a);
+    const bIndex = categoryOrder.indexOf(b);
+    return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
   });
 
   const toggleCategory = (category: string) => {
@@ -439,14 +466,25 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                         >
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
-                              <div className={`p-2 rounded-lg shrink-0 ${template.isCustom ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary'}`}>
+                              <div className={`p-2 rounded-lg shrink-0 ${
+                                template.category === 'shared' ? 'bg-blue-500/10 text-blue-600' :
+                                template.isCustom ? 'bg-amber-500/10 text-amber-600' : 
+                                'bg-primary/10 text-primary'
+                              }`}>
                                 {template.icon}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                  <h4 className="font-medium truncate">{template.name}</h4>
-                                  <div className="flex items-center gap-2">
-                                    {template.isCustom && (
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <h4 className="font-medium truncate">{template.name}</h4>
+                                    {template.isOwn && template.isShared && (
+                                      <span title="Shared with team">
+                                        <Share2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {template.isOwn && (
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -459,7 +497,7 @@ export function WorkflowTemplatesLibrary({ open, onOpenChange, onSelectTemplate 
                                         <Trash2 className="h-3 w-3 text-destructive" />
                                       </Button>
                                     )}
-                                    <Badge variant="outline" className="shrink-0 text-xs">
+                                    <Badge variant="outline" className="text-xs">
                                       {TRIGGER_LABELS[template.triggerType]}
                                     </Badge>
                                   </div>
