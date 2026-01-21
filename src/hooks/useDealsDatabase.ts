@@ -119,6 +119,7 @@ interface DbDeal {
   flag_notes: string | null;
   notes: string | null;
   notes_updated_at: string | null;
+  narrative: string | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
