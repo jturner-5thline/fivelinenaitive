@@ -124,6 +124,11 @@ serve(async (req) => {
     const successCount = results.filter(r => r.success).length;
     const failedCount = results.filter(r => !r.success).length;
 
+    // Send summary email notification if there are any results
+    if (results.length > 0) {
+      await sendWorkflowSummaryEmail(supabase, results, successCount, failedCount);
+    }
+
     return new Response(JSON.stringify({
       processed: scheduledActions.length,
       successful: successCount,
@@ -405,4 +410,115 @@ function replaceVariables(text: string, data: Record<string, any>): string {
   return text.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     return data[key] !== undefined ? String(data[key]) : `{{${key}}}`;
   });
+}
+
+async function sendWorkflowSummaryEmail(
+  supabase: any,
+  results: Array<{ actionId: string; success: boolean; message: string }>,
+  successCount: number,
+  failedCount: number
+): Promise<void> {
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
+  if (!resendApiKey) {
+    console.log('No RESEND_API_KEY configured, skipping summary email');
+    return;
+  }
+
+  try {
+    // Get admin users to notify (users with admin role)
+    const { data: adminUsers, error: adminError } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin');
+
+    if (adminError || !adminUsers || adminUsers.length === 0) {
+      console.log('No admin users found to notify');
+      return;
+    }
+
+    // Get admin emails
+    const adminEmails: string[] = [];
+    for (const admin of adminUsers) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('user_id', admin.user_id)
+        .single();
+      
+      if (profile?.email) {
+        adminEmails.push(profile.email);
+      }
+    }
+
+    if (adminEmails.length === 0) {
+      console.log('No admin emails found');
+      return;
+    }
+
+    const hasFailures = failedCount > 0;
+    const status = hasFailures ? 'with issues' : 'successfully';
+    const statusEmoji = hasFailures ? '⚠️' : '✅';
+
+    const failedActions = results.filter(r => !r.success);
+    const failedDetails = failedActions.length > 0
+      ? `<div style="margin-top: 16px; padding: 12px; background: #FEF2F2; border-radius: 6px; border-left: 4px solid #EF4444;">
+          <p style="color: #991B1B; font-weight: 600; margin: 0 0 8px 0;">Failed Actions:</p>
+          ${failedActions.map(a => `<p style="color: #7F1D1D; margin: 4px 0; font-size: 14px;">• ${a.message}</p>`).join('')}
+        </div>`
+      : '';
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'nAItive <notifications@resend.dev>',
+        to: adminEmails,
+        subject: `${statusEmoji} Workflow Actions Processed ${status}`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Workflow Summary</title>
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px;">
+            <div style="max-width: 500px; margin: 0 auto; background: white; border-radius: 8px; padding: 32px;">
+              <h1 style="color: #1a1a1a; font-size: 20px; margin: 0 0 16px 0;">
+                ${statusEmoji} Scheduled Workflow Actions Processed
+              </h1>
+              
+              <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+                <div style="flex: 1; padding: 16px; background: #F0FDF4; border-radius: 8px; text-align: center;">
+                  <p style="color: #166534; font-size: 24px; font-weight: 700; margin: 0;">${successCount}</p>
+                  <p style="color: #166534; font-size: 12px; margin: 4px 0 0 0;">Successful</p>
+                </div>
+                <div style="flex: 1; padding: 16px; background: ${failedCount > 0 ? '#FEF2F2' : '#F3F4F6'}; border-radius: 8px; text-align: center;">
+                  <p style="color: ${failedCount > 0 ? '#991B1B' : '#6B7280'}; font-size: 24px; font-weight: 700; margin: 0;">${failedCount}</p>
+                  <p style="color: ${failedCount > 0 ? '#991B1B' : '#6B7280'}; font-size: 12px; margin: 4px 0 0 0;">Failed</p>
+                </div>
+              </div>
+
+              ${failedDetails}
+
+              <p style="color: #6B7280; font-size: 12px; margin-top: 24px; text-align: center;">
+                This is an automated notification from your workflow system.
+              </p>
+            </div>
+          </body>
+          </html>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to send workflow summary email:', await response.text());
+    } else {
+      console.log('Workflow summary email sent to', adminEmails.length, 'admins');
+    }
+  } catch (error) {
+    console.error('Error sending workflow summary email:', error);
+  }
 }
