@@ -695,33 +695,35 @@ export function useDealsDatabase() {
           throw error;
         }
         
-        // Log warning if no rows were updated
+        // Treat 0 rows updated as a hard failure – rollback immediately
         if (!data || data.length === 0) {
-          console.warn(`[updateLender] No rows updated for lender ${lenderId}. This may indicate RLS policy blocking the update.`);
+          console.error(`[updateLender] No rows updated for lender ${lenderId}. RLS policy likely blocked the update – rolling back.`);
+          // Rollback optimistic update
+          setDeals(previousDeals);
           toast({
-            title: "Update may have failed",
-            description: "The lender update did not return data. Please try again.",
+            title: "Save failed",
+            description: "Your change could not be saved. Please try again.",
             variant: "destructive",
           });
-        } else {
-          console.log(`[updateLender] Successfully updated lender ${lenderId}:`, data[0]);
-          // Show success toast based on what was updated
-          if (updates.stage !== undefined || updates.trackingStatus !== undefined) {
-            toast({
-              title: "Stage updated",
-              description: `Lender stage saved successfully`,
-            });
-          } else if (updates.substage !== undefined) {
-            toast({
-              title: "Milestone updated",
-              description: `Lender milestone saved successfully`,
-            });
-          } else if (updates.notes !== undefined) {
-            toast({
-              title: "Notes saved",
-              description: `Lender notes saved successfully`,
-            });
-          }
+          return; // Exit early – do not continue with activity logs / webhooks
+        }
+
+        // Show success toast based on what was updated
+        if (updates.stage !== undefined || updates.trackingStatus !== undefined) {
+          toast({
+            title: "Stage updated",
+            description: `Lender stage saved successfully`,
+          });
+        } else if (updates.substage !== undefined) {
+          toast({
+            title: "Milestone updated",
+            description: `Lender milestone saved successfully`,
+          });
+        } else if (updates.notes !== undefined) {
+          toast({
+            title: "Notes saved",
+            description: `Lender notes saved successfully`,
+          });
         }
       }
       

@@ -4085,6 +4085,7 @@ export default function DealDetail() {
               configuredStages={configuredStages}
               passReasons={passReasons}
               onUpdateLenderGroup={updateLenderGroup}
+              isSaving={isSaving}
             />
           )}
         </DialogContent>
