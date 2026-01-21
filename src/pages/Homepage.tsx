@@ -88,7 +88,7 @@ export default function Homepage() {
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary border border-border mb-8">
                 <Sparkles className="w-4 h-4 text-accent" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  Intelligence, by Design
+                  Intelligence by Design
                 </span>
               </div>
 

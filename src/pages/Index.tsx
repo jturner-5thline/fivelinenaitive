@@ -62,7 +62,7 @@ const Index = () => {
                 animation: 'fadeInTagline 0.3s ease-out 0.4s forwards',
               }}
             >
-              Intelligence, by Design
+              Intelligence by Design
             </p>
           </div>
           <style>{`
