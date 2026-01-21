@@ -11,6 +11,7 @@ import {
   UserCog, 
   Cog, 
   Plug,
+  Workflow,
   FlaskConical,
   Rocket,
   Ban
@@ -84,6 +85,12 @@ const pageConfigs: PageConfig[] = [
     label: "Integrations", 
     description: "Third-party integrations and connections",
     icon: <Plug className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_workflows", 
+    label: "Workflows", 
+    description: "Automation workflows and scheduled actions",
+    icon: <Workflow className="h-5 w-5" />
   },
 ];
 

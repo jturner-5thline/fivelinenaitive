@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles, Workflow } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +41,7 @@ const menuItems = [
 ];
 
 const footerItems = [
+  { title: "Workflows", url: "/workflows", icon: Workflow, featureKey: "workflows" },
   { title: "Integrations", url: "/integrations", icon: Plug, featureKey: "integrations" },
   { title: "Settings", url: "/settings", icon: Settings, featureKey: null }, // Always visible
   { title: "Help", url: "/help", icon: HelpCircle, featureKey: null }, // Always visible
