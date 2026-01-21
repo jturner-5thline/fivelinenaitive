@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { AlertCircle, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { AlertCircle, X, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { differenceInDays } from 'date-fns';
@@ -34,10 +34,31 @@ function setDismissedNotifications(dismissed: Record<string, number>) {
 export function NotificationsBar({ deals }: NotificationsBarProps) {
   const { preferences } = usePreferences();
   const [dismissed, setDismissed] = useState<Record<string, number>>({});
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const now = new Date();
   
   useEffect(() => {
     setDismissed(getDismissedNotifications());
+  }, []);
+
+  useEffect(() => {
+    const checkScroll = () => {
+      if (scrollRef.current) {
+        const { scrollWidth, clientWidth, scrollLeft } = scrollRef.current;
+        setShowScrollIndicator(scrollWidth > clientWidth && scrollLeft < scrollWidth - clientWidth - 10);
+      }
+    };
+    
+    checkScroll();
+    const el = scrollRef.current;
+    el?.addEventListener('scroll', checkScroll);
+    window.addEventListener('resize', checkScroll);
+    
+    return () => {
+      el?.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
   }, []);
   
   const yellowThreshold = preferences.lenderUpdateYellowDays;
@@ -82,13 +103,23 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
     setDismissedNotifications(newDismissed);
   };
 
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 280, behavior: 'smooth' });
+    }
+  };
+
   if (staleDeals.length === 0) {
     return null;
   }
 
   return (
     <div className="relative">
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-destructive/30 scrollbar-track-transparent">
+      <div 
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-1 scrollbar-none"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         {staleDeals.map((deal) => (
           <Link
             key={deal.dealId}
@@ -114,6 +145,17 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
           </Link>
         ))}
       </div>
+      
+      {/* Scroll indicator */}
+      {showScrollIndicator && (
+        <button
+          onClick={scrollRight}
+          className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-destructive/20 border border-destructive/30 flex items-center justify-center hover:bg-destructive/30 transition-colors animate-pulse"
+          title="Scroll for more"
+        >
+          <ChevronRight className="h-4 w-4 text-destructive" />
+        </button>
+      )}
     </div>
   );
 }
