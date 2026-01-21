@@ -316,7 +316,9 @@ export default function DealDetail() {
     const masterLenderNames = masterLenders.map(l => l.name);
     // Fall back to static lender names if master lenders is empty
     const staticNames = getLenderNames();
-    return masterLenderNames.length > 0 ? masterLenderNames : staticNames;
+    const names = masterLenderNames.length > 0 ? masterLenderNames : staticNames;
+    // De-dupe to avoid React key collisions + confusing dropdown results
+    return Array.from(new Set(names.filter((n) => typeof n === 'string' && n.trim().length > 0)));
   }, [masterLenders, getLenderNames]);
   
   // Get member options for manager/owner dropdowns - show all company team members
