@@ -93,7 +93,7 @@ const Index = () => {
         </div>
         
         {/* Learn More Button - Bottom Left */}
-        <div className="absolute bottom-8 left-8 z-10">
+        <div className="fixed bottom-8 left-8 z-50">
           <Button 
             variant="outline" 
             size="sm"
