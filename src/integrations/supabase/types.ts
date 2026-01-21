@@ -706,6 +706,7 @@ export type Database = {
           manager: string | null
           migrated_from_personal: boolean
           milestone_fee: number | null
+          narrative: string | null
           notes: string | null
           notes_updated_at: string | null
           post_signing_hours: number | null
@@ -734,6 +735,7 @@ export type Database = {
           manager?: string | null
           migrated_from_personal?: boolean
           milestone_fee?: number | null
+          narrative?: string | null
           notes?: string | null
           notes_updated_at?: string | null
           post_signing_hours?: number | null
@@ -762,6 +764,7 @@ export type Database = {
           manager?: string | null
           migrated_from_personal?: boolean
           milestone_fee?: number | null
+          narrative?: string | null
           notes?: string | null
           notes_updated_at?: string | null
           post_signing_hours?: number | null
