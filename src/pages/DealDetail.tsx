@@ -1214,7 +1214,8 @@ export default function DealDetail() {
       await updateLenderInDb(lenderId, { 
         stage: targetStage.id, 
         trackingStatus: newGroup,
-        passReason: newGroup === 'passed' ? passReason : undefined 
+        // Explicitly pass null to clear pass reason when not passed, or the value when passed
+        passReason: newGroup === 'passed' ? (passReason || null) : null 
       });
     });
     
