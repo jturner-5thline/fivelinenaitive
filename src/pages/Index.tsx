@@ -91,6 +91,18 @@ const Index = () => {
             <Link to="/login">Login</Link>
           </Button>
         </div>
+        
+        {/* Learn More Button - Bottom Left */}
+        <div className="absolute bottom-8 left-8 z-10">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white font-light tracking-wide"
+            asChild
+          >
+            <Link to="/homepage">Learn More</Link>
+          </Button>
+        </div>
       </div>
       </>
     </RateLimitGuard>
