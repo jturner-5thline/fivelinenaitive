@@ -64,7 +64,27 @@ export default function Homepage() {
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
           
           <div className="container mx-auto px-6 relative">
-            <div className="max-w-4xl mx-auto text-center">
+          <div className="max-w-4xl mx-auto text-center">
+              {/* nAItive Brand */}
+              <h2 className="text-5xl md:text-6xl font-bold tracking-tighter mb-6">
+                <span className="text-muted-foreground/30">n</span>
+                <span 
+                  className="bg-clip-text text-transparent"
+                  style={{ 
+                    backgroundImage: 'linear-gradient(45deg, hsl(var(--muted-foreground)/0.5) 0%, hsl(var(--accent)) 50%, hsl(var(--muted-foreground)/0.5) 100%)',
+                    backgroundSize: '300% 300%',
+                    animation: 'shimmer 8s ease-in-out infinite',
+                  }}
+                >AI</span>
+                <span className="text-muted-foreground/30">tive</span>
+              </h2>
+              <style>{`
+                @keyframes shimmer {
+                  0%, 100% { background-position: 100% 100%; }
+                  50% { background-position: 0% 0%; }
+                }
+              `}</style>
+
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary border border-border mb-8">
                 <Sparkles className="w-4 h-4 text-accent" />
                 <span className="text-sm font-medium text-muted-foreground">
@@ -72,7 +92,7 @@ export default function Homepage() {
                 </span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] tracking-tight leading-[1.1]">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] tracking-tight leading-[1.1]">
                 The Deal Management Platform for Modern Advisors
               </h1>
 
