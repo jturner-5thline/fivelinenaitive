@@ -17,18 +17,19 @@ export function LenderSearchInput({
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Only show dropdown when there's text to filter
-  const shouldShowDropdown = searchQuery.trim().length > 0;
+  // Only show dropdown when there's meaningful text to filter (at least 2 chars)
+  const shouldShowDropdown = searchQuery.trim().length >= 2;
 
   const existingLenderNamesSet = useMemo(() => new Set(existingLenderNames), [existingLenderNames]);
 
   // Filter lenders: ONLY include if name contains the search query (case-insensitive)
   const filteredLenderNames = useMemo(() => {
     const trimmedQuery = searchQuery.trim();
-    if (!trimmedQuery) return [];
+    // Require at least 2 characters to start filtering
+    if (trimmedQuery.length < 2) return [];
 
     const queryLower = trimmedQuery.toLowerCase();
-    const limit = 20;
+    const limit = 15; // Reduced limit for cleaner results
     const matches: { name: string; score: number; coverage: number }[] = [];
 
     for (const name of lenderNames) {
@@ -112,7 +113,7 @@ export function LenderSearchInput({
       <PopoverTrigger asChild>
         <div className="flex-1 max-w-[50%]">
           <Input
-            placeholder="Type to add a lender..."
+            placeholder="Type 2+ chars to search lenders..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -125,11 +126,16 @@ export function LenderSearchInput({
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-48 overflow-auto" 
+        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-60 overflow-auto" 
         align="start"
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
+        {filteredLenderNames.length > 0 && (
+          <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border bg-muted/30">
+            {filteredLenderNames.length} match{filteredLenderNames.length !== 1 ? 'es' : ''} for "{searchQuery.trim()}"
+          </div>
+        )}
         {filteredLenderNames.map((lenderName) => (
           <button
             key={lenderName}
