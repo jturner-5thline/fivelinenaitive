@@ -57,10 +57,26 @@ export function LenderSearchInput({
       matches.push({ name, score, coverage });
     }
 
-    // Sort: best score first, then highest coverage (most letters matched), then alphabetically
+    // Sort: closest letter-for-letter match first
+    // 1) score (exact/prefix/word-start/substring)
+    // 2) earliest match position in the name
+    // 3) closest overall length (prefers tighter matches)
+    // 4) coverage + alphabetical
     matches.sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
-      if (a.coverage !== b.coverage) return b.coverage - a.coverage; // Higher coverage first
+
+      const aLower = a.name.toLowerCase();
+      const bLower = b.name.toLowerCase();
+
+      const aIndex = aLower.indexOf(queryLower);
+      const bIndex = bLower.indexOf(queryLower);
+      if (aIndex !== bIndex) return aIndex - bIndex;
+
+      const aLenDelta = Math.abs(aLower.length - queryLower.length);
+      const bLenDelta = Math.abs(bLower.length - queryLower.length);
+      if (aLenDelta !== bLenDelta) return aLenDelta - bLenDelta;
+
+      if (a.coverage !== b.coverage) return b.coverage - a.coverage;
       return a.name.localeCompare(b.name);
     });
 
@@ -136,9 +152,9 @@ export function LenderSearchInput({
             {filteredLenderNames.length} match{filteredLenderNames.length !== 1 ? 'es' : ''} for "{searchQuery.trim()}"
           </div>
         )}
-        {filteredLenderNames.map((lenderName) => (
+        {filteredLenderNames.map((lenderName, idx) => (
           <button
-            key={lenderName}
+            key={`${lenderName}-${idx}`}
             className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
             onClick={() => handleAddLender(lenderName)}
           >
