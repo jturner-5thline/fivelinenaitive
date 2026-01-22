@@ -142,10 +142,16 @@ Deno.serve(async (req) => {
       const activeValue = activeIndex !== -1 ? row[activeIndex]?.trim().toLowerCase() : '';
       const tierValue = tierIndex !== -1 ? row[tierIndex]?.trim() : '';
 
+      // Handle tier - don't add T prefix if already present
+      let tier: string | null = null;
+      if (tierValue) {
+        tier = tierValue.startsWith('T') ? tierValue : `T${tierValue}`;
+      }
+
       updates.push({
         name,
         active: activeValue === 'checked',
-        tier: tierValue ? `T${tierValue}` : null, // Convert "1" to "T1", "2" to "T2", etc.
+        tier,
       });
     }
 
