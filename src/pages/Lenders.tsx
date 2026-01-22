@@ -108,6 +108,7 @@ interface LenderInfo {
   ebitdaMin?: number | null;
   companyRequirements?: string | null;
   upfrontChecklist?: string | null;
+  postTermSheetChecklist?: string | null;
 }
 
 interface LenderForm {
@@ -166,6 +167,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     ebitdaMin: lender.ebitda_min,
     companyRequirements: lender.company_requirements,
     upfrontChecklist: lender.upfront_checklist,
+    postTermSheetChecklist: lender.post_term_sheet_checklist,
   };
 }
 

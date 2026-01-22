@@ -53,6 +53,7 @@ interface LenderInfo {
   ebitdaMin?: number | null;
   companyRequirements?: string | null;
   upfrontChecklist?: string | null;
+  postTermSheetChecklist?: string | null;
 }
 
 export interface LenderEditData {
@@ -789,6 +790,28 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           const trimmed = item.trim();
                           return trimmed ? (
                             <Badge key={idx} variant="green" className="text-xs">
+                              {trimmed}
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                    </section>
+                    <Separator />
+                  </>
+                )}
+
+                {/* View Mode: Post-Term Sheet Checklist */}
+                {lender.postTermSheetChecklist && (
+                  <>
+                    <section>
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Post-Term Sheet Checklist
+                      </h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {lender.postTermSheetChecklist.split(/[,;\n]+/).map((item, idx) => {
+                          const trimmed = item.trim();
+                          return trimmed ? (
+                            <Badge key={idx} variant="amber" className="text-xs">
                               {trimmed}
                             </Badge>
                           ) : null;
