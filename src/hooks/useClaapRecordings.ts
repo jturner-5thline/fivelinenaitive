@@ -2,6 +2,13 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+export interface ClaapParticipant {
+  attended: boolean;
+  email: string;
+  id: string;
+  name: string;
+}
+
 export interface ClaapRecording {
   id: string;
   createdAt: string;
@@ -26,6 +33,13 @@ export interface ClaapRecording {
   url: string;
   videoUrl?: string;
   embedUrl?: string;
+  meeting?: {
+    participants: ClaapParticipant[];
+    startingAt?: string;
+    endingAt?: string;
+    type?: string;
+    conferenceUrl?: string;
+  };
 }
 
 export function useClaapRecordings() {

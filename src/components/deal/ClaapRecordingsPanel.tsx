@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Video, Clock, User, ExternalLink, Search, RefreshCw, Link2, FileText, Play, Unlink } from 'lucide-react';
+import { Video, Clock, User, Users, Mail, ExternalLink, Search, RefreshCw, Link2, FileText, Play, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useClaapRecordings, ClaapRecording } from '@/hooks/useClaapRecordings';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { useClaapRecordings, ClaapRecording, ClaapParticipant } from '@/hooks/useClaapRecordings';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -37,12 +42,14 @@ function formatDuration(seconds: number): string {
 }
 
 export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
-  const { recordings, loading, error, fetchRecordings, getTranscript } = useClaapRecordings();
+  const { recordings, loading, error, fetchRecordings, getRecording, getTranscript } = useClaapRecordings();
   const { linkedRecordings, linkedRecordingIds, linkRecording, unlinkRecording } = useDealClaapRecordings(dealId);
   const [search, setSearch] = useState('');
   const [selectedRecording, setSelectedRecording] = useState<ClaapRecording | null>(null);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [loadingParticipants, setLoadingParticipants] = useState<Record<string, boolean>>({});
+  const [participantsCache, setParticipantsCache] = useState<Record<string, ClaapParticipant[]>>({});
 
   useEffect(() => {
     fetchRecordings();
@@ -58,6 +65,17 @@ export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
     const transcriptText = await getTranscript(recording.id);
     setTranscript(transcriptText);
     setLoadingTranscript(false);
+  };
+
+  const fetchParticipants = async (recordingId: string) => {
+    if (participantsCache[recordingId] || loadingParticipants[recordingId]) return;
+    
+    setLoadingParticipants(prev => ({ ...prev, [recordingId]: true }));
+    const details = await getRecording(recordingId);
+    if (details?.meeting?.participants) {
+      setParticipantsCache(prev => ({ ...prev, [recordingId]: details.meeting!.participants }));
+    }
+    setLoadingParticipants(prev => ({ ...prev, [recordingId]: false }));
   };
 
   const filteredRecordings = search
@@ -200,6 +218,66 @@ export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
                         </TooltipTrigger>
                         <TooltipContent>View Transcript</TooltipContent>
                       </Tooltip>
+                      <Popover>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => fetchParticipants(recording.id)}
+                              >
+                                <Users className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>View Participants</TooltipContent>
+                        </Tooltip>
+                        <PopoverContent className="w-72 p-0" align="end">
+                          <div className="p-3 border-b">
+                            <h4 className="font-medium text-sm flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              Meeting Participants
+                            </h4>
+                          </div>
+                          <ScrollArea className="max-h-48">
+                            {loadingParticipants[recording.id] ? (
+                              <div className="p-3 space-y-2">
+                                <Skeleton className="h-8 w-full" />
+                                <Skeleton className="h-8 w-full" />
+                              </div>
+                            ) : participantsCache[recording.id]?.length ? (
+                              <div className="p-2 space-y-1">
+                                {participantsCache[recording.id].map((participant, i) => (
+                                  <div key={participant.id || i} className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50">
+                                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                      <User className="h-3.5 w-3.5 text-primary" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium truncate">{participant.name || 'Unknown'}</p>
+                                      {participant.email && (
+                                        <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                                          <Mail className="h-3 w-3" />
+                                          {participant.email}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {participant.attended && (
+                                      <Badge variant="secondary" className="text-[10px] shrink-0">Attended</Badge>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="p-4 text-center text-muted-foreground text-sm">
+                                <Users className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                                No participant data available
+                              </div>
+                            )}
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
                       {!isLinked ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
