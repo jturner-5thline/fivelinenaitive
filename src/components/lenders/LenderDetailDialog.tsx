@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,8 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useLenderSectionOrder, LenderSectionId } from '@/hooks/useLenderSectionOrder';
+import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
 import { cn } from '@/lib/utils';
 
 interface LenderInfo {
@@ -189,6 +191,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState<LenderEditData>({
     name: '',
     contactName: '',
@@ -204,6 +207,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     ebitdaMin: '',
     companyRequirements: '',
   });
+  
+  const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
   
   const { attachments, isLoading: isLoadingAttachments, uploadMultipleAttachments, deleteAttachment } = useLenderAttachments(
     open ? lender?.name ?? null : null
@@ -465,6 +470,19 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               </>
             ) : (
               <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setIsReorderDialogOpen(true)}
+                    >
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Customize layout</TooltipContent>
+                </Tooltip>
                 {onSave && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -658,268 +676,556 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               </>
             ) : (
               <>
-                {/* View Mode: Lending Criteria - MOVED TO TOP */}
-                <section>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Lending Criteria
-                  </h3>
-                  <div className="grid gap-3">
-                    {/* Deal Size Range */}
-                    {(lender.minDeal || lender.maxDeal) && (
-                      <div className="flex items-start gap-3">
-                        <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium">Deal Size: </span>
-                          <span className="text-sm">
-                            {lender.minDeal && lender.maxDeal
-                              ? `${formatCurrencyValue(lender.minDeal)} - ${formatCurrencyValue(lender.maxDeal)}`
-                              : lender.minDeal
-                              ? `${formatCurrencyValue(lender.minDeal)}+`
-                              : `Up to ${formatCurrencyValue(lender.maxDeal!)}`}
-                          </span>
+                {sectionOrder.map((sectionId, index) => {
+                  const showSeparator = index < sectionOrder.length - 1;
+                  
+                  switch (sectionId) {
+                    case 'lending-criteria':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              Lending Criteria
+                            </h3>
+                            <div className="grid gap-3">
+                              {(lender.minDeal || lender.maxDeal) && (
+                                <div className="flex items-start gap-3">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Deal Size: </span>
+                                    <span className="text-sm">
+                                      {lender.minDeal && lender.maxDeal
+                                        ? `${formatCurrencyValue(lender.minDeal)} - ${formatCurrencyValue(lender.maxDeal)}`
+                                        : lender.minDeal
+                                        ? `${formatCurrencyValue(lender.minDeal)}+`
+                                        : `Up to ${formatCurrencyValue(lender.maxDeal!)}`}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.geo && (
+                                <div className="flex items-start gap-3">
+                                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Geography: </span>
+                                    <span className="text-sm">{lender.geo}</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.industries && lender.industries.length > 0 && (
+                                <div className="flex items-start gap-3">
+                                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium block mb-1.5">Industries:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {lender.industries.map((industry, idx) => (
+                                        <Badge key={idx} variant="blue" className="text-xs">
+                                          {industry}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.loanTypes && lender.loanTypes.length > 0 && (
+                                <div className="flex items-start gap-3">
+                                  <Banknote className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium block mb-1.5">Loan Types:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {lender.loanTypes.map((loanType, idx) => (
+                                        <Badge key={idx} variant="purple" className="text-xs">
+                                          {loanType}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.b2bB2c && (
+                                <div className="flex items-start gap-3">
+                                  <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">B2B vs B2C: </span>
+                                    <Badge variant="cyan" className="text-xs ml-1">
+                                      {lender.b2bB2c}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.minRevenue && (
+                                <div className="flex items-start gap-3">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Min Revenue: </span>
+                                    <span className="text-sm">{formatCurrencyValue(lender.minRevenue)}</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.ebitdaMin && (
+                                <div className="flex items-start gap-3">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium">Min EBITDA: </span>
+                                    <span className="text-sm">{formatCurrencyValue(lender.ebitdaMin)}</span>
+                                  </div>
+                                </div>
+                              )}
+                              {lender.companyRequirements && (
+                                <div className="flex items-start gap-3">
+                                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <span className="text-sm font-medium block mb-1">Company Requirements:</span>
+                                    <p className="text-sm text-muted-foreground">{lender.companyRequirements}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && !lender.b2bB2c && (
+                                <p className="text-muted-foreground text-sm">No lending criteria specified</p>
+                              )}
+                            </div>
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
                         </div>
-                      </div>
-                    )}
-                    
-                    {/* Geographic Preferences */}
-                    {lender.geo && (
-                      <div className="flex items-start gap-3">
-                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium">Geography: </span>
-                          <span className="text-sm">{lender.geo}</span>
-                        </div>
-                      </div>
-                    )}
+                      );
 
-                    {/* Industries */}
-                    {lender.industries && lender.industries.length > 0 && (
-                      <div className="flex items-start gap-3">
-                        <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium block mb-1.5">Industries:</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {lender.industries.map((industry, idx) => (
-                              <Badge key={idx} variant="blue" className="text-xs">
-                                {industry}
+                    case 'about':
+                      if (!lender.description) return null;
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              About
+                            </h3>
+                            <p className="text-sm leading-relaxed">{lender.description}</p>
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
+                        </div>
+                      );
+
+                    case 'upfront-checklist':
+                      if (!lender.upfrontChecklist) return null;
+                      return (
+                        <div key={sectionId}>
+                          <Collapsible defaultOpen className="space-y-2">
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+                              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                                Upfront Checklist
+                              </h3>
+                              <Badge variant="secondary" className="text-xs ml-auto">
+                                {lender.upfrontChecklist.split(/[,;\n]+/).filter(i => i.trim()).length}
                               </Badge>
-                            ))}
-                          </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="flex flex-wrap gap-1.5 pt-2">
+                                {lender.upfrontChecklist.split(/[,;\n]+/).map((item, idx) => {
+                                  const trimmed = item.trim();
+                                  return trimmed ? (
+                                    <Badge key={idx} variant="green" className="text-xs">
+                                      {trimmed}
+                                    </Badge>
+                                  ) : null;
+                                })}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                          {showSeparator && <Separator className="my-6" />}
                         </div>
-                      </div>
-                    )}
+                      );
 
-                    {/* Loan Types */}
-                    {lender.loanTypes && lender.loanTypes.length > 0 && (
-                      <div className="flex items-start gap-3">
-                        <Banknote className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium block mb-1.5">Loan Types:</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {lender.loanTypes.map((loanType, idx) => (
-                              <Badge key={idx} variant="purple" className="text-xs">
-                                {loanType}
+                    case 'post-term-sheet-checklist':
+                      if (!lender.postTermSheetChecklist) return null;
+                      return (
+                        <div key={sectionId}>
+                          <Collapsible defaultOpen className="space-y-2">
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+                              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                                Post-Term Sheet Checklist
+                              </h3>
+                              <Badge variant="secondary" className="text-xs ml-auto">
+                                {lender.postTermSheetChecklist.split(/[,;\n]+/).filter(i => i.trim()).length}
                               </Badge>
-                            ))}
-                          </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="flex flex-wrap gap-1.5 pt-2">
+                                {lender.postTermSheetChecklist.split(/[,;\n]+/).map((item, idx) => {
+                                  const trimmed = item.trim();
+                                  return trimmed ? (
+                                    <Badge key={idx} variant="amber" className="text-xs">
+                                      {trimmed}
+                                    </Badge>
+                                  ) : null;
+                                })}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                          {showSeparator && <Separator className="my-6" />}
                         </div>
-                      </div>
-                    )}
+                      );
 
-                    {/* B2B/B2C */}
-                    {lender.b2bB2c && (
-                      <div className="flex items-start gap-3">
-                        <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium">B2B vs B2C: </span>
-                          <Badge variant="cyan" className="text-xs ml-1">
-                            {lender.b2bB2c}
-                          </Badge>
+                    case 'contact-info':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              Contact Information
+                            </h3>
+                            <div className="grid gap-3">
+                              {lender.website && (
+                                <div className="flex items-center gap-3">
+                                  <Globe className="h-4 w-4 text-muted-foreground" />
+                                  <a 
+                                    href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-primary hover:underline flex items-center gap-1"
+                                  >
+                                    {lender.website.replace(/^https?:\/\//, '')}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              )}
+                              {lender.contact.name && (
+                                <div className="flex items-center gap-3">
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                  <span>{lender.contact.name}</span>
+                                </div>
+                              )}
+                              {lender.contact.email && (
+                                <div className="flex items-center gap-3">
+                                  <Mail className="h-4 w-4 text-muted-foreground" />
+                                  <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
+                                    {lender.contact.email}
+                                  </a>
+                                </div>
+                              )}
+                              {lender.contact.phone && (
+                                <div className="flex items-center gap-3">
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                  <a href={`tel:${lender.contact.phone}`} className="hover:underline">
+                                    {lender.contact.phone}
+                                  </a>
+                                </div>
+                              )}
+                              {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
+                                <p className="text-muted-foreground text-sm">No contact information available</p>
+                              )}
+                            </div>
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
                         </div>
-                      </div>
-                    )}
+                      );
 
-                    {/* Minimum Revenue */}
-                    {lender.minRevenue && (
-                      <div className="flex items-start gap-3">
-                        <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium">Min Revenue: </span>
-                          <span className="text-sm">{formatCurrencyValue(lender.minRevenue)}</span>
+                    case 'additional-preferences':
+                      if (lender.preferences.length === 0) return null;
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              Additional Preferences
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                              {lender.preferences.map((pref, idx) => (
+                                <Badge key={idx} variant="secondary">
+                                  {pref}
+                                </Badge>
+                              ))}
+                            </div>
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
                         </div>
-                      </div>
-                    )}
+                      );
 
-                    {/* Minimum EBITDA */}
-                    {lender.ebitdaMin && (
-                      <div className="flex items-start gap-3">
-                        <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium">Min EBITDA: </span>
-                          <span className="text-sm">{formatCurrencyValue(lender.ebitdaMin)}</span>
+                    case 'active-deals':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              Active Deals ({lenderDeals.active.length})
+                            </h3>
+                            {lenderDeals.active.length > 0 ? (
+                              <HorizontalScrollContainer>
+                                {lenderDeals.active.map((deal) => (
+                                  <Tooltip key={deal.dealId}>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
+                                        onClick={() => handleNavigateToDeal(deal.dealId)}
+                                      >
+                                        <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
+                                        <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
+                                        <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-[200px]">
+                                      <p className="font-medium">{deal.company}</p>
+                                      <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+                                      {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ))}
+                              </HorizontalScrollContainer>
+                            ) : (
+                              <p className="text-muted-foreground text-sm">No active deals with this lender</p>
+                            )}
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
                         </div>
-                      </div>
-                    )}
+                      );
 
-                    {/* Company Requirements */}
-                    {lender.companyRequirements && (
-                      <div className="flex items-start gap-3">
-                        <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium block mb-1">Company Requirements:</span>
-                          <p className="text-sm text-muted-foreground">{lender.companyRequirements}</p>
+                    case 'attachments':
+                      if (!user) return null;
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                                <Paperclip className="h-4 w-4" />
+                                Attachments ({attachments.length})
+                              </h3>
+                            </div>
+                            
+                            {pendingFiles.length > 0 ? (
+                              <div className="border rounded-lg p-4 mb-3 bg-muted/30">
+                                <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
+                                  {pendingFiles.map((file, index) => (
+                                    <div key={index} className="flex items-center gap-3">
+                                      <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{file.name}</p>
+                                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                        onClick={() => handleRemovePendingFile(index)}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                  {pendingFiles.length} file{pendingFiles.length > 1 ? 's' : ''} selected
+                                </p>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                                  <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as LenderAttachmentCategory)}>
+                                    <SelectTrigger className="flex-1">
+                                      <SelectValue placeholder="Select category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {LENDER_ATTACHMENT_CATEGORIES.map((cat) => (
+                                        <SelectItem key={cat.value} value={cat.value}>
+                                          {cat.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={handleConfirmUpload}
+                                    disabled={isUploading}
+                                    className="flex-1"
+                                  >
+                                    {isUploading ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        Uploading...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        Upload {pendingFiles.length > 1 ? `${pendingFiles.length} Files` : ''}
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelUpload}
+                                    disabled={isUploading}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                                className={cn(
+                                  "border-2 border-dashed rounded-lg p-4 mb-3 text-center cursor-pointer transition-colors",
+                                  isDragging 
+                                    ? "border-primary bg-primary/5" 
+                                    : "border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50"
+                                )}
+                              >
+                                <input
+                                  type="file"
+                                  multiple
+                                  ref={fileInputRef}
+                                  onChange={handleFileChange}
+                                  className="hidden"
+                                />
+                                <div className="flex flex-col items-center gap-2 py-2">
+                                  <Upload className={cn(
+                                    "h-6 w-6 transition-colors",
+                                    isDragging ? "text-primary" : "text-muted-foreground"
+                                  )} />
+                                  <p className="text-sm text-muted-foreground">
+                                    {isDragging ? "Drop files here" : "Drag & drop or click to upload (multiple files supported)"}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {isLoadingAttachments ? (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : attachments.length > 0 ? (
+                              <div className="space-y-4">
+                                {Object.entries(groupedAttachments).map(([category, catAttachments]) => (
+                                  <div key={category}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge variant="secondary" className="text-xs">
+                                        {getCategoryLabel(category)}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        ({catAttachments.length})
+                                      </span>
+                                    </div>
+                                    <div className="space-y-2">
+                                      {catAttachments.map((attachment) => (
+                                        <div
+                                          key={attachment.id}
+                                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group"
+                                        >
+                                          <a
+                                            href={attachment.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-3 flex-1 min-w-0 hover:text-primary"
+                                          >
+                                            <FileText className="h-4 w-4 shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="font-medium truncate">{attachment.name}</p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {formatFileSize(attachment.size_bytes)}
+                                              </p>
+                                            </div>
+                                          </a>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                            onClick={() => handleDeleteAttachment(attachment)}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-muted-foreground text-sm">No attachments uploaded</p>
+                            )}
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
                         </div>
-                      </div>
-                    )}
+                      );
 
-                    {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && !lender.b2bB2c && (
-                      <p className="text-muted-foreground text-sm">No lending criteria specified</p>
-                    )}
-                  </div>
-                </section>
-
-                <Separator />
-
-                {/* View Mode: About (Description) - MOVED AFTER Lending Criteria */}
-                {lender.description && (
-                  <>
-                    <section>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                        About
-                      </h3>
-                      <p className="text-sm leading-relaxed">{lender.description}</p>
-                    </section>
-                    <Separator />
-                  </>
-                )}
-
-                {/* View Mode: Upfront Checklist */}
-                {lender.upfrontChecklist && (
-                  <>
-                    <Collapsible defaultOpen className="space-y-2">
-                      <CollapsibleTrigger className="flex items-center gap-2 w-full group">
-                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                          Upfront Checklist
-                        </h3>
-                        <Badge variant="secondary" className="text-xs ml-auto">
-                          {lender.upfrontChecklist.split(/[,;\n]+/).filter(i => i.trim()).length}
-                        </Badge>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="flex flex-wrap gap-1.5 pt-2">
-                          {lender.upfrontChecklist.split(/[,;\n]+/).map((item, idx) => {
-                            const trimmed = item.trim();
-                            return trimmed ? (
-                              <Badge key={idx} variant="green" className="text-xs">
-                                {trimmed}
-                              </Badge>
-                            ) : null;
-                          })}
+                    case 'deals-sent':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                              <Briefcase className="h-4 w-4 text-primary" />
+                              Deals Sent ({lenderDeals.sent.length})
+                            </h3>
+                            {lenderDeals.sent.length > 0 ? (
+                              <HorizontalScrollContainer>
+                                {lenderDeals.sent.map((deal) => (
+                                  <Tooltip key={deal.dealId}>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
+                                        onClick={() => handleNavigateToDeal(deal.dealId)}
+                                      >
+                                        <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
+                                        <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
+                                        <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-[200px]">
+                                      <p className="font-medium">{deal.company}</p>
+                                      <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+                                      {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ))}
+                              </HorizontalScrollContainer>
+                            ) : (
+                              <p className="text-muted-foreground text-sm">No deals have been sent to this lender</p>
+                            )}
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                    <Separator />
-                  </>
-                )}
+                      );
 
-                {/* View Mode: Post-Term Sheet Checklist */}
-                {lender.postTermSheetChecklist && (
-                  <>
-                    <Collapsible defaultOpen className="space-y-2">
-                      <CollapsibleTrigger className="flex items-center gap-2 w-full group">
-                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
-                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                          Post-Term Sheet Checklist
-                        </h3>
-                        <Badge variant="secondary" className="text-xs ml-auto">
-                          {lender.postTermSheetChecklist.split(/[,;\n]+/).filter(i => i.trim()).length}
-                        </Badge>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="flex flex-wrap gap-1.5 pt-2">
-                          {lender.postTermSheetChecklist.split(/[,;\n]+/).map((item, idx) => {
-                            const trimmed = item.trim();
-                            return trimmed ? (
-                              <Badge key={idx} variant="amber" className="text-xs">
-                                {trimmed}
-                              </Badge>
-                            ) : null;
-                          })}
+                    case 'pass-reasons':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                              <ThumbsDown className="h-4 w-4 text-destructive" />
+                              Pass Reasons ({lenderDeals.passReasons.length})
+                            </h3>
+                            {lenderDeals.passReasons.length > 0 ? (
+                              <HorizontalScrollContainer>
+                                {lenderDeals.passReasons.map((item) => (
+                                  <Tooltip key={item.dealId}>
+                                    <TooltipTrigger asChild>
+                                      <div 
+                                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
+                                        onClick={() => handleNavigateToDeal(item.dealId)}
+                                      >
+                                        <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <p className="font-medium text-sm truncate mb-1 pr-4">{item.company}</p>
+                                        <p className="text-xs text-destructive/80 line-clamp-2">{item.reason}</p>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-[200px]">
+                                      <p className="font-medium">{item.company}</p>
+                                      <p className="text-xs text-muted-foreground">Reason: {item.reason}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ))}
+                              </HorizontalScrollContainer>
+                            ) : (
+                              <p className="text-muted-foreground text-sm">No pass history with this lender</p>
+                            )}
+                          </section>
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                    <Separator />
-                  </>
-                )}
+                      );
 
-                {/* View Mode: Contact Information */}
-                <section>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Contact Information
-                  </h3>
-                  <div className="grid gap-3">
-                    {lender.website && (
-                      <div className="flex items-center gap-3">
-                        <Globe className="h-4 w-4 text-muted-foreground" />
-                        <a 
-                          href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-primary hover:underline flex items-center gap-1"
-                        >
-                          {lender.website.replace(/^https?:\/\//, '')}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
-                    )}
-                    {lender.contact.name && (
-                      <div className="flex items-center gap-3">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span>{lender.contact.name}</span>
-                      </div>
-                    )}
-                    {lender.contact.email && (
-                      <div className="flex items-center gap-3">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
-                          {lender.contact.email}
-                        </a>
-                      </div>
-                    )}
-                    {lender.contact.phone && (
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <a href={`tel:${lender.contact.phone}`} className="hover:underline">
-                          {lender.contact.phone}
-                        </a>
-                      </div>
-                    )}
-                    {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
-                      <p className="text-muted-foreground text-sm">No contact information available</p>
-                    )}
-                  </div>
-                </section>
-
-                <Separator />
-
-                {/* View Mode: Additional Preferences */}
-                {lender.preferences.length > 0 && (
-                  <section>
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                      Additional Preferences
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {lender.preferences.map((pref, idx) => (
-                        <Badge key={idx} variant="secondary">
-                          {pref}
-                        </Badge>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {lender.preferences.length > 0 && <Separator />}
+                    default:
+                      return null;
+                  }
+                })}
               </>
             )}
 
@@ -1200,6 +1506,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
           </div>
         </ScrollArea>
       </DialogContent>
+      
+      <LenderSectionReorderDialog
+        open={isReorderDialogOpen}
+        onOpenChange={setIsReorderDialogOpen}
+        sectionOrder={sectionOrder}
+        onSave={setSectionOrderDirect}
+        onReset={resetToDefault}
+      />
     </Dialog>
   );
 }
