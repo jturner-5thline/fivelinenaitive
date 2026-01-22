@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +57,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
+import { SideBySideMergeDialog } from '@/components/lenders/SideBySideMergeDialog';
 import { NonBankLendersImportButton } from '@/components/lenders/NonBankLendersImportButton';
 import { BankLendersImportButton } from '@/components/lenders/BankLendersImportButton';
 import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
@@ -195,6 +196,7 @@ export default function Lenders() {
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
+  const [isSideBySideMergeOpen, setIsSideBySideMergeOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<LenderFilters>(emptyFilters);
   const [tileDisplaySettings, setTileDisplaySettings] = useState<LenderTileDisplaySettings>(DEFAULT_TILE_DISPLAY_SETTINGS);
@@ -653,9 +655,13 @@ export default function Lenders() {
                 </DropdownMenu>
                 <BankLendersImportButton onImport={importLenders} />
                 <NonBankLendersImportButton onImportComplete={() => window.location.reload()} />
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => setIsDuplicatesDialogOpen(true)}>
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => setIsSideBySideMergeOpen(true)}>
+                  <Columns className="h-4 w-4" />
+                  Merge Side-by-Side
+                </Button>
+                <Button variant="ghost" size="sm" className="gap-1" onClick={() => setIsDuplicatesDialogOpen(true)}>
                   <Users className="h-4 w-4" />
-                  Merge Duplicates
+                  Quick Merge
                 </Button>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
@@ -1034,6 +1040,13 @@ export default function Lenders() {
         lenders={masterLenders}
         onMergeLenders={async (keepId, mergeIds, mergedData) => { await mergeLenders(keepId, mergeIds, mergedData); }}
         onDeleteLender={async (id) => { await deleteMasterLender(id); }}
+      />
+
+      <SideBySideMergeDialog
+        open={isSideBySideMergeOpen}
+        onOpenChange={setIsSideBySideMergeOpen}
+        lenders={masterLenders}
+        onMergeLenders={async (keepId, mergeIds, mergedData) => { await mergeLenders(keepId, mergeIds, mergedData); }}
       />
     </>
   );
