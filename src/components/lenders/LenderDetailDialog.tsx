@@ -730,7 +730,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       <div className="flex items-start gap-3">
                         <Tag className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div>
-                          <span className="text-sm font-medium">Customer Type: </span>
+                          <span className="text-sm font-medium">B2B vs B2C: </span>
                           <Badge variant="cyan" className="text-xs ml-1">
                             {lender.b2bB2c}
                           </Badge>
