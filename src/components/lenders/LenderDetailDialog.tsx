@@ -784,7 +784,16 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                         Upfront Checklist
                       </h3>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{lender.upfrontChecklist}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {lender.upfrontChecklist.split(/[,;\n]+/).map((item, idx) => {
+                          const trimmed = item.trim();
+                          return trimmed ? (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {trimmed}
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
                     </section>
                     <Separator />
                   </>
