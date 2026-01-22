@@ -416,19 +416,27 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       onOpenChange(newOpen);
     }}>
       <DialogContent className="max-w-2xl max-h-[85vh]">
-        <DialogHeader className="flex flex-row items-start justify-end gap-4 pr-8">
-          <DialogTitle className="sr-only">{lender.name}</DialogTitle>
-          {isEditMode && (
-            <div className="flex items-center gap-2 mr-auto">
-              <Building2 className="h-6 w-6" />
+        <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <Building2 className="h-6 w-6" />
+            {isEditMode ? (
               <Input
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                 className="h-8 text-lg font-semibold max-w-[200px]"
                 placeholder="Lender name"
               />
-            </div>
-          )}
+            ) : (
+              <>
+                <span>{lender.name}</span>
+                {lender.lenderType && (
+                  <Badge variant="outline" className="ml-1 text-xs font-normal">
+                    {lender.lenderType}
+                  </Badge>
+                )}
+              </>
+            )}
+          </DialogTitle>
           <div className="flex items-center gap-1">
             {isEditMode ? (
               <>
