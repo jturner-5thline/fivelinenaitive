@@ -90,12 +90,26 @@ export const LenderGridCard = memo(function LenderGridCard({
       className="relative bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer h-full min-h-[180px]"
       onClick={() => onOpenDetail(lender)}
     >
-      {/* Active deal count - top left corner */}
-      {tileDisplaySettings.showActiveDealCount && activeDealCount > 0 && (
-        <Badge variant="default" className="absolute top-0 left-0 text-xs rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none">
-          {activeDealCount} active
-        </Badge>
-      )}
+      {/* Top left corner badges */}
+      <div className="absolute top-0 left-0 flex">
+        {lender.tier && (
+          <Badge 
+            className={`text-xs rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none ${
+              lender.tier === 'T1' ? 'bg-[#d1fae5] text-[#047857] hover:bg-[#d1fae5]' :
+              lender.tier === 'T2' ? 'bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff]' :
+              lender.tier === 'T3' ? 'bg-[#fef3c7] text-[#b45309] hover:bg-[#fef3c7]' :
+              'bg-[#f3e8ff] text-[#7e22ce] hover:bg-[#f3e8ff]'
+            }`}
+          >
+            {lender.tier}
+          </Badge>
+        )}
+        {tileDisplaySettings.showActiveDealCount && activeDealCount > 0 && (
+          <Badge variant="default" className={`text-xs ${lender.tier ? 'rounded-none rounded-br-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
+            {activeDealCount} active
+          </Badge>
+        )}
+      </div>
       <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -160,21 +174,14 @@ export const LenderGridCard = memo(function LenderGridCard({
       
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center text-center mt-1">
-        <div className="flex items-center gap-1.5">
-          <p className="font-semibold text-base line-clamp-2 leading-tight">{lender.name}</p>
-          {lender.tier && (
-            <Badge 
-              className={`text-xs shrink-0 ${
-                lender.tier === 'T1' ? 'bg-[#d1fae5] text-[#047857] hover:bg-[#d1fae5]' :
-                lender.tier === 'T2' ? 'bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff]' :
-                lender.tier === 'T3' ? 'bg-[#fef3c7] text-[#b45309] hover:bg-[#fef3c7]' :
-                'bg-[#f3e8ff] text-[#7e22ce] hover:bg-[#f3e8ff]'
-              }`}
-            >
-              {lender.tier}
-            </Badge>
-          )}
-        </div>
+        <p className="font-semibold text-base line-clamp-2 leading-tight">{lender.name}</p>
+        
+        {/* Lender type badge */}
+        {tileDisplaySettings.showLenderType && lender.lender_type && (
+          <Badge variant="outline" className="text-xs mt-1.5">
+            {lender.lender_type}
+          </Badge>
+        )}
         
         {/* Lender type badge */}
         {tileDisplaySettings.showLenderType && lender.lender_type && (
