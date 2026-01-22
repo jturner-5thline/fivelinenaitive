@@ -92,6 +92,7 @@ interface LenderInfo {
   name: string;
   contact: {
     name: string;
+    title: string;
     email: string;
     phone: string;
   };
@@ -151,6 +152,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     name: lender.name,
     contact: {
       name: lender.contact_name || '',
+      title: lender.contact_title || '',
       email: lender.email || '',
       phone: '',
     },

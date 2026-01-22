@@ -40,6 +40,7 @@ interface LenderInfo {
   name: string;
   contact: {
     name: string;
+    title: string;
     email: string;
     phone: string;
   };
@@ -934,7 +935,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 {lender.contact.name && (
                                   <div className="flex items-center gap-3">
                                     <User className="h-4 w-4 text-muted-foreground" />
-                                    <span>{lender.contact.name}</span>
+                                    <span>
+                                      {lender.contact.name}{lender.contact.title && `, ${lender.contact.title}`}
+                                    </span>
                                   </div>
                                 )}
                                 {lender.contact.email && (
