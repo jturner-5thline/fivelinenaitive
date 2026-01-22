@@ -109,6 +109,7 @@ interface LenderInfo {
   companyRequirements?: string | null;
   upfrontChecklist?: string | null;
   postTermSheetChecklist?: string | null;
+  b2bB2c?: string | null;
 }
 
 interface LenderForm {
@@ -168,6 +169,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     companyRequirements: lender.company_requirements,
     upfrontChecklist: lender.upfront_checklist,
     postTermSheetChecklist: lender.post_term_sheet_checklist,
+    b2bB2c: lender.b2b_b2c,
   };
 }
 
