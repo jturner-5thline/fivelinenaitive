@@ -2,15 +2,20 @@ import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Video, ExternalLink } from 'lucide-react';
+import { Video, ExternalLink, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIntegrations } from '@/hooks/useIntegrations';
+import { useAuth } from '@/contexts/AuthContext';
+
+const ALLOWED_EMAIL = 'jturner@5thline.co';
 
 export function ClaapIntegration() {
+  const { user } = useAuth();
   const { integrations, createIntegration, toggleIntegration, isLoading } = useIntegrations();
   
   const claapIntegration = integrations.find(i => i.type === 'claap');
   const isEnabled = claapIntegration?.status === 'connected';
+  const canManage = user?.email === ALLOWED_EMAIL;
 
   const handleToggle = async (enabled: boolean) => {
     if (!claapIntegration) {
@@ -58,15 +63,28 @@ export function ClaapIntegration() {
             <Badge variant={isEnabled ? 'default' : 'secondary'}>
               {isEnabled ? 'Enabled' : 'Disabled'}
             </Badge>
-            <Switch
-              checked={isEnabled}
-              onCheckedChange={handleToggle}
-              disabled={isLoading || createIntegration.isPending || toggleIntegration.isPending}
-            />
+            {canManage ? (
+              <Switch
+                checked={isEnabled}
+                onCheckedChange={handleToggle}
+                disabled={isLoading || createIntegration.isPending || toggleIntegration.isPending}
+              />
+            ) : (
+              <Lock className="h-4 w-4 text-muted-foreground" />
+            )}
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {!canManage && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-center gap-2">
+            <Lock className="h-4 w-4 text-amber-600" />
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              Only authorized administrators can manage this integration.
+            </p>
+          </div>
+        )}
+        
         <div className="bg-muted/50 rounded-lg p-4 space-y-3">
           <h4 className="font-medium text-sm">About Claap Integration</h4>
           <p className="text-sm text-muted-foreground">
@@ -90,7 +108,7 @@ export function ClaapIntegration() {
           </div>
         </div>
         
-        {!isEnabled && (
+        {!isEnabled && canManage && (
           <div className="border-2 border-dashed rounded-lg p-6 text-center">
             <Video className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
             <p className="font-medium">Claap integration is disabled</p>
@@ -100,6 +118,16 @@ export function ClaapIntegration() {
             <Button onClick={() => handleToggle(true)} disabled={createIntegration.isPending || toggleIntegration.isPending}>
               Enable Claap
             </Button>
+          </div>
+        )}
+        
+        {!isEnabled && !canManage && (
+          <div className="border-2 border-dashed rounded-lg p-6 text-center">
+            <Video className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+            <p className="font-medium">Claap integration is disabled</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Contact an administrator to enable this integration
+            </p>
           </div>
         )}
 
