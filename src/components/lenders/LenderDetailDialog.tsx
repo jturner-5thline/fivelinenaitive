@@ -52,6 +52,7 @@ interface LenderInfo {
   minRevenue?: number | null;
   ebitdaMin?: number | null;
   companyRequirements?: string | null;
+  upfrontChecklist?: string | null;
 }
 
 export interface LenderEditData {
@@ -771,6 +772,19 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         About
                       </h3>
                       <p className="text-sm leading-relaxed">{lender.description}</p>
+                    </section>
+                    <Separator />
+                  </>
+                )}
+
+                {/* View Mode: Upfront Checklist */}
+                {lender.upfrontChecklist && (
+                  <>
+                    <section>
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Upfront Checklist
+                      </h3>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{lender.upfrontChecklist}</p>
                     </section>
                     <Separator />
                   </>
