@@ -17,6 +17,8 @@ interface LenderSpreadsheetViewProps {
 // Column definitions matching the Excel screenshot
 const COLUMNS = [
   { key: 'name', label: 'Name', width: 180 },
+  { key: 'active', label: 'Active', width: 70 },
+  { key: 'tier', label: 'Tier', width: 60 },
   { key: 'email', label: 'E-mail', width: 200 },
   { key: 'lender_type', label: 'Lender Type', width: 120 },
   { key: 'loan_types', label: 'Loan Type', width: 150 },
@@ -56,6 +58,16 @@ function formatCellValue(lender: MasterLender, key: ColumnKey): string {
   const value = lender[key as keyof MasterLender];
   
   if (value === null || value === undefined) return '';
+  
+  // Handle boolean for active status
+  if (key === 'active') {
+    return value ? 'Yes' : 'No';
+  }
+  
+  // Handle tier display
+  if (key === 'tier') {
+    return value ? String(value) : '';
+  }
   
   // Handle arrays
   if (Array.isArray(value)) {
