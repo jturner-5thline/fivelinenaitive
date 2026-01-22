@@ -289,19 +289,21 @@ export default function Lenders() {
   }, []);
 
   // Calculate active deals count for each lender
-  // Use normalized name matching to handle case differences
+  // Count lenders that are NOT passed, on-deck, or on-hold (i.e., only 'active' tracking status)
+  // Use normalized name matching to handle case differences between deal lenders and master lenders
   const activeDealCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     const normalizedCounts: Record<string, number> = {};
     
+    // Inactive statuses to exclude
+    const inactiveStatuses = ['passed', 'on-deck', 'on-hold'];
+    
     deals.forEach(deal => {
       deal.lenders?.forEach(lender => {
-        if (lender.trackingStatus === 'active') {
-          // Store count by normalized name for matching
+        // Only count if lender is actively being worked (not passed, on-deck, or on-hold)
+        if (!inactiveStatuses.includes(lender.trackingStatus)) {
           const normalizedName = lender.name.toLowerCase().trim();
           normalizedCounts[normalizedName] = (normalizedCounts[normalizedName] || 0) + 1;
-          // Also store by exact name for display
-          counts[lender.name] = (counts[lender.name] || 0) + 1;
         }
       });
     });
