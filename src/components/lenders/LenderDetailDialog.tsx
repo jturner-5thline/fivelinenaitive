@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +40,11 @@ interface LenderInfo {
   website?: string;
   description?: string;
   lenderType?: string;
+  minDeal?: number | null;
+  maxDeal?: number | null;
+  geo?: string | null;
+  industries?: string[] | null;
+  loanTypes?: string[] | null;
 }
 
 interface LenderDetailDialogProps {
@@ -413,12 +418,88 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
             <Separator />
 
-            {/* Deal Preferences */}
+            {/* Lending Criteria */}
             <section>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Deal Preferences
+                Lending Criteria
               </h3>
-              {lender.preferences.length > 0 ? (
+              <div className="grid gap-3">
+                {/* Deal Size Range */}
+                {(lender.minDeal || lender.maxDeal) && (
+                  <div className="flex items-start gap-3">
+                    <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <span className="text-sm font-medium">Deal Size: </span>
+                      <span className="text-sm">
+                        {lender.minDeal && lender.maxDeal
+                          ? `${formatCurrencyValue(lender.minDeal)} - ${formatCurrencyValue(lender.maxDeal)}`
+                          : lender.minDeal
+                          ? `${formatCurrencyValue(lender.minDeal)}+`
+                          : `Up to ${formatCurrencyValue(lender.maxDeal!)}`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Geographic Preferences */}
+                {lender.geo && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <span className="text-sm font-medium">Geography: </span>
+                      <span className="text-sm">{lender.geo}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Industries */}
+                {lender.industries && lender.industries.length > 0 && (
+                  <div className="flex items-start gap-3">
+                    <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <span className="text-sm font-medium block mb-1.5">Industries:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {lender.industries.map((industry, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {industry}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loan Types */}
+                {lender.loanTypes && lender.loanTypes.length > 0 && (
+                  <div className="flex items-start gap-3">
+                    <Banknote className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <span className="text-sm font-medium block mb-1.5">Loan Types:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {lender.loanTypes.map((loanType, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {loanType}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && (
+                  <p className="text-muted-foreground text-sm">No lending criteria specified</p>
+                )}
+              </div>
+            </section>
+
+            <Separator />
+
+            {/* Deal Preferences - Legacy section, can be removed if redundant */}
+            {lender.preferences.length > 0 && (
+              <section>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Additional Preferences
+                </h3>
                 <div className="flex flex-wrap gap-2">
                   {lender.preferences.map((pref, idx) => (
                     <Badge key={idx} variant="secondary">
@@ -426,12 +507,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     </Badge>
                   ))}
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">No preferences specified</p>
-              )}
-            </section>
+              </section>
+            )}
 
-            <Separator />
+            {lender.preferences.length > 0 && <Separator />}
 
             {/* Active Deals */}
             <section>

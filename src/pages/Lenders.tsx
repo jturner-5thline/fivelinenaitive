@@ -96,6 +96,11 @@ interface LenderInfo {
   website?: string;
   description?: string;
   lenderType?: string;
+  minDeal?: number | null;
+  maxDeal?: number | null;
+  geo?: string | null;
+  industries?: string[] | null;
+  loanTypes?: string[] | null;
 }
 
 interface LenderForm {
@@ -145,6 +150,11 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     website: lender.lender_one_pager_url || undefined,
     description: lender.deal_structure_notes || lender.company_requirements || undefined,
     lenderType: lender.lender_type || undefined,
+    minDeal: lender.min_deal,
+    maxDeal: lender.max_deal,
+    geo: lender.geo,
+    industries: lender.industries,
+    loanTypes: lender.loan_types,
   };
 }
 
