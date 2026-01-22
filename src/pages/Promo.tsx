@@ -27,7 +27,7 @@ const Promo = () => {
               <span className="text-white/[0.10]">tive</span>
             </h1>
             <p 
-              className="text-white text-[2.16vw] font-light tracking-[0.85em] -mt-[5.5vw] uppercase whitespace-nowrap ml-[0.35em] opacity-0"
+              className="text-white text-[2.16vw] font-light tracking-[0.85em] -mt-[2.75vw] uppercase whitespace-nowrap ml-[0.35em] opacity-0"
               style={{
                 animation: 'fadeInTagline 0.3s ease-out 0.4s forwards',
               }}
