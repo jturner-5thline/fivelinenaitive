@@ -7,8 +7,6 @@ const corsHeaders = {
 
 interface SearchRequest {
   query: string;
-  userId: string;
-  companyId?: string;
 }
 
 // Platform knowledge base for FAQs and how-to questions
@@ -81,7 +79,7 @@ Deno.serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
     if (!LOVABLE_API_KEY) {
       return new Response(
@@ -90,10 +88,31 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Authentication check - validate user from JWT, don't trust client-supplied userId
     const authHeader = req.headers.get('Authorization');
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const { query, userId }: SearchRequest = await req.json();
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use the authenticated user's ID, not the client-supplied one
+    const userId = user.id;
+
+    const { query }: SearchRequest = await req.json();
 
     if (!query) {
       return new Response(
@@ -102,53 +121,52 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch user's accessible data for context
+    // Fetch user's accessible data for context (using authenticated userId)
     let userContext = '';
     
-    if (userId) {
-      // Get user's company
-      const { data: membership } = await supabase
-        .from('company_members')
-        .select('company_id, role, companies(name)')
-        .eq('user_id', userId)
-        .maybeSingle();
+    // Get user's company
+    const { data: membership } = await supabase
+      .from('company_members')
+      .select('company_id, role, companies(name)')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-      const companyId = membership?.company_id;
-      const companyName = (membership as any)?.companies?.name || 'Unknown Company';
+    const companyId = membership?.company_id;
+    const companyName = (membership as any)?.companies?.name || 'Unknown Company';
 
-      // Get recent deals (summary for context)
-      const { data: deals } = await supabase
-        .from('deals')
-        .select('id, company, value, stage, status, deal_type, created_at')
-        .eq('company_id', companyId)
-        .order('created_at', { ascending: false })
-        .limit(20);
+    // Get recent deals (summary for context)
+    const { data: deals } = await supabase
+      .from('deals')
+      .select('id, company, value, stage, status, deal_type, created_at')
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-      // Get recent activities
-      const { data: activities } = await supabase
-        .from('activity_logs')
-        .select('activity_type, description, created_at, deals(company)')
-        .in('deal_id', deals?.map(d => d.id) || [])
-        .order('created_at', { ascending: false })
-        .limit(10);
+    // Get recent activities
+    const { data: activities } = await supabase
+      .from('activity_logs')
+      .select('activity_type, description, created_at, deals(company)')
+      .in('deal_id', deals?.map(d => d.id) || [])
+      .order('created_at', { ascending: false })
+      .limit(10);
 
-      // Get deal lenders summary
-      const { data: dealLenders } = await supabase
-        .from('deal_lenders')
-        .select('name, stage, deal_id')
-        .in('deal_id', deals?.map(d => d.id) || [])
-        .limit(50);
+    // Get deal lenders summary
+    const { data: dealLenders } = await supabase
+      .from('deal_lenders')
+      .select('name, stage, deal_id')
+      .in('deal_id', deals?.map(d => d.id) || [])
+      .limit(50);
 
-      // Get milestones summary
-      const { data: milestones } = await supabase
-        .from('milestones')
-        .select('title, completed, due_date, deal_id')
-        .in('deal_id', deals?.map(d => d.id) || [])
-        .order('due_date', { ascending: true })
-        .limit(20);
+    // Get milestones summary
+    const { data: milestones } = await supabase
+      .from('milestones')
+      .select('title, completed, due_date, deal_id')
+      .in('deal_id', deals?.map(d => d.id) || [])
+      .order('due_date', { ascending: true })
+      .limit(20);
 
-      // Build context
-      userContext = `
+    // Build context
+    userContext = `
 ## User Context
 Company: ${companyName}
 Role: ${membership?.role || 'member'}
@@ -173,7 +191,6 @@ ${milestones?.filter(m => !m.completed).slice(0, 5).map(m =>
   `- ${m.title}${m.due_date ? ` (due ${m.due_date})` : ''}`
 ).join('\n') || 'No pending milestones'}
 `;
-    }
 
     const systemPrompt = `You are an intelligent assistant for nAItive, a commercial lending deal management platform. Help users find information, understand how to use the platform, and navigate their data.
 

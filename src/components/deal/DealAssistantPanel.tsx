@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Fragment } from 'react';
 import { Send, Trash2, Sparkles, User, Bot, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,17 +63,21 @@ export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
     sendMessage(prompt, dealContext);
   };
 
-  // Format message content with basic markdown
+  // Format message content with basic markdown - using safe React elements (no dangerouslySetInnerHTML)
+  const formatTextWithBold = (text: string) => {
+    const parts = text.split(/\*\*([^*]+)\*\*/);
+    return parts.map((part, j) => 
+      j % 2 === 1 ? <strong key={j}>{part}</strong> : <Fragment key={j}>{part}</Fragment>
+    );
+  };
+
   const formatContent = (content: string) => {
     const lines = content.split('\n');
     return lines.map((line, i) => {
-      // Bold text
-      const formattedLine = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      
       // Bullet points
       if (line.startsWith('- ') || line.startsWith('• ')) {
         return (
-          <li key={i} className="ml-4" dangerouslySetInnerHTML={{ __html: formattedLine.substring(2) }} />
+          <li key={i} className="ml-4">{formatTextWithBold(line.substring(2))}</li>
         );
       }
       
@@ -81,12 +85,12 @@ export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
       const numberedMatch = line.match(/^(\d+)\.\s+(.+)$/);
       if (numberedMatch) {
         return (
-          <li key={i} className="ml-4" dangerouslySetInnerHTML={{ __html: numberedMatch[2] }} />
+          <li key={i} className="ml-4">{formatTextWithBold(numberedMatch[2])}</li>
         );
       }
 
       if (line.trim()) {
-        return <p key={i} className="mb-1" dangerouslySetInnerHTML={{ __html: formattedLine }} />;
+        return <p key={i} className="mb-1">{formatTextWithBold(line)}</p>;
       }
       return null;
     });
