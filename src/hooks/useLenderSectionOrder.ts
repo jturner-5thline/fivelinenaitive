@@ -7,6 +7,7 @@ export type LenderSectionId =
   | 'post-term-sheet-checklist'
   | 'contact-info' 
   | 'additional-preferences'
+  | 'lender-notes'
   | 'active-deals'
   | 'attachments'
   | 'deals-sent'
@@ -24,6 +25,7 @@ const DEFAULT_SECTION_ORDER: LenderSectionId[] = [
   'post-term-sheet-checklist',
   'contact-info',
   'additional-preferences',
+  'lender-notes',
   'active-deals',
   'attachments',
   'deals-sent',

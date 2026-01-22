@@ -110,6 +110,7 @@ interface LenderInfo {
   upfrontChecklist?: string | null;
   postTermSheetChecklist?: string | null;
   b2bB2c?: string | null;
+  lenderNotes?: string | null;
 }
 
 interface LenderForm {
@@ -157,7 +158,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
       lender.geo,
     ].filter(Boolean) as string[],
     website: lender.lender_one_pager_url || undefined,
-    description: lender.deal_structure_notes || lender.company_requirements || undefined,
+    description: lender.company_requirements || undefined,
     lenderType: lender.lender_type || undefined,
     minDeal: lender.min_deal,
     maxDeal: lender.max_deal,
@@ -170,6 +171,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     upfrontChecklist: lender.upfront_checklist,
     postTermSheetChecklist: lender.post_term_sheet_checklist,
     b2bB2c: lender.b2b_b2c,
+    lenderNotes: lender.deal_structure_notes,
   };
 }
 
@@ -475,7 +477,7 @@ export default function Lenders() {
       max_deal: data.maxDeal ? parseFloat(data.maxDeal) : null,
       industries: data.industries.split(',').map(p => p.trim()).filter(p => p) || null,
       geo: data.geo.trim() || null,
-      deal_structure_notes: data.description.trim() || null,
+      deal_structure_notes: data.lenderNotes?.trim() || null,
       min_revenue: data.minRevenue ? parseFloat(data.minRevenue) : null,
       ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
       company_requirements: data.companyRequirements.trim() || null,

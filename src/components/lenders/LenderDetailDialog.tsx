@@ -58,6 +58,7 @@ interface LenderInfo {
   upfrontChecklist?: string | null;
   postTermSheetChecklist?: string | null;
   b2bB2c?: string | null;
+  lenderNotes?: string | null;
 }
 
 export interface LenderEditData {
@@ -74,6 +75,7 @@ export interface LenderEditData {
   minRevenue: string;
   ebitdaMin: string;
   companyRequirements: string;
+  lenderNotes: string;
 }
 
 interface LenderDetailDialogProps {
@@ -206,6 +208,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     minRevenue: '',
     ebitdaMin: '',
     companyRequirements: '',
+    lenderNotes: '',
   });
   
   const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
@@ -231,6 +234,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         minRevenue: lender.minRevenue?.toString() || '',
         ebitdaMin: lender.ebitdaMin?.toString() || '',
         companyRequirements: lender.companyRequirements || '',
+        lenderNotes: lender.lenderNotes || '',
       });
     }
   }, [lender, isEditMode]);
@@ -258,6 +262,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         minRevenue: lender.minRevenue?.toString() || '',
         ebitdaMin: lender.ebitdaMin?.toString() || '',
         companyRequirements: lender.companyRequirements || '',
+        lenderNotes: lender.lenderNotes || '',
       });
       setIsEditMode(true);
     }
@@ -673,6 +678,21 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   </div>
                 </section>
                 <Separator />
+
+                {/* Edit Mode: Lender Notes */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Lender Notes
+                  </h3>
+                  <Textarea
+                    value={editForm.lenderNotes}
+                    onChange={(e) => setEditForm({ ...editForm, lenderNotes: e.target.value })}
+                    placeholder="Add your notes about this lender..."
+                    rows={4}
+                    className="text-sm"
+                  />
+                </section>
+                <Separator />
               </>
             ) : (
               <>
@@ -945,6 +965,23 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 </Badge>
                               ))}
                             </div>
+                          </section>
+                          {showSeparator && <Separator className="my-6" />}
+                        </div>
+                      );
+
+                    case 'lender-notes':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              Lender Notes
+                            </h3>
+                            {lender.lenderNotes ? (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{lender.lenderNotes}</p>
+                            ) : (
+                              <p className="text-muted-foreground text-sm italic">No notes added yet</p>
+                            )}
                           </section>
                           {showSeparator && <Separator className="my-6" />}
                         </div>
