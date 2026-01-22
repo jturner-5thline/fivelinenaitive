@@ -160,7 +160,21 @@ export const LenderGridCard = memo(function LenderGridCard({
       
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center text-center mt-1">
-        <p className="font-semibold text-base line-clamp-2 leading-tight">{lender.name}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="font-semibold text-base line-clamp-2 leading-tight">{lender.name}</p>
+          {lender.tier && (
+            <Badge 
+              className={`text-xs shrink-0 ${
+                lender.tier === 'T1' ? 'bg-[#d1fae5] text-[#047857] hover:bg-[#d1fae5]' :
+                lender.tier === 'T2' ? 'bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff]' :
+                lender.tier === 'T3' ? 'bg-[#fef3c7] text-[#b45309] hover:bg-[#fef3c7]' :
+                'bg-[#f3e8ff] text-[#7e22ce] hover:bg-[#f3e8ff]'
+              }`}
+            >
+              {lender.tier}
+            </Badge>
+          )}
+        </div>
         
         {/* Lender type badge */}
         {tileDisplaySettings.showLenderType && lender.lender_type && (
