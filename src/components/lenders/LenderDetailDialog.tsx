@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -795,21 +796,29 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 {/* View Mode: Upfront Checklist */}
                 {lender.upfrontChecklist && (
                   <>
-                    <section>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                        Upfront Checklist
-                      </h3>
-                      <div className="flex flex-wrap gap-1.5">
-                        {lender.upfrontChecklist.split(/[,;\n]+/).map((item, idx) => {
-                          const trimmed = item.trim();
-                          return trimmed ? (
-                            <Badge key={idx} variant="green" className="text-xs">
-                              {trimmed}
-                            </Badge>
-                          ) : null;
-                        })}
-                      </div>
-                    </section>
+                    <Collapsible defaultOpen className="space-y-2">
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                          Upfront Checklist
+                        </h3>
+                        <Badge variant="secondary" className="text-xs ml-auto">
+                          {lender.upfrontChecklist.split(/[,;\n]+/).filter(i => i.trim()).length}
+                        </Badge>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="flex flex-wrap gap-1.5 pt-2">
+                          {lender.upfrontChecklist.split(/[,;\n]+/).map((item, idx) => {
+                            const trimmed = item.trim();
+                            return trimmed ? (
+                              <Badge key={idx} variant="green" className="text-xs">
+                                {trimmed}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                     <Separator />
                   </>
                 )}
@@ -817,21 +826,29 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 {/* View Mode: Post-Term Sheet Checklist */}
                 {lender.postTermSheetChecklist && (
                   <>
-                    <section>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                        Post-Term Sheet Checklist
-                      </h3>
-                      <div className="flex flex-wrap gap-1.5">
-                        {lender.postTermSheetChecklist.split(/[,;\n]+/).map((item, idx) => {
-                          const trimmed = item.trim();
-                          return trimmed ? (
-                            <Badge key={idx} variant="amber" className="text-xs">
-                              {trimmed}
-                            </Badge>
-                          ) : null;
-                        })}
-                      </div>
-                    </section>
+                    <Collapsible defaultOpen className="space-y-2">
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                          Post-Term Sheet Checklist
+                        </h3>
+                        <Badge variant="secondary" className="text-xs ml-auto">
+                          {lender.postTermSheetChecklist.split(/[,;\n]+/).filter(i => i.trim()).length}
+                        </Badge>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="flex flex-wrap gap-1.5 pt-2">
+                          {lender.postTermSheetChecklist.split(/[,;\n]+/).map((item, idx) => {
+                            const trimmed = item.trim();
+                            return trimmed ? (
+                              <Badge key={idx} variant="amber" className="text-xs">
+                                {trimmed}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                     <Separator />
                   </>
                 )}
