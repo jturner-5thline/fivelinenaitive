@@ -693,7 +693,10 @@ export default function Lenders() {
                 <NonBankLendersImportButton onImportComplete={() => window.location.reload()} />
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => setIsSideBySideMergeOpen(true)}>
                   <Columns className="h-4 w-4" />
-                  Merge Side-by-Side
+                  {advancedFilters.tiers.length > 0 
+                    ? `Merge ${advancedFilters.tiers.join(', ')} (${sortedLenders.length})`
+                    : 'Merge Side-by-Side'
+                  }
                 </Button>
                 <Button variant="ghost" size="sm" className="gap-1" onClick={() => setIsDuplicatesDialogOpen(true)}>
                   <Users className="h-4 w-4" />
@@ -1110,7 +1113,7 @@ export default function Lenders() {
       <SideBySideMergeDialog
         open={isSideBySideMergeOpen}
         onOpenChange={setIsSideBySideMergeOpen}
-        lenders={masterLenders}
+        lenders={sortedLenders}
         onMergeLenders={async (keepId, mergeIds, mergedData) => { await mergeLenders(keepId, mergeIds, mergedData); }}
       />
     </>
