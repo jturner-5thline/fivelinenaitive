@@ -290,45 +290,29 @@ export default function Lenders() {
 
   // Calculate active deals count for each lender
   // Count lenders that are NOT passed, on-deck, or on-hold (i.e., only 'active' tracking status)
-  // Use partial name matching since deal_lenders may have short names like "LAGO" 
-  // while master_lenders has full names like "LAGO Innovation Fund"
+  // Use normalized name matching to handle case differences between deal lenders and master lenders
   const activeDealCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    const normalizedCounts: Record<string, number> = {};
     
     // Inactive statuses to exclude
     const inactiveStatuses = ['passed', 'on-deck', 'on-hold'];
     
-    // Collect all active deal lender names (normalized)
-    const activeDealLenderNames: string[] = [];
     deals.forEach(deal => {
       deal.lenders?.forEach(lender => {
+        // Only count if lender is actively being worked (not passed, on-deck, or on-hold)
         if (!inactiveStatuses.includes(lender.trackingStatus)) {
-          activeDealLenderNames.push(lender.name.toLowerCase().trim());
+          const normalizedName = lender.name.toLowerCase().trim();
+          normalizedCounts[normalizedName] = (normalizedCounts[normalizedName] || 0) + 1;
         }
       });
     });
     
-    // For each master lender, count how many deal lenders match
-    // Match if: exact match OR master lender name starts with the deal lender name OR contains it
+    // Map master lender names to their counts using normalized matching
     masterLenders.forEach(ml => {
       const normalizedMasterName = ml.name.toLowerCase().trim();
-      let count = 0;
-      
-      activeDealLenderNames.forEach(dealLenderName => {
-        // Check for exact match, starts-with match, or contains match
-        if (
-          normalizedMasterName === dealLenderName ||
-          normalizedMasterName.startsWith(dealLenderName + ' ') ||
-          normalizedMasterName.startsWith(dealLenderName + ',') ||
-          dealLenderName === normalizedMasterName.split(' ')[0] ||
-          dealLenderName === normalizedMasterName.split(',')[0]?.trim()
-        ) {
-          count++;
-        }
-      });
-      
-      if (count > 0) {
-        counts[ml.name] = count;
+      if (normalizedCounts[normalizedMasterName]) {
+        counts[ml.name] = normalizedCounts[normalizedMasterName];
       }
     });
     
