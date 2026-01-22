@@ -87,7 +87,7 @@ export const LenderGridCard = memo(function LenderGridCard({
 
   return (
     <div
-      className="relative bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer min-h-[180px]"
+      className="relative bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer h-full min-h-[180px]"
       onClick={() => onOpenDetail(lender)}
     >
       {/* Active deal count - top left corner */}
