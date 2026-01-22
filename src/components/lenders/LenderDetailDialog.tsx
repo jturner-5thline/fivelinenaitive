@@ -707,17 +707,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 <div className="flex items-start gap-3">
                                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
-                                    <span className="text-sm font-medium block mb-1.5">Geography:</span>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {lender.geo.split(/[,;\n]+/).map((geo, idx) => {
-                                        const trimmed = geo.trim();
-                                        return trimmed ? (
-                                          <Badge key={idx} variant="peach" className="text-xs">
-                                            {trimmed}
-                                          </Badge>
-                                        ) : null;
-                                      })}
-                                    </div>
+                                    <span className="text-sm font-medium">Geography: </span>
+                                    <span className="text-sm">{lender.geo}</span>
                                   </div>
                                 </div>
                               )}
@@ -784,17 +775,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 <div className="flex items-start gap-3">
                                   <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
-                                    <span className="text-sm font-medium block mb-1.5">Company Requirements:</span>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {lender.companyRequirements.split(/[,;\n]+/).map((req, idx) => {
-                                        const trimmed = req.trim();
-                                        return trimmed ? (
-                                          <Badge key={idx} variant="gray" className="text-xs">
-                                            {trimmed}
-                                          </Badge>
-                                        ) : null;
-                                      })}
-                                    </div>
+                                    <span className="text-sm font-medium block mb-1">Company Requirements:</span>
+                                    <p className="text-sm text-muted-foreground">{lender.companyRequirements}</p>
                                   </div>
                                 </div>
                               )}
