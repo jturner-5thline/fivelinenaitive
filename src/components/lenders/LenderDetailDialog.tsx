@@ -60,6 +60,7 @@ interface LenderInfo {
   b2bB2c?: string | null;
   lenderNotes?: string | null;
   tier?: string | null;
+  relationshipOwners?: string | null;
 }
 
 export interface LenderEditData {
@@ -913,46 +914,64 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                               Contact
                             </h3>
-                            <div className="grid gap-3">
-                              {lender.website && (
-                                <div className="flex items-center gap-3">
-                                  <Globe className="h-4 w-4 text-muted-foreground" />
-                                  <a 
-                                    href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="text-primary hover:underline flex items-center gap-1"
-                                  >
-                                    {lender.website.replace(/^https?:\/\//, '')}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                </div>
-                              )}
-                              {lender.contact.name && (
-                                <div className="flex items-center gap-3">
-                                  <User className="h-4 w-4 text-muted-foreground" />
-                                  <span>{lender.contact.name}</span>
-                                </div>
-                              )}
-                              {lender.contact.email && (
-                                <div className="flex items-center gap-3">
-                                  <Mail className="h-4 w-4 text-muted-foreground" />
-                                  <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
-                                    {lender.contact.email}
-                                  </a>
-                                </div>
-                              )}
-                              {lender.contact.phone && (
-                                <div className="flex items-center gap-3">
-                                  <Phone className="h-4 w-4 text-muted-foreground" />
-                                  <a href={`tel:${lender.contact.phone}`} className="hover:underline">
-                                    {lender.contact.phone}
-                                  </a>
-                                </div>
-                              )}
-                              {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
-                                <p className="text-muted-foreground text-sm">No contact information available</p>
-                              )}
+                            <div className="grid grid-cols-2 gap-6">
+                              {/* Left column - Contact details */}
+                              <div className="grid gap-3">
+                                {lender.website && (
+                                  <div className="flex items-center gap-3">
+                                    <Globe className="h-4 w-4 text-muted-foreground" />
+                                    <a 
+                                      href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      {lender.website.replace(/^https?:\/\//, '')}
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  </div>
+                                )}
+                                {lender.contact.name && (
+                                  <div className="flex items-center gap-3">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    <span>{lender.contact.name}</span>
+                                  </div>
+                                )}
+                                {lender.contact.email && (
+                                  <div className="flex items-center gap-3">
+                                    <Mail className="h-4 w-4 text-muted-foreground" />
+                                    <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
+                                      {lender.contact.email}
+                                    </a>
+                                  </div>
+                                )}
+                                {lender.contact.phone && (
+                                  <div className="flex items-center gap-3">
+                                    <Phone className="h-4 w-4 text-muted-foreground" />
+                                    <a href={`tel:${lender.contact.phone}`} className="hover:underline">
+                                      {lender.contact.phone}
+                                    </a>
+                                  </div>
+                                )}
+                                {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
+                                  <p className="text-muted-foreground text-sm italic">No contact info</p>
+                                )}
+                              </div>
+                              {/* Right column - Relationship Owners */}
+                              <div>
+                                <Label className="text-xs text-muted-foreground mb-2 block">Relationship Owner(s)</Label>
+                                {lender.relationshipOwners ? (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {lender.relationshipOwners.split(',').map((owner, idx) => (
+                                      <Badge key={idx} variant="secondary" className="text-xs">
+                                        {owner.trim()}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-muted-foreground text-sm italic">None assigned</p>
+                                )}
+                              </div>
                             </div>
                           </section>
                           {showSeparator && <Separator className="my-6" />}
