@@ -44,6 +44,7 @@ const SECTION_CONFIG: Record<LenderSectionId, { label: string; icon: React.Compo
   'post-term-sheet-checklist': { label: 'Post-Term Sheet Checklist', icon: ClipboardList },
   'contact-info': { label: 'Contact Information', icon: User },
   'additional-preferences': { label: 'Additional Preferences', icon: ListChecks },
+  'lender-notes': { label: 'Lender Notes', icon: FileText },
   'active-deals': { label: 'Active Deals', icon: Briefcase },
   'attachments': { label: 'Attachments', icon: Paperclip },
   'deals-sent': { label: 'Deals Sent', icon: ArrowRightCircle },
