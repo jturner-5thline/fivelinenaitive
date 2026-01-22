@@ -571,7 +571,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 {/* Edit Mode: Contact Information */}
                 <section>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Contact Information
+                    Contact
                   </h3>
                   <div className="grid gap-3">
                     <div className="space-y-1.5">
@@ -911,7 +911,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <div key={sectionId}>
                           <section>
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                              Contact Information
+                              Contact
                             </h3>
                             <div className="grid gap-3">
                               {lender.website && (
