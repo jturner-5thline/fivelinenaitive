@@ -707,8 +707,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 <div className="flex items-start gap-3">
                                   <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
-                                    <span className="text-sm font-medium">Geography: </span>
-                                    <span className="text-sm">{lender.geo}</span>
+                                    <span className="text-sm font-medium block mb-1.5">Geography:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {lender.geo.split(/[,;\n]+/).map((g, idx) => g.trim()).filter(g => g).map((geo, idx) => (
+                                        <Badge key={idx} variant="green" className="text-xs">
+                                          {geo}
+                                        </Badge>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -775,8 +781,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 <div className="flex items-start gap-3">
                                   <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
-                                    <span className="text-sm font-medium block mb-1">Company Requirements:</span>
-                                    <p className="text-sm text-muted-foreground">{lender.companyRequirements}</p>
+                                    <span className="text-sm font-medium block mb-1.5">Company Requirements:</span>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {lender.companyRequirements.split(/[,;\n]+/).map((r, idx) => r.trim()).filter(r => r).map((req, idx) => (
+                                        <Badge key={idx} variant="amber" className="text-xs">
+                                          {req}
+                                        </Badge>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
                               )}
