@@ -289,17 +289,33 @@ export default function Lenders() {
   }, []);
 
   // Calculate active deals count for each lender
+  // Use normalized name matching to handle case differences
   const activeDealCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    const normalizedCounts: Record<string, number> = {};
+    
     deals.forEach(deal => {
       deal.lenders?.forEach(lender => {
         if (lender.trackingStatus === 'active') {
+          // Store count by normalized name for matching
+          const normalizedName = lender.name.toLowerCase().trim();
+          normalizedCounts[normalizedName] = (normalizedCounts[normalizedName] || 0) + 1;
+          // Also store by exact name for display
           counts[lender.name] = (counts[lender.name] || 0) + 1;
         }
       });
     });
+    
+    // Map master lender names to their counts using normalized matching
+    masterLenders.forEach(ml => {
+      const normalizedMasterName = ml.name.toLowerCase().trim();
+      if (normalizedCounts[normalizedMasterName]) {
+        counts[ml.name] = normalizedCounts[normalizedMasterName];
+      }
+    });
+    
     return counts;
-  }, [deals]);
+  }, [deals, masterLenders]);
 
   const openLenderDetail = (lender: MasterLender) => {
     setSelectedLender(masterLenderToLenderInfo(lender));
