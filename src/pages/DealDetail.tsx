@@ -60,6 +60,7 @@ import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
+import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
@@ -104,6 +105,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
@@ -3644,6 +3646,16 @@ export default function DealDetail() {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
+                      {/* Data Room Checklist Progress */}
+                      <div className="mb-6">
+                        <DataRoomChecklistPanel 
+                          dealId={id!} 
+                          attachments={attachments.map(a => ({ id: a.id, name: a.name, category: a.category }))}
+                        />
+                      </div>
+                      
+                      <Separator className="my-4" />
+                      
                       {isDraggingOver && (
                         <FileDropzoneOverlay
                           onDropToCategory={handleFileDropToCategory}

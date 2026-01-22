@@ -310,6 +310,53 @@ export type Database = {
           },
         ]
       }
+      data_room_checklist_items: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_required: boolean
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_checklist_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_attachments: {
         Row: {
           category: string
@@ -348,6 +395,67 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      deal_checklist_status: {
+        Row: {
+          attachment_id: string | null
+          checklist_item_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          deal_id: string
+          id: string
+          is_complete: boolean
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachment_id?: string | null
+          checklist_item_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          is_complete?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachment_id?: string | null
+          checklist_item_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          is_complete?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_checklist_status_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "deal_attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_checklist_status_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_checklist_status_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deal_emails: {
         Row: {

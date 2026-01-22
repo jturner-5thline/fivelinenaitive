@@ -14,6 +14,7 @@ import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
 import { DefaultMilestonesSettings } from '@/components/settings/DefaultMilestonesSettings';
 import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
+import { DataRoomChecklistSettings } from '@/components/settings/DataRoomChecklistSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -68,6 +69,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'suggestions',
     keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders', 'opportunities', 'ai'],
+  },
+  {
+    id: 'data-room-checklist',
+    keywords: ['data', 'room', 'checklist', 'documents', 'required', 'files', 'information', 'items'],
   },
   {
     id: 'preferences',
@@ -289,6 +294,8 @@ export default function Settings() {
             {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
 
             {isVisible('suggestions') && <SuggestionSettings />}
+
+            {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
 
             {isVisible('preferences') && (
               <Card>
