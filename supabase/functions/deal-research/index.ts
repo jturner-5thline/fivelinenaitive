@@ -1,4 +1,5 @@
 // deno-lint-ignore-file
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +22,30 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const apiKey = Deno.env.get('PERPLEXITY_API_KEY');
     if (!apiKey) {
       console.error('PERPLEXITY_API_KEY not configured');
@@ -78,7 +103,7 @@ Focus on actionable intelligence for someone seeking financing.`;
 Keep it concise and relevant to lending decisions.`;
     }
 
-    console.log(`Making Perplexity request for ${researchType} research:`, { companyName, lenderName, industry });
+    console.log(`Making Perplexity request for ${researchType} research:`, { userId: user.id, companyName, lenderName, industry });
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',

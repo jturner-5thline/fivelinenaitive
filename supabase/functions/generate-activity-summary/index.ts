@@ -1,4 +1,6 @@
 // deno-lint-ignore-file
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -23,6 +25,30 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!apiKey) {
       return new Response(
@@ -84,6 +110,7 @@ Format your response as JSON with this structure:
 Be specific and actionable. Reference actual lender names, milestone names, and concrete numbers where relevant.`;
 
     console.log('Generating activity summary:', { 
+      userId: user.id,
       company: dealInfo.company, 
       period, 
       activityCount: activities?.length || 0,
