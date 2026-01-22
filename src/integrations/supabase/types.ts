@@ -1887,6 +1887,7 @@ export type Database = {
       }
       master_lenders: {
         Row: {
+          active: boolean | null
           b2b_b2c: string | null
           cash_burn: string | null
           company_id: string | null
@@ -1927,6 +1928,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active?: boolean | null
           b2b_b2c?: string | null
           cash_burn?: string | null
           company_id?: string | null
@@ -1967,6 +1969,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active?: boolean | null
           b2b_b2c?: string | null
           cash_burn?: string | null
           company_id?: string | null
