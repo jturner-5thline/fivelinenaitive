@@ -95,6 +95,13 @@ export interface UseMasterLendersOptions {
   };
   /** Server-side search query (searches name, contact_name, email, lender_type, geo) */
   searchQuery?: string;
+
+  /**
+   * When mode='all' and there's no search query, load the remaining lenders immediately
+   * (instead of waiting for requestIdleCallback). Useful for pages that must reliably
+   * operate on the complete lender list (e.g., cross-referencing deal activity).
+   */
+  eagerAll?: boolean;
 }
 
 export function useMasterLenders(options: UseMasterLendersOptions = {}) {
@@ -105,6 +112,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const orderColumn = options.orderBy?.column ?? 'name';
   const orderAscending = options.orderBy?.ascending ?? true;
   const searchQuery = options.searchQuery?.trim() ?? '';
+  const eagerAll = options.eagerAll ?? false;
 
   const [lenders, setLenders] = useState<MasterLender[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,7 +180,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setLoading(false);
       setError(null);
 
-      // In "all" mode AND no search query, continue loading the remainder in the background.
+       // In "all" mode AND no search query, continue loading the remainder in the background.
       // When searching, we always stay in paged mode to avoid loading too much data.
       if (mode === 'all' && !searchQuery && (count == null ? firstPage.length === pageSize : firstPage.length < count)) {
         setLoadingMore(true);
@@ -216,12 +224,15 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
           setHasMore(false);
         };
 
-        // Defer background loading so we don't block interactions.
-        if ('requestIdleCallback' in window) {
-          (window as any).requestIdleCallback(loadRemaining, { timeout: 1000 });
-        } else {
-          setTimeout(loadRemaining, 50);
-        }
+         // Defer background loading so we don't block interactions.
+         // Some screens need the full dataset ASAP (e.g., filters that must include *all* lenders).
+         if (eagerAll) {
+           setTimeout(loadRemaining, 0);
+         } else if ('requestIdleCallback' in window) {
+           (window as any).requestIdleCallback(loadRemaining, { timeout: 1000 });
+         } else {
+           setTimeout(loadRemaining, 50);
+         }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch lenders';
@@ -231,7 +242,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setLoadingMore(false);
       setHasMore(false);
     }
-  }, [fetchPage, mode, pageSize, orderAscending, orderColumn, searchQuery, user]);
+  }, [eagerAll, fetchPage, mode, pageSize, orderAscending, orderColumn, searchQuery, user]);
 
   useEffect(() => {
     fetchLenders();

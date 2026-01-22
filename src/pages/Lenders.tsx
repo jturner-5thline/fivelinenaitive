@@ -231,8 +231,11 @@ export default function Lenders() {
     importLenders,
     mergeLenders,
   } = useMasterLenders({
-    mode: 'paged',
-    pageSize: 100,
+    // This page needs the full lender list available for reliable cross-referencing
+    // against deal activity (e.g., "Active Deals" filter).
+    mode: 'all',
+    eagerAll: true,
+    pageSize: 1000,
     orderBy: { column: 'name', ascending: true },
     searchQuery: debouncedSearchQuery,
   });
@@ -912,7 +915,12 @@ export default function Lenders() {
                   />
                 )}
 
-                {!isLoading && sortedLenders.length === 0 && masterLenders.length > 0 && (
+                {!isLoading && loadingMore && sortedLenders.length === 0 && masterLenders.length > 0 && (
+                  <p className="text-center text-muted-foreground py-8">
+                    Loading lenders...
+                  </p>
+                )}
+                {!isLoading && !loadingMore && sortedLenders.length === 0 && masterLenders.length > 0 && (
                   <p className="text-center text-muted-foreground py-8">
                     No lenders match your search.
                   </p>
