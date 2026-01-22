@@ -49,6 +49,9 @@ interface LenderInfo {
   geo?: string | null;
   industries?: string[] | null;
   loanTypes?: string[] | null;
+  minRevenue?: number | null;
+  ebitdaMin?: number | null;
+  companyRequirements?: string | null;
 }
 
 export interface LenderEditData {
@@ -62,6 +65,9 @@ export interface LenderEditData {
   industries: string;
   loanTypes: string;
   description: string;
+  minRevenue: string;
+  ebitdaMin: string;
+  companyRequirements: string;
 }
 
 interface LenderDetailDialogProps {
@@ -190,6 +196,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     industries: '',
     loanTypes: '',
     description: '',
+    minRevenue: '',
+    ebitdaMin: '',
+    companyRequirements: '',
   });
   
   const { attachments, isLoading: isLoadingAttachments, uploadMultipleAttachments, deleteAttachment } = useLenderAttachments(
@@ -210,6 +219,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         industries: lender.industries?.join(', ') || '',
         loanTypes: lender.loanTypes?.join(', ') || '',
         description: lender.description || '',
+        minRevenue: lender.minRevenue?.toString() || '',
+        ebitdaMin: lender.ebitdaMin?.toString() || '',
+        companyRequirements: lender.companyRequirements || '',
       });
     }
   }, [lender, isEditMode]);
@@ -234,6 +246,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         industries: lender.industries?.join(', ') || '',
         loanTypes: lender.loanTypes?.join(', ') || '',
         description: lender.description || '',
+        minRevenue: lender.minRevenue?.toString() || '',
+        ebitdaMin: lender.ebitdaMin?.toString() || '',
+        companyRequirements: lender.companyRequirements || '',
       });
       setIsEditMode(true);
     }
@@ -601,6 +616,38 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         className="text-sm"
                       />
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Min Revenue ($)</Label>
+                        <Input
+                          type="number"
+                          value={editForm.minRevenue}
+                          onChange={(e) => setEditForm({ ...editForm, minRevenue: e.target.value })}
+                          placeholder="e.g., 5000000"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Min EBITDA ($)</Label>
+                        <Input
+                          type="number"
+                          value={editForm.ebitdaMin}
+                          onChange={(e) => setEditForm({ ...editForm, ebitdaMin: e.target.value })}
+                          placeholder="e.g., 1000000"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Company Requirements</Label>
+                      <Textarea
+                        value={editForm.companyRequirements}
+                        onChange={(e) => setEditForm({ ...editForm, companyRequirements: e.target.value })}
+                        placeholder="e.g., Must be profitable, 2+ years in business..."
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
                   </div>
                 </section>
                 <Separator />
@@ -738,7 +785,40 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       </div>
                     )}
 
-                    {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && (
+                    {/* Minimum Revenue */}
+                    {lender.minRevenue && (
+                      <div className="flex items-start gap-3">
+                        <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <span className="text-sm font-medium">Min Revenue: </span>
+                          <span className="text-sm">{formatCurrencyValue(lender.minRevenue)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Minimum EBITDA */}
+                    {lender.ebitdaMin && (
+                      <div className="flex items-start gap-3">
+                        <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <span className="text-sm font-medium">Min EBITDA: </span>
+                          <span className="text-sm">{formatCurrencyValue(lender.ebitdaMin)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Company Requirements */}
+                    {lender.companyRequirements && (
+                      <div className="flex items-start gap-3">
+                        <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <span className="text-sm font-medium block mb-1">Company Requirements:</span>
+                          <p className="text-sm text-muted-foreground">{lender.companyRequirements}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && (
                       <p className="text-muted-foreground text-sm">No lending criteria specified</p>
                     )}
                   </div>

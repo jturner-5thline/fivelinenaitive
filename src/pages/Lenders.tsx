@@ -101,6 +101,9 @@ interface LenderInfo {
   geo?: string | null;
   industries?: string[] | null;
   loanTypes?: string[] | null;
+  minRevenue?: number | null;
+  ebitdaMin?: number | null;
+  companyRequirements?: string | null;
 }
 
 interface LenderForm {
@@ -155,6 +158,9 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     geo: lender.geo,
     industries: lender.industries,
     loanTypes: lender.loan_types,
+    minRevenue: lender.min_revenue,
+    ebitdaMin: lender.ebitda_min,
+    companyRequirements: lender.company_requirements,
   };
 }
 
@@ -438,6 +444,9 @@ export default function Lenders() {
       industries: data.industries.split(',').map(p => p.trim()).filter(p => p) || null,
       geo: data.geo.trim() || null,
       deal_structure_notes: data.description.trim() || null,
+      min_revenue: data.minRevenue ? parseFloat(data.minRevenue) : null,
+      ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
+      company_requirements: data.companyRequirements.trim() || null,
     };
 
     // Check if name changed and new name already exists
