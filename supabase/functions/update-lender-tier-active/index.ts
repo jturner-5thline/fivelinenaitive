@@ -72,9 +72,32 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { csvContent } = await req.json();
+    const { csvContent, fileUrl } = await req.json();
     
-    if (!csvContent) {
+    let csvData = csvContent;
+    
+    // If fileUrl provided, fetch the CSV content
+    if (fileUrl && !csvContent) {
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ error: `Failed to fetch CSV from URL: ${response.status}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      csvData = await response.text();
+      // Remove BOM if present
+      if (csvData.charCodeAt(0) === 0xFEFF) {
+        csvData = csvData.slice(1);
+      }
+    }
+    
+    // Remove BOM if present in csvContent too
+    if (csvData && csvData.charCodeAt(0) === 0xFEFF) {
+      csvData = csvData.slice(1);
+    }
+    
+    if (!csvData) {
       return new Response(
         JSON.stringify({ error: 'No CSV content provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -82,7 +105,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse CSV
-    const rows = parseCSV(csvContent);
+    const rows = parseCSV(csvData);
     
     if (rows.length < 2) {
       return new Response(
@@ -92,14 +115,19 @@ Deno.serve(async (req) => {
     }
 
     // Get header indices
-    const headers = rows[0].map(h => h.toLowerCase().replace(/[^\w]/g, ''));
+    const rawHeaders = rows[0];
+    console.log('Raw headers:', JSON.stringify(rawHeaders.slice(0, 5)));
+    const headers = rawHeaders.map(h => h.toLowerCase().replace(/[^\w]/g, ''));
+    console.log('Normalized headers:', JSON.stringify(headers.slice(0, 5)));
     const lenderIndex = headers.findIndex(h => h === 'lender');
     const activeIndex = headers.findIndex(h => h === 'active');
     const tierIndex = headers.findIndex(h => h === 'tier');
 
+    console.log(`Found indices - lender: ${lenderIndex}, active: ${activeIndex}, tier: ${tierIndex}`);
+
     if (lenderIndex === -1) {
       return new Response(
-        JSON.stringify({ error: 'Could not find Lender column' }),
+        JSON.stringify({ error: 'Could not find Lender column', headers: headers.slice(0, 10) }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
