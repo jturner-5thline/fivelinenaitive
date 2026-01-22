@@ -32,7 +32,7 @@ const Promo = () => {
                 animation: 'fadeInTagline 0.3s ease-out 0.4s forwards',
               }}
             >
-              Intelligence, by Design
+              Coming March 2026
             </p>
           </div>
           <style>{`
