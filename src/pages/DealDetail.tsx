@@ -61,6 +61,8 @@ import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggesti
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
+import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
+import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
@@ -313,6 +315,7 @@ export default function DealDetail() {
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();
+  const { linkedRecordings: claapLinkedRecordings } = useDealClaapRecordings(id || '');
   const lenderNames = useMemo(() => {
     // Use master lenders database as primary source
     const masterLenderNames = masterLenders.map(l => l.name);
@@ -3653,6 +3656,27 @@ export default function DealDetail() {
                           attachments={attachments.map(a => ({ id: a.id, name: a.name, category: a.category }))}
                         />
                       </div>
+                      
+                      {/* Claap Recordings */}
+                      <Collapsible defaultOpen={false} className="mb-6">
+                        <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-3 rounded-lg transition-colors border">
+                          <div className="flex items-center gap-2">
+                            <svg className="h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            <span className="font-medium">Claap Recordings</span>
+                            {claapLinkedRecordings.length > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                {claapLinkedRecordings.length} linked
+                              </Badge>
+                            )}
+                          </div>
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-3">
+                          <ClaapRecordingsPanel dealId={id!} />
+                        </CollapsibleContent>
+                      </Collapsible>
                       
                       <Separator className="my-4" />
                       

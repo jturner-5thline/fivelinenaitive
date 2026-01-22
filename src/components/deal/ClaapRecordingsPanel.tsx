@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Video, Clock, User, ExternalLink, Search, RefreshCw, Link2, FileText, Play } from 'lucide-react';
+import { Video, Clock, User, ExternalLink, Search, RefreshCw, Link2, FileText, Play, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,13 +17,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useClaapRecordings, ClaapRecording } from '@/hooks/useClaapRecordings';
+import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 interface ClaapRecordingsPanelProps {
   dealId: string;
-  linkedRecordings?: string[]; // Array of recording IDs linked to this deal
-  onLinkRecording?: (recordingId: string) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -37,12 +36,9 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export function ClaapRecordingsPanel({ 
-  dealId, 
-  linkedRecordings = [],
-  onLinkRecording 
-}: ClaapRecordingsPanelProps) {
+export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
   const { recordings, loading, error, fetchRecordings, getTranscript } = useClaapRecordings();
+  const { linkedRecordings, linkedRecordingIds, linkRecording, unlinkRecording } = useDealClaapRecordings(dealId);
   const [search, setSearch] = useState('');
   const [selectedRecording, setSelectedRecording] = useState<ClaapRecording | null>(null);
   const [transcript, setTranscript] = useState<string | null>(null);
@@ -126,7 +122,7 @@ export function ClaapRecordingsPanel({
             </div>
           ) : (
             filteredRecordings.map((recording) => {
-              const isLinked = linkedRecordings.includes(recording.id);
+              const isLinked = linkedRecordingIds.includes(recording.id);
               
               return (
                 <div
@@ -204,23 +200,34 @@ export function ClaapRecordingsPanel({
                         </TooltipTrigger>
                         <TooltipContent>View Transcript</TooltipContent>
                       </Tooltip>
-                      {onLinkRecording && !isLinked && (
+                      {!isLinked ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              onClick={() => onLinkRecording(recording.id)}
+                              onClick={() => linkRecording(recording)}
                             >
                               <Link2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>Link to Deal</TooltipContent>
                         </Tooltip>
-                      )}
-                      {isLinked && (
-                        <Badge variant="outline" className="text-xs">Linked</Badge>
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-primary"
+                              onClick={() => unlinkRecording(recording.id)}
+                            >
+                              <Unlink className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Unlink from Deal</TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   </div>
