@@ -39,6 +39,7 @@ interface LenderInfo {
   preferences: string[];
   website?: string;
   description?: string;
+  lenderType?: string;
 }
 
 interface LenderDetailDialogProps {
@@ -300,7 +301,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Building2 className="h-6 w-6" />
-            {lender.name}
+            <span>{lender.name}</span>
+            {lender.lenderType && (
+              <Badge variant="outline" className="ml-1 text-xs font-normal">
+                {lender.lenderType}
+              </Badge>
+            )}
           </DialogTitle>
           <div className="flex items-center gap-1">
             {onEdit && (
