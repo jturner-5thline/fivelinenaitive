@@ -112,6 +112,7 @@ interface LenderInfo {
   b2bB2c?: string | null;
   lenderNotes?: string | null;
   tier?: string | null;
+  relationshipOwners?: string | null;
 }
 
 interface LenderForm {
@@ -174,6 +175,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     b2bB2c: lender.b2b_b2c,
     lenderNotes: lender.deal_structure_notes,
     tier: lender.tier,
+    relationshipOwners: lender.relationship_owners,
   };
 }
 
