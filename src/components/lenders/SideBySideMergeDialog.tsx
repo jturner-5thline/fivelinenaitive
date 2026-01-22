@@ -58,6 +58,15 @@ function formatDate(date: string | null | undefined): string {
   return new Date(date).toLocaleDateString();
 }
 
+// Fields that support multi-select (combining values from multiple lenders)
+const MULTI_SELECT_FIELDS = [
+  'contact_name',
+  'contact_title', 
+  'email',
+  'lender_one_pager_url',
+  'relationship_owners',
+];
+
 // Define all the fields we want to show
 interface MergeFieldDef {
   key: string;
@@ -65,14 +74,15 @@ interface MergeFieldDef {
   icon: React.ComponentType<{ className?: string }>;
   format: (v: any) => string;
   multiline?: boolean;
+  multiSelect?: boolean;
 }
 
 const MERGE_FIELDS: MergeFieldDef[] = [
   { key: 'name', label: 'Lender Name', icon: Building2, format: (v: any) => v || '-' },
   { key: 'lender_type', label: 'Lender Type', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'contact_name', label: 'Contact Name', icon: User, format: (v: any) => v || '-' },
-  { key: 'contact_title', label: 'Contact Title', icon: Briefcase, format: (v: any) => v || '-' },
-  { key: 'email', label: 'Email', icon: Mail, format: (v: any) => v || '-' },
+  { key: 'contact_name', label: 'Contact Name', icon: User, format: (v: any) => v || '-', multiSelect: true },
+  { key: 'contact_title', label: 'Contact Title', icon: Briefcase, format: (v: any) => v || '-', multiSelect: true },
+  { key: 'email', label: 'Email', icon: Mail, format: (v: any) => v || '-', multiSelect: true },
   { key: 'geo', label: 'Geography', icon: MapPin, format: (v: any) => v || '-' },
   { key: 'min_deal', label: 'Min Deal Size', icon: DollarSign, format: formatCurrency },
   { key: 'max_deal', label: 'Max Deal Size', icon: DollarSign, format: formatCurrency },
@@ -88,24 +98,26 @@ const MERGE_FIELDS: MergeFieldDef[] = [
   { key: 'refinancing', label: 'Refinancing', icon: Tag, format: (v: any) => v || '-' },
   { key: 'company_requirements', label: 'Company Requirements', icon: FileText, format: (v: any) => v || '-', multiline: true },
   { key: 'deal_structure_notes', label: 'Deal Structure Notes', icon: FileText, format: (v: any) => v || '-', multiline: true },
-  { key: 'relationship_owners', label: 'Relationship Owners', icon: User, format: (v: any) => v || '-' },
+  { key: 'relationship_owners', label: 'Relationship Owners', icon: User, format: (v: any) => v || '-', multiSelect: true },
   { key: 'referral_lender', label: 'Referral Lender', icon: Tag, format: (v: any) => v || '-' },
   { key: 'nda', label: 'NDA', icon: FileText, format: (v: any) => v || '-' },
   { key: 'onboarded_to_flex', label: 'Onboarded to Flex', icon: Check, format: (v: any) => v || '-' },
   { key: 'gift_address', label: 'Gift Address', icon: MapPin, format: (v: any) => v || '-' },
-  { key: 'lender_one_pager_url', label: 'One Pager URL', icon: Globe, format: (v: any) => v || '-' },
+  { key: 'lender_one_pager_url', label: 'One Pager URL', icon: Globe, format: (v: any) => v || '-', multiSelect: true },
   { key: 'created_at', label: 'Created', icon: Calendar, format: formatDate },
 ];
 
 interface FieldRowProps {
   fieldDef: MergeFieldDef;
   lenders: MasterLender[];
-  selectedLenderId: string | null;
+  selectedLenderIds: string[];
   onSelect: (lenderId: string) => void;
+  onToggle: (lenderId: string) => void;
 }
 
-function FieldRow({ fieldDef, lenders, selectedLenderId, onSelect }: FieldRowProps) {
+function FieldRow({ fieldDef, lenders, selectedLenderIds, onSelect, onToggle }: FieldRowProps) {
   const Icon = fieldDef.icon;
+  const isMultiSelect = fieldDef.multiSelect;
   const values = lenders.map(l => ({
     id: l.id,
     value: (l as any)[fieldDef.key],
@@ -119,34 +131,50 @@ function FieldRow({ fieldDef, lenders, selectedLenderId, onSelect }: FieldRowPro
 
   if (!hasAnyValue) return null;
 
+  // Count how many are selected for multi-select fields
+  const selectedCount = isMultiSelect ? selectedLenderIds.length : 0;
+
   return (
     <div className="border-b border-border/50 last:border-b-0">
       <div className="flex items-center gap-2 py-2 px-3 bg-muted/30">
         <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium">{fieldDef.label}</span>
         {allSame && <Badge variant="secondary" className="text-xs ml-auto">Same</Badge>}
+        {isMultiSelect && !allSame && (
+          <Badge variant="outline" className="text-xs ml-auto gap-1">
+            <span className="text-primary">{selectedCount}</span> selected • Multi-select
+          </Badge>
+        )}
       </div>
       <div className="grid" style={{ gridTemplateColumns: `repeat(${lenders.length}, 1fr)` }}>
         {values.map((val, idx) => {
-          const isSelected = selectedLenderId === val.id;
+          const isSelected = selectedLenderIds.includes(val.id);
           const hasValue = val.value != null && val.value !== '' && (Array.isArray(val.value) ? val.value.length > 0 : true);
           
           return (
             <button
               key={val.id}
-              onClick={() => hasValue && onSelect(val.id)}
+              onClick={() => {
+                if (!hasValue) return;
+                if (isMultiSelect) {
+                  onToggle(val.id);
+                } else {
+                  onSelect(val.id);
+                }
+              }}
               disabled={!hasValue}
               className={cn(
                 "p-3 text-left transition-all relative border-r last:border-r-0 border-border/30",
                 hasValue && "hover:bg-primary/5 cursor-pointer",
                 !hasValue && "bg-muted/20 cursor-not-allowed",
-                isSelected && "bg-primary/10 ring-2 ring-primary ring-inset",
+                isSelected && !isMultiSelect && "bg-primary/10 ring-2 ring-primary ring-inset",
+                isSelected && isMultiSelect && "bg-green-500/10 ring-2 ring-green-500 ring-inset",
                 fieldDef.multiline && "min-h-[80px]"
               )}
             >
               {isSelected && (
                 <div className="absolute top-1 right-1">
-                  <Check className="h-4 w-4 text-primary" />
+                  <Check className={cn("h-4 w-4", isMultiSelect ? "text-green-500" : "text-primary")} />
                 </div>
               )}
               <span className={cn(
@@ -176,22 +204,40 @@ function MergeView({
   isProcessing: boolean;
 }) {
   // Initialize selections - for each field, select the first lender that has a value
-  const [selections, setSelections] = useState<Record<string, string>>(() => {
-    const initial: Record<string, string> = {};
+  // For multi-select fields, we store an array of lender IDs
+  const [selections, setSelections] = useState<Record<string, string[]>>(() => {
+    const initial: Record<string, string[]> = {};
     MERGE_FIELDS.forEach(field => {
       const lenderWithValue = group.lenders.find(l => {
         const val = (l as any)[field.key];
         return val != null && val !== '' && (Array.isArray(val) ? val.length > 0 : true);
       });
       if (lenderWithValue) {
-        initial[field.key] = lenderWithValue.id;
+        initial[field.key] = [lenderWithValue.id];
+      } else {
+        initial[field.key] = [];
       }
     });
     return initial;
   });
 
   const handleFieldSelect = (fieldKey: string, lenderId: string) => {
-    setSelections(prev => ({ ...prev, [fieldKey]: lenderId }));
+    // Single select - replace the selection
+    setSelections(prev => ({ ...prev, [fieldKey]: [lenderId] }));
+  };
+
+  const handleFieldToggle = (fieldKey: string, lenderId: string) => {
+    // Multi-select - toggle the selection
+    setSelections(prev => {
+      const current = prev[fieldKey] || [];
+      if (current.includes(lenderId)) {
+        // Remove from selection
+        return { ...prev, [fieldKey]: current.filter(id => id !== lenderId) };
+      } else {
+        // Add to selection
+        return { ...prev, [fieldKey]: [...current, lenderId] };
+      }
+    });
   };
 
   const handleConfirmMerge = () => {
@@ -202,11 +248,30 @@ function MergeView({
     // Build merged data from selections
     const mergedData: Partial<MasterLenderInsert> = {};
     
-    Object.entries(selections).forEach(([fieldKey, lenderId]) => {
+    Object.entries(selections).forEach(([fieldKey, lenderIds]) => {
       if (fieldKey === 'created_at') return; // Skip read-only fields
-      const lender = group.lenders.find(l => l.id === lenderId);
-      if (lender) {
-        (mergedData as any)[fieldKey] = (lender as any)[fieldKey];
+      if (lenderIds.length === 0) return;
+
+      const fieldDef = MERGE_FIELDS.find(f => f.key === fieldKey);
+      const isMultiSelect = fieldDef?.multiSelect;
+
+      if (isMultiSelect && lenderIds.length > 1) {
+        // Combine values from multiple lenders with delimiter
+        const values = lenderIds
+          .map(id => {
+            const lender = group.lenders.find(l => l.id === id);
+            return lender ? (lender as any)[fieldKey] : null;
+          })
+          .filter(v => v != null && v !== '');
+        
+        // Join with " | " delimiter for multiple values
+        (mergedData as any)[fieldKey] = values.join(' | ');
+      } else {
+        // Single selection - use the value from the selected lender
+        const lender = group.lenders.find(l => l.id === lenderIds[0]);
+        if (lender) {
+          (mergedData as any)[fieldKey] = (lender as any)[fieldKey];
+        }
       }
     });
 
@@ -244,8 +309,9 @@ function MergeView({
               key={field.key}
               fieldDef={field}
               lenders={group.lenders}
-              selectedLenderId={selections[field.key] || null}
+              selectedLenderIds={selections[field.key] || []}
               onSelect={(lenderId) => handleFieldSelect(field.key, lenderId)}
+              onToggle={(lenderId) => handleFieldToggle(field.key, lenderId)}
             />
           ))}
         </div>
@@ -254,7 +320,7 @@ function MergeView({
       {/* Actions */}
       <div className="border-t p-4 flex justify-between items-center bg-background">
         <div className="text-sm text-muted-foreground">
-          Click on any cell to select which value to keep
+          Click to select • Multi-select fields (green) combine values with " | "
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onSkip} disabled={isProcessing}>
