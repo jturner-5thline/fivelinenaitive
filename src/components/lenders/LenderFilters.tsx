@@ -239,9 +239,15 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
 export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilters): MasterLender[] {
   let result = lenders;
 
+  // Ensure filters has required properties with fallbacks
+  const safeFilters = {
+    ...emptyFilters,
+    ...filters,
+  };
+
   // Apply search query filter first
-  if (filters.searchQuery) {
-    const query = filters.searchQuery.toLowerCase();
+  if (safeFilters.searchQuery) {
+    const query = safeFilters.searchQuery.toLowerCase();
     result = result.filter((lender) => {
       const nameMatch = lender.name?.toLowerCase().includes(query);
       const contactMatch = lender.contact_name?.toLowerCase().includes(query);
@@ -250,14 +256,14 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
   }
 
   // Apply advanced conditions
-  if (filters.advancedConditions.length > 0) {
-    result = applyAdvancedFilters(result, filters.advancedConditions);
+  if (safeFilters.advancedConditions && safeFilters.advancedConditions.length > 0) {
+    result = applyAdvancedFilters(result, safeFilters.advancedConditions);
   }
 
   // Legacy filter support for backward compatibility
-  if (filters.tiers.length > 0) {
+  if (safeFilters.tiers && safeFilters.tiers.length > 0) {
     result = result.filter((lender) => 
-      filters.tiers.some(tier => lender.tier === tier)
+      safeFilters.tiers.some(tier => lender.tier === tier)
     );
   }
 
