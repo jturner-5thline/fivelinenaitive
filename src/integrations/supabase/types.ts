@@ -457,6 +457,65 @@ export type Database = {
           },
         ]
       }
+      deal_claap_recordings: {
+        Row: {
+          created_at: string
+          deal_id: string
+          duration_seconds: number | null
+          id: string
+          linked_at: string
+          linked_by: string | null
+          notes: string | null
+          recorder_email: string | null
+          recorder_name: string | null
+          recording_id: string
+          recording_title: string | null
+          recording_url: string | null
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          duration_seconds?: number | null
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          notes?: string | null
+          recorder_email?: string | null
+          recorder_name?: string | null
+          recording_id: string
+          recording_title?: string | null
+          recording_url?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          duration_seconds?: number | null
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          notes?: string | null
+          recorder_email?: string | null
+          recorder_name?: string | null
+          recording_id?: string
+          recording_title?: string | null
+          recording_url?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_claap_recordings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_emails: {
         Row: {
           deal_id: string
