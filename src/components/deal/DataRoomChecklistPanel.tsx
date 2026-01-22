@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,6 +16,55 @@ import {
 } from '@/components/ui/collapsible';
 import { useDataRoomChecklist, useDealChecklistStatus, ChecklistItem } from '@/hooks/useDataRoomChecklist';
 import { cn } from '@/lib/utils';
+
+interface CircularProgressProps {
+  value: number;
+  size?: number;
+  strokeWidth?: number;
+  className?: string;
+  indicatorClassName?: string;
+}
+
+function CircularProgress({ 
+  value, 
+  size = 48, 
+  strokeWidth = 4,
+  className,
+  indicatorClassName
+}: CircularProgressProps) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (value / 100) * circumference;
+
+  return (
+    <div className={cn("relative inline-flex items-center justify-center", className)} style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          className="text-secondary"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className={cn("text-primary transition-all duration-300", indicatorClassName)}
+        />
+      </svg>
+      <span className="absolute text-xs font-semibold">{value}%</span>
+    </div>
+  );
+}
 
 interface DataRoomChecklistPanelProps {
   dealId: string;
@@ -110,42 +158,32 @@ export function DataRoomChecklistPanel({
   return (
     <div className="space-y-4">
       {/* Progress Summary */}
-      <div className="p-4 bg-muted/30 rounded-lg space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Data Room Progress</span>
-          </div>
-          <Badge 
-            variant={progressPercent === 100 ? 'default' : 'secondary'}
-            className={cn(progressPercent === 100 && 'bg-green-500')}
-          >
-            {completedCount} / {checklistItems.length}
-          </Badge>
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Overall completion</span>
-            <span className="font-medium">{progressPercent}%</span>
-          </div>
-          <Progress value={progressPercent} className="h-2" />
-        </div>
-
-        {requiredItems.length > 0 && requiredItems.length !== checklistItems.length && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Required items</span>
-              <span className="font-medium">
-                {completedRequiredCount} / {requiredItems.length} ({requiredProgressPercent}%)
-              </span>
+      <div className="p-4 bg-muted/30 rounded-lg">
+        <div className="flex items-center gap-4">
+          <CircularProgress 
+            value={progressPercent} 
+            size={56} 
+            strokeWidth={5}
+            indicatorClassName={progressPercent === 100 ? "text-green-500" : undefined}
+          />
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center gap-2">
+              <FileCheck className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-sm">Data Room Progress</span>
             </div>
-            <Progress 
-              value={requiredProgressPercent} 
-              className={cn("h-2", requiredProgressPercent < 100 && "[&>div]:bg-amber-500")}
-            />
+            <p className="text-xs text-muted-foreground">
+              {completedCount} of {checklistItems.length} items complete
+            </p>
+            {requiredItems.length > 0 && requiredItems.length !== checklistItems.length && (
+              <p className="text-xs text-muted-foreground">
+                Required: {completedRequiredCount}/{requiredItems.length}
+                {requiredProgressPercent < 100 && (
+                  <span className="text-amber-500 ml-1">({requiredProgressPercent}%)</span>
+                )}
+              </p>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Checklist Items */}
