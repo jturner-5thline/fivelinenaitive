@@ -60,6 +60,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import PendingApproval from "./pages/PendingApproval";
 import Homepage from "./pages/Homepage";
+import Promo from "./pages/Promo";
 
 const queryClient = new QueryClient();
 
@@ -179,6 +180,7 @@ const App = () => (
                           <Route path="/privacy" element={<PrivacyPolicy />} />
                           <Route path="/terms" element={<TermsOfService />} />
                           <Route path="/homepage" element={<Homepage />} />
+                          <Route path="/promo" element={<Promo />} />
                           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                           <Route path="*" element={<NotFound />} />
                         </Routes>
