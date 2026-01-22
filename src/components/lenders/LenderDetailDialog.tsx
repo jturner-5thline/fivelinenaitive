@@ -654,70 +654,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               </>
             ) : (
               <>
-                {/* View Mode: Description */}
-                {lender.description && (
-                  <>
-                    <section>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                        About
-                      </h3>
-                      <p className="text-sm leading-relaxed">{lender.description}</p>
-                    </section>
-                    <Separator />
-                  </>
-                )}
-
-                {/* View Mode: Contact Information */}
-                <section>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Contact Information
-                  </h3>
-                  <div className="grid gap-3">
-                    {lender.website && (
-                      <div className="flex items-center gap-3">
-                        <Globe className="h-4 w-4 text-muted-foreground" />
-                        <a 
-                          href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-primary hover:underline flex items-center gap-1"
-                        >
-                          {lender.website.replace(/^https?:\/\//, '')}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
-                    )}
-                    {lender.contact.name && (
-                      <div className="flex items-center gap-3">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span>{lender.contact.name}</span>
-                      </div>
-                    )}
-                    {lender.contact.email && (
-                      <div className="flex items-center gap-3">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
-                          {lender.contact.email}
-                        </a>
-                      </div>
-                    )}
-                    {lender.contact.phone && (
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <a href={`tel:${lender.contact.phone}`} className="hover:underline">
-                          {lender.contact.phone}
-                        </a>
-                      </div>
-                    )}
-                    {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
-                      <p className="text-muted-foreground text-sm">No contact information available</p>
-                    )}
-                  </div>
-                </section>
-
-                <Separator />
-
-                {/* View Mode: Lending Criteria */}
+                {/* View Mode: Lending Criteria - MOVED TO TOP */}
                 <section>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Lending Criteria
@@ -820,6 +757,69 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
                     {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && !lender.minRevenue && !lender.ebitdaMin && !lender.companyRequirements && (
                       <p className="text-muted-foreground text-sm">No lending criteria specified</p>
+                    )}
+                  </div>
+                </section>
+
+                <Separator />
+
+                {/* View Mode: About (Description) - MOVED AFTER Lending Criteria */}
+                {lender.description && (
+                  <>
+                    <section>
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        About
+                      </h3>
+                      <p className="text-sm leading-relaxed">{lender.description}</p>
+                    </section>
+                    <Separator />
+                  </>
+                )}
+
+                {/* View Mode: Contact Information */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Contact Information
+                  </h3>
+                  <div className="grid gap-3">
+                    {lender.website && (
+                      <div className="flex items-center gap-3">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <a 
+                          href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-primary hover:underline flex items-center gap-1"
+                        >
+                          {lender.website.replace(/^https?:\/\//, '')}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    )}
+                    {lender.contact.name && (
+                      <div className="flex items-center gap-3">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span>{lender.contact.name}</span>
+                      </div>
+                    )}
+                    {lender.contact.email && (
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
+                          {lender.contact.email}
+                        </a>
+                      </div>
+                    )}
+                    {lender.contact.phone && (
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <a href={`tel:${lender.contact.phone}`} className="hover:underline">
+                          {lender.contact.phone}
+                        </a>
+                      </div>
+                    )}
+                    {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
+                      <p className="text-muted-foreground text-sm">No contact information available</p>
                     )}
                   </div>
                 </section>
