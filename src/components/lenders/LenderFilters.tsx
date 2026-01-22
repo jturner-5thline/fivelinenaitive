@@ -29,6 +29,7 @@ export interface LenderFilters {
   cashBurn: string;
   industries: string[];
   geographies: string[];
+  tiers: string[];
 }
 
 const emptyFilters: LenderFilters = {
@@ -41,6 +42,7 @@ const emptyFilters: LenderFilters = {
   cashBurn: '',
   industries: [],
   geographies: [],
+  tiers: [],
 };
 
 interface LenderFiltersProps {
@@ -122,6 +124,13 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     [lenders]
   );
 
+  // Tier options - fixed values
+  const tierOptions = useMemo(() => [
+    { value: 'T1', label: 'T1' },
+    { value: 'T2', label: 'T2' },
+    { value: 'T3', label: 'T3' },
+  ], []);
+
   // Options for multi-select filters
   const loanTypeOptions = useMemo(() => 
     uniqueLoanTypes.map(lt => ({ value: lt, label: lt })),
@@ -149,6 +158,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     if (filters.loanTypes.length > 0) count++;
     if (filters.industries.length > 0) count++;
     if (filters.geographies.length > 0) count++;
+    if (filters.tiers.length > 0) count++;
     return count;
   }, [filters]);
 
@@ -161,7 +171,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
   }, [filters, onFiltersChange]);
 
   const clearFilter = useCallback((key: keyof LenderFilters) => {
-    const isArrayField = key === 'loanTypes' || key === 'industries' || key === 'geographies';
+    const isArrayField = key === 'loanTypes' || key === 'industries' || key === 'geographies' || key === 'tiers';
     onFiltersChange({ ...filters, [key]: isArrayField ? [] : '' });
   }, [filters, onFiltersChange]);
 
@@ -297,6 +307,18 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                     <button
                       type="button"
                       onClick={() => clearFilter('geographies')}
+                      className="ml-1 rounded-full hover:bg-muted p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                {filters.tiers.length > 0 && (
+                  <Badge variant="outline" className="gap-1 pr-1">
+                    Tier: {filters.tiers.length === 1 ? filters.tiers[0] : `${filters.tiers.length} selected`}
+                    <button
+                      type="button"
+                      onClick={() => clearFilter('tiers')}
                       className="ml-1 rounded-full hover:bg-muted p-0.5"
                     >
                       <X className="h-3 w-3" />
@@ -460,6 +482,18 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                   className="h-9 w-full"
                 />
               </div>
+
+              {/* Tier - Multi-select */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tier</Label>
+                <MultiSelectFilter
+                  label="Any"
+                  options={tierOptions}
+                  selected={filters.tiers}
+                  onChange={(selected) => handleFilterChange('tiers', selected)}
+                  className="h-9 w-full"
+                />
+              </div>
             </div>
           </div>
         </CollapsibleContent>
@@ -545,6 +579,16 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
         lender.geo === geo
       );
       if (!hasMatchingGeo) {
+        return false;
+      }
+    }
+
+    // Tier filter (multi-select - lender must match at least one tier)
+    if (filters.tiers.length > 0) {
+      const hasMatchingTier = filters.tiers.some(tier => 
+        lender.tier === tier
+      );
+      if (!hasMatchingTier) {
         return false;
       }
     }
