@@ -5,6 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface ClaapParticipant {
+  attended: boolean;
+  email: string;
+  id: string;
+  name: string;
+}
+
 interface ClaapRecording {
   id: string;
   createdAt: string;
@@ -29,6 +36,13 @@ interface ClaapRecording {
   url: string;
   videoUrl?: string;
   embedUrl?: string;
+  meeting?: {
+    participants: ClaapParticipant[];
+    startingAt?: string;
+    endingAt?: string;
+    type?: string;
+    conferenceUrl?: string;
+  };
 }
 
 Deno.serve(async (req) => {
