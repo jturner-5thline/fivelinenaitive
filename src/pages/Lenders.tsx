@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2 } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,7 @@ import { BankLendersImportButton } from '@/components/lenders/BankLendersImportB
 import { LenderFiltersPanel, applyLenderFilters, emptyFilters, LenderFilters } from '@/components/lenders/LenderFilters';
 import { LenderGridCard } from '@/components/lenders/LenderGridCard';
 import { LenderListCard } from '@/components/lenders/LenderListCard';
+import { LenderSpreadsheetView } from '@/components/lenders/LenderSpreadsheetView';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
@@ -83,7 +84,7 @@ const DEFAULT_TILE_DISPLAY_SETTINGS: LenderTileDisplaySettings = {
 };
 
 type SortOption = 'name-asc' | 'name-desc' | 'deals-desc' | 'deals-asc';
-type ViewMode = 'list' | 'grid';
+type ViewMode = 'list' | 'grid' | 'spreadsheet';
 
 // Adapter type for legacy LenderDetailDialog
 interface LenderInfo {
@@ -192,7 +193,7 @@ export default function Lenders() {
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('lenders-view-mode');
-    return (saved === 'grid' || saved === 'list') ? saved : 'list';
+    return (saved === 'grid' || saved === 'list' || saved === 'spreadsheet') ? saved : 'list';
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
@@ -736,16 +737,27 @@ export default function Lenders() {
                       size="icon"
                       className="h-10 w-10 rounded-r-none"
                       onClick={() => handleViewModeChange('list')}
+                      title="List view"
                     >
                       <List className="h-4 w-4" />
                     </Button>
                     <Button
                       variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                       size="icon"
-                      className="h-10 w-10 rounded-l-none"
+                      className="h-10 w-10 rounded-none border-l border-r"
                       onClick={() => handleViewModeChange('grid')}
+                      title="Grid view"
                     >
                       <LayoutGrid className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'spreadsheet' ? 'secondary' : 'ghost'}
+                      size="icon"
+                      className="h-10 w-10 rounded-l-none"
+                      onClick={() => handleViewModeChange('spreadsheet')}
+                      title="Spreadsheet view"
+                    >
+                      <Table2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -866,6 +878,19 @@ export default function Lenders() {
                         </div>
                       ),
                     }}
+                  />
+                )}
+
+                {/* Spreadsheet View */}
+                {!isLoading && viewMode === 'spreadsheet' && sortedLenders.length > 0 && (
+                  <LenderSpreadsheetView
+                    lenders={sortedLenders}
+                    activeDealCounts={activeDealCounts}
+                    loadingMore={loadingMore}
+                    hasMore={hasMore}
+                    totalCount={totalCount}
+                    onLoadMore={loadMore}
+                    onRowClick={openLenderDetailStable}
                   />
                 )}
 
