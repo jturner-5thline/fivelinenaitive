@@ -697,7 +697,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           <span className="text-sm font-medium block mb-1.5">Industries:</span>
                           <div className="flex flex-wrap gap-1.5">
                             {lender.industries.map((industry, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
+                              <Badge key={idx} variant="blue" className="text-xs">
                                 {industry}
                               </Badge>
                             ))}
@@ -714,7 +714,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           <span className="text-sm font-medium block mb-1.5">Loan Types:</span>
                           <div className="flex flex-wrap gap-1.5">
                             {lender.loanTypes.map((loanType, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
+                              <Badge key={idx} variant="purple" className="text-xs">
                                 {loanType}
                               </Badge>
                             ))}
@@ -788,7 +788,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         {lender.upfrontChecklist.split(/[,;\n]+/).map((item, idx) => {
                           const trimmed = item.trim();
                           return trimmed ? (
-                            <Badge key={idx} variant="outline" className="text-xs">
+                            <Badge key={idx} variant="green" className="text-xs">
                               {trimmed}
                             </Badge>
                           ) : null;
