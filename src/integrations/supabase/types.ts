@@ -1921,6 +1921,7 @@ export type Database = {
           relationship_owners: string | null
           sponsorship: string | null
           sub_debt: string | null
+          tier: string | null
           updated_at: string
           upfront_checklist: string | null
           user_id: string
@@ -1960,6 +1961,7 @@ export type Database = {
           relationship_owners?: string | null
           sponsorship?: string | null
           sub_debt?: string | null
+          tier?: string | null
           updated_at?: string
           upfront_checklist?: string | null
           user_id: string
@@ -1999,6 +2001,7 @@ export type Database = {
           relationship_owners?: string | null
           sponsorship?: string | null
           sub_debt?: string | null
+          tier?: string | null
           updated_at?: string
           upfront_checklist?: string | null
           user_id?: string

@@ -111,6 +111,7 @@ interface LenderInfo {
   postTermSheetChecklist?: string | null;
   b2bB2c?: string | null;
   lenderNotes?: string | null;
+  tier?: string | null;
 }
 
 interface LenderForm {
@@ -172,6 +173,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     postTermSheetChecklist: lender.post_term_sheet_checklist,
     b2bB2c: lender.b2b_b2c,
     lenderNotes: lender.deal_structure_notes,
+    tier: lender.tier,
   };
 }
 
