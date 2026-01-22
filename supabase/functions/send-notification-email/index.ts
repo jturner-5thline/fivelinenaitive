@@ -56,15 +56,17 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
   },
 };
 
+// Map notification types to their corresponding email preference columns
+// Users can disable email notifications for specific types in their settings
 const preferenceMap: Record<string, string> = {
-  deal_created: 'notify_activity_deal_created',
+  deal_created: 'deal_updates_email',
   deal_updated: 'deal_updates_email',
-  stage_changed: 'notify_activity_stage_changed',
-  lender_added: 'notify_activity_lender_added',
-  lender_updated: 'notify_activity_lender_updated',
-  milestone_added: 'notify_activity_milestone_added',
-  milestone_completed: 'notify_activity_milestone_completed',
-  milestone_missed: 'notify_activity_milestone_missed',
+  stage_changed: 'deal_updates_email',
+  lender_added: 'lender_updates_email',
+  lender_updated: 'lender_updates_email',
+  milestone_added: 'deal_updates_email',
+  milestone_completed: 'deal_updates_email',
+  milestone_missed: 'deal_updates_email',
 };
 
 const handler = async (req: Request): Promise<Response> => {
