@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -30,6 +33,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { cn } from '@/lib/utils';
 
 interface LenderInfo {
+  id?: string;
   name: string;
   contact: {
     name: string;
@@ -47,12 +51,26 @@ interface LenderInfo {
   loanTypes?: string[] | null;
 }
 
+export interface LenderEditData {
+  name: string;
+  contactName: string;
+  email: string;
+  lenderType: string;
+  minDeal: string;
+  maxDeal: string;
+  geo: string;
+  industries: string;
+  loanTypes: string;
+  description: string;
+}
+
 interface LenderDetailDialogProps {
   lender: LenderInfo | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: (lenderName: string) => void;
   onDelete?: (lenderName: string) => void;
+  onSave?: (lenderId: string, data: LenderEditData) => Promise<void>;
 }
 
 function formatFileSize(bytes: number): string {
@@ -150,7 +168,7 @@ function HorizontalScrollContainer({ children }: { children: React.ReactNode }) 
   );
 }
 
-export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete }: LenderDetailDialogProps) {
+export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave }: LenderDetailDialogProps) {
   const { deals } = useDealsContext();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -159,10 +177,83 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<LenderAttachmentCategory>('general');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState<LenderEditData>({
+    name: '',
+    contactName: '',
+    email: '',
+    lenderType: '',
+    minDeal: '',
+    maxDeal: '',
+    geo: '',
+    industries: '',
+    loanTypes: '',
+    description: '',
+  });
   
   const { attachments, isLoading: isLoadingAttachments, uploadMultipleAttachments, deleteAttachment } = useLenderAttachments(
     open ? lender?.name ?? null : null
   );
+
+  // Initialize edit form when entering edit mode or when lender changes
+  useEffect(() => {
+    if (lender && isEditMode) {
+      setEditForm({
+        name: lender.name || '',
+        contactName: lender.contact.name || '',
+        email: lender.contact.email || '',
+        lenderType: lender.lenderType || '',
+        minDeal: lender.minDeal?.toString() || '',
+        maxDeal: lender.maxDeal?.toString() || '',
+        geo: lender.geo || '',
+        industries: lender.industries?.join(', ') || '',
+        loanTypes: lender.loanTypes?.join(', ') || '',
+        description: lender.description || '',
+      });
+    }
+  }, [lender, isEditMode]);
+
+  // Reset edit mode when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsEditMode(false);
+    }
+  }, [open]);
+
+  const handleEnterEditMode = () => {
+    if (lender) {
+      setEditForm({
+        name: lender.name || '',
+        contactName: lender.contact.name || '',
+        email: lender.contact.email || '',
+        lenderType: lender.lenderType || '',
+        minDeal: lender.minDeal?.toString() || '',
+        maxDeal: lender.maxDeal?.toString() || '',
+        geo: lender.geo || '',
+        industries: lender.industries?.join(', ') || '',
+        loanTypes: lender.loanTypes?.join(', ') || '',
+        description: lender.description || '',
+      });
+      setIsEditMode(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!lender?.id || !onSave) return;
+    
+    setIsSaving(true);
+    try {
+      await onSave(lender.id, editForm);
+      setIsEditMode(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleNavigateToDeal = (dealId: string) => {
     onOpenChange(false);
@@ -301,218 +392,381 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   if (!lender) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (!newOpen && isEditMode) {
+        setIsEditMode(false);
+      }
+      onOpenChange(newOpen);
+    }}>
       <DialogContent className="max-w-2xl max-h-[85vh]">
         <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Building2 className="h-6 w-6" />
-            <span>{lender.name}</span>
-            {lender.lenderType && (
-              <Badge variant="outline" className="ml-1 text-xs font-normal">
-                {lender.lenderType}
-              </Badge>
+            {isEditMode ? (
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                className="h-8 text-lg font-semibold max-w-[200px]"
+                placeholder="Lender name"
+              />
+            ) : (
+              <>
+                <span>{lender.name}</span>
+                {lender.lenderType && (
+                  <Badge variant="outline" className="ml-1 text-xs font-normal">
+                    {lender.lenderType}
+                  </Badge>
+                )}
+              </>
             )}
           </DialogTitle>
           <div className="flex items-center gap-1">
-            {onEdit && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      onOpenChange(false);
-                      onEdit(lender.name);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Edit lender</TooltipContent>
-              </Tooltip>
-            )}
-            {onDelete && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => {
-                      onOpenChange(false);
-                      onDelete(lender.name);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Delete lender</TooltipContent>
-              </Tooltip>
+            {isEditMode ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                >
+                  <X className="h-4 w-4" />
+                  Cancel
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  onClick={handleSaveEdit}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Save
+                </Button>
+              </>
+            ) : (
+              <>
+                {onSave && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={handleEnterEditMode}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit lender</TooltipContent>
+                  </Tooltip>
+                )}
+                {onDelete && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          onOpenChange(false);
+                          onDelete(lender.name);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete lender</TooltipContent>
+                  </Tooltip>
+                )}
+              </>
             )}
           </div>
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(85vh-100px)] pr-4">
           <div className="space-y-6">
-            {/* Description */}
-            {lender.description && (
+            {/* Edit Mode: Description/Notes */}
+            {isEditMode ? (
               <>
                 <section>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    About
+                    About / Notes
                   </h3>
-                  <p className="text-sm leading-relaxed">{lender.description}</p>
+                  <Textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    placeholder="Additional notes about the lender..."
+                    rows={3}
+                    className="text-sm"
+                  />
+                </section>
+                <Separator />
+
+                {/* Edit Mode: Lender Type */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Lender Type
+                  </h3>
+                  <Input
+                    value={editForm.lenderType}
+                    onChange={(e) => setEditForm({ ...editForm, lenderType: e.target.value })}
+                    placeholder="e.g., Bank, Venture Debt, ABL"
+                    className="text-sm"
+                  />
+                </section>
+                <Separator />
+
+                {/* Edit Mode: Contact Information */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Contact Information
+                  </h3>
+                  <div className="grid gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Contact Name</Label>
+                      <Input
+                        value={editForm.contactName}
+                        onChange={(e) => setEditForm({ ...editForm, contactName: e.target.value })}
+                        placeholder="Primary contact name"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Email</Label>
+                      <Input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        placeholder="email@example.com"
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </section>
+                <Separator />
+
+                {/* Edit Mode: Lending Criteria */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Lending Criteria
+                  </h3>
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Min Deal Size ($)</Label>
+                        <Input
+                          type="number"
+                          value={editForm.minDeal}
+                          onChange={(e) => setEditForm({ ...editForm, minDeal: e.target.value })}
+                          placeholder="e.g., 1000000"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Max Deal Size ($)</Label>
+                        <Input
+                          type="number"
+                          value={editForm.maxDeal}
+                          onChange={(e) => setEditForm({ ...editForm, maxDeal: e.target.value })}
+                          placeholder="e.g., 25000000"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Geographic Preference</Label>
+                      <Input
+                        value={editForm.geo}
+                        onChange={(e) => setEditForm({ ...editForm, geo: e.target.value })}
+                        placeholder="e.g., US, North America, Global"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Industries (comma-separated)</Label>
+                      <Input
+                        value={editForm.industries}
+                        onChange={(e) => setEditForm({ ...editForm, industries: e.target.value })}
+                        placeholder="e.g., SaaS, Healthcare, Technology"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Loan Types (comma-separated)</Label>
+                      <Input
+                        value={editForm.loanTypes}
+                        onChange={(e) => setEditForm({ ...editForm, loanTypes: e.target.value })}
+                        placeholder="e.g., Term Loan, Revolver, ABL"
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
                 </section>
                 <Separator />
               </>
+            ) : (
+              <>
+                {/* View Mode: Description */}
+                {lender.description && (
+                  <>
+                    <section>
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        About
+                      </h3>
+                      <p className="text-sm leading-relaxed">{lender.description}</p>
+                    </section>
+                    <Separator />
+                  </>
+                )}
+
+                {/* View Mode: Contact Information */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Contact Information
+                  </h3>
+                  <div className="grid gap-3">
+                    {lender.website && (
+                      <div className="flex items-center gap-3">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <a 
+                          href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-primary hover:underline flex items-center gap-1"
+                        >
+                          {lender.website.replace(/^https?:\/\//, '')}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    )}
+                    {lender.contact.name && (
+                      <div className="flex items-center gap-3">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span>{lender.contact.name}</span>
+                      </div>
+                    )}
+                    {lender.contact.email && (
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
+                          {lender.contact.email}
+                        </a>
+                      </div>
+                    )}
+                    {lender.contact.phone && (
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <a href={`tel:${lender.contact.phone}`} className="hover:underline">
+                          {lender.contact.phone}
+                        </a>
+                      </div>
+                    )}
+                    {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
+                      <p className="text-muted-foreground text-sm">No contact information available</p>
+                    )}
+                  </div>
+                </section>
+
+                <Separator />
+
+                {/* View Mode: Lending Criteria */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Lending Criteria
+                  </h3>
+                  <div className="grid gap-3">
+                    {/* Deal Size Range */}
+                    {(lender.minDeal || lender.maxDeal) && (
+                      <div className="flex items-start gap-3">
+                        <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <span className="text-sm font-medium">Deal Size: </span>
+                          <span className="text-sm">
+                            {lender.minDeal && lender.maxDeal
+                              ? `${formatCurrencyValue(lender.minDeal)} - ${formatCurrencyValue(lender.maxDeal)}`
+                              : lender.minDeal
+                              ? `${formatCurrencyValue(lender.minDeal)}+`
+                              : `Up to ${formatCurrencyValue(lender.maxDeal!)}`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Geographic Preferences */}
+                    {lender.geo && (
+                      <div className="flex items-start gap-3">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <span className="text-sm font-medium">Geography: </span>
+                          <span className="text-sm">{lender.geo}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Industries */}
+                    {lender.industries && lender.industries.length > 0 && (
+                      <div className="flex items-start gap-3">
+                        <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <span className="text-sm font-medium block mb-1.5">Industries:</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {lender.industries.map((industry, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {industry}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Loan Types */}
+                    {lender.loanTypes && lender.loanTypes.length > 0 && (
+                      <div className="flex items-start gap-3">
+                        <Banknote className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <span className="text-sm font-medium block mb-1.5">Loan Types:</span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {lender.loanTypes.map((loanType, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {loanType}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && (
+                      <p className="text-muted-foreground text-sm">No lending criteria specified</p>
+                    )}
+                  </div>
+                </section>
+
+                <Separator />
+
+                {/* View Mode: Additional Preferences */}
+                {lender.preferences.length > 0 && (
+                  <section>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                      Additional Preferences
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {lender.preferences.map((pref, idx) => (
+                        <Badge key={idx} variant="secondary">
+                          {pref}
+                        </Badge>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {lender.preferences.length > 0 && <Separator />}
+              </>
             )}
 
-            {/* Website & Contact Information */}
-            <section>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Contact Information
-              </h3>
-              <div className="grid gap-3">
-                {lender.website && (
-                  <div className="flex items-center gap-3">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <a 
-                      href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="text-primary hover:underline flex items-center gap-1"
-                    >
-                      {lender.website.replace(/^https?:\/\//, '')}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                )}
-                {lender.contact.name && (
-                  <div className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span>{lender.contact.name}</span>
-                  </div>
-                )}
-                {lender.contact.email && (
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
-                      {lender.contact.email}
-                    </a>
-                  </div>
-                )}
-                {lender.contact.phone && (
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <a href={`tel:${lender.contact.phone}`} className="hover:underline">
-                      {lender.contact.phone}
-                    </a>
-                  </div>
-                )}
-                {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
-                  <p className="text-muted-foreground text-sm">No contact information available</p>
-                )}
-              </div>
-            </section>
-
-            <Separator />
-
-            {/* Lending Criteria */}
-            <section>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Lending Criteria
-              </h3>
-              <div className="grid gap-3">
-                {/* Deal Size Range */}
-                {(lender.minDeal || lender.maxDeal) && (
-                  <div className="flex items-start gap-3">
-                    <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <span className="text-sm font-medium">Deal Size: </span>
-                      <span className="text-sm">
-                        {lender.minDeal && lender.maxDeal
-                          ? `${formatCurrencyValue(lender.minDeal)} - ${formatCurrencyValue(lender.maxDeal)}`
-                          : lender.minDeal
-                          ? `${formatCurrencyValue(lender.minDeal)}+`
-                          : `Up to ${formatCurrencyValue(lender.maxDeal!)}`}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Geographic Preferences */}
-                {lender.geo && (
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <span className="text-sm font-medium">Geography: </span>
-                      <span className="text-sm">{lender.geo}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Industries */}
-                {lender.industries && lender.industries.length > 0 && (
-                  <div className="flex items-start gap-3">
-                    <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <span className="text-sm font-medium block mb-1.5">Industries:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {lender.industries.map((industry, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {industry}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Loan Types */}
-                {lender.loanTypes && lender.loanTypes.length > 0 && (
-                  <div className="flex items-start gap-3">
-                    <Banknote className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <span className="text-sm font-medium block mb-1.5">Loan Types:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {lender.loanTypes.map((loanType, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs">
-                            {loanType}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {!lender.minDeal && !lender.maxDeal && !lender.geo && (!lender.industries || lender.industries.length === 0) && (!lender.loanTypes || lender.loanTypes.length === 0) && (
-                  <p className="text-muted-foreground text-sm">No lending criteria specified</p>
-                )}
-              </div>
-            </section>
-
-            <Separator />
-
-            {/* Deal Preferences - Legacy section, can be removed if redundant */}
-            {lender.preferences.length > 0 && (
-              <section>
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Additional Preferences
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {lender.preferences.map((pref, idx) => (
-                    <Badge key={idx} variant="secondary">
-                      {pref}
-                    </Badge>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {lender.preferences.length > 0 && <Separator />}
-
-            {/* Active Deals */}
+            {/* Active Deals - Always visible */}
             <section>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
@@ -548,7 +802,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
             <Separator />
 
-            {/* Attachments Section */}
+            {/* Attachments Section - Always visible */}
             {user && (
               <>
                 <section>
@@ -719,7 +973,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               </>
             )}
 
-            {/* Deals Sent */}
+            {/* Deals Sent - Always visible */}
             <section>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-primary" />
@@ -755,7 +1009,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
             <Separator />
 
-            {/* Pass Reasons */}
+            {/* Pass Reasons - Always visible */}
             <section>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
                 <ThumbsDown className="h-4 w-4 text-destructive" />

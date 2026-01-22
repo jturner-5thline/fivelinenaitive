@@ -54,7 +54,7 @@ import { toast } from '@/hooks/use-toast';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
-import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
+import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { NonBankLendersImportButton } from '@/components/lenders/NonBankLendersImportButton';
 import { BankLendersImportButton } from '@/components/lenders/BankLendersImportButton';
@@ -424,6 +424,43 @@ export default function Lenders() {
   const handleDelete = async (id: string, name: string) => {
     await deleteMasterLender(id);
     toast({ title: 'Lender deleted', description: `${name} has been removed.` });
+  };
+
+  const handleInlineSave = async (lenderId: string, data: LenderEditData) => {
+    const lenderData: MasterLenderInsert = {
+      name: data.name.trim(),
+      contact_name: data.contactName.trim() || null,
+      email: data.email.trim() || null,
+      lender_type: data.lenderType.trim() || null,
+      loan_types: data.loanTypes.split(',').map(p => p.trim()).filter(p => p) || null,
+      min_deal: data.minDeal ? parseFloat(data.minDeal) : null,
+      max_deal: data.maxDeal ? parseFloat(data.maxDeal) : null,
+      industries: data.industries.split(',').map(p => p.trim()).filter(p => p) || null,
+      geo: data.geo.trim() || null,
+      deal_structure_notes: data.description.trim() || null,
+    };
+
+    // Check if name changed and new name already exists
+    const existingLender = masterLenders.find(l => l.id === lenderId);
+    if (existingLender && lenderData.name.toLowerCase() !== existingLender.name.toLowerCase() && 
+        masterLenders.some(l => l.name.toLowerCase() === lenderData.name.toLowerCase())) {
+      toast({ title: 'Error', description: 'A lender with this name already exists', variant: 'destructive' });
+      throw new Error('Duplicate lender name');
+    }
+
+    await updateMasterLender(lenderId, lenderData);
+    
+    // Update the selected lender to reflect changes immediately
+    setSelectedLender(masterLenderToLenderInfo({
+      ...existingLender!,
+      ...lenderData,
+      id: lenderId,
+      user_id: existingLender!.user_id,
+      created_at: existingLender!.created_at,
+      updated_at: new Date().toISOString(),
+    } as MasterLender));
+    
+    toast({ title: 'Lender updated', description: `${lenderData.name} has been updated.` });
   };
 
   const handleExport = () => {
@@ -963,7 +1000,7 @@ export default function Lenders() {
         lender={selectedLender}
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
-        onEdit={openEditDialog}
+        onSave={handleInlineSave}
         onDelete={(lenderName) => {
           const lender = masterLenders.find(l => l.name === lenderName);
           if (lender) handleDelete(lender.id, lender.name);
