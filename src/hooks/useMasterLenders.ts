@@ -40,6 +40,7 @@ export interface MasterLender {
   external_created_by?: string | null;
   external_last_modified?: string | null;
   tier?: string | null;
+  active?: boolean | null;
   created_at: string;
   updated_at: string;
 }
