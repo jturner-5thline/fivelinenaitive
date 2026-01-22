@@ -95,6 +95,7 @@ interface LenderInfo {
   preferences: string[];
   website?: string;
   description?: string;
+  lenderType?: string;
 }
 
 interface LenderForm {
@@ -143,6 +144,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     ].filter(Boolean) as string[],
     website: lender.lender_one_pager_url || undefined,
     description: lender.deal_structure_notes || lender.company_requirements || undefined,
+    lenderType: lender.lender_type || undefined,
   };
 }
 
