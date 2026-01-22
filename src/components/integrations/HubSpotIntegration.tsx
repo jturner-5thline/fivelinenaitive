@@ -39,6 +39,7 @@ import {
   useHubSpotDeals, 
   useHubSpotCompanies, 
   useHubSpotPipelines,
+  useHubSpotSearchDeals,
   HubSpotContact, 
   HubSpotDeal, 
   HubSpotCompany 
@@ -101,6 +102,9 @@ export function HubSpotIntegration() {
   const { data: dealsData, isLoading: dealsLoading, refetch: refetchDeals } = useHubSpotDeals();
   const { data: companiesData, isLoading: companiesLoading, refetch: refetchCompanies } = useHubSpotCompanies();
   const { data: pipelinesData } = useHubSpotPipelines();
+  
+  // Server-side search for deals (used when client-side filter returns no results)
+  const { data: searchDealsData, isLoading: searchDealsLoading } = useHubSpotSearchDeals(dealSearch);
 
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
@@ -189,9 +193,18 @@ export function HubSpotIntegration() {
     c.properties.lastname?.toLowerCase().includes(contactSearch.toLowerCase())
   ) || [];
 
-  const filteredDeals = dealsData?.results?.filter((d) =>
+  // Client-side filtering first
+  const clientFilteredDeals = dealsData?.results?.filter((d) =>
     !dealSearch || d.properties.dealname?.toLowerCase().includes(dealSearch.toLowerCase())
   ) || [];
+  
+  // Use server-side search results if client-side returns nothing but search has text
+  const filteredDeals = (clientFilteredDeals.length === 0 && dealSearch.length >= 2 && searchDealsData?.results)
+    ? searchDealsData.results
+    : clientFilteredDeals;
+  
+  // Check if we have 1000 deals (meaning there might be more in HubSpot)
+  const hasMoreDealsInHubSpot = (dealsData?.results?.length || 0) >= 1000;
 
   const filteredCompanies = companiesData?.results?.filter((c) =>
     !companySearch || c.properties.name?.toLowerCase().includes(companySearch.toLowerCase())
@@ -606,7 +619,12 @@ export function HubSpotIntegration() {
               </div>
             </CardHeader>
             <CardContent>
-              {dealsLoading ? (
+              {hasMoreDealsInHubSpot && (
+                <div className="mb-3 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+                  Showing first 1,000 deals. Use search to find specific deals not shown here.
+                </div>
+              )}
+              {dealsLoading || searchDealsLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
                 </div>
@@ -642,10 +660,12 @@ export function HubSpotIntegration() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {filteredDeals.length === 0 && (
+                      {filteredDeals.length === 0 && !searchDealsLoading && (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                            No deals found
+                            {dealSearch.length >= 2 
+                              ? "No deals found matching your search" 
+                              : "No deals found"}
                           </TableCell>
                         </TableRow>
                       )}

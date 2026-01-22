@@ -420,6 +420,16 @@ export function useHubSpotDealsLimited(limit = 100) {
   });
 }
 
+// Search deals via HubSpot API (for finding deals beyond the 1000 limit)
+export function useHubSpotSearchDeals(query: string) {
+  return useQuery({
+    queryKey: ['hubspot', 'deals', 'search', query],
+    queryFn: () => hubspotRequest<PaginatedResponse<HubSpotDeal>>('searchDeals', { query }),
+    enabled: query.length >= 2,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
 export function useHubSpotDeal(dealId: string) {
   return useQuery({
     queryKey: ['hubspot', 'deals', dealId],
