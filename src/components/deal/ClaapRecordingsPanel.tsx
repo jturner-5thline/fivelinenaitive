@@ -23,8 +23,10 @@ import {
 } from '@/components/ui/popover';
 import { useClaapRecordings, ClaapRecording, ClaapParticipant } from '@/hooks/useClaapRecordings';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
+import { useClaapIntegration } from '@/hooks/useClaapIntegration';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface ClaapRecordingsPanelProps {
   dealId: string;
@@ -42,6 +44,8 @@ function formatDuration(seconds: number): string {
 }
 
 export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
+  const navigate = useNavigate();
+  const { isEnabled, isLoading: integrationLoading } = useClaapIntegration();
   const { recordings, loading, error, fetchRecordings, getRecording, getTranscript } = useClaapRecordings();
   const { linkedRecordings, linkedRecordingIds, linkRecording, unlinkRecording } = useDealClaapRecordings(dealId);
   const [search, setSearch] = useState('');
@@ -52,8 +56,10 @@ export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
   const [participantsCache, setParticipantsCache] = useState<Record<string, ClaapParticipant[]>>({});
 
   useEffect(() => {
-    fetchRecordings();
-  }, [fetchRecordings]);
+    if (isEnabled) {
+      fetchRecordings();
+    }
+  }, [fetchRecordings, isEnabled]);
 
   const handleSearch = () => {
     fetchRecordings(search);
@@ -84,6 +90,22 @@ export function ClaapRecordingsPanel({ dealId }: ClaapRecordingsPanelProps) {
         r.recorder?.name?.toLowerCase().includes(search.toLowerCase())
       )
     : recordings;
+
+  // Show disabled state if integration is off
+  if (!integrationLoading && !isEnabled) {
+    return (
+      <div className="p-6 text-center border-2 border-dashed rounded-lg">
+        <Video className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+        <p className="font-medium">Claap integration is disabled</p>
+        <p className="text-sm text-muted-foreground mt-1 mb-4">
+          Enable the Claap integration to view and link recordings to this deal
+        </p>
+        <Button variant="outline" size="sm" onClick={() => navigate('/integrations')}>
+          Go to Integrations
+        </Button>
+      </div>
+    );
+  }
 
   if (error && recordings.length === 0) {
     return (
