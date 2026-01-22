@@ -59,6 +59,7 @@ interface LenderInfo {
   postTermSheetChecklist?: string | null;
   b2bB2c?: string | null;
   lenderNotes?: string | null;
+  tier?: string | null;
 }
 
 export interface LenderEditData {
@@ -430,6 +431,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       <DialogContent className="max-w-2xl max-h-[85vh]">
         <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
           <DialogTitle className="flex items-center gap-2 text-xl">
+            {lender.tier && (
+              <Badge 
+                variant={lender.tier === '1' ? 'default' : lender.tier === '2' ? 'secondary' : 'outline'} 
+                className="text-xs font-bold px-2 py-0.5"
+              >
+                T{lender.tier}
+              </Badge>
+            )}
             <Building2 className="h-6 w-6" />
             {isEditMode ? (
               <Input

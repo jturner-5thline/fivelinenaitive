@@ -39,6 +39,7 @@ export interface MasterLender {
   gift_address?: string | null;
   external_created_by?: string | null;
   external_last_modified?: string | null;
+  tier?: string | null;
   created_at: string;
   updated_at: string;
 }
