@@ -107,6 +107,7 @@ interface LenderInfo {
   minRevenue?: number | null;
   ebitdaMin?: number | null;
   companyRequirements?: string | null;
+  upfrontChecklist?: string | null;
 }
 
 interface LenderForm {
@@ -164,6 +165,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     minRevenue: lender.min_revenue,
     ebitdaMin: lender.ebitda_min,
     companyRequirements: lender.company_requirements,
+    upfrontChecklist: lender.upfront_checklist,
   };
 }
 
