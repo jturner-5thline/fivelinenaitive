@@ -433,7 +433,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
           <DialogTitle className="flex items-center gap-2 text-xl">
             {lender.tier && (
               <Badge 
-                variant={lender.tier === '1' ? 'default' : lender.tier === '2' ? 'secondary' : 'outline'} 
+                variant={lender.tier === '1' ? 'green' : lender.tier === '2' ? 'blue' : lender.tier === '3' ? 'amber' : 'purple'} 
                 className="text-xs font-bold px-2 py-0.5"
               >
                 T{lender.tier}
