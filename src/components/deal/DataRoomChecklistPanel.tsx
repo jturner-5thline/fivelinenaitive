@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X, CheckCheck, Square } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -459,19 +460,35 @@ export function DataRoomChecklistPanel({
               const colorClasses = categoryData ? getCategoryColorClasses(categoryData.color) : getCategoryColorClasses('gray');
               const IconComponent = categoryData ? getCategoryIcon(categoryData.icon) : getCategoryIcon('folder');
               
+              const categoryPercent = categoryItems.length > 0 
+                ? Math.round((categoryCompleted / categoryItems.length) * 100) 
+                : 0;
+              
               return (
                 <Collapsible key={category} defaultOpen>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors group">
-                    <div className={cn("flex items-center gap-2 px-2 py-1 rounded-md", colorClasses.bgClass)}>
-                      <IconComponent className={cn("h-4 w-4", colorClasses.textClass)} />
-                      <span className={cn("text-sm font-semibold", colorClasses.textClass)}>{category}</span>
+                  <CollapsibleTrigger className="flex flex-col w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors group gap-2">
+                    <div className="flex items-center justify-between w-full">
+                      <div className={cn("flex items-center gap-2 px-2 py-1 rounded-md", colorClasses.bgClass)}>
+                        <IconComponent className={cn("h-4 w-4", colorClasses.textClass)} />
+                        <span className={cn("text-sm font-semibold", colorClasses.textClass)}>{category}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {categoryCompleted}/{categoryItems.length}
+                        </span>
+                        <span className={cn(
+                          "text-xs font-medium",
+                          categoryPercent === 100 ? "text-green-600" : "text-muted-foreground"
+                        )}>
+                          {categoryPercent}%
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {categoryCompleted}/{categoryItems.length}
-                      </Badge>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                    </div>
+                    <Progress 
+                      value={categoryPercent} 
+                      className={cn("h-1.5 w-full", categoryPercent === 100 && "[&>div]:bg-green-500")}
+                    />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-1 mt-1">
                     {categoryItems.map(item => {
