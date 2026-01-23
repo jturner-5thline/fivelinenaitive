@@ -1406,6 +1406,7 @@ export type Database = {
           financial_data_as_of: string | null
           financial_years: Json | null
           gross_margins: string | null
+          headcount: string | null
           id: string
           industry: string | null
           key_items: Json | null
@@ -1441,6 +1442,7 @@ export type Database = {
           financial_data_as_of?: string | null
           financial_years?: Json | null
           gross_margins?: string | null
+          headcount?: string | null
           id?: string
           industry?: string | null
           key_items?: Json | null
@@ -1476,6 +1478,7 @@ export type Database = {
           financial_data_as_of?: string | null
           financial_years?: Json | null
           gross_margins?: string | null
+          headcount?: string | null
           id?: string
           industry?: string | null
           key_items?: Json | null
