@@ -46,6 +46,12 @@ export interface KeyItem {
   description: string;
 }
 
+export interface CompanyHighlight {
+  id: string;
+  title: string;
+  description: string;
+}
+
 export interface DealWriteUpData {
   companyName: string;
   companyUrl: string;
@@ -67,6 +73,7 @@ export interface DealWriteUpData {
   existingDebtDetails: string;
   description: string;
   keyItems: KeyItem[];
+  companyHighlights: CompanyHighlight[];
   publishAsAnonymous: boolean;
 }
 
@@ -99,6 +106,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   existingDebtDetails: '',
   description: deal?.narrative || '',
   keyItems: [],
+  companyHighlights: [],
   publishAsAnonymous: false,
 });
 
@@ -295,6 +303,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     existingDebtDetails: data.existingDebtDetails,
     description: data.description,
     keyItems: data.keyItems,
+    companyHighlights: data.companyHighlights,
     publishAsAnonymous: data.publishAsAnonymous,
   });
 
@@ -610,6 +619,28 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     updateField('keyItems', data.keyItems.filter(item => item.id !== id));
   };
 
+  const addCompanyHighlight = () => {
+    const newHighlight: CompanyHighlight = {
+      id: crypto.randomUUID(),
+      title: '',
+      description: '',
+    };
+    updateField('companyHighlights', [...data.companyHighlights, newHighlight]);
+  };
+
+  const updateCompanyHighlight = (id: string, field: 'title' | 'description', value: string) => {
+    updateField(
+      'companyHighlights',
+      data.companyHighlights.map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const deleteCompanyHighlight = (id: string) => {
+    updateField('companyHighlights', data.companyHighlights.filter(item => item.id !== id));
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -892,10 +923,57 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             />
           </div>
 
+          {/* Company Highlights Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Company Highlights</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Key differentiators and strengths of the company</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={addCompanyHighlight}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Highlight
+              </Button>
+            </div>
+            
+            {data.companyHighlights.map((item) => (
+              <div key={item.id} className="border rounded-lg p-4 space-y-3 relative bg-muted/30">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => deleteCompanyHighlight(item.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <div className="space-y-2 pr-10">
+                  <Label>Title</Label>
+                  <Input
+                    value={item.title}
+                    onChange={(e) => updateCompanyHighlight(item.id, 'title', e.target.value)}
+                    placeholder="Exclusive Importer Status"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={item.description}
+                    onChange={(e) => updateCompanyHighlight(item.id, 'description', e.target.value)}
+                    placeholder="Sole U.S. importer for premium brand portfolio..."
+                    className="min-h-[60px]"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Key Items Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Key Items</Label>
+              <div>
+                <Label>Key Items</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Additional notes and considerations</p>
+              </div>
               <Button variant="outline" size="sm" onClick={addKeyItem}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add Key Item
