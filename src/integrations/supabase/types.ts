@@ -257,6 +257,88 @@ export type Database = {
           },
         ]
       }
+      agent_suggestions: {
+        Row: {
+          applied_at: string | null
+          category: string | null
+          company_id: string | null
+          created_at: string
+          description: string
+          dismissed_at: string | null
+          id: string
+          insight_id: string | null
+          is_applied: boolean
+          is_dismissed: boolean
+          name: string
+          priority: string
+          reasoning: string
+          suggested_prompt: string | null
+          suggested_triggers: Json | null
+          template_id: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string | null
+          category?: string | null
+          company_id?: string | null
+          created_at?: string
+          description: string
+          dismissed_at?: string | null
+          id?: string
+          insight_id?: string | null
+          is_applied?: boolean
+          is_dismissed?: boolean
+          name: string
+          priority?: string
+          reasoning: string
+          suggested_prompt?: string | null
+          suggested_triggers?: Json | null
+          template_id?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_at?: string | null
+          category?: string | null
+          company_id?: string | null
+          created_at?: string
+          description?: string
+          dismissed_at?: string | null
+          id?: string
+          insight_id?: string | null
+          is_applied?: boolean
+          is_dismissed?: boolean
+          name?: string
+          priority?: string
+          reasoning?: string
+          suggested_prompt?: string | null
+          suggested_triggers?: Json | null
+          template_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_suggestions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_suggestions_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "user_behavior_insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_suggestions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "agent_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_templates: {
         Row: {
           avatar_emoji: string | null
