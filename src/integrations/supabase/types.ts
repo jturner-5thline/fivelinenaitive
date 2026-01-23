@@ -1404,6 +1404,7 @@ export type Database = {
           description: string | null
           existing_debt_details: string | null
           financial_data_as_of: string | null
+          financial_years: Json | null
           gross_margins: string | null
           id: string
           industry: string | null
@@ -1437,6 +1438,7 @@ export type Database = {
           description?: string | null
           existing_debt_details?: string | null
           financial_data_as_of?: string | null
+          financial_years?: Json | null
           gross_margins?: string | null
           id?: string
           industry?: string | null
@@ -1470,6 +1472,7 @@ export type Database = {
           description?: string | null
           existing_debt_details?: string | null
           financial_data_as_of?: string | null
+          financial_years?: Json | null
           gross_margins?: string | null
           id?: string
           industry?: string | null

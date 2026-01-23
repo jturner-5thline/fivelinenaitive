@@ -52,6 +52,14 @@ export interface CompanyHighlight {
   description: string;
 }
 
+export interface FinancialYear {
+  id: string;
+  year: string;
+  revenue: string;
+  gross_margin: string;
+  ebitda: string;
+}
+
 export interface DealWriteUpData {
   companyName: string;
   companyUrl: string;
@@ -74,6 +82,7 @@ export interface DealWriteUpData {
   description: string;
   keyItems: KeyItem[];
   companyHighlights: CompanyHighlight[];
+  financialYears: FinancialYear[];
   publishAsAnonymous: boolean;
 }
 
@@ -107,6 +116,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   description: deal?.narrative || '',
   keyItems: [],
   companyHighlights: [],
+  financialYears: [],
   publishAsAnonymous: false,
 });
 
@@ -304,6 +314,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     description: data.description,
     keyItems: data.keyItems,
     companyHighlights: data.companyHighlights,
+    financialYears: data.financialYears,
     publishAsAnonymous: data.publishAsAnonymous,
   });
 
@@ -641,6 +652,30 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     updateField('companyHighlights', data.companyHighlights.filter(item => item.id !== id));
   };
 
+  const addFinancialYear = () => {
+    const newYear: FinancialYear = {
+      id: crypto.randomUUID(),
+      year: '',
+      revenue: '',
+      gross_margin: '',
+      ebitda: '',
+    };
+    updateField('financialYears', [...data.financialYears, newYear]);
+  };
+
+  const updateFinancialYear = (id: string, field: keyof Omit<FinancialYear, 'id'>, value: string) => {
+    updateField(
+      'financialYears',
+      data.financialYears.map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const deleteFinancialYear = (id: string) => {
+    updateField('financialYears', data.financialYears.filter(item => item.id !== id));
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -965,6 +1000,86 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Financial Years Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Financial Years</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Historical and projected financial performance by year</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={addFinancialYear}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Year
+              </Button>
+            </div>
+            
+            {data.financialYears.length > 0 && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium">Year</th>
+                        <th className="text-left p-3 font-medium">Revenue</th>
+                        <th className="text-left p-3 font-medium">Gross Margin</th>
+                        <th className="text-left p-3 font-medium">EBITDA</th>
+                        <th className="w-10 p-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.financialYears.map((item) => (
+                        <tr key={item.id} className="border-b last:border-0">
+                          <td className="p-2">
+                            <Input
+                              value={item.year}
+                              onChange={(e) => updateFinancialYear(item.id, 'year', e.target.value)}
+                              placeholder="2024"
+                              className="h-9"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              value={item.revenue}
+                              onChange={(e) => updateFinancialYear(item.id, 'revenue', e.target.value)}
+                              placeholder="$24.7MM"
+                              className="h-9"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              value={item.gross_margin}
+                              onChange={(e) => updateFinancialYear(item.id, 'gross_margin', e.target.value)}
+                              placeholder="53%"
+                              className="h-9"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Input
+                              value={item.ebitda}
+                              onChange={(e) => updateFinancialYear(item.id, 'ebitda', e.target.value)}
+                              placeholder="$903k"
+                              className="h-9"
+                            />
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteFinancialYear(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Key Items Section */}
