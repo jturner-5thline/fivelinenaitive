@@ -79,16 +79,16 @@ export function LenderSuggestionsContent({
     return filtered;
   }, [matches, searchQuery, lenderTypeFilter, showOnlyHighScore]);
   
-  // Group by score tiers
+  // Group by score tiers - adjusted for new scoring system
   const groupedMatches = useMemo(() => {
     const excellent: LenderMatch[] = [];
     const good: LenderMatch[] = [];
     const possible: LenderMatch[] = [];
     
     filteredMatches.forEach(match => {
-      if (match.score >= 40) {
+      if (match.score >= 50) {
         excellent.push(match);
-      } else if (match.score >= 20) {
+      } else if (match.score >= 25) {
         good.push(match);
       } else if (match.score >= 0) {
         possible.push(match);
@@ -155,31 +155,49 @@ export function LenderSuggestionsContent({
   return (
     <div className="flex flex-col h-full py-4">
       {/* Criteria Summary */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {criteria.industry && (
-          <Badge variant="outline" className="text-xs font-normal">
-            <Building2 className="h-3 w-3 mr-1" />
-            {criteria.industry}
-          </Badge>
-        )}
-        {(criteria.capitalAsk || criteria.dealValue) && (
-          <Badge variant="outline" className="text-xs font-normal">
-            <DollarSign className="h-3 w-3 mr-1" />
-            {criteria.capitalAsk || `$${(criteria.dealValue! / 1000000).toFixed(1)}M`}
-          </Badge>
-        )}
-        {criteria.dealTypes && criteria.dealTypes.length > 0 && (
-          <Badge variant="outline" className="text-xs font-normal">
-            {criteria.dealTypes.slice(0, 2).join(', ')}
-            {criteria.dealTypes.length > 2 && ` +${criteria.dealTypes.length - 2}`}
-          </Badge>
-        )}
-        {criteria.geo && (
-          <Badge variant="outline" className="text-xs font-normal">
-            <MapPin className="h-3 w-3 mr-1" />
-            {criteria.geo}
-          </Badge>
-        )}
+      <div className="mb-4">
+        <p className="text-xs text-muted-foreground mb-2">Matching criteria (priority order):</p>
+        <div className="flex flex-wrap gap-1.5">
+          {(criteria.capitalAsk || criteria.dealValue) && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              <DollarSign className="h-3 w-3 mr-1" />
+              Deal Size: {criteria.capitalAsk || `$${(criteria.dealValue! / 1000000).toFixed(1)}M`}
+            </Badge>
+          )}
+          {criteria.cashBurnOk !== undefined && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              Cash Burn: {criteria.cashBurnOk ? 'OK' : 'No'}
+            </Badge>
+          )}
+          {criteria.dealTypes && criteria.dealTypes.length > 0 && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              Loan: {criteria.dealTypes.slice(0, 2).join(', ')}
+              {criteria.dealTypes.length > 2 && ` +${criteria.dealTypes.length - 2}`}
+            </Badge>
+          )}
+          {criteria.geo && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              <MapPin className="h-3 w-3 mr-1" />
+              {criteria.geo}
+            </Badge>
+          )}
+          {criteria.industry && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              <Building2 className="h-3 w-3 mr-1" />
+              {criteria.industry}
+            </Badge>
+          )}
+          {criteria.b2bB2c && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              {criteria.b2bB2c}
+            </Badge>
+          )}
+          {criteria.companyRequirements && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5 max-w-[150px] truncate">
+              Req: {criteria.companyRequirements}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Search and Filters */}

@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { LenderSuggestionsContent } from './LenderSuggestionsContent';
 import { DealCriteria } from '@/hooks/useLenderMatching';
@@ -19,12 +19,14 @@ interface LenderSuggestionsPanelProps {
   criteria: DealCriteria;
   existingLenderNames: string[];
   onAddLender: (lenderName: string) => void;
+  onAddMultipleLenders?: (lenderNames: string[]) => void;
 }
 
 export function LenderSuggestionsPanel({
   criteria,
   existingLenderNames,
   onAddLender,
+  onAddMultipleLenders,
 }: LenderSuggestionsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { lenders: masterLenders } = useMasterLenders();
@@ -35,20 +37,28 @@ export function LenderSuggestionsPanel({
     excludeNames: existingLenderNames,
   });
   
-  const excellentCount = matches.filter(m => m.score >= 40).length;
-  const goodCount = matches.filter(m => m.score >= 20 && m.score < 40).length;
+  const excellentCount = matches.filter(m => m.score >= 50).length;
+  const goodCount = matches.filter(m => m.score >= 25 && m.score < 50).length;
   const totalMatches = matches.filter(m => m.score >= 0).length;
   
   const handleAddLender = (name: string) => {
     onAddLender(name);
   };
 
+  const handleAddMultipleLenders = (names: string[]) => {
+    if (onAddMultipleLenders) {
+      onAddMultipleLenders(names);
+    } else {
+      names.forEach(name => onAddLender(name));
+    }
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <SheetTrigger asChild>
+            <DialogTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
@@ -62,10 +72,10 @@ export function LenderSuggestionsPanel({
                   </Badge>
                 )}
               </Button>
-            </SheetTrigger>
+            </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            <p>View AI-powered lender suggestions based on deal criteria</p>
+            <p>View lender suggestions based on deal criteria</p>
             {totalMatches > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
                 {excellentCount > 0 && `${excellentCount} excellent, `}
@@ -76,9 +86,9 @@ export function LenderSuggestionsPanel({
         </Tooltip>
       </TooltipProvider>
 
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-hidden flex flex-col">
-        <SheetHeader className="pb-4 border-b">
-          <SheetTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-4xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
+          <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
               Suggested Lenders
@@ -88,18 +98,19 @@ export function LenderSuggestionsPanel({
                 {totalMatches} matches
               </Badge>
             )}
-          </SheetTitle>
-        </SheetHeader>
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-hidden -mx-6 px-6">
+        <div className="flex-1 overflow-hidden px-6">
           <LenderSuggestionsContent
             criteria={criteria}
             existingLenderNames={existingLenderNames}
             onAddLender={handleAddLender}
+            onAddMultipleLenders={handleAddMultipleLenders}
           />
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -108,12 +119,13 @@ export function LenderSuggestionsFAB({
   criteria,
   existingLenderNames,
   onAddLender,
+  onAddMultipleLenders,
 }: LenderSuggestionsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { lenders: masterLenders } = useMasterLenders();
   
   const { matches } = useLenderMatching(masterLenders, criteria, {
-    minScore: 20, // Only count good+ matches for FAB
+    minScore: 25,
     maxResults: 100,
     excludeNames: existingLenderNames,
   });
@@ -122,9 +134,17 @@ export function LenderSuggestionsFAB({
 
   if (matchCount === 0) return null;
 
+  const handleAddMultipleLenders = (names: string[]) => {
+    if (onAddMultipleLenders) {
+      onAddMultipleLenders(names);
+    } else {
+      names.forEach(name => onAddLender(name));
+    }
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
         <Button
           size="icon"
           className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40 bg-primary hover:bg-primary/90"
@@ -136,11 +156,11 @@ export function LenderSuggestionsFAB({
             </span>
           )}
         </Button>
-      </SheetTrigger>
+      </DialogTrigger>
 
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-hidden flex flex-col">
-        <SheetHeader className="pb-4 border-b">
-          <SheetTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-4xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
+          <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
               Suggested Lenders
@@ -150,17 +170,18 @@ export function LenderSuggestionsFAB({
                 {matchCount} matches
               </Badge>
             )}
-          </SheetTitle>
-        </SheetHeader>
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-hidden -mx-6 px-6">
+        <div className="flex-1 overflow-hidden px-6">
           <LenderSuggestionsContent
             criteria={criteria}
             existingLenderNames={existingLenderNames}
             onAddLender={onAddLender}
+            onAddMultipleLenders={handleAddMultipleLenders}
           />
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
