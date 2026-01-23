@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -955,124 +956,126 @@ export default function Lenders() {
 
       {/* Add/Edit Lender Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100dvw-2rem)] sm:w-full max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col top-4 translate-y-0 sm:top-[50%] sm:translate-y-[-50%]">
           <DialogHeader>
             <DialogTitle>{editingLenderId ? 'Edit Lender' : 'Add Lender'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Lender Name *</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Enter lender name"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          <ScrollArea className="flex-1 min-h-0 pr-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="lenderType">Lender Type</Label>
+                <Label htmlFor="name">Lender Name *</Label>
                 <Input
-                  id="lenderType"
-                  value={form.lenderType}
-                  onChange={(e) => setForm({ ...form, lenderType: e.target.value })}
-                  placeholder="e.g., Bank, Credit Fund"
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Enter lender name"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="lenderType">Lender Type</Label>
+                  <Input
+                    id="lenderType"
+                    value={form.lenderType}
+                    onChange={(e) => setForm({ ...form, lenderType: e.target.value })}
+                    placeholder="e.g., Bank, Credit Fund"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="geo">Geography</Label>
+                  <Input
+                    id="geo"
+                    value={form.geo}
+                    onChange={(e) => setForm({ ...form, geo: e.target.value })}
+                    placeholder="e.g., US, Global"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minDeal">Min Deal Size</Label>
+                  <Input
+                    id="minDeal"
+                    type="number"
+                    value={form.minDeal}
+                    onChange={(e) => setForm({ ...form, minDeal: e.target.value })}
+                    placeholder="e.g., 1000000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxDeal">Max Deal Size</Label>
+                  <Input
+                    id="maxDeal"
+                    type="number"
+                    value={form.maxDeal}
+                    onChange={(e) => setForm({ ...form, maxDeal: e.target.value })}
+                    placeholder="e.g., 25000000"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="loanTypes">Loan Types</Label>
+                <Input
+                  id="loanTypes"
+                  value={form.loanTypes}
+                  onChange={(e) => setForm({ ...form, loanTypes: e.target.value })}
+                  placeholder="Comma-separated (e.g., Term Loan, Revolver)"
+                />
+                <p className="text-xs text-muted-foreground">Separate multiple types with commas</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="industries">Industries</Label>
+                <Input
+                  id="industries"
+                  value={form.industries}
+                  onChange={(e) => setForm({ ...form, industries: e.target.value })}
+                  placeholder="Comma-separated (e.g., SaaS, Healthcare)"
+                />
+                <p className="text-xs text-muted-foreground">Separate multiple industries with commas</p>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contactName">Contact Name</Label>
+                  <Input
+                    id="contactName"
+                    value={form.contactName}
+                    onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+                    placeholder="Primary contact"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactTitle">Contact Title</Label>
+                  <Input
+                    id="contactTitle"
+                    value={form.contactTitle}
+                    onChange={(e) => setForm({ ...form, contactTitle: e.target.value })}
+                    placeholder="e.g., VP"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="email@example.com"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="geo">Geography</Label>
-                <Input
-                  id="geo"
-                  value={form.geo}
-                  onChange={(e) => setForm({ ...form, geo: e.target.value })}
-                  placeholder="e.g., US, Global"
+                <Label htmlFor="description">Notes / Description</Label>
+                <Textarea
+                  id="description"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Additional notes about the lender..."
+                  rows={3}
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="minDeal">Min Deal Size</Label>
-                <Input
-                  id="minDeal"
-                  type="number"
-                  value={form.minDeal}
-                  onChange={(e) => setForm({ ...form, minDeal: e.target.value })}
-                  placeholder="e.g., 1000000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="maxDeal">Max Deal Size</Label>
-                <Input
-                  id="maxDeal"
-                  type="number"
-                  value={form.maxDeal}
-                  onChange={(e) => setForm({ ...form, maxDeal: e.target.value })}
-                  placeholder="e.g., 25000000"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="loanTypes">Loan Types</Label>
-              <Input
-                id="loanTypes"
-                value={form.loanTypes}
-                onChange={(e) => setForm({ ...form, loanTypes: e.target.value })}
-                placeholder="Comma-separated (e.g., Term Loan, Revolver)"
-              />
-              <p className="text-xs text-muted-foreground">Separate multiple types with commas</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="industries">Industries</Label>
-              <Input
-                id="industries"
-                value={form.industries}
-                onChange={(e) => setForm({ ...form, industries: e.target.value })}
-                placeholder="Comma-separated (e.g., SaaS, Healthcare)"
-              />
-              <p className="text-xs text-muted-foreground">Separate multiple industries with commas</p>
-            </div>
-            <Separator />
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contactName">Contact Name</Label>
-                <Input
-                  id="contactName"
-                  value={form.contactName}
-                  onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                  placeholder="Primary contact"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contactTitle">Contact Title</Label>
-                <Input
-                  id="contactTitle"
-                  value={form.contactTitle}
-                  onChange={(e) => setForm({ ...form, contactTitle: e.target.value })}
-                  placeholder="e.g., VP"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Notes / Description</Label>
-              <Textarea
-                id="description"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Additional notes about the lender..."
-                rows={3}
-              />
-            </div>
-          </div>
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
