@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, Check, X, FileCheck } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, FileCheck, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -25,11 +26,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useDataRoomChecklist, ChecklistItem, ChecklistItemInsert } from '@/hooks/useDataRoomChecklist';
+import { useChecklistCategories, ChecklistCategory } from '@/hooks/useChecklistCategories';
 import { toast } from 'sonner';
 
 export function DataRoomChecklistSettings() {
-  const { items, loading, addItem, updateItem, deleteItem, reorderItems } = useDataRoomChecklist();
+  const { items, loading: itemsLoading, addItem, updateItem, deleteItem, reorderItems } = useDataRoomChecklist();
+  const { categories, categoryNames, loading: categoriesLoading, addCategory, updateCategory, deleteCategory, reorderCategories } = useChecklistCategories();
+  
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -41,8 +52,17 @@ export function DataRoomChecklistSettings() {
   });
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  // Category management state
+  const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ChecklistCategory | null>(null);
+  const [deleteCategoryConfirmId, setDeleteCategoryConfirmId] = useState<string | null>(null);
+  const [categoryFormData, setCategoryFormData] = useState({ name: '' });
+  const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null);
+
+  const loading = itemsLoading || categoriesLoading;
+
   const resetForm = () => {
-    setFormData({ name: '', category: '', description: '', is_required: true });
+    setFormData({ name: '', category: categoryNames[0] || '', description: '', is_required: true });
   };
 
   const handleOpenAdd = () => {
@@ -111,6 +131,68 @@ export function DataRoomChecklistSettings() {
     setDraggedIndex(null);
   };
 
+  // Category handlers
+  const handleOpenAddCategory = () => {
+    setCategoryFormData({ name: '' });
+    setIsAddCategoryDialogOpen(true);
+  };
+
+  const handleOpenEditCategory = (category: ChecklistCategory) => {
+    setCategoryFormData({ name: category.name });
+    setEditingCategory(category);
+  };
+
+  const handleSaveCategory = async () => {
+    if (!categoryFormData.name.trim()) {
+      toast.error('Category name is required');
+      return;
+    }
+
+    if (editingCategory) {
+      const success = await updateCategory(editingCategory.id, categoryFormData.name);
+      if (success) {
+        toast.success('Category updated');
+        setEditingCategory(null);
+      }
+    } else {
+      const result = await addCategory(categoryFormData.name);
+      if (result) {
+        toast.success('Category added');
+        setIsAddCategoryDialogOpen(false);
+      }
+    }
+    setCategoryFormData({ name: '' });
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!deleteCategoryConfirmId) return;
+    const success = await deleteCategory(deleteCategoryConfirmId);
+    if (success) {
+      toast.success('Category deleted');
+    }
+    setDeleteCategoryConfirmId(null);
+  };
+
+  const handleCategoryDragStart = (index: number) => {
+    setDraggedCategoryIndex(index);
+  };
+
+  const handleCategoryDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedCategoryIndex === null || draggedCategoryIndex === index) return;
+
+    const newCategories = [...categories];
+    const [draggedCategory] = newCategories.splice(draggedCategoryIndex, 1);
+    newCategories.splice(index, 0, draggedCategory);
+    
+    reorderCategories(newCategories);
+    setDraggedCategoryIndex(index);
+  };
+
+  const handleCategoryDragEnd = () => {
+    setDraggedCategoryIndex(null);
+  };
+
   // Group items by category
   const groupedItems = items.reduce((acc, item) => {
     const category = item.category || 'Uncategorized';
@@ -119,7 +201,7 @@ export function DataRoomChecklistSettings() {
     return acc;
   }, {} as Record<string, ChecklistItem[]>);
 
-  const categories = Object.keys(groupedItems).sort((a, b) => 
+  const itemCategories = Object.keys(groupedItems).sort((a, b) => 
     a === 'Uncategorized' ? 1 : b === 'Uncategorized' ? -1 : a.localeCompare(b)
   );
 
@@ -138,81 +220,154 @@ export function DataRoomChecklistSettings() {
               Define the standard information required for all deals. {items.length} items ({requiredCount} required)
             </CardDescription>
           </div>
-          <Button onClick={handleOpenAdd} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Item
-          </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="text-center py-8 text-muted-foreground">Loading...</div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed rounded-lg">
-            <FileCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">No checklist items yet</p>
-            <p className="text-muted-foreground mb-4">
-              Add items that should be collected for every deal's data room.
-            </p>
-            <Button onClick={handleOpenAdd} variant="outline" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Your First Item
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {categories.map(category => (
-              <div key={category}>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2">{category}</h3>
-                <div className="space-y-2">
-                  {groupedItems[category].map((item, index) => (
-                    <div
-                      key={item.id}
-                      draggable
-                      onDragStart={() => handleDragStart(items.indexOf(item))}
-                      onDragOver={(e) => handleDragOver(e, items.indexOf(item))}
-                      onDragEnd={handleDragEnd}
-                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors cursor-move"
-                    >
-                      <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{item.name}</span>
-                          {item.is_required && (
-                            <Badge variant="secondary" className="text-xs">Required</Badge>
-                          )}
-                        </div>
-                        {item.description && (
-                          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(item)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={() => setDeleteConfirmId(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        <Tabs defaultValue="items" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="items">Checklist Items</TabsTrigger>
+            <TabsTrigger value="categories">Categories</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="items">
+            <div className="flex justify-end mb-4">
+              <Button onClick={handleOpenAdd} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Item
+              </Button>
+            </div>
+            
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            ) : items.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                <FileCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">No checklist items yet</p>
+                <p className="text-muted-foreground mb-4">
+                  Add items that should be collected for every deal's data room.
+                </p>
+                <Button onClick={handleOpenAdd} variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Your First Item
+                </Button>
               </div>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="space-y-6">
+                {itemCategories.map(category => (
+                  <div key={category}>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">{category}</h3>
+                    <div className="space-y-2">
+                      {groupedItems[category].map((item) => (
+                        <div
+                          key={item.id}
+                          draggable
+                          onDragStart={() => handleDragStart(items.indexOf(item))}
+                          onDragOver={(e) => handleDragOver(e, items.indexOf(item))}
+                          onDragEnd={handleDragEnd}
+                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors cursor-move"
+                        >
+                          <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{item.name}</span>
+                              {item.is_required && (
+                                <Badge variant="secondary" className="text-xs">Required</Badge>
+                              )}
+                            </div>
+                            {item.description && (
+                              <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEdit(item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() => setDeleteConfirmId(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="categories">
+            <div className="flex justify-end mb-4">
+              <Button onClick={handleOpenAddCategory} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Category
+              </Button>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            ) : categories.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-medium">No categories yet</p>
+                <p className="text-muted-foreground mb-4">
+                  Add categories to organize your checklist items.
+                </p>
+                <Button onClick={handleOpenAddCategory} variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Your First Category
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {categories.map((category, index) => (
+                  <div
+                    key={category.id}
+                    draggable
+                    onDragStart={() => handleCategoryDragStart(index)}
+                    onDragOver={(e) => handleCategoryDragOver(e, index)}
+                    onDragEnd={handleCategoryDragEnd}
+                    className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors cursor-move"
+                  >
+                    <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">{category.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenEditCategory(category)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeleteCategoryConfirmId(category.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
-      {/* Add/Edit Dialog */}
+      {/* Add/Edit Item Dialog */}
       <Dialog 
         open={isAddDialogOpen || !!editingItem} 
         onOpenChange={(open) => {
@@ -241,12 +396,21 @@ export function DataRoomChecklistSettings() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
-              <Input
-                id="category"
+              <Select
                 value={formData.category || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                placeholder="e.g., Financial Documents"
-              />
+                onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryNames.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
@@ -289,7 +453,53 @@ export function DataRoomChecklistSettings() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Add/Edit Category Dialog */}
+      <Dialog 
+        open={isAddCategoryDialogOpen || !!editingCategory} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAddCategoryDialogOpen(false);
+            setEditingCategory(null);
+            setCategoryFormData({ name: '' });
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingCategory ? 'Edit Category' : 'Add Category'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="categoryName">Category Name *</Label>
+              <Input
+                id="categoryName"
+                value={categoryFormData.name}
+                onChange={(e) => setCategoryFormData({ name: e.target.value })}
+                placeholder="e.g., Legal Documents"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsAddCategoryDialogOpen(false);
+                setEditingCategory(null);
+                setCategoryFormData({ name: '' });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCategory}>
+              {editingCategory ? 'Save Changes' : 'Add Category'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Item Confirmation */}
       <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -301,6 +511,22 @@ export function DataRoomChecklistSettings() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Category Confirmation */}
+      <AlertDialog open={!!deleteCategoryConfirmId} onOpenChange={() => setDeleteCategoryConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the category. Items using this category will show as "Uncategorized".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCategory}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
