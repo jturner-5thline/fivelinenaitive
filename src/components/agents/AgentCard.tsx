@@ -22,6 +22,20 @@ import {
   Activity,
   Target,
   Search
+  MoreHorizontal, 
+  Play, 
+  Pencil, 
+  Copy, 
+  Trash2, 
+  Globe, 
+  Users, 
+  Lock,
+  Database,
+  Building2,
+  Activity,
+  Target,
+  Search,
+  Zap
 } from 'lucide-react';
 import type { Agent } from '@/hooks/useAgents';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,6 +46,7 @@ interface AgentCardProps {
   onEdit: (agent: Agent) => void;
   onDuplicate: (agent: Agent) => void;
   onDelete: (agent: Agent) => void;
+  onManageTriggers?: (agent: Agent) => void;
   isOwn: boolean;
 }
 

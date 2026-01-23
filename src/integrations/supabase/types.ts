@@ -171,6 +171,145 @@ export type Database = {
           },
         ]
       }
+      agent_runs: {
+        Row: {
+          agent_id: string
+          completed_at: string | null
+          created_at: string
+          deal_id: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_context: Json | null
+          lender_id: string | null
+          output_content: string | null
+          started_at: string | null
+          status: string
+          trigger_event: string | null
+          trigger_id: string | null
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          completed_at?: string | null
+          created_at?: string
+          deal_id?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_context?: Json | null
+          lender_id?: string | null
+          output_content?: string | null
+          started_at?: string | null
+          status?: string
+          trigger_event?: string | null
+          trigger_id?: string | null
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          completed_at?: string | null
+          created_at?: string
+          deal_id?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_context?: Json | null
+          lender_id?: string | null
+          output_content?: string | null
+          started_at?: string | null
+          status?: string
+          trigger_event?: string | null
+          trigger_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_runs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "deal_lenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_trigger_id_fkey"
+            columns: ["trigger_id"]
+            isOneToOne: false
+            referencedRelation: "agent_triggers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_triggers: {
+        Row: {
+          action_config: Json | null
+          action_type: string
+          agent_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_triggered_at: string | null
+          name: string
+          trigger_config: Json | null
+          trigger_count: number | null
+          trigger_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_config?: Json | null
+          action_type?: string
+          agent_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name: string
+          trigger_config?: Json | null
+          trigger_count?: number | null
+          trigger_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_config?: Json | null
+          action_type?: string
+          agent_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name?: string
+          trigger_config?: Json | null
+          trigger_count?: number | null
+          trigger_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_triggers_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           avatar_emoji: string | null
