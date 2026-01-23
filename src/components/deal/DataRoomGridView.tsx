@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Check, Plus, FileText, Link2, Unlink, Upload } from 'lucide-react';
+import { Check, FileText, Link2, Unlink, Upload, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -11,7 +11,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ChecklistItem } from '@/hooks/useDataRoomChecklist';
 import { getCategoryColorClasses } from '@/hooks/useChecklistCategories';
 import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
 import { ChecklistItemDropzone } from './ChecklistItemDropzone';
@@ -24,9 +23,20 @@ interface CategoryConfig {
   color: string | null;
 }
 
+// Generic item type that works for both template and deal-specific items
+interface UnifiedChecklistItem {
+  id: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  is_required: boolean;
+  position: number;
+  is_deal_specific?: boolean;
+}
+
 interface DataRoomGridViewProps {
   categories: string[];
-  groupedItems: Record<string, ChecklistItem[]>;
+  groupedItems: Record<string, UnifiedChecklistItem[]>;
   statusMap: Map<string, { isComplete: boolean; attachmentId: string | null }>;
   getCategoryByName: (name: string) => CategoryConfig | undefined;
   attachments: { id: string; name: string; category: string }[];
@@ -34,6 +44,7 @@ interface DataRoomGridViewProps {
   onLinkAttachment?: (checklistItemId: string) => void;
   onUnlink: (itemId: string) => void;
   onFileDrop?: (itemId: string, files: File[]) => void;
+  onDeleteDealItem?: (itemId: string) => void;
   bulkMode: boolean;
   selectedItems: Set<string>;
   onToggleItemSelection: (itemId: string) => void;
@@ -50,6 +61,7 @@ export function DataRoomGridView({
   onLinkAttachment,
   onUnlink,
   onFileDrop,
+  onDeleteDealItem,
   bulkMode,
   selectedItems,
   onToggleItemSelection,
@@ -151,11 +163,22 @@ export function DataRoomGridView({
                               {item.is_required && (
                                 <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">Req</Badge>
                               )}
+                              {item.is_deal_specific && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-primary/10">Custom</Badge>
+                              )}
                               {isComplete && !bulkMode && !isUploading && (
                                 <Check className="h-3 w-3 text-green-500 shrink-0" />
                               )}
                               {isUploading && (
                                 <Upload className="h-3 w-3 text-primary animate-pulse shrink-0" />
+                              )}
+                              {!linkedAttachment && !isUploading && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <FileText className="h-3 w-3 text-amber-500 shrink-0" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>No file uploaded</TooltipContent>
+                                </Tooltip>
                               )}
                             </div>
                             {linkedAttachment && (
@@ -175,21 +198,38 @@ export function DataRoomGridView({
                               </div>
                             )}
                           </div>
-                          {!bulkMode && !isUploading && onLinkAttachment && !linkedAttachment && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 shrink-0"
-                                  onClick={() => onLinkAttachment(item.id)}
-                                >
-                                  <Link2 className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Link attachment</TooltipContent>
-                            </Tooltip>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {!bulkMode && !isUploading && onLinkAttachment && !linkedAttachment && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => onLinkAttachment(item.id)}
+                                  >
+                                    <Link2 className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Link attachment</TooltipContent>
+                              </Tooltip>
+                            )}
+                            {!bulkMode && item.is_deal_specific && onDeleteDealItem && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-destructive hover:text-destructive"
+                                    onClick={() => onDeleteDealItem(item.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Remove item</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </div>
                       </ChecklistItemDropzone>
                     );
