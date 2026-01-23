@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { DealWriteUpData, KeyItem } from '@/components/deal/DealWriteUp';
+import { DealWriteUpData, KeyItem, CompanyHighlight } from '@/components/deal/DealWriteUp';
 import { Json } from '@/integrations/supabase/types';
 
 interface DealWriteupRow {
@@ -29,6 +29,7 @@ interface DealWriteupRow {
   existing_debt_details: string | null;
   description: string | null;
   key_items: Json | null;
+  company_highlights: Json | null;
   publish_as_anonymous: boolean | null;
   created_at: string;
   updated_at: string;
@@ -94,6 +95,7 @@ export function useDealWriteup(dealId: string | undefined) {
         existing_debt_details: data.existingDebtDetails || null,
         description: data.description || null,
         key_items: data.keyItems as unknown as Json,
+        company_highlights: data.companyHighlights as unknown as Json,
         publish_as_anonymous: data.publishAsAnonymous,
       };
 
@@ -148,6 +150,12 @@ export function useDealWriteup(dealId: string | undefined) {
       keyItems = row.key_items as unknown as KeyItem[];
     }
     
+    // Parse company_highlights from JSON
+    let companyHighlights: CompanyHighlight[] = [];
+    if (row.company_highlights && Array.isArray(row.company_highlights)) {
+      companyHighlights = row.company_highlights as unknown as CompanyHighlight[];
+    }
+    
     return {
       companyName: row.company_name || '',
       companyUrl: row.company_url || '',
@@ -169,6 +177,7 @@ export function useDealWriteup(dealId: string | undefined) {
       existingDebtDetails: row.existing_debt_details || '',
       description: row.description || '',
       keyItems,
+      companyHighlights,
       publishAsAnonymous: row.publish_as_anonymous || false,
     };
   }, []);

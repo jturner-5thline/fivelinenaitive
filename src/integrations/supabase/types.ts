@@ -1394,6 +1394,7 @@ export type Database = {
           capital_ask: string | null
           cash_burn_ok: boolean | null
           collateral_available: string | null
+          company_highlights: Json | null
           company_name: string
           company_url: string | null
           created_at: string
@@ -1426,6 +1427,7 @@ export type Database = {
           capital_ask?: string | null
           cash_burn_ok?: boolean | null
           collateral_available?: string | null
+          company_highlights?: Json | null
           company_name?: string
           company_url?: string | null
           created_at?: string
@@ -1458,6 +1460,7 @@ export type Database = {
           capital_ask?: string | null
           cash_burn_ok?: boolean | null
           collateral_available?: string | null
+          company_highlights?: Json | null
           company_name?: string
           company_url?: string | null
           created_at?: string

@@ -29,6 +29,7 @@ interface WriteUpData {
   existingDebtDetails: string;
   description: string;
   keyItems: Array<{ id: string; title: string; description: string }>;
+  companyHighlights: Array<{ id: string; title: string; description: string }>;
   publishAsAnonymous: boolean;
 }
 
@@ -342,6 +343,7 @@ serve(async (req) => {
         existing_debt: writeUpData!.existingDebtDetails || undefined,
         data_room_url: writeUpData!.dataRoomUrl || undefined,
         key_items: writeUpData!.keyItems?.length > 0 ? writeUpData!.keyItems : undefined,
+        company_highlights: writeUpData!.companyHighlights?.length > 0 ? writeUpData!.companyHighlights : undefined,
         is_published: !writeUpData!.publishAsAnonymous,
       };
 
