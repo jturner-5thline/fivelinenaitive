@@ -79,26 +79,36 @@ export function LenderSuggestionsContent({
     return filtered;
   }, [matches, searchQuery, lenderTypeFilter, showOnlyHighScore]);
   
-  // Group by score tiers - adjusted for new scoring system
-  const groupedMatches = useMemo(() => {
-    const excellent: LenderMatch[] = [];
-    const good: LenderMatch[] = [];
-    const possible: LenderMatch[] = [];
+  // Group by tier
+  const groupedByTier = useMemo(() => {
+    const t1: LenderMatch[] = [];
+    const t2: LenderMatch[] = [];
+    const t3: LenderMatch[] = [];
+    const other: LenderMatch[] = [];
     
     filteredMatches.forEach(match => {
-      if (match.score >= 50) {
-        excellent.push(match);
-      } else if (match.score >= 25) {
-        good.push(match);
-      } else if (match.score >= 0) {
-        possible.push(match);
+      const tier = match.lender.tier?.toUpperCase();
+      if (tier === 'T1') {
+        t1.push(match);
+      } else if (tier === 'T2') {
+        t2.push(match);
+      } else if (tier === 'T3') {
+        t3.push(match);
+      } else {
+        other.push(match);
       }
     });
     
-    return { excellent, good, possible };
+    // Sort each tier by score descending
+    t1.sort((a, b) => b.score - a.score);
+    t2.sort((a, b) => b.score - a.score);
+    t3.sort((a, b) => b.score - a.score);
+    other.sort((a, b) => b.score - a.score);
+    
+    return { t1, t2, t3, other };
   }, [filteredMatches]);
   
-  const totalMatches = groupedMatches.excellent.length + groupedMatches.good.length + groupedMatches.possible.length;
+  const totalMatches = groupedByTier.t1.length + groupedByTier.t2.length + groupedByTier.t3.length + groupedByTier.other.length;
 
   const handleToggleLender = (lenderId: string) => {
     setSelectedLenders(prev => {
@@ -290,102 +300,130 @@ export function LenderSuggestionsContent({
       )}
       
       <ScrollArea className="flex-1 -mx-6 px-6">
-        <div className="space-y-4 pb-4">
-          {/* Excellent Matches */}
-          {groupedMatches.excellent.length > 0 && (
-            <MatchGroup
-              title="Excellent Matches"
-              icon={<CheckCircle2 className="h-4 w-4 text-success" />}
-              matches={groupedMatches.excellent}
-              onAddLender={onAddLender}
+        {totalMatches === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No matching lenders found. Try adjusting the deal criteria or filters.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4">
+            {/* Tier 1 Column */}
+            <TierColumn
+              tier="T1"
+              label="Tier 1"
+              matches={groupedByTier.t1}
               selectedLenders={selectedLenders}
               onToggleLender={handleToggleLender}
-              badgeVariant="default"
-            />
-          )}
-          
-          {/* Good Matches */}
-          {groupedMatches.good.length > 0 && (
-            <MatchGroup
-              title="Good Matches"
-              icon={<CheckCircle2 className="h-4 w-4 text-primary" />}
-              matches={groupedMatches.good}
               onAddLender={onAddLender}
+              colorClass="bg-[#d1fae5] text-[#047857]"
+            />
+            
+            {/* Tier 2 Column */}
+            <TierColumn
+              tier="T2"
+              label="Tier 2"
+              matches={groupedByTier.t2}
               selectedLenders={selectedLenders}
               onToggleLender={handleToggleLender}
-              badgeVariant="default"
-            />
-          )}
-          
-          {/* Possible Matches */}
-          {groupedMatches.possible.length > 0 && (
-            <MatchGroup
-              title="Other Options"
-              icon={<Info className="h-4 w-4 text-muted-foreground" />}
-              matches={groupedMatches.possible}
               onAddLender={onAddLender}
+              colorClass="bg-[#d0e7ff] text-[#1d4ed8]"
+            />
+            
+            {/* Tier 3 Column */}
+            <TierColumn
+              tier="T3"
+              label="Tier 3"
+              matches={groupedByTier.t3}
               selectedLenders={selectedLenders}
               onToggleLender={handleToggleLender}
-              badgeVariant="secondary"
-              defaultCollapsed
+              onAddLender={onAddLender}
+              colorClass="bg-[#fef3c7] text-[#b45309]"
             />
-          )}
-          
-          {totalMatches === 0 && (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              No matching lenders found. Try adjusting the deal criteria or filters.
-            </div>
-          )}
-        </div>
+          </div>
+        )}
+        
+        {/* Other/Untiered lenders shown below grid if any */}
+        {groupedByTier.other.length > 0 && (
+          <div className="mt-4 pb-4">
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center justify-between w-full mb-2 group">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Other / Untiered</span>
+                  <Badge variant="secondary" className="text-xs">
+                    {groupedByTier.other.length}
+                  </Badge>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {groupedByTier.other.map(match => (
+                    <LenderMatchCard
+                      key={match.lender.id}
+                      match={match}
+                      isSelected={selectedLenders.has(match.lender.id)}
+                      onToggle={() => handleToggleLender(match.lender.id)}
+                      onAdd={() => onAddLender(match.lender.name)}
+                      badgeVariant="secondary"
+                      compact
+                    />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
       </ScrollArea>
     </div>
   );
 }
 
-interface MatchGroupProps {
-  title: string;
-  icon: React.ReactNode;
+interface TierColumnProps {
+  tier: string;
+  label: string;
   matches: LenderMatch[];
-  onAddLender: (name: string) => void;
   selectedLenders: Set<string>;
   onToggleLender: (lenderId: string) => void;
-  badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
-  defaultCollapsed?: boolean;
+  onAddLender: (name: string) => void;
+  colorClass: string;
 }
 
-function MatchGroup({ title, icon, matches, onAddLender, selectedLenders, onToggleLender, badgeVariant = 'default', defaultCollapsed = false }: MatchGroupProps) {
-  const [isOpen, setIsOpen] = useState(!defaultCollapsed);
+function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, colorClass }: TierColumnProps) {
   const selectedCount = matches.filter(m => selectedLenders.has(m.lender.id)).length;
   
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger className="flex items-center justify-between w-full mb-2 group">
+    <div className="flex flex-col h-full">
+      {/* Tier Header */}
+      <div className={cn("rounded-t-lg px-3 py-2 flex items-center justify-between", colorClass)}>
         <div className="flex items-center gap-2">
-          {icon}
-          <span className="text-sm font-medium">{title}</span>
-          <Badge variant="secondary" className="text-xs">
+          <span className="font-semibold text-sm">{label}</span>
+          <Badge variant="secondary" className="text-xs bg-background/80">
             {selectedCount > 0 ? `${selectedCount}/${matches.length}` : matches.length}
           </Badge>
         </div>
-        <ChevronDown className={cn(
-          "h-4 w-4 text-muted-foreground transition-transform",
-          isOpen && "rotate-180"
-        )} />
-      </CollapsibleTrigger>
+      </div>
       
-      <CollapsibleContent className="space-y-2">
-        {matches.map(match => (
-          <LenderMatchCard
-            key={match.lender.id}
-            match={match}
-            isSelected={selectedLenders.has(match.lender.id)}
-            onToggle={() => onToggleLender(match.lender.id)}
-            onAdd={() => onAddLender(match.lender.name)}
-            badgeVariant={badgeVariant}
-          />
-        ))}
-      </CollapsibleContent>
-    </Collapsible>
+      {/* Lender Cards */}
+      <div className="flex-1 border border-t-0 rounded-b-lg bg-muted/20 p-2 space-y-2 min-h-[200px] max-h-[400px] overflow-y-auto">
+        {matches.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-xs">
+            No {label} lenders match criteria
+          </div>
+        ) : (
+          matches.map(match => (
+            <LenderMatchCard
+              key={match.lender.id}
+              match={match}
+              isSelected={selectedLenders.has(match.lender.id)}
+              onToggle={() => onToggleLender(match.lender.id)}
+              onAdd={() => onAddLender(match.lender.name)}
+              badgeVariant="default"
+              compact
+            />
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -395,36 +433,47 @@ interface LenderMatchCardProps {
   onToggle: () => void;
   onAdd: () => void;
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
+  compact?: boolean;
 }
 
-function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant }: LenderMatchCardProps) {
-  const { lender, matchReasons, warnings } = match;
+function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant, compact = false }: LenderMatchCardProps) {
+  const { lender, matchReasons, warnings, score } = match;
   
   return (
     <div className={cn(
-      "border rounded-lg p-3 bg-card hover:bg-muted/30 transition-colors group",
+      "border rounded-lg bg-card hover:bg-muted/30 transition-colors group",
+      compact ? "p-2" : "p-3",
       isSelected && "ring-2 ring-primary border-primary bg-primary/5"
     )}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
         <Checkbox
           checked={isSelected}
           onCheckedChange={onToggle}
           className="mt-0.5"
         />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-sm truncate">{lender.name}</span>
-            {lender.lender_type && (
-              <Badge variant="outline" className="text-xs shrink-0">
-                {lender.lender_type}
-              </Badge>
-            )}
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className={cn("font-medium truncate", compact ? "text-xs" : "text-sm")}>{lender.name}</span>
+            {/* Score indicator */}
+            <Badge 
+              variant={score >= 50 ? "default" : score >= 25 ? "secondary" : "outline"} 
+              className="text-[9px] py-0 px-1 shrink-0"
+            >
+              {score}
+            </Badge>
           </div>
           
-          {/* Contact Info */}
-          {(lender.contact_name || lender.email) && (
-            <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-2">
-              {lender.contact_name && <span>{lender.contact_name}</span>}
+          {/* Lender Type */}
+          {lender.lender_type && (
+            <Badge variant="outline" className="text-[10px] mb-1">
+              {lender.lender_type}
+            </Badge>
+          )}
+          
+          {/* Contact Info - only show if not compact */}
+          {!compact && (lender.contact_name || lender.email) && (
+            <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+              {lender.contact_name && <span className="truncate">{lender.contact_name}</span>}
               {lender.contact_name && lender.email && <span>·</span>}
               {lender.email && (
                 <a href={`mailto:${lender.email}`} className="hover:text-primary truncate">
@@ -434,26 +483,26 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant }: L
             </div>
           )}
           
-          {/* Match Reasons */}
+          {/* Match Reasons - show fewer in compact mode */}
           {matchReasons.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-1.5">
-              {matchReasons.slice(0, 3).map((reason, i) => (
-                <Badge key={i} variant={badgeVariant} className="text-[10px] font-normal py-0">
-                  <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
+            <div className="flex flex-wrap gap-0.5 mb-1">
+              {matchReasons.slice(0, compact ? 2 : 3).map((reason, i) => (
+                <Badge key={i} variant={badgeVariant} className="text-[9px] font-normal py-0 px-1">
+                  <CheckCircle2 className="h-2 w-2 mr-0.5" />
                   {reason}
                 </Badge>
               ))}
-              {matchReasons.length > 3 && (
+              {matchReasons.length > (compact ? 2 : 3) && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <Badge variant="secondary" className="text-[10px] py-0">
-                        +{matchReasons.length - 3} more
+                      <Badge variant="secondary" className="text-[9px] py-0 px-1">
+                        +{matchReasons.length - (compact ? 2 : 3)}
                       </Badge>
                     </TooltipTrigger>
                     <TooltipContent>
                       <ul className="text-xs space-y-1">
-                        {matchReasons.slice(3).map((reason, i) => (
+                        {matchReasons.slice(compact ? 2 : 3).map((reason, i) => (
                           <li key={i}>✓ {reason}</li>
                         ))}
                       </ul>
@@ -466,41 +515,44 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant }: L
           
           {/* Warnings */}
           {warnings.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {warnings.map((warning, i) => (
-                <Badge key={i} variant="outline" className="text-[10px] font-normal py-0 text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
-                  <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+            <div className="flex flex-wrap gap-0.5">
+              {warnings.slice(0, compact ? 1 : 3).map((warning, i) => (
+                <Badge key={i} variant="outline" className="text-[9px] font-normal py-0 px-1 text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
+                  <AlertTriangle className="h-2 w-2 mr-0.5" />
                   {warning}
                 </Badge>
               ))}
+              {warnings.length > (compact ? 1 : 3) && (
+                <Badge variant="outline" className="text-[9px] py-0 px-1 text-amber-600">
+                  +{warnings.length - (compact ? 1 : 3)}
+                </Badge>
+              )}
             </div>
           )}
           
-          {/* Loan Types & Deal Range */}
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
-            {lender.loan_types && lender.loan_types.length > 0 && (
-              <span className="truncate max-w-[200px]">
-                {lender.loan_types.slice(0, 3).join(', ')}
-                {lender.loan_types.length > 3 && ` +${lender.loan_types.length - 3}`}
-              </span>
-            )}
-            {(lender.min_deal || lender.max_deal) && (
-              <span>
-                {lender.min_deal ? `$${(lender.min_deal / 1000).toFixed(0)}K` : '—'} 
-                {' - '}
-                {lender.max_deal ? `$${(lender.max_deal / 1000000).toFixed(1)}M` : '—'}
-              </span>
-            )}
-          </div>
+          {/* Deal Range - compact display */}
+          {(lender.min_deal || lender.max_deal) && (
+            <div className="text-[10px] text-muted-foreground mt-1">
+              {lender.min_deal ? `$${(lender.min_deal / 1000).toFixed(0)}K` : '—'} 
+              - {lender.max_deal ? `$${(lender.max_deal / 1000000).toFixed(1)}M` : '—'}
+            </div>
+          )}
         </div>
         
+        {/* Add Button */}
         <Button
-          size="sm"
           variant="ghost"
-          className="h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-          onClick={onAdd}
+          size="icon"
+          className={cn(
+            "shrink-0 opacity-0 group-hover:opacity-100 transition-opacity",
+            compact ? "h-6 w-6" : "h-7 w-7"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdd();
+          }}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className={compact ? "h-3 w-3" : "h-4 w-4"} />
         </Button>
       </div>
     </div>
