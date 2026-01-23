@@ -1610,6 +1610,16 @@ export default function DealDetail() {
             `${field.charAt(0).toUpperCase() + field.slice(1)} changed`,
             { from: String(oldValue), to: String(value) }
           );
+          
+          // Show toast confirmation for stage changes
+          if (field === 'stage') {
+            const oldStageLabel = dealStages.find(s => s.id === String(oldValue))?.label || String(oldValue);
+            const newStageLabel = dealStages.find(s => s.id === String(value))?.label || String(value);
+            toast({
+              title: "Stage updated",
+              description: `Changed from "${oldStageLabel}" to "${newStageLabel}"`,
+            });
+          }
         } else if (field === 'value') {
           logActivity('value_updated', `Deal value updated`, { 
             field,
