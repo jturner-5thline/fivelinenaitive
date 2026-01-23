@@ -72,8 +72,6 @@ export interface DealWriteUpData {
   profitability: string;
   grossMargins: string;
   capitalAsk: string;
-  thisYearRevenue: string;
-  lastYearRevenue: string;
   financialDataAsOf: Date | null;
   accountingSystem: string;
   status: string;
@@ -106,8 +104,6 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   profitability: '',
   grossMargins: '',
   capitalAsk: deal?.value ? `$${deal.value.toLocaleString()}` : '',
-  thisYearRevenue: '',
-  lastYearRevenue: '',
   financialDataAsOf: null,
   accountingSystem: '',
   status: deal?.status === 'active' ? 'Published' : deal?.status === 'closed' ? 'Closed' : 'Draft',
@@ -304,8 +300,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     profitability: data.profitability,
     grossMargins: data.grossMargins,
     capitalAsk: data.capitalAsk,
-    thisYearRevenue: data.thisYearRevenue,
-    lastYearRevenue: data.lastYearRevenue,
     financialDataAsOf: data.financialDataAsOf?.toISOString() || null,
     accountingSystem: data.accountingSystem,
     status: data.status,
@@ -829,7 +823,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             </div>
           </div>
 
-          {/* Capital Ask & This Year Revenue Row */}
+          {/* Capital Ask & Financial Data As Of Row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="capitalAsk">Capital Ask *</Label>
@@ -839,30 +833,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 onChange={(e) => updateField('capitalAsk', e.target.value)}
                 onBlur={(e) => updateField('capitalAsk', formatCurrency(e.target.value))}
                 placeholder="$2.5M"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="thisYearRevenue">This Year Revenue *</Label>
-              <Input
-                id="thisYearRevenue"
-                value={data.thisYearRevenue}
-                onChange={(e) => updateField('thisYearRevenue', e.target.value)}
-                onBlur={(e) => updateField('thisYearRevenue', formatCurrency(e.target.value))}
-                placeholder="$6.2M"
-              />
-            </div>
-          </div>
-
-          {/* Last Year Revenue & Financial Data As Of Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="lastYearRevenue">Last Year Revenue *</Label>
-              <Input
-                id="lastYearRevenue"
-                value={data.lastYearRevenue}
-                onChange={(e) => updateField('lastYearRevenue', e.target.value)}
-                onBlur={(e) => updateField('lastYearRevenue', formatCurrency(e.target.value))}
-                placeholder="$5.1M"
               />
             </div>
             <div className="space-y-2">
@@ -1296,8 +1266,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               <div className="rounded-lg border bg-muted/30 p-4">
                 <h4 className="font-semibold text-sm mb-3">Financials</h4>
                 <div className="space-y-1">
-                  <DataPreviewRow label="This Year Revenue" value={data.thisYearRevenue} />
-                  <DataPreviewRow label="Last Year Revenue" value={data.lastYearRevenue} />
                   <DataPreviewRow 
                     label="Financial Data As Of" 
                     value={data.financialDataAsOf ? format(data.financialDataAsOf, 'MMM d, yyyy') : undefined} 

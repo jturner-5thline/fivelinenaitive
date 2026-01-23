@@ -20,8 +20,6 @@ interface WriteUpData {
   profitability: string;
   grossMargins: string;
   capitalAsk: string;
-  thisYearRevenue: string;
-  lastYearRevenue: string;
   financialDataAsOf: string | null;
   accountingSystem: string;
   status: string;
@@ -337,8 +335,6 @@ serve(async (req) => {
         profitability: writeUpData!.profitability || undefined,
         gross_margins: writeUpData!.grossMargins || undefined,
         capital_ask: writeUpData!.capitalAsk || undefined,
-        this_year_revenue: writeUpData!.thisYearRevenue || undefined,
-        last_year_revenue: writeUpData!.lastYearRevenue || undefined,
         description: writeUpData!.description || undefined,
         use_of_funds: writeUpData!.useOfFunds || undefined,
         existing_debt: writeUpData!.existingDebtDetails || undefined,
