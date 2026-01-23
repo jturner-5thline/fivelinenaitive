@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye, CloudOff, RefreshCw } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye, CloudOff, RefreshCw, Settings2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -39,6 +39,26 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { AutoSaveStatus } from '@/hooks/useAutoSave';
+import { useWriteUpFieldOrder, WriteUpFieldId, WRITEUP_FIELD_CONFIG } from '@/hooks/useWriteUpFieldOrder';
+import { WriteUpFieldReorderDialog } from '@/components/deal/WriteUpFieldReorderDialog';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 
 export interface KeyItem {
   id: string;
@@ -242,6 +262,31 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingPublishToastIdRef = useRef<string | number | null>(null);
   const { data: latestSync } = useLatestFlexSync(dealId);
+  
+  // Field ordering
+  const { 
+    fieldOrder, 
+    isReorderDialogOpen, 
+    setIsReorderDialogOpen, 
+    reorderFields, 
+    resetToDefault 
+  } = useWriteUpFieldOrder();
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  const handleFieldDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = fieldOrder.indexOf(active.id as WriteUpFieldId);
+      const newIndex = fieldOrder.indexOf(over.id as WriteUpFieldId);
+      reorderFields(arrayMove(fieldOrder, oldIndex, newIndex));
+    }
+  };
   
   // Check if currently published on FLEx
   const isPublishedOnFlex = latestSync?.status === 'success';
@@ -768,7 +813,18 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         
         {/* Edit Deal Section */}
         <div className="border rounded-lg p-6 space-y-6">
-          <h3 className="text-lg font-semibold">Edit Deal</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Edit Deal</h3>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsReorderDialogOpen(true)}
+              className="gap-2"
+            >
+              <Settings2 className="h-4 w-4" />
+              Customize Fields
+            </Button>
+          </div>
           
           {/* Company Name & URL Row */}
           <div className="grid grid-cols-2 gap-4">
@@ -1598,6 +1654,15 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Field Reorder Dialog */}
+      <WriteUpFieldReorderDialog
+        open={isReorderDialogOpen}
+        onOpenChange={setIsReorderDialogOpen}
+        fieldOrder={fieldOrder}
+        onReorder={reorderFields}
+        onReset={resetToDefault}
+      />
     </Card>
   );
 };
