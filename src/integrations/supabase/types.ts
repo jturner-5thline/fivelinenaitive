@@ -91,6 +91,163 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_conversations: {
+        Row: {
+          agent_id: string
+          context_deal_id: string | null
+          created_at: string
+          id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          context_deal_id?: string | null
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          context_deal_id?: string | null
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_context_deal_id_fkey"
+            columns: ["context_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "agent_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agents: {
+        Row: {
+          avatar_emoji: string | null
+          can_access_activities: boolean | null
+          can_access_deals: boolean | null
+          can_access_lenders: boolean | null
+          can_access_milestones: boolean | null
+          can_search_web: boolean | null
+          company_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          is_shared: boolean | null
+          last_used_at: string | null
+          name: string
+          personality: string | null
+          system_prompt: string
+          temperature: number | null
+          updated_at: string
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          avatar_emoji?: string | null
+          can_access_activities?: boolean | null
+          can_access_deals?: boolean | null
+          can_access_lenders?: boolean | null
+          can_access_milestones?: boolean | null
+          can_search_web?: boolean | null
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          is_shared?: boolean | null
+          last_used_at?: string | null
+          name: string
+          personality?: string | null
+          system_prompt: string
+          temperature?: number | null
+          updated_at?: string
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          avatar_emoji?: string | null
+          can_access_activities?: boolean | null
+          can_access_deals?: boolean | null
+          can_access_lenders?: boolean | null
+          can_access_milestones?: boolean | null
+          can_search_web?: boolean | null
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          is_shared?: boolean | null
+          last_used_at?: string | null
+          name?: string
+          personality?: string | null
+          system_prompt?: string
+          temperature?: number | null
+          updated_at?: string
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_tokens: {
         Row: {
           access_token: string
