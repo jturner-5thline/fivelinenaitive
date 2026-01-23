@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare } from 'lucide-react';
+import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare, Brain, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -17,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
 import { useLenderMatching, LenderMatch, DealCriteria } from '@/hooks/useLenderMatching';
+import { LenderWarningBadge } from './LenderWarningBadge';
 
 interface LenderSuggestionsContentProps {
   criteria: DealCriteria;
@@ -36,11 +39,13 @@ export function LenderSuggestionsContent({
   const [lenderTypeFilter, setLenderTypeFilter] = useState<string>('all');
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
   const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
+  const [showLearningWarnings, setShowLearningWarnings] = useState(true);
   
-  const { matches } = useLenderMatching(masterLenders, criteria, {
+  const { matches, learningEnabled } = useLenderMatching(masterLenders, criteria, {
     minScore: -10,
     maxResults: 100,
     excludeNames: existingLenderNames,
+    enableLearning: true,
   });
   
   // Get unique lender types for filter
@@ -256,6 +261,22 @@ export function LenderSuggestionsContent({
             Top Matches
           </Button>
         </div>
+        
+        {/* Learning Toggle */}
+        {learningEnabled && (
+          <div className="flex items-center gap-2 text-xs">
+            <Brain className="h-3.5 w-3.5 text-primary" />
+            <Label htmlFor="show-warnings" className="text-xs font-normal cursor-pointer">
+              Show learning insights
+            </Label>
+            <Switch
+              id="show-warnings"
+              checked={showLearningWarnings}
+              onCheckedChange={setShowLearningWarnings}
+              className="scale-75"
+            />
+          </div>
+        )}
       </div>
 
       {/* Selection Actions Bar */}
@@ -315,6 +336,7 @@ export function LenderSuggestionsContent({
               onToggleLender={handleToggleLender}
               onAddLender={onAddLender}
               colorClass="bg-[#d1fae5] text-[#047857]"
+              showLearningWarnings={showLearningWarnings}
             />
             
             {/* Tier 2 Column */}
@@ -326,6 +348,7 @@ export function LenderSuggestionsContent({
               onToggleLender={handleToggleLender}
               onAddLender={onAddLender}
               colorClass="bg-[#d0e7ff] text-[#1d4ed8]"
+              showLearningWarnings={showLearningWarnings}
             />
             
             {/* Tier 3 Column */}
@@ -337,6 +360,7 @@ export function LenderSuggestionsContent({
               onToggleLender={handleToggleLender}
               onAddLender={onAddLender}
               colorClass="bg-[#fef3c7] text-[#b45309]"
+              showLearningWarnings={showLearningWarnings}
             />
           </div>
         )}
@@ -366,6 +390,7 @@ export function LenderSuggestionsContent({
                       onAdd={() => onAddLender(match.lender.name)}
                       badgeVariant="secondary"
                       compact
+                      showLearningWarnings={showLearningWarnings}
                     />
                   ))}
                 </div>
@@ -386,9 +411,10 @@ interface TierColumnProps {
   onToggleLender: (lenderId: string) => void;
   onAddLender: (name: string) => void;
   colorClass: string;
+  showLearningWarnings?: boolean;
 }
 
-function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, colorClass }: TierColumnProps) {
+function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, colorClass, showLearningWarnings }: TierColumnProps) {
   const selectedCount = matches.filter(m => selectedLenders.has(m.lender.id)).length;
   
   return (
@@ -419,6 +445,7 @@ function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onA
               onAdd={() => onAddLender(match.lender.name)}
               badgeVariant="default"
               compact
+              showLearningWarnings={showLearningWarnings}
             />
           ))
         )}
@@ -434,10 +461,11 @@ interface LenderMatchCardProps {
   onAdd: () => void;
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
   compact?: boolean;
+  showLearningWarnings?: boolean;
 }
 
-function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant, compact = false }: LenderMatchCardProps) {
-  const { lender, matchReasons, warnings, score } = match;
+function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant, compact = false, showLearningWarnings = true }: LenderMatchCardProps) {
+  const { lender, matchReasons, warnings, score, learningWarnings } = match;
   
   return (
     <div className={cn(
@@ -461,6 +489,10 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant, com
             >
               {score}
             </Badge>
+            {/* Learning warning badge */}
+            {showLearningWarnings && learningWarnings && learningWarnings.length > 0 && (
+              <LenderWarningBadge warnings={learningWarnings} showDetails size="sm" />
+            )}
           </div>
           
           {/* Lender Type */}

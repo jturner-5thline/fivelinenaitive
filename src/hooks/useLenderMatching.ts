@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { MasterLender } from './useMasterLenders';
+import { supabase } from '@/integrations/supabase/client';
+import { LenderPassPattern, LenderPassReasonCategory } from './useLenderDisqualifications';
 
 export interface DealCriteria {
   industry?: string;
@@ -18,6 +20,7 @@ export interface LenderMatch {
   score: number;
   matchReasons: string[];
   warnings: string[];
+  learningWarnings: LenderPassPattern[];
 }
 
 // Normalize strings for comparison
@@ -178,10 +181,12 @@ const PENALTIES = {
 
 export function calculateLenderMatch(
   lender: MasterLender,
-  criteria: DealCriteria
+  criteria: DealCriteria,
+  learningPatterns?: LenderPassPattern[]
 ): LenderMatch {
   const matchReasons: string[] = [];
   const warnings: string[] = [];
+  const learningWarnings: LenderPassPattern[] = [];
   let score = 0;
   
   // PRIORITY 1: Deal size match (highest weight)
@@ -293,11 +298,50 @@ export function calculateLenderMatch(
     score += 5;
   }
   
+  // Apply learning-based adjustments
+  if (learningPatterns && learningPatterns.length > 0) {
+    const lenderPatterns = learningPatterns.filter(p => 
+      (p.master_lender_id && p.master_lender_id === lender.id) ||
+      p.lender_name.toLowerCase() === lender.name.toLowerCase()
+    );
+    
+    for (const pattern of lenderPatterns) {
+      // Check if pattern is relevant to current deal
+      let isRelevant = false;
+      
+      if (pattern.pattern_type === 'excluded_industry' && criteria.industry) {
+        isRelevant = pattern.pattern_value.toLowerCase() === criteria.industry.toLowerCase();
+      } else if (pattern.pattern_type === 'excluded_geography' && criteria.geo) {
+        isRelevant = pattern.pattern_value.toLowerCase().includes(criteria.geo.toLowerCase()) ||
+                     criteria.geo.toLowerCase().includes(pattern.pattern_value.toLowerCase());
+      } else if (pattern.pattern_type === 'deal_size_range' && capitalValue) {
+        // If lender has passed on similar deal sizes before
+        const patternValue = parseFloat(pattern.pattern_value);
+        if (!isNaN(patternValue)) {
+          const difference = Math.abs(capitalValue - patternValue);
+          const threshold = capitalValue * 0.3; // 30% range
+          isRelevant = difference <= threshold;
+        }
+      } else if (pattern.occurrence_count >= 2) {
+        // General pattern with enough occurrences
+        isRelevant = true;
+      }
+      
+      if (isRelevant) {
+        learningWarnings.push(pattern);
+        // Apply penalty based on confidence
+        const penalty = Math.round(-15 * pattern.confidence_score);
+        score += penalty;
+      }
+    }
+  }
+  
   return {
     lender,
     score,
     matchReasons,
     warnings,
+    learningWarnings,
   };
 }
 
@@ -308,9 +352,33 @@ export function useLenderMatching(
     minScore?: number;
     maxResults?: number;
     excludeNames?: string[];
+    enableLearning?: boolean;
   } = {}
 ) {
-  const { minScore = 0, maxResults = 100, excludeNames = [] } = options;
+  const { minScore = 0, maxResults = 100, excludeNames = [], enableLearning = true } = options;
+  const [learningPatterns, setLearningPatterns] = useState<LenderPassPattern[]>([]);
+  
+  // Fetch learning patterns if enabled
+  useEffect(() => {
+    if (!enableLearning) return;
+    
+    const fetchPatterns = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('lender_pass_patterns')
+          .select('*')
+          .gte('confidence_score', 0.4)
+          .order('confidence_score', { ascending: false });
+        
+        if (error) throw error;
+        setLearningPatterns((data || []) as LenderPassPattern[]);
+      } catch (error) {
+        console.error('Error fetching learning patterns:', error);
+      }
+    };
+    
+    fetchPatterns();
+  }, [enableLearning]);
   
   const matches = useMemo(() => {
     if (!masterLenders.length) return [];
@@ -321,9 +389,9 @@ export function useLenderMatching(
       lender => !normalizedExcludeNames.includes(lender.name.toLowerCase().trim())
     );
     
-    // Calculate match scores
+    // Calculate match scores with learning data
     const scoredLenders = eligibleLenders.map(lender => 
-      calculateLenderMatch(lender, criteria)
+      calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined)
     );
     
     // Sort by score descending and filter by minimum score
@@ -331,11 +399,12 @@ export function useLenderMatching(
       .filter(match => match.score >= minScore)
       .sort((a, b) => b.score - a.score)
       .slice(0, maxResults);
-  }, [masterLenders, criteria, minScore, maxResults, excludeNames]);
+  }, [masterLenders, criteria, minScore, maxResults, excludeNames, enableLearning, learningPatterns]);
   
   return {
     matches,
     hasMatches: matches.length > 0,
     topMatch: matches[0] || null,
+    learningEnabled: enableLearning && learningPatterns.length > 0,
   };
 }
