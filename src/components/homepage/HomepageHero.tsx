@@ -1,23 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import promoVideo from "@/assets/promo-video.mp4";
+import { SpinningGlobe } from "@/components/SpinningGlobe";
 
 export const HomepageHero = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0a0a12]">
-      {/* Video Background */}
-      <div className="absolute inset-0 z-0">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="w-full h-full object-cover opacity-40"
-        >
-          <source src={promoVideo} type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a12]/60 via-transparent to-[#0a0a12]" />
-      </div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#010114]">
+      {/* Spinning Globe Background */}
+      <SpinningGlobe />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-6 text-center pt-20">
@@ -27,7 +17,7 @@ export const HomepageHero = () => {
           <span 
             className="bg-clip-text text-transparent"
             style={{ 
-              backgroundImage: 'linear-gradient(45deg, rgba(148,163,184,0.4) 0%, hsl(292, 46%, 72%) 50%, rgba(148,163,184,0.4) 100%)',
+              backgroundImage: 'linear-gradient(45deg, rgba(100,116,139,0.3) 0%, rgba(139,92,246,0.45) 50%, rgba(148,163,184,0.3) 100%)',
               backgroundSize: '300% 300%',
               animation: 'shimmer 8s ease-in-out infinite',
             }}
