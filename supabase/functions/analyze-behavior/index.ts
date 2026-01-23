@@ -215,6 +215,29 @@ serve(async (req) => {
       }
     }
 
+    // Send email notification if new suggestions were generated
+    const totalSuggestions = analysis.suggestions.length + analysis.agentSuggestions.length;
+    if (totalSuggestions > 0) {
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            type: "new_suggestions",
+            user_id: user.id,
+            suggestion_count: analysis.suggestions.length,
+            agent_suggestion_count: analysis.agentSuggestions.length,
+          }),
+        });
+      } catch (emailError) {
+        console.error("Failed to send suggestion notification email:", emailError);
+        // Don't fail the whole request if email fails
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

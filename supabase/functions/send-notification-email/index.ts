@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 interface NotificationPayload {
-  type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed';
+  type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed' | 'new_suggestions';
   user_id: string;
   deal_id?: string;
   deal_name?: string;
@@ -19,6 +19,8 @@ interface NotificationPayload {
   old_value?: string;
   new_value?: string;
   metadata?: Record<string, any>;
+  suggestion_count?: number;
+  agent_suggestion_count?: number;
 }
 
 const notificationTemplates: Record<string, { subject: string; getMessage: (data: NotificationPayload) => string }> = {
@@ -54,6 +56,19 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
     subject: 'Milestone Missed',
     getMessage: (data) => `Milestone "${data.milestone_title}" on deal "${data.deal_name}" is past its due date.`,
   },
+  new_suggestions: {
+    subject: 'New AI Recommendations Available',
+    getMessage: (data) => {
+      const parts: string[] = [];
+      if (data.suggestion_count && data.suggestion_count > 0) {
+        parts.push(`${data.suggestion_count} workflow suggestion${data.suggestion_count > 1 ? 's' : ''}`);
+      }
+      if (data.agent_suggestion_count && data.agent_suggestion_count > 0) {
+        parts.push(`${data.agent_suggestion_count} agent recommendation${data.agent_suggestion_count > 1 ? 's' : ''}`);
+      }
+      return `Based on your recent activity, we've identified ${parts.join(' and ')} that could help optimize your workflow.`;
+    },
+  },
 };
 
 // Map notification types to their corresponding email preference columns
@@ -67,6 +82,7 @@ const preferenceMap: Record<string, string> = {
   milestone_added: 'deal_updates_email',
   milestone_completed: 'deal_updates_email',
   milestone_missed: 'deal_updates_email',
+  new_suggestions: 'email_notifications', // Use global email setting
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -131,6 +147,9 @@ const handler = async (req: Request): Promise<Response> => {
     const message = template.getMessage(payload);
     const appUrl = "https://fivelinenaitive.lovable.app";
     const dealUrl = payload.deal_id ? `${appUrl}/deal/${payload.deal_id}` : null;
+    const actionUrl = payload.type === 'new_suggestions' 
+      ? (payload.agent_suggestion_count && payload.agent_suggestion_count > 0 ? `${appUrl}/agents` : `${appUrl}/workflows`)
+      : dealUrl;
 
     const emailResponse = await resend.emails.send({
       from: "nAItive <noreply@updates.naitive.co>",
@@ -166,11 +185,11 @@ const handler = async (req: Request): Promise<Response> => {
                     <td style="padding: 40px;">
                       <h1 style="color: #1a1a1a; font-size: 24px; font-weight: 600; margin: 0 0 24px 0; line-height: 1.3;">${template.subject}</h1>
                       <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">${message}</p>
-                      ${dealUrl ? `
+                      ${actionUrl ? `
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                           <tr>
                             <td style="border-radius: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%);">
-                              <a href="${dealUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">View Deal</a>
+                              <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">${payload.type === 'new_suggestions' ? 'View Recommendations' : 'View Deal'}</a>
                             </td>
                           </tr>
                         </table>

@@ -32,6 +32,7 @@ import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { DashboardWidgetSettings } from '@/components/dashboard/DashboardWidgetSettings';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { WorkflowSuggestionsWidget } from '@/components/dashboard/WorkflowSuggestionsWidget';
+import { AgentSuggestionsWidget } from '@/components/dashboard/AgentSuggestionsWidget';
 
 const getActivityIcon = (type: string) => {
   switch (type) {
@@ -198,8 +199,11 @@ export default function Dashboard() {
           {/* Deals Calendar */}
           {isWidgetEnabled('deals-calendar') && <DealsCalendar />}
 
-          {/* Workflow Suggestions */}
-          <WorkflowSuggestionsWidget />
+          {/* AI Suggestions */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <WorkflowSuggestionsWidget />
+            <AgentSuggestionsWidget />
+          </div>
 
           {/* News Feed */}
           {isWidgetEnabled('news-feed') && <NewsFeedWidget />}
