@@ -309,12 +309,32 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     return isNegative ? -result : result;
   };
 
-  // Calculate YoY revenue growth for a given index
+  // Parse year string to numeric value (e.g., "2024", "FY2024", "2024E" -> 2024)
+  const parseYearToNumber = (yearStr: string): number | null => {
+    if (!yearStr) return null;
+    const match = yearStr.match(/(\d{4})/);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
+  // Calculate YoY revenue growth for a given row based on actual year values
   const calculateRevenueGrowth = (index: number): string | null => {
-    if (index === 0 || data.financialYears.length < 2) return null;
+    if (data.financialYears.length < 2) return null;
     
-    const currentRevenue = parseCurrencyToNumber(data.financialYears[index].revenue);
-    const previousRevenue = parseCurrencyToNumber(data.financialYears[index - 1].revenue);
+    const currentRow = data.financialYears[index];
+    const currentYear = parseYearToNumber(currentRow.year);
+    
+    if (currentYear === null) return null;
+    
+    // Find the row with the previous year (currentYear - 1)
+    const previousYearRow = data.financialYears.find(row => {
+      const rowYear = parseYearToNumber(row.year);
+      return rowYear === currentYear - 1;
+    });
+    
+    if (!previousYearRow) return null;
+    
+    const currentRevenue = parseCurrencyToNumber(currentRow.revenue);
+    const previousRevenue = parseCurrencyToNumber(previousYearRow.revenue);
     
     if (currentRevenue === null || previousRevenue === null || previousRevenue === 0) return null;
     
