@@ -294,7 +294,7 @@ export default function Integrations() {
   if (isLoading) {
     return (
       <AppLayout mainClassName="bg-background">
-        <div className="container mx-auto py-6 space-y-6">
+        <div className="p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <Skeleton className="h-9 w-48 mb-2" />
@@ -314,7 +314,7 @@ export default function Integrations() {
 
   return (
     <AppLayout mainClassName="bg-background">
-      <div className="container mx-auto py-6 space-y-6">
+      <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
