@@ -44,12 +44,13 @@ export const WRITEUP_FIELD_CONFIG: Record<WriteUpFieldId, { label: string; requi
   status: { label: 'Status' },
   useOfFunds: { label: 'Use of Funds' },
   existingDebtDetails: { label: 'Existing Debt Details' },
-  description: { label: 'Description' },
+  description: { label: 'Company Overview' },
 };
 
 const DEFAULT_FIELD_ORDER: WriteUpFieldId[] = [
   'companyName',
   'companyUrl',
+  'description',
   'linkedinUrl',
   'location',
   'industries',
@@ -65,7 +66,6 @@ const DEFAULT_FIELD_ORDER: WriteUpFieldId[] = [
   'status',
   'useOfFunds',
   'existingDebtDetails',
-  'description',
 ];
 
 const STORAGE_KEY = 'deal-writeup-field-order';
