@@ -257,6 +257,66 @@ export type Database = {
           },
         ]
       }
+      agent_suggestion_analytics: {
+        Row: {
+          action_type: string
+          company_id: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          reasoning_length: number | null
+          suggestion_category: string | null
+          suggestion_id: string | null
+          suggestion_name: string
+          suggestion_priority: string | null
+          time_to_action_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reasoning_length?: number | null
+          suggestion_category?: string | null
+          suggestion_id?: string | null
+          suggestion_name: string
+          suggestion_priority?: string | null
+          time_to_action_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reasoning_length?: number | null
+          suggestion_category?: string | null
+          suggestion_id?: string | null
+          suggestion_name?: string
+          suggestion_priority?: string | null
+          time_to_action_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_suggestion_analytics_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_suggestion_analytics_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "agent_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_suggestions: {
         Row: {
           applied_at: string | null
@@ -4226,6 +4286,19 @@ export type Database = {
       }
     }
     Views: {
+      agent_suggestion_stats: {
+        Row: {
+          apply_count: number | null
+          apply_rate_percent: number | null
+          avg_decision_time_seconds: number | null
+          deep_dive_count: number | null
+          dismiss_count: number | null
+          suggestion_category: string | null
+          suggestion_priority: string | null
+          view_count: number | null
+        }
+        Relationships: []
+      }
       profiles_public: {
         Row: {
           avatar_url: string | null

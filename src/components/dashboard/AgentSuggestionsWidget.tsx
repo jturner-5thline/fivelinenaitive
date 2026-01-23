@@ -78,7 +78,7 @@ export function AgentSuggestionsWidget() {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => dismissSuggestion.mutate(suggestion.id)}
+                onClick={() => dismissSuggestion.mutate(suggestion)}
               >
                 <X className="h-3 w-3" />
               </Button>

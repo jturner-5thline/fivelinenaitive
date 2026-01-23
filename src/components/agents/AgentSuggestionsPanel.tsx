@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bot, Sparkles, X, ChevronRight, RefreshCw, Zap, Clock, Target, Shield, TrendingUp, Users, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,6 +9,8 @@ import {
   useAgentSuggestions,
   useDismissAgentSuggestion,
   useApplyAgentSuggestion,
+  useTrackSuggestionView,
+  useTrackDeepDiveOpened,
   AgentSuggestion,
 } from '@/hooks/useAgentSuggestions';
 import { useAnalyzeBehavior } from '@/hooks/useBehaviorInsights';
@@ -37,13 +39,35 @@ export function AgentSuggestionsPanel({ onCreateAgent }: AgentSuggestionsPanelPr
   const { data: suggestions = [], isLoading } = useAgentSuggestions();
   const dismissSuggestion = useDismissAgentSuggestion();
   const applySuggestion = useApplyAgentSuggestion();
+  const trackView = useTrackSuggestionView();
+  const trackDeepDive = useTrackDeepDiveOpened();
   const analyzeBehavior = useAnalyzeBehavior();
   const [deepDiveSuggestion, setDeepDiveSuggestion] = useState<AgentSuggestion | null>(null);
+  const viewedSuggestionsRef = useRef<Set<string>>(new Set());
+
+  // Track views when suggestions are loaded
+  useEffect(() => {
+    suggestions.forEach((suggestion) => {
+      if (!viewedSuggestionsRef.current.has(suggestion.id)) {
+        viewedSuggestionsRef.current.add(suggestion.id);
+        trackView.mutate(suggestion);
+      }
+    });
+  }, [suggestions]);
 
   const handleApply = (suggestion: AgentSuggestion) => {
     onCreateAgent(suggestion);
-    applySuggestion.mutate(suggestion.id);
+    applySuggestion.mutate(suggestion);
     setDeepDiveSuggestion(null);
+  };
+
+  const handleDismiss = (suggestion: AgentSuggestion) => {
+    dismissSuggestion.mutate(suggestion);
+  };
+
+  const handleDeepDive = (suggestion: AgentSuggestion) => {
+    trackDeepDive.mutate(suggestion);
+    setDeepDiveSuggestion(suggestion);
   };
 
   if (isLoading) {
@@ -104,8 +128,8 @@ export function AgentSuggestionsPanel({ onCreateAgent }: AgentSuggestionsPanelPr
                     key={suggestion.id}
                     suggestion={suggestion}
                     onApply={() => handleApply(suggestion)}
-                    onDismiss={() => dismissSuggestion.mutate(suggestion.id)}
-                    onDeepDive={() => setDeepDiveSuggestion(suggestion)}
+                    onDismiss={() => handleDismiss(suggestion)}
+                    onDeepDive={() => handleDeepDive(suggestion)}
                   />
                 ))}
               </div>
