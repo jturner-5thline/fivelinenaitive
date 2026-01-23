@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X, CheckCheck, Square } from 'lucide-react';
+import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X, CheckCheck, Square, List, LayoutGrid } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,11 +25,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDataRoomChecklist, useDealChecklistStatus, ChecklistItem } from '@/hooks/useDataRoomChecklist';
 import { useChecklistCategories, getCategoryColorClasses } from '@/hooks/useChecklistCategories';
 import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
+import { DataRoomGridView } from './DataRoomGridView';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+type ViewMode = 'list' | 'grid';
 
 interface CircularProgressProps {
   value: number;
@@ -94,6 +98,9 @@ export function DataRoomChecklistPanel({
   const { items: checklistItems, loading: loadingItems } = useDataRoomChecklist();
   const { statuses, toggleItemStatus, unlinkAttachment } = useDealChecklistStatus(dealId);
   const { categories: categoryConfigs, getCategoryByName } = useChecklistCategories();
+  
+  // View mode state
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -375,6 +382,16 @@ export function DataRoomChecklistPanel({
 
         <div className="flex-1" />
 
+        {/* View Mode Toggle */}
+        <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as ViewMode)} className="border rounded-md">
+          <ToggleGroupItem value="list" aria-label="List view" className="h-8 w-8 p-0">
+            <List className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="grid" aria-label="Grid view" className="h-8 w-8 p-0">
+            <LayoutGrid className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
+
         {/* Bulk Mode Toggle */}
         {!bulkMode ? (
           <Button variant="outline" size="sm" onClick={() => setBulkMode(true)} className="gap-2">
@@ -450,7 +467,23 @@ export function DataRoomChecklistPanel({
       )}
 
       {/* Checklist Items */}
-      {filteredItems.length > 0 && (
+      {filteredItems.length > 0 && viewMode === 'grid' && (
+        <DataRoomGridView
+          categories={categories}
+          groupedItems={groupedItems}
+          statusMap={statusMap}
+          getCategoryByName={getCategoryByName}
+          attachments={attachments}
+          onToggle={handleToggle}
+          onLinkAttachment={onLinkAttachment}
+          onUnlink={handleUnlink}
+          bulkMode={bulkMode}
+          selectedItems={selectedItems}
+          onToggleItemSelection={toggleItemSelection}
+        />
+      )}
+
+      {filteredItems.length > 0 && viewMode === 'list' && (
         <ScrollArea className="max-h-[400px]">
           <div className="space-y-4 pr-2">
             {categories.map(category => {
