@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
-import { Check, Flame, Users, DollarSign, Building2, ArrowRight, RotateCcw } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Check, Flame, Users, DollarSign, Building2, ArrowRight, RotateCcw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { DealCriteria } from '@/hooks/useLenderMatching';
+import { useDealMatchingCriteria, DealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
 import {
   Carousel,
   CarouselContent,
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/carousel';
 
 interface LenderCriteriaSurveyProps {
+  dealId?: string;
   initialCriteria?: DealCriteria;
   onComplete: (criteria: DealCriteria) => void;
   onSkip?: () => void;
@@ -57,7 +59,7 @@ const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    id: 'revenueRecurring',
+    id: 'revenueType',
     title: 'Revenue Type',
     subtitle: 'What type of revenue does the company have?',
     icon: <DollarSign className="h-6 w-6" />,
@@ -82,15 +84,23 @@ const SURVEY_QUESTIONS: SurveyQuestion[] = [
   },
 ];
 
-export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: LenderCriteriaSurveyProps) {
+export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSkip }: LenderCriteriaSurveyProps) {
+  const { criteria: savedCriteria, isLoading: isLoadingCriteria, isSaving, saveCriteria } = useDealMatchingCriteria(dealId);
   const [api, setApi] = useState<CarouselApi>();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | boolean>>(() => {
-    const initial: Record<string, string | boolean> = {};
-    if (initialCriteria?.cashBurnOk !== undefined) initial.cashBurnOk = initialCriteria.cashBurnOk;
-    if (initialCriteria?.b2bB2c) initial.b2bB2c = initialCriteria.b2bB2c;
-    return initial;
-  });
+  const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
+
+  // Initialize answers from saved criteria when loaded
+  useEffect(() => {
+    if (!isLoadingCriteria && savedCriteria) {
+      const initial: Record<string, string | boolean> = {};
+      if (savedCriteria.cashBurnOk !== undefined) initial.cashBurnOk = savedCriteria.cashBurnOk;
+      if (savedCriteria.b2bB2c) initial.b2bB2c = savedCriteria.b2bB2c;
+      if (savedCriteria.revenueType) initial.revenueType = savedCriteria.revenueType;
+      if (savedCriteria.collateralAvailable) initial.collateralAvailable = savedCriteria.collateralAvailable;
+      setAnswers(initial);
+    }
+  }, [savedCriteria, isLoadingCriteria]);
 
   const answeredCount = Object.keys(answers).length;
   const isLastSlide = currentIndex === SURVEY_QUESTIONS.length - 1;
@@ -100,13 +110,13 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
     setCurrentIndex(api.selectedScrollSnap());
   }, [api]);
 
-  useState(() => {
+  useEffect(() => {
     if (!api) return;
     api.on('select', onSelect);
     return () => {
       api.off('select', onSelect);
     };
-  });
+  }, [api, onSelect]);
 
   const handleSelectOption = (questionId: string, value: string) => {
     let processedValue: string | boolean = value;
@@ -134,20 +144,36 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
     return answer === value;
   };
 
-  const handleComplete = () => {
-    const criteria: DealCriteria = { ...initialCriteria };
-
+  const handleComplete = async () => {
+    // Build matching criteria for database
+    const matchingCriteria: DealMatchingCriteria = {};
+    
     if (typeof answers.cashBurnOk === 'boolean') {
-      criteria.cashBurnOk = answers.cashBurnOk;
+      matchingCriteria.cashBurnOk = answers.cashBurnOk;
     } else if (answers.cashBurnOk === 'breakeven') {
-      criteria.cashBurnOk = false;
+      matchingCriteria.cashBurnOk = false;
+    }
+    
+    if (answers.b2bB2c) matchingCriteria.b2bB2c = answers.b2bB2c as string;
+    if (answers.revenueType) matchingCriteria.revenueType = answers.revenueType as string;
+    if (answers.collateralAvailable) matchingCriteria.collateralAvailable = answers.collateralAvailable as string;
+
+    // Save to database if we have a dealId
+    if (dealId) {
+      await saveCriteria(matchingCriteria);
     }
 
-    if (answers.b2bB2c) criteria.b2bB2c = answers.b2bB2c as string;
+    // Build DealCriteria for matching
+    const criteria: DealCriteria = { ...initialCriteria };
+
+    if (matchingCriteria.cashBurnOk !== undefined) {
+      criteria.cashBurnOk = matchingCriteria.cashBurnOk;
+    }
+    if (matchingCriteria.b2bB2c) criteria.b2bB2c = matchingCriteria.b2bB2c;
 
     const additionalContext: string[] = [];
-    if (answers.revenueRecurring) additionalContext.push(`Revenue: ${answers.revenueRecurring}`);
-    if (answers.collateralAvailable) additionalContext.push(`Collateral: ${answers.collateralAvailable}`);
+    if (matchingCriteria.revenueType) additionalContext.push(`Revenue: ${matchingCriteria.revenueType}`);
+    if (matchingCriteria.collateralAvailable) additionalContext.push(`Collateral: ${matchingCriteria.collateralAvailable}`);
 
     if (additionalContext.length > 0) {
       criteria.companyRequirements = [
@@ -163,6 +189,14 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
     setAnswers({});
     api?.scrollTo(0);
   };
+
+  if (isLoadingCriteria) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -263,9 +297,12 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
           </span>
           <Button
             onClick={handleComplete}
-            disabled={answeredCount === 0}
+            disabled={answeredCount === 0 || isSaving}
             size="sm"
           >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : null}
             See Matches
             <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
@@ -287,9 +324,9 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
             {answers.b2bB2c && (
               <Badge variant="secondary" className="text-xs">{answers.b2bB2c as string}</Badge>
             )}
-            {answers.revenueRecurring && (
+            {answers.revenueType && (
               <Badge variant="secondary" className="text-xs">
-                Revenue: {answers.revenueRecurring as string}
+                Revenue: {answers.revenueType as string}
               </Badge>
             )}
             {answers.collateralAvailable && (

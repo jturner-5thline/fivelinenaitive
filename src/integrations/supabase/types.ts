@@ -772,8 +772,11 @@ export type Database = {
       deal_writeups: {
         Row: {
           accounting_system: string | null
+          b2b_b2c: string | null
           billing_model: string | null
           capital_ask: string | null
+          cash_burn_ok: boolean | null
+          collateral_available: string | null
           company_name: string
           company_url: string | null
           created_at: string
@@ -792,6 +795,7 @@ export type Database = {
           location: string | null
           profitability: string | null
           publish_as_anonymous: boolean | null
+          revenue_type: string | null
           status: string | null
           this_year_revenue: string | null
           updated_at: string
@@ -800,8 +804,11 @@ export type Database = {
         }
         Insert: {
           accounting_system?: string | null
+          b2b_b2c?: string | null
           billing_model?: string | null
           capital_ask?: string | null
+          cash_burn_ok?: boolean | null
+          collateral_available?: string | null
           company_name?: string
           company_url?: string | null
           created_at?: string
@@ -820,6 +827,7 @@ export type Database = {
           location?: string | null
           profitability?: string | null
           publish_as_anonymous?: boolean | null
+          revenue_type?: string | null
           status?: string | null
           this_year_revenue?: string | null
           updated_at?: string
@@ -828,8 +836,11 @@ export type Database = {
         }
         Update: {
           accounting_system?: string | null
+          b2b_b2c?: string | null
           billing_model?: string | null
           capital_ask?: string | null
+          cash_burn_ok?: boolean | null
+          collateral_available?: string | null
           company_name?: string
           company_url?: string | null
           created_at?: string
@@ -848,6 +859,7 @@ export type Database = {
           location?: string | null
           profitability?: string | null
           publish_as_anonymous?: boolean | null
+          revenue_type?: string | null
           status?: string | null
           this_year_revenue?: string | null
           updated_at?: string

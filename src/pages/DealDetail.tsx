@@ -2685,6 +2685,7 @@ export default function DealDetail() {
                             );
                           })}
                           <LenderSuggestionsPanel
+                            dealId={id}
                             criteria={{
                               industry: dealWriteUpData.industry || undefined,
                               dealValue: deal.value || undefined,
@@ -3400,6 +3401,7 @@ export default function DealDetail() {
                         onAddLender={addLender}
                       />
                       <LenderSuggestionsPanel
+                        dealId={id}
                         criteria={{
                           industry: dealWriteUpData.industry || undefined,
                           dealValue: deal.value || undefined,
