@@ -229,7 +229,21 @@ export function calculateLenderMatch(
   
   // PRIORITY 3: Loan type match
   if (criteria.dealTypes && criteria.dealTypes.length > 0) {
-    if (matchesLoanType(criteria.dealTypes, lender.loan_types)) {
+    // Exclude ABL lenders for Growth Capital deals
+    const isGrowthCapital = criteria.dealTypes.some(dt => 
+      normalizeString(dt).includes('growth capital') || 
+      normalizeString(dt) === 'growth'
+    );
+    const isAblLender = lender.loan_types?.some(lt => 
+      normalizeString(lt) === 'abl' || 
+      normalizeString(lt).includes('asset-based') || 
+      normalizeString(lt).includes('asset based')
+    );
+    
+    if (isGrowthCapital && isAblLender) {
+      warnings.push('ABL lender - not suitable for Growth Capital');
+      score += -50; // Heavy penalty to effectively exclude
+    } else if (matchesLoanType(criteria.dealTypes, lender.loan_types)) {
       matchReasons.push('Matching loan types');
       score += WEIGHTS.LOAN_TYPE;
     }
