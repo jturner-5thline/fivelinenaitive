@@ -684,6 +684,19 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     updateField('companyHighlights', data.companyHighlights.filter(item => item.id !== id));
   };
 
+  // Sort financial years chronologically by year value
+  const sortFinancialYearsChronologically = (years: FinancialYear[]): FinancialYear[] => {
+    return [...years].sort((a, b) => {
+      // Parse year values - handle formats like "2023", "FY2023", "2023E", etc.
+      const parseYear = (yearStr: string): number => {
+        if (!yearStr) return Infinity; // Empty years go to the end
+        const match = yearStr.match(/(\d{4})/);
+        return match ? parseInt(match[1], 10) : Infinity;
+      };
+      return parseYear(a.year) - parseYear(b.year);
+    });
+  };
+
   const addFinancialYear = () => {
     const newYear: FinancialYear = {
       id: crypto.randomUUID(),
@@ -692,16 +705,20 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       gross_margin: '',
       ebitda: '',
     };
-    updateField('financialYears', [...data.financialYears, newYear]);
+    // Add new year and sort (empty years will go to end)
+    updateField('financialYears', sortFinancialYearsChronologically([...data.financialYears, newYear]));
   };
 
   const updateFinancialYear = (id: string, field: keyof Omit<FinancialYear, 'id'>, value: string) => {
-    updateField(
-      'financialYears',
-      data.financialYears.map(item => 
-        item.id === id ? { ...item, [field]: value } : item
-      )
+    const updatedYears = data.financialYears.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
     );
+    // Re-sort when year field is updated
+    if (field === 'year') {
+      updateField('financialYears', sortFinancialYearsChronologically(updatedYears));
+    } else {
+      updateField('financialYears', updatedYears);
+    }
   };
 
   const deleteFinancialYear = (id: string) => {
