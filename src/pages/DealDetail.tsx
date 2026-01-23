@@ -2687,7 +2687,7 @@ export default function DealDetail() {
                           <LenderSuggestionsPanel
                             dealId={id}
                             criteria={{
-                              industry: dealWriteUpData.industry || undefined,
+                              industry: dealWriteUpData.industries?.join(', ') || undefined,
                               dealValue: deal.value || undefined,
                               capitalAsk: dealWriteUpData.capitalAsk || undefined,
                               dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
@@ -3403,7 +3403,7 @@ export default function DealDetail() {
                       <LenderSuggestionsPanel
                         dealId={id}
                         criteria={{
-                          industry: dealWriteUpData.industry || undefined,
+                          industry: dealWriteUpData.industries?.join(', ') || undefined,
                           dealValue: deal.value || undefined,
                           capitalAsk: dealWriteUpData.capitalAsk || undefined,
                           dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,

@@ -64,13 +64,12 @@ export interface DealWriteUpData {
   companyName: string;
   companyUrl: string;
   linkedinUrl: string;
-  dataRoomUrl: string;
-  industry: string;
+  industries: string[];
   location: string;
   yearFounded: string;
   headcount: string;
   dealTypes: string[];
-  billingModel: string;
+  billingModels: string[];
   profitability: string;
   grossMargins: string;
   capitalAsk: string;
@@ -98,13 +97,12 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   companyName: deal?.company || '',
   companyUrl: '',
   linkedinUrl: '',
-  dataRoomUrl: '',
-  industry: '',
+  industries: [],
   location: '',
   yearFounded: '',
   headcount: '',
   dealTypes: deal?.dealTypes || [],
-  billingModel: '',
+  billingModels: [],
   profitability: '',
   grossMargins: '',
   capitalAsk: deal?.value ? `$${deal.value.toLocaleString()}` : '',
@@ -354,13 +352,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     companyName: data.companyName,
     companyUrl: data.companyUrl,
     linkedinUrl: data.linkedinUrl,
-    dataRoomUrl: data.dataRoomUrl,
-    industry: data.industry,
+    industry: data.industries.join(', '),
     location: data.location,
     yearFounded: data.yearFounded,
     headcount: data.headcount,
     dealType: data.dealTypes.join(', '),
-    billingModel: data.billingModel,
+    billingModel: data.billingModels.join(', '),
     profitability: data.profitability,
     grossMargins: data.grossMargins,
     capitalAsk: data.capitalAsk,
@@ -795,7 +792,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             </div>
           </div>
 
-          {/* LinkedIn & Data Room Row */}
+          {/* LinkedIn Row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
@@ -805,32 +802,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 onChange={(e) => updateField('linkedinUrl', e.target.value)}
                 placeholder="linkedin.com/company/..."
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dataRoomUrl">Data Room URL</Label>
-              <Input
-                id="dataRoomUrl"
-                value={data.dataRoomUrl}
-                onChange={(e) => updateField('dataRoomUrl', e.target.value)}
-                placeholder="https://dataroom.example.com/techflow"
-              />
-            </div>
-          </div>
-
-          {/* Industry & Location Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="industry">Industry *</Label>
-              <Select value={data.industry} onValueChange={(v) => updateField('industry', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INDUSTRY_OPTIONS.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location *</Label>
@@ -844,6 +815,58 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Industry Row - Multi-select */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="industry">Industry *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                  >
+                    {data.industries.length > 0
+                      ? data.industries.length === 1
+                        ? data.industries[0]
+                        : `${data.industries.length} industries selected`
+                      : "Select industries"}
+                    <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0 bg-popover border z-50" align="start">
+                  <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
+                    {INDUSTRY_OPTIONS.map(option => (
+                      <div
+                        key={option}
+                        className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
+                        onClick={() => {
+                          const newIndustries = data.industries.includes(option)
+                            ? data.industries.filter(i => i !== option)
+                            : [...data.industries, option];
+                          updateField('industries', newIndustries);
+                        }}
+                      >
+                        <Checkbox
+                          checked={data.industries.includes(option)}
+                          onCheckedChange={(checked) => {
+                            const newIndustries = checked
+                              ? [...data.industries, option]
+                              : data.industries.filter(i => i !== option);
+                            updateField('industries', newIndustries);
+                          }}
+                        />
+                        <span className="text-sm">{option}</span>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label htmlFor="yearFounded">Year Founded</Label>
@@ -931,16 +954,51 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             </div>
             <div className="space-y-2">
               <Label htmlFor="billingModel">Billing Model *</Label>
-              <Select value={data.billingModel} onValueChange={(v) => updateField('billingModel', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select billing model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BILLING_MODEL_OPTIONS.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                  >
+                    {data.billingModels.length > 0
+                      ? data.billingModels.length === 1
+                        ? data.billingModels[0]
+                        : `${data.billingModels.length} models selected`
+                      : "Select billing models"}
+                    <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0 bg-popover border z-50" align="start">
+                  <div className="p-2 space-y-1">
+                    {BILLING_MODEL_OPTIONS.map(option => (
+                      <div
+                        key={option}
+                        className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
+                        onClick={() => {
+                          const newModels = data.billingModels.includes(option)
+                            ? data.billingModels.filter(m => m !== option)
+                            : [...data.billingModels, option];
+                          updateField('billingModels', newModels);
+                        }}
+                      >
+                        <Checkbox
+                          checked={data.billingModels.includes(option)}
+                          onCheckedChange={(checked) => {
+                            const newModels = checked
+                              ? [...data.billingModels, option]
+                              : data.billingModels.filter(m => m !== option);
+                            updateField('billingModels', newModels);
+                          }}
+                        />
+                        <span className="text-sm">{option}</span>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -1409,8 +1467,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <DataPreviewRow label="Company Name" value={data.companyName} />
                   <DataPreviewRow label="Website" value={data.companyUrl} />
                   <DataPreviewRow label="LinkedIn" value={data.linkedinUrl} />
-                  <DataPreviewRow label="Data Room" value={data.dataRoomUrl} />
-                  <DataPreviewRow label="Industry" value={data.industry} />
+                  <DataPreviewRow label="Industry" value={data.industries.join(', ') || '—'} />
                   <DataPreviewRow label="Location" value={data.location} />
                   <DataPreviewRow label="Year Founded" value={data.yearFounded || '—'} />
                   <DataPreviewRow label="Headcount" value={data.headcount || '—'} />
@@ -1424,7 +1481,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <DataPreviewRow label="Deal Type" value={data.dealTypes.join(', ') || '—'} />
                   <DataPreviewRow label="Capital Ask" value={data.capitalAsk} />
                   <DataPreviewRow label="Status" value={data.status} />
-                  <DataPreviewRow label="Billing Model" value={data.billingModel} />
+                  <DataPreviewRow label="Billing Model" value={data.billingModels.join(', ') || '—'} />
                   <DataPreviewRow label="Profitability" value={data.profitability} />
                   <DataPreviewRow label="Gross Margins" value={data.grossMargins} />
                 </div>
