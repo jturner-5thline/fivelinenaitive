@@ -149,112 +149,115 @@ function SimpleFilters({
 
   return (
     <div className="space-y-4">
-      {/* Tier Filter */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Tier</Label>
-        <MultiSelectFilter
-          label="Select tiers..."
-          options={tierOptions}
-          selected={filters.tiers}
-          onChange={(selected) => onFiltersChange({ ...filters, tiers: selected })}
-          className="w-full"
-        />
-      </div>
-
-      {/* Deal Size Range */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Row 1: Search, Min Deal, Max Deal, Revenue, Sponsorship */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Min Deal Size ($M)</Label>
+          <Label className="text-xs font-medium text-muted-foreground">Search Name</Label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Lender or contact..."
+              value={filters.searchQuery}
+              onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
+              className="h-9 pl-8"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Min Deal Size ($)</Label>
           <Input
             type="number"
-            placeholder="Min"
+            placeholder="e.g. 1000000"
             value={filters.minDealSize}
             onChange={(e) => onFiltersChange({ ...filters, minDealSize: e.target.value })}
             className="h-9"
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium">Max Deal Size ($M)</Label>
+          <Label className="text-xs font-medium text-muted-foreground">Max Deal Size ($)</Label>
           <Input
             type="number"
-            placeholder="Max"
+            placeholder="e.g. 50000000"
             value={filters.maxDealSize}
             onChange={(e) => onFiltersChange({ ...filters, maxDealSize: e.target.value })}
             className="h-9"
           />
         </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Your Revenue ($)</Label>
+          <Input
+            type="number"
+            placeholder="e.g. 5000000"
+            value={filters.minRevenue}
+            onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value })}
+            className="h-9"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Sponsorship</Label>
+          <MultiSelectFilter
+            label="Any"
+            options={sponsorshipOptions}
+            selected={filters.sponsorship ? [filters.sponsorship] : []}
+            onChange={(selected) => onFiltersChange({ ...filters, sponsorship: selected[0] || '' })}
+            className="w-full h-9"
+          />
+        </div>
       </div>
 
-      {/* Min Revenue */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Min Revenue ($M)</Label>
-        <Input
-          type="number"
-          placeholder="Minimum revenue"
-          value={filters.minRevenue}
-          onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value })}
-          className="h-9"
-        />
-      </div>
-
-      {/* Loan Types */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Loan Types</Label>
-        <MultiSelectFilter
-          label="Select loan types..."
-          options={loanTypeOptions}
-          selected={filters.loanTypes}
-          onChange={(selected) => onFiltersChange({ ...filters, loanTypes: selected })}
-          className="w-full"
-        />
-      </div>
-
-      {/* Industries */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Industries</Label>
-        <MultiSelectFilter
-          label="Select industries..."
-          options={industryOptions}
-          selected={filters.industries}
-          onChange={(selected) => onFiltersChange({ ...filters, industries: selected })}
-          className="w-full"
-        />
-      </div>
-
-      {/* Geographies */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Geographies</Label>
-        <MultiSelectFilter
-          label="Select geographies..."
-          options={geoOptions}
-          selected={filters.geographies}
-          onChange={(selected) => onFiltersChange({ ...filters, geographies: selected })}
-          className="w-full"
-        />
-      </div>
-
-      {/* Sponsorship */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Sponsorship</Label>
-        <MultiSelectFilter
-          label="Select sponsorship..."
-          options={sponsorshipOptions}
-          selected={filters.sponsorship ? [filters.sponsorship] : []}
-          onChange={(selected) => onFiltersChange({ ...filters, sponsorship: selected[0] || '' })}
-          className="w-full"
-        />
-      </div>
-
-      {/* Cash Burn */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium">Cash Burn</Label>
-        <MultiSelectFilter
-          label="Select cash burn..."
-          options={cashBurnOptions}
-          selected={filters.cashBurn ? [filters.cashBurn] : []}
-          onChange={(selected) => onFiltersChange({ ...filters, cashBurn: selected[0] || '' })}
-          className="w-full"
-        />
+      {/* Row 2: Loan Type, Cash Burn, Industry, Geography, Tier */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Loan Type</Label>
+          <MultiSelectFilter
+            label="Any"
+            options={loanTypeOptions}
+            selected={filters.loanTypes}
+            onChange={(selected) => onFiltersChange({ ...filters, loanTypes: selected })}
+            className="w-full h-9"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Cash Burn OK</Label>
+          <MultiSelectFilter
+            label="Any"
+            options={cashBurnOptions}
+            selected={filters.cashBurn ? [filters.cashBurn] : []}
+            onChange={(selected) => onFiltersChange({ ...filters, cashBurn: selected[0] || '' })}
+            className="w-full h-9"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Industry</Label>
+          <MultiSelectFilter
+            label="Any"
+            options={industryOptions}
+            selected={filters.industries}
+            onChange={(selected) => onFiltersChange({ ...filters, industries: selected })}
+            className="w-full h-9"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Geography</Label>
+          <MultiSelectFilter
+            label="Any"
+            options={geoOptions}
+            selected={filters.geographies}
+            onChange={(selected) => onFiltersChange({ ...filters, geographies: selected })}
+            className="w-full h-9"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground">Tier</Label>
+          <MultiSelectFilter
+            label="Any"
+            options={tierOptions}
+            selected={filters.tiers}
+            onChange={(selected) => onFiltersChange({ ...filters, tiers: selected })}
+            className="w-full h-9"
+          />
+        </div>
       </div>
     </div>
   );
@@ -422,21 +425,6 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
               </div>
             )}
 
-            {/* Search by Name (always visible) */}
-            <div className="space-y-1.5">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <DebouncedInput
-                  type="text"
-                  placeholder="Search by lender name or contact..."
-                  value={filters.searchQuery}
-                  onChange={handleSearchChange}
-                  className="h-9 pl-8"
-                  debounceMs={300}
-                />
-              </div>
-            </div>
-
             {/* Filter Content Based on Mode */}
             {filterMode === 'simple' ? (
               <SimpleFilters
@@ -445,11 +433,27 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                 lenders={lenders}
               />
             ) : (
-              <AdvancedFilterBuilder
-                conditions={filters.advancedConditions || []}
-                onConditionsChange={handleConditionsChange}
-                lenders={lenders}
-              />
+              <>
+                {/* Search by Name (only for advanced mode) */}
+                <div className="space-y-1.5">
+                  <div className="relative max-w-md">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <DebouncedInput
+                      type="text"
+                      placeholder="Search by lender name or contact..."
+                      value={filters.searchQuery}
+                      onChange={handleSearchChange}
+                      className="h-9 pl-8"
+                      debounceMs={300}
+                    />
+                  </div>
+                </div>
+                <AdvancedFilterBuilder
+                  conditions={filters.advancedConditions || []}
+                  onConditionsChange={handleConditionsChange}
+                  lenders={lenders}
+                />
+              </>
             )}
           </div>
         </CollapsibleContent>
