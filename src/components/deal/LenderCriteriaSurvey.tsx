@@ -19,7 +19,7 @@ interface SurveyOption {
 }
 
 interface SurveyQuestion {
-  id: keyof DealCriteria | 'dealSizeRange';
+  id: string;
   title: string;
   subtitle: string;
   icon: React.ReactNode;
@@ -29,64 +29,20 @@ interface SurveyQuestion {
 
 const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
-    id: 'dealSizeRange',
-    title: 'What size financing are you looking for?',
-    subtitle: 'Select the range that best fits your capital needs',
-    icon: <DollarSign className="h-5 w-5" />,
-    options: [
-      { value: '1M', label: 'Under $1M', description: 'Seed & early stage' },
-      { value: '5M', label: '$1M - $5M', description: 'Growth financing' },
-      { value: '15M', label: '$5M - $15M', description: 'Expansion capital' },
-      { value: '25M', label: '$15M - $25M', description: 'Mid-market deals' },
-      { value: '50M', label: '$25M - $50M', description: 'Large transactions' },
-      { value: '100M', label: '$50M+', description: 'Enterprise level' },
-    ],
-  },
-  {
-    id: 'dealTypes',
-    title: 'What type of financing do you need?',
-    subtitle: 'You can select multiple options',
-    icon: <FileText className="h-5 w-5" />,
-    multiSelect: true,
-    options: [
-      { value: 'ABL', label: 'Asset-Based Lending', description: 'Secured by assets' },
-      { value: 'Growth Capital', label: 'Growth Capital', description: 'Equity-like debt' },
-      { value: 'Term Loan', label: 'Term Loan', description: 'Fixed repayment' },
-      { value: 'Revolver', label: 'Revolver / LOC', description: 'Flexible credit line' },
-      { value: 'Revenue-Based', label: 'Revenue-Based', description: 'Based on revenue' },
-      { value: 'Mezzanine', label: 'Mezzanine', description: 'Subordinated debt' },
-    ],
-  },
-  {
-    id: 'industry',
-    title: 'What industry is the company in?',
-    subtitle: 'Select the primary industry vertical',
-    icon: <Building2 className="h-5 w-5" />,
-    options: [
-      { value: 'SaaS', label: 'SaaS / Software', description: 'B2B or B2C software' },
-      { value: 'Healthcare', label: 'Healthcare', description: 'Medical & health services' },
-      { value: 'Fintech', label: 'Fintech', description: 'Financial technology' },
-      { value: 'E-commerce', label: 'E-commerce', description: 'Online retail' },
-      { value: 'Manufacturing', label: 'Manufacturing', description: 'Industrial & production' },
-      { value: 'Services', label: 'Professional Services', description: 'B2B services' },
-      { value: 'Technology', label: 'Technology', description: 'General tech' },
-      { value: 'Consumer', label: 'Consumer Products', description: 'CPG & retail' },
-    ],
-  },
-  {
     id: 'cashBurnOk',
     title: 'Is the company currently burning cash?',
-    subtitle: 'This affects which lenders are a good fit',
+    subtitle: 'This significantly affects which lenders will be interested',
     icon: <Flame className="h-5 w-5" />,
     options: [
-      { value: 'true', label: 'Yes, burning cash', description: 'Pre-profit / high growth' },
+      { value: 'true', label: 'Yes, burning cash', description: 'Pre-profit or high-growth phase' },
       { value: 'false', label: 'No, cash flow positive', description: 'Profitable or break-even' },
+      { value: 'breakeven', label: 'Near break-even', description: 'Close to profitability' },
     ],
   },
   {
     id: 'b2bB2c',
     title: 'What is the business model?',
-    subtitle: 'Who are the primary customers?',
+    subtitle: 'Some lenders specialize in specific customer types',
     icon: <Users className="h-5 w-5" />,
     options: [
       { value: 'B2B', label: 'B2B', description: 'Sells to businesses' },
@@ -95,16 +51,27 @@ const SURVEY_QUESTIONS: SurveyQuestion[] = [
     ],
   },
   {
-    id: 'geo',
-    title: 'Where is the company based?',
-    subtitle: 'Geographic location affects lender options',
-    icon: <MapPin className="h-5 w-5" />,
+    id: 'revenueRecurring',
+    title: 'What type of revenue does the company have?',
+    subtitle: 'Revenue model affects lender appetite',
+    icon: <DollarSign className="h-5 w-5" />,
     options: [
-      { value: 'US', label: 'United States', description: 'US-based company' },
-      { value: 'Canada', label: 'Canada', description: 'Canadian company' },
-      { value: 'UK', label: 'United Kingdom', description: 'UK-based company' },
-      { value: 'Europe', label: 'Europe', description: 'EU-based company' },
-      { value: 'Global', label: 'Global / Multi-region', description: 'International presence' },
+      { value: 'recurring', label: 'Recurring / Subscription', description: 'SaaS, memberships, etc.' },
+      { value: 'transactional', label: 'Transactional', description: 'One-time purchases' },
+      { value: 'contractual', label: 'Contractual', description: 'Long-term contracts' },
+      { value: 'mixed', label: 'Mixed', description: 'Combination of models' },
+    ],
+  },
+  {
+    id: 'collateralAvailable',
+    title: 'Does the company have hard assets for collateral?',
+    subtitle: 'Asset-based lenders require collateral',
+    icon: <Building2 className="h-5 w-5" />,
+    options: [
+      { value: 'yes', label: 'Yes, significant assets', description: 'Real estate, equipment, inventory' },
+      { value: 'ar', label: 'Accounts receivable only', description: 'AR as primary collateral' },
+      { value: 'minimal', label: 'Minimal hard assets', description: 'Mostly software/IP' },
+      { value: 'none', label: 'No collateral available', description: 'Cash flow based only' },
     ],
   },
 ];
@@ -113,12 +80,8 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[] | boolean>>(() => {
     const initial: Record<string, string | string[] | boolean> = {};
-    if (initialCriteria?.capitalAsk) initial.dealSizeRange = initialCriteria.capitalAsk;
-    if (initialCriteria?.dealTypes) initial.dealTypes = initialCriteria.dealTypes;
-    if (initialCriteria?.industry) initial.industry = initialCriteria.industry;
     if (initialCriteria?.cashBurnOk !== undefined) initial.cashBurnOk = initialCriteria.cashBurnOk;
     if (initialCriteria?.b2bB2c) initial.b2bB2c = initialCriteria.b2bB2c;
-    if (initialCriteria?.geo) initial.geo = initialCriteria.geo;
     return initial;
   });
 
@@ -137,10 +100,13 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
         : [...currentValues, value];
       setAnswers(prev => ({ ...prev, [question.id]: newValues }));
     } else {
-      // Handle boolean conversion for cashBurnOk
-      const processedValue = question.id === 'cashBurnOk' 
-        ? value === 'true'
-        : value;
+      // Handle special processing for cashBurnOk (true/false/breakeven)
+      let processedValue: string | boolean = value;
+      if (question.id === 'cashBurnOk') {
+        if (value === 'true') processedValue = true;
+        else if (value === 'false') processedValue = false;
+        // 'breakeven' stays as string, treated as false for matching
+      }
       setAnswers(prev => ({ ...prev, [question.id]: processedValue }));
       
       // Auto-advance for single-select questions
@@ -156,7 +122,9 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
       return ((answer as string[]) || []).includes(value);
     }
     if (currentQuestion.id === 'cashBurnOk') {
-      return answer === (value === 'true');
+      if (value === 'true') return answer === true;
+      if (value === 'false') return answer === false;
+      return answer === value; // for 'breakeven'
     }
     return answer === value;
   };
@@ -180,24 +148,27 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
       ...initialCriteria,
     };
 
-    if (answers.dealSizeRange) {
-      criteria.capitalAsk = `$${answers.dealSizeRange}`;
-      // Also set dealValue for matching
-      const valueMap: Record<string, number> = {
-        '1M': 500000,
-        '5M': 3000000,
-        '15M': 10000000,
-        '25M': 20000000,
-        '50M': 37500000,
-        '100M': 75000000,
-      };
-      criteria.dealValue = valueMap[answers.dealSizeRange as string] || undefined;
+    // Only set survey-specific fields that aren't already in deal info
+    // Handle cashBurnOk - 'breakeven' is treated as false (not burning)
+    if (typeof answers.cashBurnOk === 'boolean') {
+      criteria.cashBurnOk = answers.cashBurnOk;
+    } else if (answers.cashBurnOk === 'breakeven') {
+      criteria.cashBurnOk = false;
     }
-    if (answers.dealTypes) criteria.dealTypes = answers.dealTypes as string[];
-    if (answers.industry) criteria.industry = answers.industry as string;
-    if (typeof answers.cashBurnOk === 'boolean') criteria.cashBurnOk = answers.cashBurnOk;
+    
     if (answers.b2bB2c) criteria.b2bB2c = answers.b2bB2c as string;
-    if (answers.geo) criteria.geo = answers.geo as string;
+    
+    // Store additional survey data in companyRequirements for matching context
+    const additionalContext: string[] = [];
+    if (answers.revenueRecurring) additionalContext.push(`Revenue: ${answers.revenueRecurring}`);
+    if (answers.collateralAvailable) additionalContext.push(`Collateral: ${answers.collateralAvailable}`);
+    
+    if (additionalContext.length > 0) {
+      criteria.companyRequirements = [
+        initialCriteria?.companyRequirements,
+        ...additionalContext
+      ].filter(Boolean).join('; ');
+    }
 
     onComplete(criteria);
   };
@@ -322,25 +293,26 @@ export function LenderCriteriaSurvey({ initialCriteria, onComplete, onSkip }: Le
         <div className="mt-4 pt-4 border-t">
           <p className="text-xs text-muted-foreground mb-2">Your selections:</p>
           <div className="flex flex-wrap gap-1.5">
-            {answers.dealSizeRange && (
-              <Badge variant="secondary" className="text-xs">${answers.dealSizeRange as string}</Badge>
-            )}
-            {(answers.dealTypes as string[])?.map(dt => (
-              <Badge key={dt} variant="secondary" className="text-xs">{dt}</Badge>
-            ))}
-            {answers.industry && (
-              <Badge variant="secondary" className="text-xs">{answers.industry as string}</Badge>
-            )}
             {typeof answers.cashBurnOk === 'boolean' && (
               <Badge variant="secondary" className="text-xs">
                 Cash burn: {answers.cashBurnOk ? 'OK' : 'No'}
               </Badge>
             )}
+            {answers.cashBurnOk === 'breakeven' && (
+              <Badge variant="secondary" className="text-xs">Near break-even</Badge>
+            )}
             {answers.b2bB2c && (
               <Badge variant="secondary" className="text-xs">{answers.b2bB2c as string}</Badge>
             )}
-            {answers.geo && (
-              <Badge variant="secondary" className="text-xs">{answers.geo as string}</Badge>
+            {answers.revenueRecurring && (
+              <Badge variant="secondary" className="text-xs">
+                Revenue: {answers.revenueRecurring as string}
+              </Badge>
+            )}
+            {answers.collateralAvailable && (
+              <Badge variant="secondary" className="text-xs">
+                Collateral: {answers.collateralAvailable as string}
+              </Badge>
             )}
           </div>
         </div>
