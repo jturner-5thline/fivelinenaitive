@@ -26,15 +26,14 @@ import {
 } from '@/types/deal';
 import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
-import { useDealTypes } from '@/contexts/DealTypesContext';
 
-export type FilterKey = 'stage' | 'status' | 'engagementType' | 'dealType' | 'manager' | 'lender' | 'referredBy';
+
+export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'lender' | 'referredBy';
 
 export const FILTER_LABELS: Record<FilterKey, string> = {
   stage: 'Stage',
   status: 'Status',
   engagementType: 'Engagement',
-  dealType: 'Deal Type',
   manager: 'Manager',
   lender: 'Lender',
   referredBy: 'Referred By',
@@ -56,8 +55,6 @@ export function FiltersPopover({
   onTogglePin,
 }: FiltersPopoverProps) {
   const [open, setOpen] = useState(false);
-  const { dealTypes: availableDealTypes } = useDealTypes();
-
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
@@ -71,11 +68,6 @@ export function FiltersPopover({
   const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
-  }));
-
-  const dealTypeOptions = availableDealTypes.map(dt => ({
-    value: dt.id,
-    label: dt.label,
   }));
 
   const managerOptions = MANAGERS.map((manager) => ({
@@ -98,7 +90,6 @@ export function FiltersPopover({
       stage: [],
       status: [],
       engagementType: [],
-      dealType: [],
       manager: [],
       lender: [],
       referredBy: [],
@@ -122,11 +113,6 @@ export function FiltersPopover({
       key: 'engagementType', 
       options: engagementTypeOptions, 
       onChange: (engagementType) => onFilterChange({ engagementType: engagementType as EngagementType[] }) 
-    },
-    { 
-      key: 'dealType', 
-      options: dealTypeOptions, 
-      onChange: (dealType) => onFilterChange({ dealType }) 
     },
     { 
       key: 'manager', 
@@ -246,8 +232,6 @@ export function FiltersPopover({
 
 // Export filter configs for use in quick filters
 export function useFilterConfigs() {
-  const { dealTypes: availableDealTypes } = useDealTypes();
-
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
@@ -261,11 +245,6 @@ export function useFilterConfigs() {
   const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
-  }));
-
-  const dealTypeOptions = availableDealTypes.map(dt => ({
-    value: dt.id,
-    label: dt.label,
   }));
 
   const managerOptions = MANAGERS.map((manager) => ({
@@ -287,7 +266,6 @@ export function useFilterConfigs() {
     stage: stageOptions,
     status: statusOptions,
     engagementType: engagementTypeOptions,
-    dealType: dealTypeOptions,
     manager: managerOptions,
     lender: lenderOptions,
     referredBy: referredByOptions,

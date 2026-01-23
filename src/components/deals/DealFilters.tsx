@@ -17,7 +17,7 @@ import { FiltersPopover, FilterKey, FILTER_LABELS, useFilterConfigs } from './Fi
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
-import { useDealTypes } from '@/contexts/DealTypesContext';
+
 
 const PINNED_FILTERS_KEY = 'deals-pinned-filters';
 const DEFAULT_PINNED: FilterKey[] = ['stage', 'status'];
@@ -32,7 +32,6 @@ export function DealFilters({
   onFilterChange,
 }: DealFiltersProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
-  const { dealTypes: availableDealTypes } = useDealTypes();
   const filterConfigs = useFilterConfigs();
   
   const [pinnedFilters, setPinnedFilters] = useState<FilterKey[]>(() => {
@@ -65,7 +64,6 @@ export function DealFilters({
     filters.stage.length > 0,
     filters.status.length > 0,
     filters.engagementType.length > 0,
-    filters.dealType.length > 0,
     filters.manager.length > 0,
     filters.lender.length > 0,
     filters.referredBy.length > 0,
@@ -79,7 +77,6 @@ export function DealFilters({
       stage: [],
       status: [],
       engagementType: [],
-      dealType: [],
       manager: [],
       lender: [],
       referredBy: [],
@@ -115,11 +112,6 @@ export function DealFilters({
       chips.push({ type: 'engagementType', value, label });
     });
 
-    filters.dealType.forEach((value) => {
-      const dealType = availableDealTypes.find(dt => dt.id === value);
-      chips.push({ type: 'dealType', value, label: dealType?.label || value });
-    });
-
     filters.manager.forEach((value) => {
       chips.push({ type: 'manager', value, label: value });
     });
@@ -144,8 +136,6 @@ export function DealFilters({
         return (values: string[]) => onFilterChange({ status: values as DealStatus[] });
       case 'engagementType':
         return (values: string[]) => onFilterChange({ engagementType: values as EngagementType[] });
-      case 'dealType':
-        return (values: string[]) => onFilterChange({ dealType: values });
       case 'manager':
         return (values: string[]) => onFilterChange({ manager: values });
       case 'lender':
