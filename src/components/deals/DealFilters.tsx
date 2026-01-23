@@ -34,11 +34,16 @@ export function DealFilters({
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const filterConfigs = useFilterConfigs();
   
+  // Valid filter keys (used to clean up localStorage if it has stale keys)
+  const validFilterKeys = Object.keys(filterConfigs) as FilterKey[];
+  
   const [pinnedFilters, setPinnedFilters] = useState<FilterKey[]>(() => {
     const stored = localStorage.getItem(PINNED_FILTERS_KEY);
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored) as FilterKey[];
+        // Filter out any invalid keys that no longer exist
+        return parsed.filter(key => validFilterKeys.includes(key));
       } catch {
         return DEFAULT_PINNED;
       }
