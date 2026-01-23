@@ -5,14 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Plus, Search, Users, Globe, Lock } from 'lucide-react';
+import { Bot, Plus, Search, Users, Globe, Lock, Zap, History } from 'lucide-react';
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent, useDuplicateAgent, type Agent, type CreateAgentData } from '@/hooks/useAgents';
 import { useAuth } from '@/contexts/AuthContext';
 import { AgentCard } from '@/components/agents/AgentCard';
 import { AgentBuilder } from '@/components/agents/AgentBuilder';
 import { AgentTestChat } from '@/components/agents/AgentTestChat';
+import { AgentTriggersManager } from '@/components/agents/AgentTriggersManager';
+import { AgentRunsHistory } from '@/components/agents/AgentRunsHistory';
 
 export default function Agents() {
   const { user } = useAuth();
@@ -28,6 +30,7 @@ export default function Agents() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [testingAgent, setTestingAgent] = useState<Agent | null>(null);
   const [deletingAgent, setDeletingAgent] = useState<Agent | null>(null);
+  const [managingTriggersAgent, setManagingTriggersAgent] = useState<Agent | null>(null);
 
   const myAgents = agents?.filter(a => a.user_id === user?.id) || [];
   const sharedAgents = agents?.filter(a => a.is_shared && a.user_id !== user?.id) || [];
@@ -140,7 +143,7 @@ export default function Agents() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-            <TabsTrigger value="my-agents" className="gap-2">
+          <TabsTrigger value="my-agents" className="gap-2">
               <Lock className="h-4 w-4" />
               My Agents ({myAgents.length})
             </TabsTrigger>
@@ -151,6 +154,10 @@ export default function Agents() {
             <TabsTrigger value="public" className="gap-2">
               <Globe className="h-4 w-4" />
               Public ({publicAgents.length})
+            </TabsTrigger>
+            <TabsTrigger value="runs" className="gap-2">
+              <History className="h-4 w-4" />
+              Run History
             </TabsTrigger>
           </TabsList>
 
@@ -164,6 +171,10 @@ export default function Agents() {
 
           <TabsContent value="public" className="mt-6">
             {isLoading ? renderSkeleton() : renderAgentGrid(publicAgents, false)}
+          </TabsContent>
+
+          <TabsContent value="runs" className="mt-6">
+            <AgentRunsHistory />
           </TabsContent>
         </Tabs>
       </div>
