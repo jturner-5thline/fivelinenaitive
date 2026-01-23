@@ -68,6 +68,7 @@ export interface DealWriteUpData {
   industry: string;
   location: string;
   yearFounded: string;
+  headcount: string;
   dealTypes: string[];
   billingModel: string;
   profitability: string;
@@ -101,6 +102,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   industry: '',
   location: '',
   yearFounded: '',
+  headcount: '',
   dealTypes: deal?.dealTypes || [],
   billingModel: '',
   profitability: '',
@@ -356,6 +358,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     industry: data.industry,
     location: data.location,
     yearFounded: data.yearFounded,
+    headcount: data.headcount,
     dealType: data.dealTypes.join(', '),
     billingModel: data.billingModel,
     profitability: data.profitability,
@@ -853,6 +856,22 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   updateField('yearFounded', value);
                 }}
                 placeholder="e.g., 2015"
+                maxLength={4}
+                inputMode="numeric"
+                pattern="[0-9]*"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="headcount">Headcount</Label>
+              <Input
+                id="headcount"
+                value={data.headcount}
+                onChange={(e) => {
+                  // Only allow numeric input, max 4 digits
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                  updateField('headcount', value);
+                }}
+                placeholder="e.g., 150"
                 maxLength={4}
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -1394,6 +1413,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <DataPreviewRow label="Industry" value={data.industry} />
                   <DataPreviewRow label="Location" value={data.location} />
                   <DataPreviewRow label="Year Founded" value={data.yearFounded || '—'} />
+                  <DataPreviewRow label="Headcount" value={data.headcount || '—'} />
                 </div>
               </div>
 
