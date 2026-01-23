@@ -14,7 +14,8 @@ import {
   Workflow,
   FlaskConical,
   Rocket,
-  Ban
+  Ban,
+  Bot
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -91,6 +92,12 @@ const pageConfigs: PageConfig[] = [
     label: "Workflows", 
     description: "Automation workflows and scheduled actions",
     icon: <Workflow className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_agents", 
+    label: "AI Agents", 
+    description: "AI-powered automation agents and assistants",
+    icon: <Bot className="h-5 w-5" />
   },
 ];
 
