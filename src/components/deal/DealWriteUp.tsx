@@ -288,6 +288,44 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     return value;
   };
 
+  // Parse currency string to numeric value (e.g., "$24.72MM" -> 24720000)
+  const parseCurrencyToNumber = (value: string): number | null => {
+    if (!value) return null;
+    const cleanValue = value.replace(/[$,\s]/g, '').toUpperCase();
+    const numericMatch = cleanValue.match(/^(-?\(?)(\d+\.?\d*)(MM|M|K|B)?\)?$/);
+    if (!numericMatch) return null;
+    
+    const isNegative = cleanValue.includes('(') || cleanValue.startsWith('-');
+    const num = parseFloat(numericMatch[2]);
+    const suffix = numericMatch[3];
+    
+    let multiplier = 1;
+    if (suffix === 'B') multiplier = 1000000000;
+    else if (suffix === 'MM') multiplier = 1000000;
+    else if (suffix === 'M') multiplier = 1000000;
+    else if (suffix === 'K') multiplier = 1000;
+    
+    const result = num * multiplier;
+    return isNegative ? -result : result;
+  };
+
+  // Calculate YoY revenue growth for a given index
+  const calculateRevenueGrowth = (index: number): string | null => {
+    if (index === 0 || data.financialYears.length < 2) return null;
+    
+    const currentRevenue = parseCurrencyToNumber(data.financialYears[index].revenue);
+    const previousRevenue = parseCurrencyToNumber(data.financialYears[index - 1].revenue);
+    
+    if (currentRevenue === null || previousRevenue === null || previousRevenue === 0) return null;
+    
+    const growthPercent = ((currentRevenue - previousRevenue) / Math.abs(previousRevenue)) * 100;
+    const formatted = growthPercent.toFixed(1);
+    
+    if (growthPercent > 0) return `+${formatted}%`;
+    if (growthPercent < 0) return `${formatted}%`;
+    return '0%';
+  };
+
   const getWriteUpPayload = () => ({
     companyName: data.companyName,
     companyUrl: data.companyUrl,
@@ -991,6 +1029,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <tr className="border-b bg-muted/30">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[120px]">Year</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Total Revenue</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[100px]">Rev. Growth</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Gross Margin</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">EBITDA</th>
                     <th className="w-12 py-3 px-2"></th>
@@ -999,7 +1038,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <tbody>
                   {data.financialYears.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">
+                      <td colSpan={6} className="py-8 text-center text-muted-foreground text-sm">
                         No financial years added yet. Click "Add Year" to get started.
                       </td>
                     </tr>
@@ -1021,6 +1060,23 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                             placeholder="$24.72MM"
                             className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                           />
+                        </td>
+                        <td className="py-2 px-4">
+                          {(() => {
+                            const growth = calculateRevenueGrowth(index);
+                            if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
+                            const isPositive = growth.startsWith('+');
+                            const isNegative = growth.startsWith('-');
+                            return (
+                              <span className={cn(
+                                "text-sm font-medium",
+                                isPositive && "text-green-600 dark:text-green-500",
+                                isNegative && "text-red-600 dark:text-red-500"
+                              )}>
+                                {growth}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="py-2 px-4">
                           <Input
