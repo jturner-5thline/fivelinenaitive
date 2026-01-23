@@ -67,6 +67,7 @@ export interface DealWriteUpData {
   dataRoomUrl: string;
   industry: string;
   location: string;
+  yearFounded: string;
   dealTypes: string[];
   billingModel: string;
   profitability: string;
@@ -99,6 +100,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   dataRoomUrl: '',
   industry: '',
   location: '',
+  yearFounded: '',
   dealTypes: deal?.dealTypes || [],
   billingModel: '',
   profitability: '',
@@ -353,6 +355,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     dataRoomUrl: data.dataRoomUrl,
     industry: data.industry,
     location: data.location,
+    yearFounded: data.yearFounded,
     dealType: data.dealTypes.join(', '),
     billingModel: data.billingModel,
     profitability: data.profitability,
@@ -838,6 +841,22 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="yearFounded">Year Founded</Label>
+              <Input
+                id="yearFounded"
+                value={data.yearFounded}
+                onChange={(e) => {
+                  // Only allow numeric input, max 4 digits
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                  updateField('yearFounded', value);
+                }}
+                placeholder="e.g., 2015"
+                maxLength={4}
+                inputMode="numeric"
+                pattern="[0-9]*"
+              />
             </div>
           </div>
 
@@ -1374,6 +1393,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <DataPreviewRow label="Data Room" value={data.dataRoomUrl} />
                   <DataPreviewRow label="Industry" value={data.industry} />
                   <DataPreviewRow label="Location" value={data.location} />
+                  <DataPreviewRow label="Year Founded" value={data.yearFounded || '—'} />
                 </div>
               </div>
 

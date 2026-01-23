@@ -1420,6 +1420,7 @@ export type Database = {
           updated_at: string
           use_of_funds: string | null
           user_id: string
+          year_founded: string | null
         }
         Insert: {
           accounting_system?: string | null
@@ -1454,6 +1455,7 @@ export type Database = {
           updated_at?: string
           use_of_funds?: string | null
           user_id: string
+          year_founded?: string | null
         }
         Update: {
           accounting_system?: string | null
@@ -1488,6 +1490,7 @@ export type Database = {
           updated_at?: string
           use_of_funds?: string | null
           user_id?: string
+          year_founded?: string | null
         }
         Relationships: [
           {
