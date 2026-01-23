@@ -55,6 +55,7 @@ import Admin from "./pages/Admin";
 import Integrations from "./pages/Integrations";
 import NewsFeed from "./pages/NewsFeed";
 import Research from "./pages/Research";
+import Agents from "./pages/Agents";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
@@ -176,6 +177,9 @@ const App = () => (
                           } />
                           <Route path="/research" element={
                             <ProtectedRoute><Research /></ProtectedRoute>
+                          } />
+                          <Route path="/agents" element={
+                            <ProtectedRoute><Agents /></ProtectedRoute>
                           } />
                           <Route path="/privacy" element={<PrivacyPolicy />} />
                           <Route path="/terms" element={<TermsOfService />} />
