@@ -1773,6 +1773,73 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_disqualifications: {
+        Row: {
+          created_at: string
+          deal_geography: string | null
+          deal_id: string
+          deal_industry: string | null
+          deal_lender_id: string | null
+          deal_size: number | null
+          disqualified_by: string | null
+          id: string
+          lender_name: string
+          master_lender_id: string | null
+          reason_category: Database["public"]["Enums"]["lender_pass_reason_category"]
+          reason_details: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_geography?: string | null
+          deal_id: string
+          deal_industry?: string | null
+          deal_lender_id?: string | null
+          deal_size?: number | null
+          disqualified_by?: string | null
+          id?: string
+          lender_name: string
+          master_lender_id?: string | null
+          reason_category: Database["public"]["Enums"]["lender_pass_reason_category"]
+          reason_details?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_geography?: string | null
+          deal_id?: string
+          deal_industry?: string | null
+          deal_lender_id?: string | null
+          deal_size?: number | null
+          disqualified_by?: string | null
+          id?: string
+          lender_name?: string
+          master_lender_id?: string | null
+          reason_category?: Database["public"]["Enums"]["lender_pass_reason_category"]
+          reason_details?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_disqualifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_disqualifications_deal_lender_id_fkey"
+            columns: ["deal_lender_id"]
+            isOneToOne: false
+            referencedRelation: "deal_lenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_disqualifications_master_lender_id_fkey"
+            columns: ["master_lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_notes_history: {
         Row: {
           created_at: string
@@ -1801,6 +1868,53 @@ export type Database = {
             columns: ["deal_lender_id"]
             isOneToOne: false
             referencedRelation: "deal_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_pass_patterns: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          id: string
+          last_updated: string
+          lender_name: string
+          master_lender_id: string | null
+          occurrence_count: number | null
+          pattern_type: string
+          pattern_value: string
+          reason_category: Database["public"]["Enums"]["lender_pass_reason_category"]
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          last_updated?: string
+          lender_name: string
+          master_lender_id?: string | null
+          occurrence_count?: number | null
+          pattern_type: string
+          pattern_value: string
+          reason_category: Database["public"]["Enums"]["lender_pass_reason_category"]
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          last_updated?: string
+          lender_name?: string
+          master_lender_id?: string | null
+          occurrence_count?: number | null
+          pattern_type?: string
+          pattern_value?: string
+          reason_category?: Database["public"]["Enums"]["lender_pass_reason_category"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_pass_patterns_master_lender_id_fkey"
+            columns: ["master_lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
             referencedColumns: ["id"]
           },
         ]
@@ -3874,6 +3988,15 @@ export type Database = {
       company_role: "owner" | "admin" | "member"
       data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed"
+      lender_pass_reason_category:
+        | "deal_size_mismatch"
+        | "industry_exclusion"
+        | "geographic_restriction"
+        | "risk_profile_concerns"
+        | "timing_issues"
+        | "relationship_issues"
+        | "terms_mismatch"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4005,6 +4128,16 @@ export const Constants = {
       company_role: ["owner", "admin", "member"],
       data_access_scope: ["all", "team", "own", "none"],
       feature_status: ["disabled", "staging", "deployed"],
+      lender_pass_reason_category: [
+        "deal_size_mismatch",
+        "industry_exclusion",
+        "geographic_restriction",
+        "risk_profile_concerns",
+        "timing_issues",
+        "relationship_issues",
+        "terms_mismatch",
+        "other",
+      ],
     },
   },
 } as const
