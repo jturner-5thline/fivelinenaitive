@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, FileCheck, FolderOpen } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -34,12 +33,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDataRoomChecklist, ChecklistItem, ChecklistItemInsert } from '@/hooks/useDataRoomChecklist';
-import { useChecklistCategories, ChecklistCategory } from '@/hooks/useChecklistCategories';
+import { useChecklistCategories, ChecklistCategory, CategoryIcon, CategoryColor, getCategoryColorClasses } from '@/hooks/useChecklistCategories';
+import { CategoryIconPicker, getCategoryIcon } from './CategoryIconPicker';
+import { CategoryColorPicker } from './CategoryColorPicker';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export function DataRoomChecklistSettings() {
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, reorderItems } = useDataRoomChecklist();
-  const { categories, categoryNames, loading: categoriesLoading, addCategory, updateCategory, deleteCategory, reorderCategories } = useChecklistCategories();
+  const { categories, categoryNames, loading: categoriesLoading, addCategory, updateCategory, deleteCategory, reorderCategories, getCategoryByName } = useChecklistCategories();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
@@ -56,7 +58,11 @@ export function DataRoomChecklistSettings() {
   const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ChecklistCategory | null>(null);
   const [deleteCategoryConfirmId, setDeleteCategoryConfirmId] = useState<string | null>(null);
-  const [categoryFormData, setCategoryFormData] = useState({ name: '' });
+  const [categoryFormData, setCategoryFormData] = useState<{ name: string; icon: CategoryIcon; color: CategoryColor }>({ 
+    name: '', 
+    icon: 'folder', 
+    color: 'gray' 
+  });
   const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null);
 
   const loading = itemsLoading || categoriesLoading;
@@ -133,12 +139,16 @@ export function DataRoomChecklistSettings() {
 
   // Category handlers
   const handleOpenAddCategory = () => {
-    setCategoryFormData({ name: '' });
+    setCategoryFormData({ name: '', icon: 'folder', color: 'gray' });
     setIsAddCategoryDialogOpen(true);
   };
 
   const handleOpenEditCategory = (category: ChecklistCategory) => {
-    setCategoryFormData({ name: category.name });
+    setCategoryFormData({ 
+      name: category.name, 
+      icon: category.icon || 'folder', 
+      color: category.color || 'gray' 
+    });
     setEditingCategory(category);
   };
 
@@ -149,19 +159,23 @@ export function DataRoomChecklistSettings() {
     }
 
     if (editingCategory) {
-      const success = await updateCategory(editingCategory.id, categoryFormData.name);
+      const success = await updateCategory(editingCategory.id, {
+        name: categoryFormData.name,
+        icon: categoryFormData.icon,
+        color: categoryFormData.color,
+      });
       if (success) {
         toast.success('Category updated');
         setEditingCategory(null);
       }
     } else {
-      const result = await addCategory(categoryFormData.name);
+      const result = await addCategory(categoryFormData.name, categoryFormData.icon, categoryFormData.color);
       if (result) {
         toast.success('Category added');
         setIsAddCategoryDialogOpen(false);
       }
     }
-    setCategoryFormData({ name: '' });
+    setCategoryFormData({ name: '', icon: 'folder', color: 'gray' });
   };
 
   const handleDeleteCategory = async () => {
@@ -253,53 +267,62 @@ export function DataRoomChecklistSettings() {
               </div>
             ) : (
               <div className="space-y-6">
-                {itemCategories.map(category => (
-                  <div key={category}>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">{category}</h3>
-                    <div className="space-y-2">
-                      {groupedItems[category].map((item) => (
-                        <div
-                          key={item.id}
-                          draggable
-                          onDragStart={() => handleDragStart(items.indexOf(item))}
-                          onDragOver={(e) => handleDragOver(e, items.indexOf(item))}
-                          onDragEnd={handleDragEnd}
-                          className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors cursor-move"
-                        >
-                          <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{item.name}</span>
-                              {item.is_required && (
-                                <Badge variant="secondary" className="text-xs">Required</Badge>
+                {itemCategories.map(categoryName => {
+                  const categoryData = getCategoryByName(categoryName);
+                  const colorClasses = categoryData ? getCategoryColorClasses(categoryData.color) : getCategoryColorClasses('gray');
+                  const IconComponent = categoryData ? getCategoryIcon(categoryData.icon) : getCategoryIcon('folder');
+                  
+                  return (
+                    <div key={categoryName}>
+                      <div className={cn("flex items-center gap-2 mb-2 px-2 py-1 rounded-md w-fit", colorClasses.bgClass)}>
+                        <IconComponent className={cn("h-4 w-4", colorClasses.textClass)} />
+                        <h3 className={cn("text-sm font-semibold", colorClasses.textClass)}>{categoryName}</h3>
+                      </div>
+                      <div className="space-y-2">
+                        {groupedItems[categoryName].map((item) => (
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={() => handleDragStart(items.indexOf(item))}
+                            onDragOver={(e) => handleDragOver(e, items.indexOf(item))}
+                            onDragEnd={handleDragEnd}
+                            className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors cursor-move"
+                          >
+                            <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{item.name}</span>
+                                {item.is_required && (
+                                  <Badge variant="secondary" className="text-xs">Required</Badge>
+                                )}
+                              </div>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground truncate">{item.description}</p>
                               )}
                             </div>
-                            {item.description && (
-                              <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-                            )}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenEdit(item)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={() => setDeleteConfirmId(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleOpenEdit(item)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() => setDeleteConfirmId(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -316,7 +339,7 @@ export function DataRoomChecklistSettings() {
               <div className="text-center py-8 text-muted-foreground">Loading...</div>
             ) : categories.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <FileCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-lg font-medium">No categories yet</p>
                 <p className="text-muted-foreground mb-4">
                   Add categories to organize your checklist items.
@@ -328,39 +351,47 @@ export function DataRoomChecklistSettings() {
               </div>
             ) : (
               <div className="space-y-2">
-                {categories.map((category, index) => (
-                  <div
-                    key={category.id}
-                    draggable
-                    onDragStart={() => handleCategoryDragStart(index)}
-                    onDragOver={(e) => handleCategoryDragOver(e, index)}
-                    onDragEnd={handleCategoryDragEnd}
-                    className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors cursor-move"
-                  >
-                    <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <FolderOpen className="h-4 w-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium">{category.name}</span>
+                {categories.map((category, index) => {
+                  const colorClasses = getCategoryColorClasses(category.color);
+                  const IconComponent = getCategoryIcon(category.icon);
+                  
+                  return (
+                    <div
+                      key={category.id}
+                      draggable
+                      onDragStart={() => handleCategoryDragStart(index)}
+                      onDragOver={(e) => handleCategoryDragOver(e, index)}
+                      onDragEnd={handleCategoryDragEnd}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border hover:opacity-80 transition-all cursor-move",
+                        colorClasses.bgClass
+                      )}
+                    >
+                      <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <IconComponent className={cn("h-5 w-5 shrink-0", colorClasses.textClass)} />
+                      <div className="flex-1 min-w-0">
+                        <span className={cn("font-medium", colorClasses.textClass)}>{category.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEditCategory(category)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => setDeleteCategoryConfirmId(category.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenEditCategory(category)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => setDeleteCategoryConfirmId(category.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -404,11 +435,18 @@ export function DataRoomChecklistSettings() {
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryNames.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
+                  {categories.map((cat) => {
+                    const colorClasses = getCategoryColorClasses(cat.color);
+                    const IconComp = getCategoryIcon(cat.icon);
+                    return (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        <div className="flex items-center gap-2">
+                          <IconComp className={cn("h-4 w-4", colorClasses.textClass)} />
+                          <span>{cat.name}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -460,11 +498,11 @@ export function DataRoomChecklistSettings() {
           if (!open) {
             setIsAddCategoryDialogOpen(false);
             setEditingCategory(null);
-            setCategoryFormData({ name: '' });
+            setCategoryFormData({ name: '', icon: 'folder', color: 'gray' });
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingCategory ? 'Edit Category' : 'Add Category'}
@@ -476,8 +514,22 @@ export function DataRoomChecklistSettings() {
               <Input
                 id="categoryName"
                 value={categoryFormData.name}
-                onChange={(e) => setCategoryFormData({ name: e.target.value })}
+                onChange={(e) => setCategoryFormData(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Legal Documents"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Icon</Label>
+              <CategoryIconPicker 
+                value={categoryFormData.icon} 
+                onChange={(icon) => setCategoryFormData(prev => ({ ...prev, icon }))} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <CategoryColorPicker 
+                value={categoryFormData.color} 
+                onChange={(color) => setCategoryFormData(prev => ({ ...prev, color }))} 
               />
             </div>
           </div>
@@ -487,7 +539,7 @@ export function DataRoomChecklistSettings() {
               onClick={() => {
                 setIsAddCategoryDialogOpen(false);
                 setEditingCategory(null);
-                setCategoryFormData({ name: '' });
+                setCategoryFormData({ name: '', icon: 'folder', color: 'gray' });
               }}
             >
               Cancel

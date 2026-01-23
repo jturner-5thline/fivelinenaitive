@@ -828,8 +828,10 @@ export type Database = {
       }
       data_room_checklist_categories: {
         Row: {
+          color: string | null
           company_id: string | null
           created_at: string
+          icon: string | null
           id: string
           name: string
           position: number
@@ -837,8 +839,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          color?: string | null
           company_id?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           name: string
           position?: number
@@ -846,8 +850,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          color?: string | null
           company_id?: string | null
           created_at?: string
+          icon?: string | null
           id?: string
           name?: string
           position?: number
