@@ -16,9 +16,11 @@ export type TriggerType =
 
 export type ActionType = 
   | 'generate_insight'
+  | 'send_email'
+  | 'create_activity'
+  | 'update_deal'
   | 'send_notification'
-  | 'update_notes'
-  | 'create_activity';
+  | 'webhook';
 
 export interface AgentTrigger {
   id: string;
@@ -30,6 +32,10 @@ export interface AgentTrigger {
   trigger_config: Json;
   action_type: ActionType;
   action_config: Json;
+  schedule_cron: string | null;
+  schedule_timezone: string | null;
+  next_scheduled_at: string | null;
+  conditions: Json;
   last_triggered_at: string | null;
   trigger_count: number;
   created_at: string;
@@ -65,6 +71,9 @@ export interface CreateTriggerData {
   trigger_config?: Json;
   action_type?: ActionType;
   action_config?: Json;
+  schedule_cron?: string;
+  schedule_timezone?: string;
+  conditions?: Json;
   is_active?: boolean;
 }
 
@@ -139,6 +148,9 @@ export function useCreateAgentTrigger() {
         trigger_config: Json;
         action_type: string;
         action_config: Json;
+        schedule_cron: string | null;
+        schedule_timezone: string | null;
+        conditions: Json;
         is_active: boolean;
         user_id: string;
       } = {
@@ -148,6 +160,9 @@ export function useCreateAgentTrigger() {
         trigger_config: (data.trigger_config || {}) as Json,
         action_type: data.action_type || 'generate_insight',
         action_config: (data.action_config || {}) as Json,
+        schedule_cron: data.schedule_cron || null,
+        schedule_timezone: data.schedule_timezone || 'UTC',
+        conditions: (data.conditions || []) as Json,
         is_active: data.is_active ?? true,
         user_id: user.id,
       };
@@ -190,6 +205,9 @@ export function useUpdateAgentTrigger() {
       if (data.trigger_config !== undefined) updateData.trigger_config = data.trigger_config;
       if (data.action_type !== undefined) updateData.action_type = data.action_type;
       if (data.action_config !== undefined) updateData.action_config = data.action_config;
+      if (data.schedule_cron !== undefined) updateData.schedule_cron = data.schedule_cron;
+      if (data.schedule_timezone !== undefined) updateData.schedule_timezone = data.schedule_timezone;
+      if (data.conditions !== undefined) updateData.conditions = data.conditions;
 
       const { data: trigger, error } = await supabase
         .from('agent_triggers')

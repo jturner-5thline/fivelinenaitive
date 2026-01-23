@@ -173,6 +173,7 @@ export type Database = {
       }
       agent_runs: {
         Row: {
+          action_result: Json | null
           agent_id: string
           completed_at: string | null
           created_at: string
@@ -190,6 +191,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          action_result?: Json | null
           agent_id: string
           completed_at?: string | null
           created_at?: string
@@ -207,6 +209,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          action_result?: Json | null
           agent_id?: string
           completed_at?: string | null
           created_at?: string
@@ -254,16 +257,83 @@ export type Database = {
           },
         ]
       }
+      agent_templates: {
+        Row: {
+          avatar_emoji: string | null
+          can_access_activities: boolean | null
+          can_access_deals: boolean | null
+          can_access_lenders: boolean | null
+          can_access_milestones: boolean | null
+          can_search_web: boolean | null
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_featured: boolean | null
+          name: string
+          personality: string | null
+          suggested_triggers: Json | null
+          system_prompt: string
+          temperature: number | null
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          avatar_emoji?: string | null
+          can_access_activities?: boolean | null
+          can_access_deals?: boolean | null
+          can_access_lenders?: boolean | null
+          can_access_milestones?: boolean | null
+          can_search_web?: boolean | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_featured?: boolean | null
+          name: string
+          personality?: string | null
+          suggested_triggers?: Json | null
+          system_prompt: string
+          temperature?: number | null
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          avatar_emoji?: string | null
+          can_access_activities?: boolean | null
+          can_access_deals?: boolean | null
+          can_access_lenders?: boolean | null
+          can_access_milestones?: boolean | null
+          can_search_web?: boolean | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_featured?: boolean | null
+          name?: string
+          personality?: string | null
+          suggested_triggers?: Json | null
+          system_prompt?: string
+          temperature?: number | null
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       agent_triggers: {
         Row: {
           action_config: Json | null
           action_type: string
           agent_id: string
+          conditions: Json | null
           created_at: string
           id: string
           is_active: boolean | null
           last_triggered_at: string | null
           name: string
+          next_scheduled_at: string | null
+          schedule_cron: string | null
+          schedule_timezone: string | null
           trigger_config: Json | null
           trigger_count: number | null
           trigger_type: string
@@ -274,11 +344,15 @@ export type Database = {
           action_config?: Json | null
           action_type?: string
           agent_id: string
+          conditions?: Json | null
           created_at?: string
           id?: string
           is_active?: boolean | null
           last_triggered_at?: string | null
           name: string
+          next_scheduled_at?: string | null
+          schedule_cron?: string | null
+          schedule_timezone?: string | null
           trigger_config?: Json | null
           trigger_count?: number | null
           trigger_type: string
@@ -289,11 +363,15 @@ export type Database = {
           action_config?: Json | null
           action_type?: string
           agent_id?: string
+          conditions?: Json | null
           created_at?: string
           id?: string
           is_active?: boolean | null
           last_triggered_at?: string | null
           name?: string
+          next_scheduled_at?: string | null
+          schedule_cron?: string | null
+          schedule_timezone?: string | null
           trigger_config?: Json | null
           trigger_count?: number | null
           trigger_type?: string
@@ -4243,6 +4321,10 @@ export type Database = {
       admin_toggle_user_suspension: {
         Args: { _reason?: string; _suspend: boolean; _user_id: string }
         Returns: undefined
+      }
+      calculate_next_schedule: {
+        Args: { cron_expression: string; timezone?: string }
+        Returns: string
       }
       can_access_deal: {
         Args: { _deal_id: string; _user_id: string }

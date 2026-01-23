@@ -42,12 +42,13 @@ const TRIGGER_OPTIONS: { value: TriggerType; label: string; icon: React.ElementT
   { value: 'lender_added', label: 'Lender Added', icon: Building2, description: 'When a lender is added to a deal' },
   { value: 'lender_stage_change', label: 'Lender Stage Change', icon: Building2, description: 'When a lender status changes' },
   { value: 'milestone_completed', label: 'Milestone Completed', icon: Target, description: 'When a milestone is marked complete' },
+  { value: 'scheduled', label: 'Scheduled', icon: Zap, description: 'Run on a schedule (daily, weekly, etc.)' },
 ];
 
 const ACTION_OPTIONS: { value: ActionType; label: string; icon: React.ElementType; description: string }[] = [
   { value: 'generate_insight', label: 'Generate Insight', icon: Zap, description: 'Create an AI insight (stored in run history)' },
   { value: 'create_activity', label: 'Log Activity', icon: Activity, description: 'Add to deal activity timeline' },
-  { value: 'update_notes', label: 'Update Notes', icon: FileText, description: 'Append insight to deal notes' },
+  { value: 'update_deal', label: 'Update Deal', icon: FileText, description: 'Update deal fields automatically' },
   { value: 'send_notification', label: 'Send Notification', icon: Bell, description: 'Send in-app notification' },
 ];
 

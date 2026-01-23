@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Plus, Search, Users, Globe, Lock, Zap, History } from 'lucide-react';
+import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Sparkles } from 'lucide-react';
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent, useDuplicateAgent, type Agent, type CreateAgentData } from '@/hooks/useAgents';
 import { useAuth } from '@/contexts/AuthContext';
 import { AgentCard } from '@/components/agents/AgentCard';
@@ -15,6 +15,7 @@ import { AgentBuilder } from '@/components/agents/AgentBuilder';
 import { AgentTestChat } from '@/components/agents/AgentTestChat';
 import { AgentTriggersManager } from '@/components/agents/AgentTriggersManager';
 import { AgentRunsHistory } from '@/components/agents/AgentRunsHistory';
+import { AgentTemplatesGallery } from '@/components/agents/AgentTemplatesGallery';
 
 export default function Agents() {
   const { user } = useAuth();
@@ -143,9 +144,13 @@ export default function Agents() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
-          <TabsTrigger value="my-agents" className="gap-2">
+            <TabsTrigger value="my-agents" className="gap-2">
               <Lock className="h-4 w-4" />
               My Agents ({myAgents.length})
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Templates
             </TabsTrigger>
             <TabsTrigger value="team" className="gap-2">
               <Users className="h-4 w-4" />
@@ -163,6 +168,13 @@ export default function Agents() {
 
           <TabsContent value="my-agents" className="mt-6">
             {isLoading ? renderSkeleton() : renderAgentGrid(myAgents, true)}
+          </TabsContent>
+
+          <TabsContent value="templates" className="mt-6">
+            <AgentTemplatesGallery onSelectTemplate={(template) => {
+              setEditingAgent(null);
+              setIsBuilderOpen(true);
+            }} />
           </TabsContent>
 
           <TabsContent value="team" className="mt-6">
