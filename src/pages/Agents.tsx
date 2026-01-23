@@ -16,6 +16,8 @@ import { AgentTestChat } from '@/components/agents/AgentTestChat';
 import { AgentTriggersManager } from '@/components/agents/AgentTriggersManager';
 import { AgentRunsHistory } from '@/components/agents/AgentRunsHistory';
 import { AgentTemplatesGallery } from '@/components/agents/AgentTemplatesGallery';
+import { AgentSuggestionsPanel } from '@/components/agents/AgentSuggestionsPanel';
+import { type AgentSuggestion } from '@/hooks/useAgentSuggestions';
 
 export default function Agents() {
   const { user } = useAuth();
@@ -32,6 +34,7 @@ export default function Agents() {
   const [testingAgent, setTestingAgent] = useState<Agent | null>(null);
   const [deletingAgent, setDeletingAgent] = useState<Agent | null>(null);
   const [managingTriggersAgent, setManagingTriggersAgent] = useState<Agent | null>(null);
+  const [pendingSuggestion, setPendingSuggestion] = useState<AgentSuggestion | null>(null);
 
   const myAgents = agents?.filter(a => a.user_id === user?.id) || [];
   const sharedAgents = agents?.filter(a => a.is_shared && a.user_id !== user?.id) || [];
@@ -70,6 +73,12 @@ export default function Agents() {
 
   const handleDuplicate = async (agent: Agent) => {
     await duplicateAgent.mutateAsync(agent);
+  };
+
+  const handleCreateFromSuggestion = (suggestion: AgentSuggestion) => {
+    setPendingSuggestion(suggestion);
+    setEditingAgent(null);
+    setIsBuilderOpen(true);
   };
 
   const renderAgentGrid = (agentList: Agent[], isOwn: boolean) => {
@@ -166,7 +175,8 @@ export default function Agents() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="my-agents" className="mt-6">
+          <TabsContent value="my-agents" className="mt-6 space-y-6">
+            <AgentSuggestionsPanel onCreateAgent={handleCreateFromSuggestion} />
             {isLoading ? renderSkeleton() : renderAgentGrid(myAgents, true)}
           </TabsContent>
 
@@ -204,11 +214,29 @@ export default function Agents() {
             </DialogTitle>
           </DialogHeader>
           <AgentBuilder
-            initialData={editingAgent || undefined}
+            initialData={editingAgent || (pendingSuggestion ? {
+              id: '',
+              user_id: user?.id || '',
+              name: pendingSuggestion.name,
+              description: pendingSuggestion.description,
+              system_prompt: pendingSuggestion.suggested_prompt || '',
+              personality: 'professional',
+              avatar_emoji: '🤖',
+              temperature: 0.7,
+              is_shared: false,
+              is_public: false,
+              can_access_deals: true,
+              can_access_lenders: true,
+              can_access_activities: true,
+              can_access_milestones: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as Agent : undefined)}
             onSave={handleSave}
             onCancel={() => {
               setIsBuilderOpen(false);
               setEditingAgent(null);
+              setPendingSuggestion(null);
             }}
             isSaving={createAgent.isPending || updateAgent.isPending}
           />
