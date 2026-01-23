@@ -67,7 +67,7 @@ export interface DealWriteUpData {
   dataRoomUrl: string;
   industry: string;
   location: string;
-  dealType: string;
+  dealTypes: string[];
   billingModel: string;
   profitability: string;
   grossMargins: string;
@@ -99,7 +99,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   dataRoomUrl: '',
   industry: '',
   location: '',
-  dealType: deal?.dealTypes?.[0] || '',
+  dealTypes: deal?.dealTypes || [],
   billingModel: '',
   profitability: '',
   grossMargins: '',
@@ -353,7 +353,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     dataRoomUrl: data.dataRoomUrl,
     industry: data.industry,
     location: data.location,
-    dealType: data.dealType,
+    dealType: data.dealTypes.join(', '),
     billingModel: data.billingModel,
     profitability: data.profitability,
     grossMargins: data.grossMargins,
@@ -845,16 +845,51 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="dealType">Deal Type *</Label>
-              <Select value={data.dealType} onValueChange={(v) => updateField('dealType', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select deal type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DEAL_TYPE_OPTIONS.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                  >
+                    {data.dealTypes.length > 0
+                      ? data.dealTypes.length === 1
+                        ? data.dealTypes[0]
+                        : `${data.dealTypes.length} types selected`
+                      : "Select deal types"}
+                    <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0 bg-popover border z-50" align="start">
+                  <div className="p-2 space-y-1">
+                    {DEAL_TYPE_OPTIONS.map(option => (
+                      <div
+                        key={option}
+                        className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
+                        onClick={() => {
+                          const newTypes = data.dealTypes.includes(option)
+                            ? data.dealTypes.filter(t => t !== option)
+                            : [...data.dealTypes, option];
+                          updateField('dealTypes', newTypes);
+                        }}
+                      >
+                        <Checkbox
+                          checked={data.dealTypes.includes(option)}
+                          onCheckedChange={(checked) => {
+                            const newTypes = checked
+                              ? [...data.dealTypes, option]
+                              : data.dealTypes.filter(t => t !== option);
+                            updateField('dealTypes', newTypes);
+                          }}
+                        />
+                        <span className="text-sm">{option}</span>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label htmlFor="billingModel">Billing Model *</Label>
@@ -1346,7 +1381,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               <div className="rounded-lg border bg-muted/30 p-4">
                 <h4 className="font-semibold text-sm mb-3">Deal Details</h4>
                 <div className="space-y-1">
-                  <DataPreviewRow label="Deal Type" value={data.dealType} />
+                  <DataPreviewRow label="Deal Type" value={data.dealTypes.join(', ') || '—'} />
                   <DataPreviewRow label="Capital Ask" value={data.capitalAsk} />
                   <DataPreviewRow label="Status" value={data.status} />
                   <DataPreviewRow label="Billing Model" value={data.billingModel} />
