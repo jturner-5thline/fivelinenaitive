@@ -2,12 +2,21 @@ import * as React from "react";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
   children: React.ReactNode;
+  /** Optional override for the main content container (defaults to bg-card). */
+  mainClassName?: string;
 }
 
-function MainContent({ children }: { children: React.ReactNode }) {
+function MainContent({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   const { state, setOpen, isMobile } = useSidebar();
 
   const handleMainClick = () => {
@@ -19,7 +28,10 @@ function MainContent({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      className="min-h-0 flex-1 flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-auto"
+      className={cn(
+        "min-h-0 flex-1 flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-auto",
+        className,
+      )}
       onClick={handleMainClick}
     >
       {children}
@@ -50,13 +62,13 @@ function BodyScrollLock() {
   return null;
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
       <BodyScrollLock />
       <div className="flex w-full h-full min-h-0 bg-muted/30 p-2 gap-1">
         <AppSidebar />
-        <MainContent>{children}</MainContent>
+        <MainContent className={mainClassName}>{children}</MainContent>
       </div>
       <FeedbackWidget />
     </SidebarProvider>
