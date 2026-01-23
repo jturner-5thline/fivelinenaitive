@@ -11,7 +11,7 @@ import { Sparkles } from 'lucide-react';
 
 export default function Research() {
   return (
-    <AppLayout>
+    <AppLayout mainClassName="bg-background">
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
           <Sparkles className="h-8 w-8 text-primary" />
