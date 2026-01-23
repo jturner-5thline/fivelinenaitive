@@ -1,29 +1,14 @@
-import { useState, useRef, useMemo } from 'react';
-import { Plus, Trash2, Check, Loader2, Clock, AlertCircle, CalendarIcon, Send, Eye, CloudOff, RefreshCw, Settings2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FlexSyncStatusBadge, FlexSyncHistory } from '@/components/deal/FlexSyncHistory';
 import { useLatestFlexSync } from '@/hooks/useFlexSyncHistory';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,28 +22,11 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { AutoSaveStatus } from '@/hooks/useAutoSave';
-import { useWriteUpFieldOrder, WriteUpFieldId, WRITEUP_FIELD_CONFIG } from '@/hooks/useWriteUpFieldOrder';
-import { WriteUpFieldReorderDialog } from '@/components/deal/WriteUpFieldReorderDialog';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { WriteUpCompanyOverviewTab } from './writeup/WriteUpCompanyOverviewTab';
+import { WriteUpFinancialTab } from './writeup/WriteUpFinancialTab';
+import { WriteUpCompanyHighlightsTab } from './writeup/WriteUpCompanyHighlightsTab';
+import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
 
 export interface KeyItem {
   id: string;
@@ -263,30 +231,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const pendingPublishToastIdRef = useRef<string | number | null>(null);
   const { data: latestSync } = useLatestFlexSync(dealId);
   
-  // Field ordering
-  const { 
-    fieldOrder, 
-    isReorderDialogOpen, 
-    setIsReorderDialogOpen, 
-    reorderFields, 
-    resetToDefault 
-  } = useWriteUpFieldOrder();
-  
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-  
-  const handleFieldDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = fieldOrder.indexOf(active.id as WriteUpFieldId);
-      const newIndex = fieldOrder.indexOf(over.id as WriteUpFieldId);
-      reorderFields(arrayMove(fieldOrder, oldIndex, newIndex));
-    }
-  };
   
   // Check if currently published on FLEx
   const isPublishedOnFlex = latestSync?.status === 'success';
@@ -811,574 +755,36 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         {/* FLEx Sync History */}
         <FlexSyncHistory dealId={dealId} />
         
-        {/* Edit Deal Section */}
+        {/* Edit Deal Section with Tabs */}
         <div className="border rounded-lg p-6 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Edit Deal</h3>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setIsReorderDialogOpen(true)}
-              className="gap-2"
-            >
-              <Settings2 className="h-4 w-4" />
-              Customize Fields
-            </Button>
           </div>
           
-          {/* Company Name & URL Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Company Name *</Label>
-              <Input
-                id="companyName"
-                value={data.companyName}
-                onChange={(e) => updateField('companyName', e.target.value)}
-                placeholder="TechFlow Solutions"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="companyUrl">Company URL</Label>
-              <Input
-                id="companyUrl"
-                value={data.companyUrl}
-                onChange={(e) => updateField('companyUrl', e.target.value)}
-                placeholder="example.com"
-              />
-            </div>
-          </div>
-
-          {/* LinkedIn Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
-              <Input
-                id="linkedinUrl"
-                value={data.linkedinUrl}
-                onChange={(e) => updateField('linkedinUrl', e.target.value)}
-                placeholder="linkedin.com/company/..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Location *</Label>
-              <Select value={data.location} onValueChange={(v) => updateField('location', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {LOCATION_OPTIONS.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Industry Row - Multi-select */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="industry">Industry *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between font-normal"
-                  >
-                    {data.industries.length > 0
-                      ? data.industries.length === 1
-                        ? data.industries[0]
-                        : `${data.industries.length} industries selected`
-                      : "Select industries"}
-                    <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0 bg-popover border z-50" align="start">
-                  <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
-                    {INDUSTRY_OPTIONS.map(option => (
-                      <div
-                        key={option}
-                        className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
-                        onClick={() => {
-                          const newIndustries = data.industries.includes(option)
-                            ? data.industries.filter(i => i !== option)
-                            : [...data.industries, option];
-                          updateField('industries', newIndustries);
-                        }}
-                      >
-                        <Checkbox
-                          checked={data.industries.includes(option)}
-                          onCheckedChange={(checked) => {
-                            const newIndustries = checked
-                              ? [...data.industries, option]
-                              : data.industries.filter(i => i !== option);
-                            updateField('industries', newIndustries);
-                          }}
-                        />
-                        <span className="text-sm">{option}</span>
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="yearFounded">Year Founded</Label>
-              <Input
-                id="yearFounded"
-                value={data.yearFounded}
-                onChange={(e) => {
-                  // Only allow numeric input, max 4 digits
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                  updateField('yearFounded', value);
-                }}
-                placeholder="e.g., 2015"
-                maxLength={4}
-                inputMode="numeric"
-                pattern="[0-9]*"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="headcount">Headcount</Label>
-              <Input
-                id="headcount"
-                value={data.headcount}
-                onChange={(e) => {
-                  // Only allow numeric input, max 4 digits
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                  updateField('headcount', value);
-                }}
-                placeholder="e.g., 150"
-                maxLength={4}
-                inputMode="numeric"
-                pattern="[0-9]*"
-              />
-            </div>
-          </div>
-
-          {/* Deal Type & Billing Model Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="dealType">Deal Type *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between font-normal"
-                  >
-                    {data.dealTypes.length > 0
-                      ? data.dealTypes.length === 1
-                        ? data.dealTypes[0]
-                        : `${data.dealTypes.length} types selected`
-                      : "Select deal types"}
-                    <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0 bg-popover border z-50" align="start">
-                  <div className="p-2 space-y-1">
-                    {DEAL_TYPE_OPTIONS.map(option => (
-                      <div
-                        key={option}
-                        className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
-                        onClick={() => {
-                          const newTypes = data.dealTypes.includes(option)
-                            ? data.dealTypes.filter(t => t !== option)
-                            : [...data.dealTypes, option];
-                          updateField('dealTypes', newTypes);
-                        }}
-                      >
-                        <Checkbox
-                          checked={data.dealTypes.includes(option)}
-                          onCheckedChange={(checked) => {
-                            const newTypes = checked
-                              ? [...data.dealTypes, option]
-                              : data.dealTypes.filter(t => t !== option);
-                            updateField('dealTypes', newTypes);
-                          }}
-                        />
-                        <span className="text-sm">{option}</span>
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="billingModel">Billing Model *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between font-normal"
-                  >
-                    {data.billingModels.length > 0
-                      ? data.billingModels.length === 1
-                        ? data.billingModels[0]
-                        : `${data.billingModels.length} models selected`
-                      : "Select billing models"}
-                    <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0 bg-popover border z-50" align="start">
-                  <div className="p-2 space-y-1">
-                    {BILLING_MODEL_OPTIONS.map(option => (
-                      <div
-                        key={option}
-                        className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
-                        onClick={() => {
-                          const newModels = data.billingModels.includes(option)
-                            ? data.billingModels.filter(m => m !== option)
-                            : [...data.billingModels, option];
-                          updateField('billingModels', newModels);
-                        }}
-                      >
-                        <Checkbox
-                          checked={data.billingModels.includes(option)}
-                          onCheckedChange={(checked) => {
-                            const newModels = checked
-                              ? [...data.billingModels, option]
-                              : data.billingModels.filter(m => m !== option);
-                            updateField('billingModels', newModels);
-                          }}
-                        />
-                        <span className="text-sm">{option}</span>
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          {/* Profitability & Gross Margins Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="profitability">Profitability *</Label>
-              <Select value={data.profitability} onValueChange={(v) => updateField('profitability', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select profitability" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROFITABILITY_OPTIONS.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="grossMargins">Gross Margins *</Label>
-              <Input
-                id="grossMargins"
-                value={data.grossMargins}
-                onChange={(e) => updateField('grossMargins', e.target.value)}
-                onBlur={(e) => updateField('grossMargins', formatPercentage(e.target.value))}
-                placeholder="75%"
-              />
-            </div>
-          </div>
-
-          {/* Capital Ask & Financial Data As Of Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="capitalAsk">Capital Ask *</Label>
-              <Input
-                id="capitalAsk"
-                value={data.capitalAsk}
-                onChange={(e) => updateField('capitalAsk', e.target.value)}
-                onBlur={(e) => updateField('capitalAsk', formatCurrency(e.target.value))}
-                placeholder="$2.5M"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="financialDataAsOf">Financial Data As Of</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !data.financialDataAsOf && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {data.financialDataAsOf ? format(data.financialDataAsOf, 'PPP') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={data.financialDataAsOf ?? undefined}
-                    onSelect={(date) => updateField('financialDataAsOf', date ?? null)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          {/* Accounting System & Status Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="accountingSystem">Accounting System</Label>
-              <Select value={data.accountingSystem} onValueChange={(v) => updateField('accountingSystem', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select accounting system" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCOUNTING_SYSTEM_OPTIONS.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={data.status} onValueChange={(v) => updateField('status', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map(option => (
-                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Use of Funds */}
-          <div className="space-y-2">
-            <Label htmlFor="useOfFunds">Use of Funds</Label>
-            <Textarea
-              id="useOfFunds"
-              value={data.useOfFunds}
-              onChange={(e) => updateField('useOfFunds', e.target.value)}
-              placeholder="Expand sales team and accelerate product development for enterprise features."
-              className="min-h-[80px]"
-            />
-          </div>
-
-          {/* Existing Debt Details */}
-          <div className="space-y-2">
-            <Label htmlFor="existingDebtDetails">Existing Debt Details</Label>
-            <Textarea
-              id="existingDebtDetails"
-              value={data.existingDebtDetails}
-              onChange={(e) => updateField('existingDebtDetails', e.target.value)}
-              placeholder="Lender: Silicon Valley Bank&#10;Amount: $500,000&#10;Terms: 3-year term loan at 8.5% APR&#10;Maturity: March 2024"
-              className="min-h-[100px]"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
-            <Textarea
-              id="description"
-              value={data.description}
-              onChange={(e) => updateField('description', e.target.value)}
-              placeholder="Enterprise SaaS platform for workflow automation with strong recurring revenue and expanding customer base."
-              className="min-h-[80px]"
-            />
-          </div>
-
-          {/* Company Highlights Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Company Highlights</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Key differentiators and strengths of the company</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={addCompanyHighlight}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Highlight
-              </Button>
-            </div>
+          <Tabs defaultValue="company-overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="company-overview">Company Overview</TabsTrigger>
+              <TabsTrigger value="financial">Financial</TabsTrigger>
+              <TabsTrigger value="highlights">Company Highlights</TabsTrigger>
+              <TabsTrigger value="key-items">Key Items</TabsTrigger>
+            </TabsList>
             
-            {data.companyHighlights.map((item) => (
-              <div key={item.id} className="border rounded-lg p-4 space-y-3 relative bg-muted/30">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteCompanyHighlight(item.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                <div className="space-y-2 pr-10">
-                  <Label>Title</Label>
-                  <Input
-                    value={item.title}
-                    onChange={(e) => updateCompanyHighlight(item.id, 'title', e.target.value)}
-                    placeholder="Exclusive Importer Status"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={item.description}
-                    onChange={(e) => updateCompanyHighlight(item.id, 'description', e.target.value)}
-                    placeholder="Sole U.S. importer for premium brand portfolio..."
-                    className="min-h-[60px]"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Financial Commentary Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base font-semibold">Financial Commentary</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Historical and projected financial performance by year</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={addFinancialYear}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Year
-              </Button>
-            </div>
+            <TabsContent value="company-overview" className="mt-6">
+              <WriteUpCompanyOverviewTab data={data} updateField={updateField} />
+            </TabsContent>
             
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[120px]">Year</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Total Revenue</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[100px]">Rev. Growth</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Gross Margin</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">EBITDA</th>
-                    <th className="w-12 py-3 px-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.financialYears.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-muted-foreground text-sm">
-                        No financial years added yet. Click "Add Year" to get started.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.financialYears.map((item, index) => (
-                      <tr key={item.id} className={cn("border-b last:border-0", index % 2 === 1 && "bg-muted/20")}>
-                        <td className="py-2 px-4">
-                          <Input
-                            value={item.year}
-                            onChange={(e) => updateFinancialYear(item.id, 'year', e.target.value)}
-                            placeholder="2024"
-                            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-medium"
-                          />
-                        </td>
-                        <td className="py-2 px-4">
-                          <Input
-                            value={item.revenue}
-                            onChange={(e) => updateFinancialYear(item.id, 'revenue', e.target.value)}
-                            placeholder="$24.72MM"
-                            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                        </td>
-                        <td className="py-2 px-4">
-                          {(() => {
-                            const growth = calculateRevenueGrowth(index);
-                            if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
-                            const isPositive = growth.startsWith('+');
-                            const isNegative = growth.startsWith('-');
-                            return (
-                              <span className={cn(
-                                "text-sm font-medium",
-                                isPositive && "text-green-600 dark:text-green-500",
-                                isNegative && "text-red-600 dark:text-red-500"
-                              )}>
-                                {growth}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                        <td className="py-2 px-4">
-                          <Input
-                            value={item.gross_margin}
-                            onChange={(e) => updateFinancialYear(item.id, 'gross_margin', e.target.value)}
-                            placeholder="53%"
-                            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                        </td>
-                        <td className="py-2 px-4">
-                          <Input
-                            value={item.ebitda}
-                            onChange={(e) => updateFinancialYear(item.id, 'ebitda', e.target.value)}
-                            placeholder="$903k"
-                            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => deleteFinancialYear(item.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Key Items Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Key Items</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Additional notes and considerations</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={addKeyItem}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Key Item
-              </Button>
-            </div>
+            <TabsContent value="financial" className="mt-6">
+              <WriteUpFinancialTab data={data} updateField={updateField} />
+            </TabsContent>
             
-            {data.keyItems.map((item) => (
-              <div key={item.id} className="border rounded-lg p-4 space-y-3 relative">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteKeyItem(item.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                <div className="space-y-2 pr-10">
-                  <Label>Title</Label>
-                  <Input
-                    value={item.title}
-                    onChange={(e) => updateKeyItem(item.id, 'title', e.target.value)}
-                    placeholder="Strong Market Position"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={item.description}
-                    onChange={(e) => updateKeyItem(item.id, 'description', e.target.value)}
-                    placeholder="Leading SaaS provider in workflow automation with 150+ enterprise clients."
-                    className="min-h-[60px]"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+            <TabsContent value="highlights" className="mt-6">
+              <WriteUpCompanyHighlightsTab data={data} updateField={updateField} />
+            </TabsContent>
+            
+            <TabsContent value="key-items" className="mt-6">
+              <WriteUpKeyItemsTab data={data} updateField={updateField} />
+            </TabsContent>
+          </Tabs>
 
           {/* Publish as Anonymous */}
           <div className="flex items-start space-x-3 border-t pt-4">
@@ -1655,14 +1061,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Field Reorder Dialog */}
-      <WriteUpFieldReorderDialog
-        open={isReorderDialogOpen}
-        onOpenChange={setIsReorderDialogOpen}
-        fieldOrder={fieldOrder}
-        onReorder={reorderFields}
-        onReset={resetToDefault}
-      />
     </Card>
   );
 };
