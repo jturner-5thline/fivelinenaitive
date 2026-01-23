@@ -1002,11 +1002,11 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             ))}
           </div>
 
-          {/* Financial Years Section */}
+          {/* Financial Commentary Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label>Financial Years</Label>
+                <Label className="text-base font-semibold">Financial Commentary</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">Historical and projected financial performance by year</p>
               </div>
               <Button variant="outline" size="sm" onClick={addFinancialYear}>
@@ -1015,71 +1015,75 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               </Button>
             </div>
             
-            {data.financialYears.length > 0 && (
-              <div className="border rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left p-3 font-medium">Year</th>
-                        <th className="text-left p-3 font-medium">Revenue</th>
-                        <th className="text-left p-3 font-medium">Gross Margin</th>
-                        <th className="text-left p-3 font-medium">EBITDA</th>
-                        <th className="w-10 p-3"></th>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[120px]">Year</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Total Revenue</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Gross Margin</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">EBITDA</th>
+                    <th className="w-12 py-3 px-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.financialYears.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">
+                        No financial years added yet. Click "Add Year" to get started.
+                      </td>
+                    </tr>
+                  ) : (
+                    data.financialYears.map((item, index) => (
+                      <tr key={item.id} className={cn("border-b last:border-0", index % 2 === 1 && "bg-muted/20")}>
+                        <td className="py-2 px-4">
+                          <Input
+                            value={item.year}
+                            onChange={(e) => updateFinancialYear(item.id, 'year', e.target.value)}
+                            placeholder="2024"
+                            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-medium"
+                          />
+                        </td>
+                        <td className="py-2 px-4">
+                          <Input
+                            value={item.revenue}
+                            onChange={(e) => updateFinancialYear(item.id, 'revenue', e.target.value)}
+                            placeholder="$24.72MM"
+                            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </td>
+                        <td className="py-2 px-4">
+                          <Input
+                            value={item.gross_margin}
+                            onChange={(e) => updateFinancialYear(item.id, 'gross_margin', e.target.value)}
+                            placeholder="53%"
+                            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </td>
+                        <td className="py-2 px-4">
+                          <Input
+                            value={item.ebitda}
+                            onChange={(e) => updateFinancialYear(item.id, 'ebitda', e.target.value)}
+                            placeholder="$903k"
+                            className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </td>
+                        <td className="py-2 px-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteFinancialYear(item.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {data.financialYears.map((item) => (
-                        <tr key={item.id} className="border-b last:border-0">
-                          <td className="p-2">
-                            <Input
-                              value={item.year}
-                              onChange={(e) => updateFinancialYear(item.id, 'year', e.target.value)}
-                              placeholder="2024"
-                              className="h-9"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              value={item.revenue}
-                              onChange={(e) => updateFinancialYear(item.id, 'revenue', e.target.value)}
-                              placeholder="$24.7MM"
-                              className="h-9"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              value={item.gross_margin}
-                              onChange={(e) => updateFinancialYear(item.id, 'gross_margin', e.target.value)}
-                              placeholder="53%"
-                              className="h-9"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              value={item.ebitda}
-                              onChange={(e) => updateFinancialYear(item.id, 'ebitda', e.target.value)}
-                              placeholder="$903k"
-                              className="h-9"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => deleteFinancialYear(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Key Items Section */}
