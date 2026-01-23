@@ -430,7 +430,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       }
       onOpenChange(newOpen);
     }}>
-      <DialogContent className="max-w-2xl max-h-[85vh]">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
           <DialogTitle className="flex items-center gap-2 text-xl">
             {lender.tier && (
@@ -537,7 +537,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(85vh-100px)] pr-4">
+        <ScrollArea className="flex-1 pr-4">
           <div className="space-y-6">
             {/* Edit Mode: Description/Notes */}
             {isEditMode ? (
