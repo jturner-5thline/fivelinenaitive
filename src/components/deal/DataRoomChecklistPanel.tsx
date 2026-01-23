@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X, CheckCheck, Square, List, LayoutGrid } from 'lucide-react';
+import { useMemo, useState, useCallback } from 'react';
+import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X, CheckCheck, Square, List, LayoutGrid, Upload } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,8 +28,10 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDataRoomChecklist, useDealChecklistStatus, ChecklistItem } from '@/hooks/useDataRoomChecklist';
 import { useChecklistCategories, getCategoryColorClasses } from '@/hooks/useChecklistCategories';
+import { useDealAttachments } from '@/hooks/useDealAttachments';
 import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
 import { DataRoomGridView } from './DataRoomGridView';
+import { ChecklistItemDropzone } from './ChecklistItemDropzone';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -96,8 +98,9 @@ export function DataRoomChecklistPanel({
   onLinkAttachment 
 }: DataRoomChecklistPanelProps) {
   const { items: checklistItems, loading: loadingItems } = useDataRoomChecklist();
-  const { statuses, toggleItemStatus, unlinkAttachment } = useDealChecklistStatus(dealId);
+  const { statuses, toggleItemStatus, unlinkAttachment, linkAttachment } = useDealChecklistStatus(dealId);
   const { categories: categoryConfigs, getCategoryByName } = useChecklistCategories();
+  const { uploadAttachment, refetch: refetchAttachments } = useDealAttachments(dealId);
   
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -109,6 +112,9 @@ export function DataRoomChecklistPanel({
   // Bulk selection state
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
+  
+  // Uploading state
+  const [uploadingItems, setUploadingItems] = useState<Set<string>>(new Set());
 
   const statusMap = useMemo(() => {
     const map = new Map<string, { isComplete: boolean; attachmentId: string | null }>();
@@ -196,6 +202,37 @@ export function DataRoomChecklistPanel({
   const handleUnlink = async (itemId: string) => {
     await unlinkAttachment(itemId);
   };
+
+  // Handle file drop on a checklist item
+  const handleFileDrop = useCallback(async (itemId: string, files: File[]) => {
+    if (files.length === 0) return;
+    
+    // Only process the first file for simplicity
+    const file = files[0];
+    
+    setUploadingItems(prev => new Set(prev).add(itemId));
+    
+    try {
+      // Upload the file to deal attachments
+      const attachment = await uploadAttachment(file, 'materials');
+      
+      if (attachment) {
+        // Link the attachment to the checklist item and mark as complete
+        await linkAttachment(itemId, attachment.id);
+        await refetchAttachments();
+        toast.success(`Uploaded "${file.name}" and checked off item`);
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error(`Failed to upload "${file.name}"`);
+    } finally {
+      setUploadingItems(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  }, [uploadAttachment, linkAttachment, refetchAttachments]);
 
   const toggleCategoryFilter = (category: string) => {
     setSelectedCategories(prev => 
@@ -477,9 +514,11 @@ export function DataRoomChecklistPanel({
           onToggle={handleToggle}
           onLinkAttachment={onLinkAttachment}
           onUnlink={handleUnlink}
+          onFileDrop={handleFileDrop}
           bulkMode={bulkMode}
           selectedItems={selectedItems}
           onToggleItemSelection={toggleItemSelection}
+          uploadingItems={uploadingItems}
         />
       )}
 
@@ -529,91 +568,107 @@ export function DataRoomChecklistPanel({
                       const isComplete = status?.isComplete ?? false;
                       const linkedAttachment = getLinkedAttachment(status?.attachmentId ?? null);
                       const isSelected = selectedItems.has(item.id);
+                      const isUploading = uploadingItems.has(item.id);
 
                       return (
-                        <div
+                        <ChecklistItemDropzone
                           key={item.id}
-                          className={cn(
-                            "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-                            isComplete 
-                              ? "bg-green-500/5 border-green-500/20" 
-                              : "bg-card hover:bg-muted/30",
-                            bulkMode && isSelected && "ring-2 ring-primary"
-                          )}
+                          onFileDrop={(files) => handleFileDrop(item.id, files)}
+                          disabled={bulkMode || isUploading}
+                          className="rounded-lg"
                         >
-                          {bulkMode ? (
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() => toggleItemSelection(item.id)}
-                              className="mt-0.5"
-                            />
-                          ) : (
-                            <Checkbox
-                              checked={isComplete}
-                              onCheckedChange={() => handleToggle(item.id, isComplete)}
-                              className="mt-0.5"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className={cn(
-                                "font-medium text-sm",
-                                isComplete && "text-muted-foreground line-through"
-                              )}>
-                                {item.name}
-                              </span>
-                              {item.is_required && (
-                                <Badge variant="secondary" className="text-xs">Required</Badge>
+                          <div
+                            className={cn(
+                              "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                              isComplete 
+                                ? "bg-green-500/5 border-green-500/20" 
+                                : "bg-card hover:bg-muted/30",
+                              bulkMode && isSelected && "ring-2 ring-primary",
+                              isUploading && "opacity-70"
+                            )}
+                          >
+                            {bulkMode ? (
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleItemSelection(item.id)}
+                                className="mt-0.5"
+                              />
+                            ) : isUploading ? (
+                              <div className="mt-0.5 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                            ) : (
+                              <Checkbox
+                                checked={isComplete}
+                                onCheckedChange={() => handleToggle(item.id, isComplete)}
+                                className="mt-0.5"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "font-medium text-sm",
+                                  isComplete && "text-muted-foreground line-through"
+                                )}>
+                                  {item.name}
+                                </span>
+                                {item.is_required && (
+                                  <Badge variant="secondary" className="text-xs">Required</Badge>
+                                )}
+                                {isComplete && !bulkMode && !isUploading && (
+                                  <Check className="h-3.5 w-3.5 text-green-500" />
+                                )}
+                                {isUploading && (
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    <Upload className="h-3 w-3" />
+                                    Uploading...
+                                  </Badge>
+                                )}
+                              </div>
+                              {item.description && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <p className="text-xs text-muted-foreground truncate cursor-help mt-0.5">
+                                      {item.description}
+                                    </p>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="max-w-xs">
+                                    {item.description}
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
-                              {isComplete && !bulkMode && (
-                                <Check className="h-3.5 w-3.5 text-green-500" />
+                              {linkedAttachment && (
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Badge variant="outline" className="gap-1 text-xs">
+                                    <Link2 className="h-3 w-3" />
+                                    {linkedAttachment.name}
+                                  </Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => handleUnlink(item.id)}
+                                  >
+                                    <Unlink className="h-3 w-3" />
+                                  </Button>
+                                </div>
                               )}
                             </div>
-                            {item.description && (
+                            {!bulkMode && !isUploading && onLinkAttachment && !linkedAttachment && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <p className="text-xs text-muted-foreground truncate cursor-help mt-0.5">
-                                    {item.description}
-                                  </p>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 shrink-0"
+                                    onClick={() => onLinkAttachment(item.id)}
+                                  >
+                                    <Link2 className="h-4 w-4" />
+                                  </Button>
                                 </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-xs">
-                                  {item.description}
-                                </TooltipContent>
+                                <TooltipContent>Link attachment</TooltipContent>
                               </Tooltip>
                             )}
-                            {linkedAttachment && (
-                              <div className="flex items-center gap-2 mt-2">
-                                <Badge variant="outline" className="gap-1 text-xs">
-                                  <Link2 className="h-3 w-3" />
-                                  {linkedAttachment.name}
-                                </Badge>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5"
-                                  onClick={() => handleUnlink(item.id)}
-                                >
-                                  <Unlink className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
                           </div>
-                          {!bulkMode && onLinkAttachment && !linkedAttachment && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 shrink-0"
-                                  onClick={() => onLinkAttachment(item.id)}
-                                >
-                                  <Link2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Link attachment</TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
+                        </ChecklistItemDropzone>
                       );
                     })}
                   </CollapsibleContent>
