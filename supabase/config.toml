@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.suggest-workflows]
 verify_jwt = true
+
+[functions.naitive-flex-sync]
+verify_jwt = false
