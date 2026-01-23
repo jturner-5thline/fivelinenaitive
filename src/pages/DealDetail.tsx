@@ -2690,7 +2690,7 @@ export default function DealDetail() {
                               industry: dealWriteUpData.industry || undefined,
                               dealValue: deal.value || undefined,
                               capitalAsk: dealWriteUpData.capitalAsk || undefined,
-                              dealTypes: deal.dealTypes || (dealWriteUpData.dealType ? [dealWriteUpData.dealType] : undefined),
+                              dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
                               geo: dealWriteUpData.location || undefined,
                             }}
                             existingLenderNames={deal.lenders?.map(l => l.name) || []}
@@ -3406,7 +3406,7 @@ export default function DealDetail() {
                           industry: dealWriteUpData.industry || undefined,
                           dealValue: deal.value || undefined,
                           capitalAsk: dealWriteUpData.capitalAsk || undefined,
-                          dealTypes: deal.dealTypes || (dealWriteUpData.dealType ? [dealWriteUpData.dealType] : undefined),
+                          dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
                           geo: dealWriteUpData.location || undefined,
                         }}
                         existingLenderNames={deal.lenders?.map(l => l.name) || []}
