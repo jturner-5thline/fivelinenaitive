@@ -131,10 +131,10 @@ export function LenderSuggestionsPanel({
             </div>
             {!showSurvey && (
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={handleOpenSurvey}
-                className="gap-1.5"
+                className="gap-1.5 bg-primary/90 hover:bg-primary"
               >
                 <ClipboardList className="h-3.5 w-3.5" />
                 Refine Criteria
@@ -249,10 +249,10 @@ export function LenderSuggestionsFAB({
             </div>
             {!showSurvey && (
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={() => setShowSurvey(true)}
-                className="gap-1.5"
+                className="gap-1.5 bg-primary/90 hover:bg-primary"
               >
                 <ClipboardList className="h-3.5 w-3.5" />
                 Refine Criteria
