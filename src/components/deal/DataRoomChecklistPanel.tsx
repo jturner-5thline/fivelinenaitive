@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,7 +14,17 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useDataRoomChecklist, useDealChecklistStatus, ChecklistItem } from '@/hooks/useDataRoomChecklist';
+import { useChecklistCategories, getCategoryColorClasses } from '@/hooks/useChecklistCategories';
+import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
 import { cn } from '@/lib/utils';
 
 interface CircularProgressProps {
@@ -79,6 +89,10 @@ export function DataRoomChecklistPanel({
 }: DataRoomChecklistPanelProps) {
   const { items: checklistItems, loading: loadingItems } = useDataRoomChecklist();
   const { statuses, toggleItemStatus, unlinkAttachment } = useDealChecklistStatus(dealId);
+  const { categories: categoryConfigs, getCategoryByName } = useChecklistCategories();
+  
+  // Category filter state
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const statusMap = useMemo(() => {
     const map = new Map<string, { isComplete: boolean; attachmentId: string | null }>();
@@ -90,6 +104,25 @@ export function DataRoomChecklistPanel({
     });
     return map;
   }, [statuses]);
+
+  // Get all unique categories from items
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    checklistItems.forEach(item => {
+      cats.add(item.category || 'Other');
+    });
+    return Array.from(cats).sort((a, b) => 
+      a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b)
+    );
+  }, [checklistItems]);
+
+  // Filter items by selected categories
+  const filteredItems = useMemo(() => {
+    if (selectedCategories.length === 0) return checklistItems;
+    return checklistItems.filter(item => 
+      selectedCategories.includes(item.category || 'Other')
+    );
+  }, [checklistItems, selectedCategories]);
 
   const completedCount = checklistItems.filter(item => 
     statusMap.get(item.id)?.isComplete
@@ -108,15 +141,15 @@ export function DataRoomChecklistPanel({
     ? Math.round((completedRequiredCount / requiredItems.length) * 100)
     : 100;
 
-  // Group items by category
+  // Group filtered items by category
   const groupedItems = useMemo(() => {
-    return checklistItems.reduce((acc, item) => {
+    return filteredItems.reduce((acc, item) => {
       const category = item.category || 'Other';
       if (!acc[category]) acc[category] = [];
       acc[category].push(item);
       return acc;
     }, {} as Record<string, ChecklistItem[]>);
-  }, [checklistItems]);
+  }, [filteredItems]);
 
   const categories = Object.keys(groupedItems).sort((a, b) => 
     a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b)
@@ -133,6 +166,18 @@ export function DataRoomChecklistPanel({
 
   const handleUnlink = async (itemId: string) => {
     await unlinkAttachment(itemId);
+  };
+
+  const toggleCategoryFilter = (category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const clearFilters = () => {
+    setSelectedCategories([]);
   };
 
   if (loadingItems) {
@@ -186,20 +231,97 @@ export function DataRoomChecklistPanel({
         </div>
       </div>
 
+      {/* Category Filter */}
+      <div className="flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Filter className="h-3.5 w-3.5" />
+              Filter
+              {selectedCategories.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                  {selectedCategories.length}
+                </Badge>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuLabel>Categories</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {availableCategories.map(category => {
+              const categoryData = getCategoryByName(category);
+              const colorClasses = categoryData ? getCategoryColorClasses(categoryData.color) : getCategoryColorClasses('gray');
+              const IconComponent = categoryData ? getCategoryIcon(categoryData.icon) : getCategoryIcon('folder');
+              
+              return (
+                <DropdownMenuCheckboxItem
+                  key={category}
+                  checked={selectedCategories.includes(category)}
+                  onCheckedChange={() => toggleCategoryFilter(category)}
+                >
+                  <div className="flex items-center gap-2">
+                    <IconComponent className={cn("h-4 w-4", colorClasses.textClass)} />
+                    <span>{category}</span>
+                  </div>
+                </DropdownMenuCheckboxItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {selectedCategories.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-8 px-2">
+            <X className="h-3 w-3" />
+            Clear
+          </Button>
+        )}
+
+        {/* Active filter badges */}
+        <div className="flex flex-wrap gap-1">
+          {selectedCategories.map(category => {
+            const categoryData = getCategoryByName(category);
+            const colorClasses = categoryData ? getCategoryColorClasses(categoryData.color) : getCategoryColorClasses('gray');
+            const IconComponent = categoryData ? getCategoryIcon(categoryData.icon) : getCategoryIcon('folder');
+            
+            return (
+              <Badge 
+                key={category} 
+                variant="secondary" 
+                className={cn("gap-1 cursor-pointer hover:opacity-80", colorClasses.bgClass)}
+                onClick={() => toggleCategoryFilter(category)}
+              >
+                <IconComponent className={cn("h-3 w-3", colorClasses.textClass)} />
+                <span className={colorClasses.textClass}>{category}</span>
+                <X className={cn("h-3 w-3 ml-0.5", colorClasses.textClass)} />
+              </Badge>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Checklist Items */}
       <ScrollArea className="max-h-[400px]">
         <div className="space-y-4 pr-2">
           {categories.map(category => {
             const categoryItems = groupedItems[category];
             const categoryCompleted = categoryItems.filter(i => statusMap.get(i.id)?.isComplete).length;
+            const categoryData = getCategoryByName(category);
+            const colorClasses = categoryData ? getCategoryColorClasses(categoryData.color) : getCategoryColorClasses('gray');
+            const IconComponent = categoryData ? getCategoryIcon(categoryData.icon) : getCategoryIcon('folder');
             
             return (
               <Collapsible key={category} defaultOpen>
-                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors">
-                  <span className="text-sm font-semibold text-muted-foreground">{category}</span>
-                  <Badge variant="outline" className="text-xs">
-                    {categoryCompleted}/{categoryItems.length}
-                  </Badge>
+                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors group">
+                  <div className={cn("flex items-center gap-2 px-2 py-1 rounded-md", colorClasses.bgClass)}>
+                    <IconComponent className={cn("h-4 w-4", colorClasses.textClass)} />
+                    <span className={cn("text-sm font-semibold", colorClasses.textClass)}>{category}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {categoryCompleted}/{categoryItems.length}
+                    </Badge>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                  </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1 mt-1">
                   {categoryItems.map(item => {
