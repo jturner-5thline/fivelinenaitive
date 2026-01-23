@@ -21,19 +21,6 @@ import {
   Building2,
   Activity,
   Target,
-  Search
-  MoreHorizontal, 
-  Play, 
-  Pencil, 
-  Copy, 
-  Trash2, 
-  Globe, 
-  Users, 
-  Lock,
-  Database,
-  Building2,
-  Activity,
-  Target,
   Search,
   Zap
 } from 'lucide-react';
@@ -50,7 +37,7 @@ interface AgentCardProps {
   isOwn: boolean;
 }
 
-export function AgentCard({ agent, onTest, onEdit, onDuplicate, onDelete, isOwn }: AgentCardProps) {
+export function AgentCard({ agent, onTest, onEdit, onDuplicate, onDelete, onManageTriggers, isOwn }: AgentCardProps) {
   const capabilities = [
     { key: 'deals', enabled: agent.can_access_deals, icon: Database, label: 'Deals' },
     { key: 'lenders', enabled: agent.can_access_lenders, icon: Building2, label: 'Lenders' },
@@ -116,10 +103,18 @@ export function AgentCard({ agent, onTest, onEdit, onDuplicate, onDelete, isOwn 
                   Test Agent
                 </DropdownMenuItem>
                 {isOwn && (
-                  <DropdownMenuItem onClick={() => onEdit(agent)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem onClick={() => onEdit(agent)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    {onManageTriggers && (
+                      <DropdownMenuItem onClick={() => onManageTriggers(agent)}>
+                        <Zap className="mr-2 h-4 w-4" />
+                        Manage Triggers
+                      </DropdownMenuItem>
+                    )}
+                  </>
                 )}
                 <DropdownMenuItem onClick={() => onDuplicate(agent)}>
                   <Copy className="mr-2 h-4 w-4" />
