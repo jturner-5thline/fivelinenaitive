@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X } from 'lucide-react';
+import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X, CheckCheck, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +28,7 @@ import { useDataRoomChecklist, useDealChecklistStatus, ChecklistItem } from '@/h
 import { useChecklistCategories, getCategoryColorClasses } from '@/hooks/useChecklistCategories';
 import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface CircularProgressProps {
   value: number;
@@ -91,8 +94,13 @@ export function DataRoomChecklistPanel({
   const { statuses, toggleItemStatus, unlinkAttachment } = useDealChecklistStatus(dealId);
   const { categories: categoryConfigs, getCategoryByName } = useChecklistCategories();
   
-  // Category filter state
+  // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  
+  // Bulk selection state
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
 
   const statusMap = useMemo(() => {
     const map = new Map<string, { isComplete: boolean; attachmentId: string | null }>();
@@ -116,17 +124,30 @@ export function DataRoomChecklistPanel({
     );
   }, [checklistItems]);
 
-  // Filter items by selected categories
+  // Filter items by selected categories and completion status
   const filteredItems = useMemo(() => {
-    if (selectedCategories.length === 0) return checklistItems;
-    return checklistItems.filter(item => 
-      selectedCategories.includes(item.category || 'Other')
-    );
-  }, [checklistItems, selectedCategories]);
+    let items = checklistItems;
+    
+    // Filter by categories
+    if (selectedCategories.length > 0) {
+      items = items.filter(item => 
+        selectedCategories.includes(item.category || 'Other')
+      );
+    }
+    
+    // Filter by completion status
+    if (showIncompleteOnly) {
+      items = items.filter(item => !statusMap.get(item.id)?.isComplete);
+    }
+    
+    return items;
+  }, [checklistItems, selectedCategories, showIncompleteOnly, statusMap]);
 
   const completedCount = checklistItems.filter(item => 
     statusMap.get(item.id)?.isComplete
   ).length;
+
+  const incompleteCount = checklistItems.length - completedCount;
 
   const requiredItems = checklistItems.filter(i => i.is_required);
   const completedRequiredCount = requiredItems.filter(item => 
@@ -178,6 +199,66 @@ export function DataRoomChecklistPanel({
 
   const clearFilters = () => {
     setSelectedCategories([]);
+    setShowIncompleteOnly(false);
+  };
+
+  // Bulk selection handlers
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    const incompleteVisibleItems = filteredItems.filter(item => !statusMap.get(item.id)?.isComplete);
+    setSelectedItems(new Set(incompleteVisibleItems.map(i => i.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedItems(new Set());
+  };
+
+  const handleBulkComplete = async () => {
+    if (selectedItems.size === 0) return;
+    
+    const itemsToComplete = Array.from(selectedItems);
+    let successCount = 0;
+    
+    for (const itemId of itemsToComplete) {
+      const success = await toggleItemStatus(itemId, true);
+      if (success) successCount++;
+    }
+    
+    toast.success(`Marked ${successCount} items as complete`);
+    setSelectedItems(new Set());
+    setBulkMode(false);
+  };
+
+  const handleBulkIncomplete = async () => {
+    if (selectedItems.size === 0) return;
+    
+    const itemsToMark = Array.from(selectedItems);
+    let successCount = 0;
+    
+    for (const itemId of itemsToMark) {
+      const success = await toggleItemStatus(itemId, false);
+      if (success) successCount++;
+    }
+    
+    toast.success(`Marked ${successCount} items as incomplete`);
+    setSelectedItems(new Set());
+    setBulkMode(false);
+  };
+
+  const exitBulkMode = () => {
+    setBulkMode(false);
+    setSelectedItems(new Set());
   };
 
   if (loadingItems) {
@@ -231,8 +312,9 @@ export function DataRoomChecklistPanel({
         </div>
       </div>
 
-      {/* Category Filter */}
-      <div className="flex items-center gap-2">
+      {/* Filters and Bulk Actions */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Category Filter */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2">
@@ -245,7 +327,7 @@ export function DataRoomChecklistPanel({
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-48 bg-popover border shadow-lg z-50">
             <DropdownMenuLabel>Categories</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {availableCategories.map(category => {
@@ -269,14 +351,70 @@ export function DataRoomChecklistPanel({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {selectedCategories.length > 0 && (
+        {/* Incomplete Only Toggle */}
+        <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-background">
+          <Switch
+            id="incomplete-only"
+            checked={showIncompleteOnly}
+            onCheckedChange={setShowIncompleteOnly}
+            className="scale-75"
+          />
+          <Label htmlFor="incomplete-only" className="text-xs cursor-pointer">
+            Incomplete only {incompleteCount > 0 && `(${incompleteCount})`}
+          </Label>
+        </div>
+
+        {/* Clear Filters */}
+        {(selectedCategories.length > 0 || showIncompleteOnly) && (
           <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-8 px-2">
             <X className="h-3 w-3" />
             Clear
           </Button>
         )}
 
-        {/* Active filter badges */}
+        <div className="flex-1" />
+
+        {/* Bulk Mode Toggle */}
+        {!bulkMode ? (
+          <Button variant="outline" size="sm" onClick={() => setBulkMode(true)} className="gap-2">
+            <CheckCheck className="h-3.5 w-3.5" />
+            Bulk Edit
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={selectAllVisible} className="gap-1">
+              <Square className="h-3.5 w-3.5" />
+              Select All
+            </Button>
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={handleBulkComplete}
+              disabled={selectedItems.size === 0}
+              className="gap-1"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Complete ({selectedItems.size})
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={handleBulkIncomplete}
+              disabled={selectedItems.size === 0}
+              className="gap-1"
+            >
+              <Circle className="h-3.5 w-3.5" />
+              Undo
+            </Button>
+            <Button variant="ghost" size="sm" onClick={exitBulkMode}>
+              Cancel
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Active filter badges */}
+      {selectedCategories.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {selectedCategories.map(category => {
             const categoryData = getCategoryByName(category);
@@ -297,118 +435,144 @@ export function DataRoomChecklistPanel({
             );
           })}
         </div>
-      </div>
+      )}
+
+      {/* Empty state for filtered results */}
+      {filteredItems.length === 0 && (
+        <div className="p-6 text-center border-2 border-dashed rounded-lg">
+          <Check className="h-10 w-10 mx-auto text-green-500 mb-3" />
+          <p className="font-medium">All items complete!</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {showIncompleteOnly ? 'No incomplete items to show' : 'Great job completing all checklist items'}
+          </p>
+        </div>
+      )}
 
       {/* Checklist Items */}
-      <ScrollArea className="max-h-[400px]">
-        <div className="space-y-4 pr-2">
-          {categories.map(category => {
-            const categoryItems = groupedItems[category];
-            const categoryCompleted = categoryItems.filter(i => statusMap.get(i.id)?.isComplete).length;
-            const categoryData = getCategoryByName(category);
-            const colorClasses = categoryData ? getCategoryColorClasses(categoryData.color) : getCategoryColorClasses('gray');
-            const IconComponent = categoryData ? getCategoryIcon(categoryData.icon) : getCategoryIcon('folder');
-            
-            return (
-              <Collapsible key={category} defaultOpen>
-                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors group">
-                  <div className={cn("flex items-center gap-2 px-2 py-1 rounded-md", colorClasses.bgClass)}>
-                    <IconComponent className={cn("h-4 w-4", colorClasses.textClass)} />
-                    <span className={cn("text-sm font-semibold", colorClasses.textClass)}>{category}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {categoryCompleted}/{categoryItems.length}
-                    </Badge>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1 mt-1">
-                  {categoryItems.map(item => {
-                    const status = statusMap.get(item.id);
-                    const isComplete = status?.isComplete ?? false;
-                    const linkedAttachment = getLinkedAttachment(status?.attachmentId ?? null);
+      {filteredItems.length > 0 && (
+        <ScrollArea className="max-h-[400px]">
+          <div className="space-y-4 pr-2">
+            {categories.map(category => {
+              const categoryItems = groupedItems[category];
+              const categoryCompleted = categoryItems.filter(i => statusMap.get(i.id)?.isComplete).length;
+              const categoryData = getCategoryByName(category);
+              const colorClasses = categoryData ? getCategoryColorClasses(categoryData.color) : getCategoryColorClasses('gray');
+              const IconComponent = categoryData ? getCategoryIcon(categoryData.icon) : getCategoryIcon('folder');
+              
+              return (
+                <Collapsible key={category} defaultOpen>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors group">
+                    <div className={cn("flex items-center gap-2 px-2 py-1 rounded-md", colorClasses.bgClass)}>
+                      <IconComponent className={cn("h-4 w-4", colorClasses.textClass)} />
+                      <span className={cn("text-sm font-semibold", colorClasses.textClass)}>{category}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {categoryCompleted}/{categoryItems.length}
+                      </Badge>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 mt-1">
+                    {categoryItems.map(item => {
+                      const status = statusMap.get(item.id);
+                      const isComplete = status?.isComplete ?? false;
+                      const linkedAttachment = getLinkedAttachment(status?.attachmentId ?? null);
+                      const isSelected = selectedItems.has(item.id);
 
-                    return (
-                      <div
-                        key={item.id}
-                        className={cn(
-                          "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-                          isComplete 
-                            ? "bg-green-500/5 border-green-500/20" 
-                            : "bg-card hover:bg-muted/30"
-                        )}
-                      >
-                        <Checkbox
-                          checked={isComplete}
-                          onCheckedChange={() => handleToggle(item.id, isComplete)}
-                          className="mt-0.5"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={cn(
-                              "font-medium text-sm",
-                              isComplete && "text-muted-foreground line-through"
-                            )}>
-                              {item.name}
-                            </span>
-                            {item.is_required && (
-                              <Badge variant="secondary" className="text-xs">Required</Badge>
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                            isComplete 
+                              ? "bg-green-500/5 border-green-500/20" 
+                              : "bg-card hover:bg-muted/30",
+                            bulkMode && isSelected && "ring-2 ring-primary"
+                          )}
+                        >
+                          {bulkMode ? (
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleItemSelection(item.id)}
+                              className="mt-0.5"
+                            />
+                          ) : (
+                            <Checkbox
+                              checked={isComplete}
+                              onCheckedChange={() => handleToggle(item.id, isComplete)}
+                              className="mt-0.5"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "font-medium text-sm",
+                                isComplete && "text-muted-foreground line-through"
+                              )}>
+                                {item.name}
+                              </span>
+                              {item.is_required && (
+                                <Badge variant="secondary" className="text-xs">Required</Badge>
+                              )}
+                              {isComplete && !bulkMode && (
+                                <Check className="h-3.5 w-3.5 text-green-500" />
+                              )}
+                            </div>
+                            {item.description && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p className="text-xs text-muted-foreground truncate cursor-help mt-0.5">
+                                    {item.description}
+                                  </p>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  {item.description}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {linkedAttachment && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant="outline" className="gap-1 text-xs">
+                                  <Link2 className="h-3 w-3" />
+                                  {linkedAttachment.name}
+                                </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5"
+                                  onClick={() => handleUnlink(item.id)}
+                                >
+                                  <Unlink className="h-3 w-3" />
+                                </Button>
+                              </div>
                             )}
                           </div>
-                          {item.description && (
+                          {!bulkMode && onLinkAttachment && !linkedAttachment && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <p className="text-xs text-muted-foreground truncate cursor-help mt-0.5">
-                                  {item.description}
-                                </p>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0"
+                                  onClick={() => onLinkAttachment(item.id)}
+                                >
+                                  <Link2 className="h-4 w-4" />
+                                </Button>
                               </TooltipTrigger>
-                              <TooltipContent side="bottom" className="max-w-xs">
-                                {item.description}
-                              </TooltipContent>
+                              <TooltipContent>Link attachment</TooltipContent>
                             </Tooltip>
                           )}
-                          {linkedAttachment && (
-                            <div className="flex items-center gap-2 mt-2">
-                              <Badge variant="outline" className="gap-1 text-xs">
-                                <Link2 className="h-3 w-3" />
-                                {linkedAttachment.name}
-                              </Badge>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5"
-                                onClick={() => handleUnlink(item.id)}
-                              >
-                                <Unlink className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          )}
                         </div>
-                        {onLinkAttachment && !linkedAttachment && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 shrink-0"
-                                onClick={() => onLinkAttachment(item.id)}
-                              >
-                                <Link2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Link attachment</TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    );
-                  })}
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })}
-        </div>
-      </ScrollArea>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 }
