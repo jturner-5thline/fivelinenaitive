@@ -17,6 +17,7 @@ import { useMasterLenders } from '@/hooks/useMasterLenders';
 import { useLenderMatching } from '@/hooks/useLenderMatching';
 
 interface LenderSuggestionsPanelProps {
+  dealId?: string;
   criteria: DealCriteria;
   existingLenderNames: string[];
   onAddLender: (lenderName: string) => void;
@@ -24,6 +25,7 @@ interface LenderSuggestionsPanelProps {
 }
 
 export function LenderSuggestionsPanel({
+  dealId,
   criteria: initialCriteria,
   existingLenderNames,
   onAddLender,
@@ -147,6 +149,7 @@ export function LenderSuggestionsPanel({
           {showSurvey ? (
             <div className="py-4 h-full">
               <LenderCriteriaSurvey
+                dealId={dealId}
                 initialCriteria={enhancedCriteria}
                 onComplete={handleSurveyComplete}
                 onSkip={() => setShowSurvey(false)}
@@ -168,6 +171,7 @@ export function LenderSuggestionsPanel({
 
 // Floating action button variant for quick access
 export function LenderSuggestionsFAB({
+  dealId,
   criteria,
   existingLenderNames,
   onAddLender,
@@ -265,6 +269,7 @@ export function LenderSuggestionsFAB({
           {showSurvey ? (
             <div className="py-4 h-full">
               <LenderCriteriaSurvey
+                dealId={dealId}
                 initialCriteria={enhancedCriteria}
                 onComplete={handleSurveyComplete}
                 onSkip={() => setShowSurvey(false)}
