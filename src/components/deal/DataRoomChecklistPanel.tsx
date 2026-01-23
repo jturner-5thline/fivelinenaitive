@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Check, Circle, FileCheck, Link2, Unlink, ExternalLink, Info, ChevronDown, Filter, X, CheckCheck, Square, List, LayoutGrid, Upload } from 'lucide-react';
+import { Check, Circle, FileCheck, Link2, Unlink, ChevronDown, Filter, X, CheckCheck, Square, List, LayoutGrid, Upload, AlertCircle, Trash2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,15 +27,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDataRoomChecklist, useDealChecklistStatus, ChecklistItem } from '@/hooks/useDataRoomChecklist';
+import { useDealChecklistItems, DealChecklistItem } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories, getCategoryColorClasses } from '@/hooks/useChecklistCategories';
 import { useDealAttachments } from '@/hooks/useDealAttachments';
 import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
 import { DataRoomGridView } from './DataRoomGridView';
 import { ChecklistItemDropzone } from './ChecklistItemDropzone';
+import { AddChecklistItemDialog } from './AddChecklistItemDialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 type ViewMode = 'list' | 'grid';
+
+// Unified checklist item type that can be either template or deal-specific
+export type UnifiedChecklistItem = (ChecklistItem & { is_deal_specific?: false }) | DealChecklistItem;
 
 interface CircularProgressProps {
   value: number;
@@ -97,10 +102,17 @@ export function DataRoomChecklistPanel({
   attachments = [],
   onLinkAttachment 
 }: DataRoomChecklistPanelProps) {
-  const { items: checklistItems, loading: loadingItems } = useDataRoomChecklist();
+  const { items: templateItems, loading: loadingTemplateItems } = useDataRoomChecklist();
+  const { items: dealSpecificItems, loading: loadingDealItems, addItem: addDealItem, deleteItem: deleteDealItem } = useDealChecklistItems(dealId);
   const { statuses, toggleItemStatus, unlinkAttachment, linkAttachment } = useDealChecklistStatus(dealId);
   const { categories: categoryConfigs, getCategoryByName } = useChecklistCategories();
   const { uploadAttachment, refetch: refetchAttachments } = useDealAttachments(dealId);
+  
+  // Combine template items and deal-specific items
+  const checklistItems: UnifiedChecklistItem[] = useMemo(() => {
+    const templates = templateItems.map(item => ({ ...item, is_deal_specific: false as const }));
+    return [...templates, ...dealSpecificItems];
+  }, [templateItems, dealSpecificItems]);
   
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -108,6 +120,7 @@ export function DataRoomChecklistPanel({
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  const [showMissingUploadsOnly, setShowMissingUploadsOnly] = useState(false);
   
   // Bulk selection state
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -119,13 +132,26 @@ export function DataRoomChecklistPanel({
   const statusMap = useMemo(() => {
     const map = new Map<string, { isComplete: boolean; attachmentId: string | null }>();
     statuses.forEach(s => {
-      map.set(s.checklist_item_id, { 
-        isComplete: s.is_complete, 
-        attachmentId: s.attachment_id 
-      });
+      // Handle both template and deal-specific items
+      const itemId = s.checklist_item_id || (s as any).deal_checklist_item_id;
+      if (itemId) {
+        map.set(itemId, { 
+          isComplete: s.is_complete, 
+          attachmentId: s.attachment_id 
+        });
+      }
     });
     return map;
   }, [statuses]);
+
+  // Items missing uploads (not complete OR complete but no attachment linked)
+  const itemsMissingUploads = useMemo(() => {
+    return checklistItems.filter(item => {
+      const status = statusMap.get(item.id);
+      // Missing upload = not complete OR complete without an attachment
+      return !status?.isComplete || !status?.attachmentId;
+    });
+  }, [checklistItems, statusMap]);
 
   // Get all unique categories from items
   const availableCategories = useMemo(() => {
@@ -138,7 +164,7 @@ export function DataRoomChecklistPanel({
     );
   }, [checklistItems]);
 
-  // Filter items by selected categories and completion status
+  // Filter items by selected categories, completion status, and missing uploads
   const filteredItems = useMemo(() => {
     let items = checklistItems;
     
@@ -154,8 +180,16 @@ export function DataRoomChecklistPanel({
       items = items.filter(item => !statusMap.get(item.id)?.isComplete);
     }
     
+    // Filter by missing uploads
+    if (showMissingUploadsOnly) {
+      items = items.filter(item => {
+        const status = statusMap.get(item.id);
+        return !status?.attachmentId;
+      });
+    }
+    
     return items;
-  }, [checklistItems, selectedCategories, showIncompleteOnly, statusMap]);
+  }, [checklistItems, selectedCategories, showIncompleteOnly, showMissingUploadsOnly, statusMap]);
 
   const completedCount = checklistItems.filter(item => 
     statusMap.get(item.id)?.isComplete
@@ -183,12 +217,14 @@ export function DataRoomChecklistPanel({
       if (!acc[category]) acc[category] = [];
       acc[category].push(item);
       return acc;
-    }, {} as Record<string, ChecklistItem[]>);
+    }, {} as Record<string, UnifiedChecklistItem[]>);
   }, [filteredItems]);
 
   const categories = Object.keys(groupedItems).sort((a, b) => 
     a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b)
   );
+
+  const loadingItems = loadingTemplateItems || loadingDealItems;
 
   const getLinkedAttachment = (attachmentId: string | null) => {
     if (!attachmentId) return null;
@@ -245,6 +281,12 @@ export function DataRoomChecklistPanel({
   const clearFilters = () => {
     setSelectedCategories([]);
     setShowIncompleteOnly(false);
+    setShowMissingUploadsOnly(false);
+  };
+
+  // Handle deleting deal-specific items
+  const handleDeleteDealItem = async (itemId: string) => {
+    await deleteDealItem(itemId);
   };
 
   // Bulk selection handlers
@@ -353,7 +395,17 @@ export function DataRoomChecklistPanel({
                 )}
               </p>
             )}
+            {itemsMissingUploads.length > 0 && (
+              <p className="text-xs text-amber-600 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {itemsMissingUploads.length} items missing uploads
+              </p>
+            )}
           </div>
+          <AddChecklistItemDialog
+            categories={categoryConfigs}
+            onAdd={addDealItem}
+          />
         </div>
       </div>
 
@@ -409,8 +461,22 @@ export function DataRoomChecklistPanel({
           </Label>
         </div>
 
+        {/* Missing Uploads Toggle */}
+        <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-background">
+          <Switch
+            id="missing-uploads"
+            checked={showMissingUploadsOnly}
+            onCheckedChange={setShowMissingUploadsOnly}
+            className="scale-75"
+          />
+          <Label htmlFor="missing-uploads" className="text-xs cursor-pointer flex items-center gap-1">
+            <AlertCircle className="h-3 w-3 text-amber-500" />
+            Missing uploads {itemsMissingUploads.length > 0 && `(${itemsMissingUploads.length})`}
+          </Label>
+        </div>
+
         {/* Clear Filters */}
-        {(selectedCategories.length > 0 || showIncompleteOnly) && (
+        {(selectedCategories.length > 0 || showIncompleteOnly || showMissingUploadsOnly) && (
           <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-8 px-2">
             <X className="h-3 w-3" />
             Clear
@@ -515,6 +581,7 @@ export function DataRoomChecklistPanel({
           onLinkAttachment={onLinkAttachment}
           onUnlink={handleUnlink}
           onFileDrop={handleFileDrop}
+          onDeleteDealItem={handleDeleteDealItem}
           bulkMode={bulkMode}
           selectedItems={selectedItems}
           onToggleItemSelection={toggleItemSelection}
@@ -613,6 +680,9 @@ export function DataRoomChecklistPanel({
                                 {item.is_required && (
                                   <Badge variant="secondary" className="text-xs">Required</Badge>
                                 )}
+                                {(item as UnifiedChecklistItem).is_deal_specific && (
+                                  <Badge variant="outline" className="text-xs bg-primary/10">Custom</Badge>
+                                )}
                                 {isComplete && !bulkMode && !isUploading && (
                                   <Check className="h-3.5 w-3.5 text-green-500" />
                                 )}
@@ -621,6 +691,17 @@ export function DataRoomChecklistPanel({
                                     <Upload className="h-3 w-3" />
                                     Uploading...
                                   </Badge>
+                                )}
+                                {!linkedAttachment && !isUploading && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="flex items-center gap-1 text-xs text-amber-600">
+                                        <AlertCircle className="h-3 w-3" />
+                                        No file
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>No file uploaded for this item</TooltipContent>
+                                  </Tooltip>
                                 )}
                               </div>
                               {item.description && (
@@ -652,21 +733,38 @@ export function DataRoomChecklistPanel({
                                 </div>
                               )}
                             </div>
-                            {!bulkMode && !isUploading && onLinkAttachment && !linkedAttachment && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 shrink-0"
-                                    onClick={() => onLinkAttachment(item.id)}
-                                  >
-                                    <Link2 className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Link attachment</TooltipContent>
-                              </Tooltip>
-                            )}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {!bulkMode && !isUploading && onLinkAttachment && !linkedAttachment && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => onLinkAttachment(item.id)}
+                                    >
+                                      <Link2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Link attachment</TooltipContent>
+                                </Tooltip>
+                              )}
+                              {!bulkMode && (item as UnifiedChecklistItem).is_deal_specific && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-destructive hover:text-destructive"
+                                      onClick={() => handleDeleteDealItem(item.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Remove custom item</TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                           </div>
                         </ChecklistItemDropzone>
                       );

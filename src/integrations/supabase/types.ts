@@ -956,13 +956,61 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_checklist_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          description: string | null
+          id: string
+          is_required: boolean
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_checklist_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_checklist_status: {
         Row: {
           attachment_id: string | null
-          checklist_item_id: string
+          checklist_item_id: string | null
           completed_at: string | null
           completed_by: string | null
           created_at: string
+          deal_checklist_item_id: string | null
           deal_id: string
           id: string
           is_complete: boolean
@@ -971,10 +1019,11 @@ export type Database = {
         }
         Insert: {
           attachment_id?: string | null
-          checklist_item_id: string
+          checklist_item_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
+          deal_checklist_item_id?: string | null
           deal_id: string
           id?: string
           is_complete?: boolean
@@ -983,10 +1032,11 @@ export type Database = {
         }
         Update: {
           attachment_id?: string | null
-          checklist_item_id?: string
+          checklist_item_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
+          deal_checklist_item_id?: string | null
           deal_id?: string
           id?: string
           is_complete?: boolean
@@ -1006,6 +1056,13 @@ export type Database = {
             columns: ["checklist_item_id"]
             isOneToOne: false
             referencedRelation: "data_room_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_checklist_status_deal_checklist_item_id_fkey"
+            columns: ["deal_checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "deal_checklist_items"
             referencedColumns: ["id"]
           },
           {
