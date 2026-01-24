@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -220,6 +220,8 @@ export default function Lenders() {
   const [tileDisplaySettings, setTileDisplaySettings] = useState<LenderTileDisplaySettings>(DEFAULT_TILE_DISPLAY_SETTINGS);
   const [isSyncingToFlex, setIsSyncingToFlex] = useState(false);
   const [showSyncPanel, setShowSyncPanel] = useState(false);
+  const [showBankImportConfirm, setShowBankImportConfirm] = useState(false);
+  const [showNonBankImportConfirm, setShowNonBankImportConfirm] = useState(false);
 
   // Get pending sync requests count
   const { pendingCount: syncPendingCount } = useLenderSyncRequests();
@@ -711,6 +713,73 @@ export default function Lenders() {
                 <p className="text-muted-foreground">Manage your lender directory</p>
               </div>
               <div className="flex items-center gap-2">
+                {/* Import dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <Upload className="h-4 w-4" />
+                      Import
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-popover">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleImport}
+                        className="hidden"
+                      />
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import
+                      </DropdownMenuItem>
+                    </label>
+                    <DropdownMenuItem onClick={handleExport}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
+                      <Database className="h-4 w-4 mr-2" />
+                      Import Master Database
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowBankImportConfirm(true)}>
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Import Banks
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowNonBankImportConfirm(true)}>
+                      <Users className="h-4 w-4 mr-2" />
+                      Import Non-Banks
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Merge dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <Columns className="h-4 w-4" />
+                      Merge
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-popover">
+                    <DropdownMenuItem onClick={() => setIsSideBySideMergeOpen(true)}>
+                      <Columns className="h-4 w-4 mr-2" />
+                      {advancedFilters.tiers.length > 0 
+                        ? `Merge ${advancedFilters.tiers.join(', ')} (${sortedLenders.length})`
+                        : 'Merge Side-by-Side'
+                      }
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsDuplicatesDialogOpen(true)}>
+                      <Users className="h-4 w-4 mr-2" />
+                      Quick Merge
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Sync Requests button */}
                 <Button 
                   variant={showSyncPanel || syncPendingCount > 0 ? "default" : "outline"} 
                   size="sm" 
@@ -725,46 +794,8 @@ export default function Lenders() {
                     </Badge>
                   )}
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1">
-                      <Upload className="h-4 w-4" />
-                      Import
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept=".csv"
-                        onChange={handleImport}
-                        className="hidden"
-                      />
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Import to Directory
-                      </DropdownMenuItem>
-                    </label>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
-                      <Database className="h-4 w-4 mr-2" />
-                      Import Master Database
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <BankLendersImportButton onImport={importLenders} />
-                <NonBankLendersImportButton onImportComplete={() => window.location.reload()} />
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => setIsSideBySideMergeOpen(true)}>
-                  <Columns className="h-4 w-4" />
-                  {advancedFilters.tiers.length > 0 
-                    ? `Merge ${advancedFilters.tiers.join(', ')} (${sortedLenders.length})`
-                    : 'Merge Side-by-Side'
-                  }
-                </Button>
-                <Button variant="ghost" size="sm" className="gap-1" onClick={() => setIsDuplicatesDialogOpen(true)}>
-                  <Users className="h-4 w-4" />
-                  Quick Merge
-                </Button>
+
+                {/* Other actions */}
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -786,10 +817,6 @@ export default function Lenders() {
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
                   Configuration
-                </Button>
-                <Button variant="outline" onClick={handleExport} size="sm" className="gap-1">
-                  <Download className="h-4 w-4" />
-                  Export
                 </Button>
                 <Button variant="gradient" onClick={openAddDialog} size="sm" className="gap-1">
                   <Plus className="h-4 w-4" />
@@ -1203,6 +1230,20 @@ export default function Lenders() {
         onOpenChange={setIsSideBySideMergeOpen}
         lenders={sortedLenders}
         onMergeLenders={async (keepId, mergeIds, mergedData) => { await mergeLenders(keepId, mergeIds, mergedData); }}
+      />
+
+      {/* Bank/Non-Bank Import Dialogs (controlled by dropdown) */}
+      <BankLendersImportButton
+        onImport={importLenders}
+        open={showBankImportConfirm}
+        onOpenChange={setShowBankImportConfirm}
+        showTrigger={false}
+      />
+      <NonBankLendersImportButton
+        onImportComplete={() => window.location.reload()}
+        open={showNonBankImportConfirm}
+        onOpenChange={setShowNonBankImportConfirm}
+        showTrigger={false}
       />
     </>
   );
