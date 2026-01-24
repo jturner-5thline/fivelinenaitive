@@ -185,6 +185,25 @@ export function useLenderSyncRequests(): UseLenderSyncRequestsResult {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Not authenticated');
 
+      // First, notify Flex of the rejection so they can revert to the old data
+      try {
+        const { error: notifyError } = await supabase.functions.invoke('notify-flex-rejection', {
+          body: {
+            request_id: id,
+            rejection_notes: notes,
+          },
+        });
+
+        if (notifyError) {
+          console.warn('Failed to notify FLEx of rejection:', notifyError);
+          // Continue with rejection even if notification fails
+        }
+      } catch (notifyErr) {
+        console.warn('Error notifying FLEx of rejection:', notifyErr);
+        // Continue with rejection even if notification fails
+      }
+
+      // Update the request status to rejected
       const { error } = await supabase
         .from('lender_sync_requests')
         .update({
