@@ -779,41 +779,51 @@ export default function Lenders() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Sync Requests button */}
-                <Button 
-                  variant={showSyncPanel || syncPendingCount > 0 ? "default" : "outline"} 
-                  size="sm" 
-                  className="gap-1 relative"
-                  onClick={() => setShowSyncPanel(!showSyncPanel)}
-                >
-                  <Bell className="h-4 w-4" />
-                  Sync Requests
-                  {syncPendingCount > 0 && (
-                    <Badge variant="destructive" className="ml-1 h-5 min-w-5 rounded-full text-xs px-1.5">
-                      {syncPendingCount}
-                    </Badge>
-                  )}
-                </Button>
-
-                {/* Other actions */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-1" 
-                  onClick={handleSyncToFlex}
-                  disabled={isSyncingToFlex || masterLenders.length === 0}
-                >
-                  {isSyncingToFlex ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                  {isSyncingToFlex ? 'Syncing...' : 'Sync to FLEx'}
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/sync-history')}>
-                  <History className="h-4 w-4" />
-                  Sync History
-                </Button>
+                {/* Sync dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant={syncPendingCount > 0 ? "default" : "outline"} 
+                      size="sm" 
+                      className="gap-1 relative"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Sync
+                      {syncPendingCount > 0 && (
+                        <Badge variant="destructive" className="ml-1 h-5 min-w-5 rounded-full text-xs px-1.5">
+                          {syncPendingCount}
+                        </Badge>
+                      )}
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-popover">
+                    <DropdownMenuItem onClick={() => setShowSyncPanel(!showSyncPanel)}>
+                      <Bell className="h-4 w-4 mr-2" />
+                      Sync Requests
+                      {syncPendingCount > 0 && (
+                        <Badge variant="destructive" className="ml-2 h-5 min-w-5 rounded-full text-xs px-1.5">
+                          {syncPendingCount}
+                        </Badge>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={handleSyncToFlex}
+                      disabled={isSyncingToFlex || masterLenders.length === 0}
+                    >
+                      {isSyncingToFlex ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      {isSyncingToFlex ? 'Syncing...' : 'Sync to FLEx'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/lenders/sync-history')}>
+                      <History className="h-4 w-4 mr-2" />
+                      Sync History
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
                   Configuration
