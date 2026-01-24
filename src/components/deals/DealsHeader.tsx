@@ -1,6 +1,7 @@
 import { Settings, User, SlidersHorizontal, LogOut, HelpCircle, RotateCcw, BookOpen, Shield, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
+import { LenderSyncNotificationBell } from '@/components/lenders/LenderSyncNotificationBell';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -111,6 +112,7 @@ export function DealsHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          <LenderSyncNotificationBell />
           <NotificationsDropdown />
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."

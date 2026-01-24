@@ -480,6 +480,57 @@ export default function Lenders() {
     }
   }, [selectedLenderIds, clearSelection, refetchMasterLenders]);
 
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedLenderIds.size === 0) return;
+    
+    const selectedIds = Array.from(selectedLenderIds);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const id of selectedIds) {
+      const success = await deleteMasterLender(id);
+      if (success) {
+        successCount++;
+      } else {
+        errorCount++;
+      }
+    }
+
+    if (errorCount === 0) {
+      toast({
+        title: 'Lenders deleted',
+        description: `Successfully deleted ${successCount} lender${successCount !== 1 ? 's' : ''}.`,
+      });
+    } else {
+      toast({
+        title: 'Delete completed with errors',
+        description: `Deleted ${successCount} lender${successCount !== 1 ? 's' : ''}, ${errorCount} failed.`,
+        variant: 'destructive',
+      });
+    }
+
+    clearSelection();
+  }, [selectedLenderIds, deleteMasterLender, clearSelection]);
+
+  const handleBulkExport = useCallback(() => {
+    if (selectedLenderIds.size === 0) return;
+
+    const selectedLenders = masterLenders.filter(l => selectedLenderIds.has(l.id));
+    const exportData = selectedLenders.map(l => ({
+      name: l.name,
+      contact: { name: l.contact_name || '', email: l.email || '', phone: '' },
+      preferences: [...(l.loan_types || []), ...(l.industries || [])],
+      website: l.lender_one_pager_url,
+      description: l.deal_structure_notes,
+    }));
+    const csv = exportLendersToCsv(exportData);
+    downloadCsv(csv, `lenders-export-${new Date().toISOString().split('T')[0]}.csv`);
+    toast({ 
+      title: 'Export complete', 
+      description: `Exported ${selectedLenders.length} lender${selectedLenders.length !== 1 ? 's' : ''} to CSV.` 
+    });
+  }, [selectedLenderIds, masterLenders]);
+
   const openAddDialog = () => {
     setEditingLenderId(null);
     setForm(emptyForm);
@@ -1027,6 +1078,41 @@ export default function Lenders() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleBulkExport}
+                        className="gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Export
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete {selectedLenderIds.size} lender{selectedLenderIds.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently remove the selected lenders from your database. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleBulkDelete}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      <Button
                         variant="default"
                         size="sm"
                         onClick={handlePushSelectedToFlex}
@@ -1177,6 +1263,10 @@ export default function Lenders() {
                     totalCount={totalCount}
                     onLoadMore={loadMore}
                     onRowClick={openLenderDetailStable}
+                    selectedIds={selectedLenderIds}
+                    onToggleSelect={toggleLenderSelection}
+                    onSelectAll={selectAllLenders}
+                    onClearSelection={clearSelection}
                   />
                 )}
 
