@@ -54,6 +54,22 @@ export function useLenderSyncRealtimeNotifications(
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'lender_sync_requests',
+        },
+        (payload) => {
+          const updatedRequest = payload.new as LenderSyncRequest;
+          
+          // Refetch when a request is resolved (status changed from pending)
+          if (updatedRequest.status !== 'pending') {
+            onNewRequest?.();
+          }
+        }
+      )
       .subscribe();
 
     channelRef.current = channel;
