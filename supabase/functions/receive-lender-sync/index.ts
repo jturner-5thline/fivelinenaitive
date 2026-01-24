@@ -264,6 +264,52 @@ serve(async (req) => {
 
     console.log("Lender sync results:", results);
 
+    // Send email notifications to admin users if there are new pending requests
+    const totalPending = results.new_lenders + results.updates + results.merge_conflicts;
+    if (totalPending > 0) {
+      try {
+        // Get users with admin role who should receive notifications
+        const { data: adminUsers } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+
+        if (adminUsers && adminUsers.length > 0) {
+          // Get the first lender name for context in single-item notifications
+          const firstLenderName = lendersToProcess[0]?.name || "Unknown";
+          const primaryType = results.new_lenders > 0 ? "new_lender" 
+            : results.merge_conflicts > 0 ? "merge_conflict" 
+            : "update_existing";
+
+          // Send notification to each admin
+          for (const admin of adminUsers) {
+            try {
+              await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
+                method: "POST",
+                headers: { 
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  type: "flex_lender_sync",
+                  user_id: admin.user_id,
+                  lender_name: firstLenderName,
+                  sync_request_type: primaryType,
+                  sync_count: totalPending,
+                }),
+              });
+            } catch (emailError) {
+              console.error(`Failed to send notification to admin ${admin.user_id}:`, emailError);
+            }
+          }
+          console.log(`Sent email notifications to ${adminUsers.length} admin users`);
+        }
+      } catch (notifyError) {
+        console.error("Error sending email notifications:", notifyError);
+        // Don't fail the request if notifications fail
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
