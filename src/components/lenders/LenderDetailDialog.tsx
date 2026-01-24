@@ -10,7 +10,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -430,7 +429,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       }
       onOpenChange(newOpen);
     }}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[80vh] min-h-0 overflow-hidden !flex !flex-col">
         <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
           <DialogTitle className="flex items-center gap-2 text-xl">
             {lender.tier && (
@@ -537,7 +536,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-4">
           <div className="space-y-6">
             {/* Edit Mode: Description/Notes */}
             {isEditMode ? (
@@ -1584,7 +1583,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               )}
             </section>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
       
       <LenderSectionReorderDialog
