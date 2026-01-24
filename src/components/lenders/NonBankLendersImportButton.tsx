@@ -139,11 +139,18 @@ function parseNonBankLendersMarkdown(markdownContent: string): MasterLenderInser
 
 interface NonBankLendersImportButtonProps {
   onImportComplete?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
 }
 
-export function NonBankLendersImportButton({ onImportComplete }: NonBankLendersImportButtonProps) {
+export function NonBankLendersImportButton({ onImportComplete, open, onOpenChange, showTrigger = true }: NonBankLendersImportButtonProps) {
   const [isImporting, setIsImporting] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Support both controlled and uncontrolled modes
+  const isOpen = open !== undefined ? open : internalOpen;
+  const setIsOpen = onOpenChange || setInternalOpen;
 
   const handleImport = async () => {
     setIsImporting(true);
@@ -187,7 +194,7 @@ export function NonBankLendersImportButton({ onImportComplete }: NonBankLendersI
         });
       }
       
-      setIsConfirmOpen(false);
+      setIsOpen(false);
     } catch (error) {
       console.error('Import error:', error);
       toast({ 
@@ -201,22 +208,24 @@ export function NonBankLendersImportButton({ onImportComplete }: NonBankLendersI
   };
 
   return (
-    <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-      <AlertDialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setIsConfirmOpen(true)}
-          disabled={isImporting}
-        >
-          {isImporting ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Users className="h-4 w-4 mr-2" />
-          )}
-          Import Non-Banks
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      {showTrigger && (
+        <AlertDialogTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setIsOpen(true)}
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Users className="h-4 w-4 mr-2" />
+            )}
+            Import Non-Banks
+          </Button>
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Import Non-Bank Lenders</AlertDialogTitle>

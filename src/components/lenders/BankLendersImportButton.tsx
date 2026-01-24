@@ -122,12 +122,19 @@ function parseBankLendersMarkdown(markdownContent: string): MasterLenderInsert[]
 
 interface BankLendersImportButtonProps {
   onImport: (lenders: MasterLenderInsert[]) => Promise<{ success: number; failed: number; errors: string[] }>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
 }
 
-export function BankLendersImportButton({ onImport }: BankLendersImportButtonProps) {
+export function BankLendersImportButton({ onImport, open, onOpenChange, showTrigger = true }: BankLendersImportButtonProps) {
   const [isImporting, setIsImporting] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [parsedCount, setParsedCount] = useState<number | null>(null);
+
+  // Support both controlled and uncontrolled modes
+  const isOpen = open !== undefined ? open : internalOpen;
+  const setIsOpen = onOpenChange || setInternalOpen;
 
   const handleImport = async () => {
     setIsImporting(true);
@@ -157,7 +164,7 @@ export function BankLendersImportButton({ onImport }: BankLendersImportButtonPro
         description: `Successfully imported ${result.success} bank lenders${result.failed > 0 ? ` (${result.failed} failed)` : ''}.`
       });
       
-      setIsConfirmOpen(false);
+      setIsOpen(false);
     } catch (error) {
       console.error('Import error:', error);
       toast({ 
@@ -180,26 +187,28 @@ export function BankLendersImportButton({ onImport }: BankLendersImportButtonPro
     } catch {
       setParsedCount(null);
     }
-    setIsConfirmOpen(true);
+    setIsOpen(true);
   };
 
   return (
-    <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-      <AlertDialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={checkLendersCount}
-          disabled={isImporting}
-        >
-          {isImporting ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Building2 className="h-4 w-4 mr-2" />
-          )}
-          Import Banks
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      {showTrigger && (
+        <AlertDialogTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={checkLendersCount}
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Building2 className="h-4 w-4 mr-2" />
+            )}
+            Import Banks
+          </Button>
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Import Bank Lenders</AlertDialogTitle>
