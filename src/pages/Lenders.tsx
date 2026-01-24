@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -758,6 +758,10 @@ export default function Lenders() {
                     <RefreshCw className="h-4 w-4" />
                   )}
                   {isSyncingToFlex ? 'Syncing...' : 'Sync to FLEx'}
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/sync-history')}>
+                  <History className="h-4 w-4" />
+                  Sync History
                 </Button>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
