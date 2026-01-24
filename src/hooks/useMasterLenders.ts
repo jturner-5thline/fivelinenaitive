@@ -41,6 +41,8 @@ export interface MasterLender {
   external_last_modified?: string | null;
   tier?: string | null;
   active?: boolean | null;
+  flex_lender_id?: string | null;
+  last_synced_from_flex?: string | null;
   created_at: string;
   updated_at: string;
 }
