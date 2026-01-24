@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Bell, Check, X, GitMerge, ChevronDown, ChevronRight, AlertTriangle, UserPlus, RefreshCw, ExternalLink } from 'lucide-react';
+import { Bell, Check, X, GitMerge, ChevronDown, ChevronRight, AlertTriangle, UserPlus, RefreshCw, CheckCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
 import { formatDistanceToNow } from 'date-fns';
@@ -38,12 +39,14 @@ function FieldChange({ field, oldValue, newValue }: FieldChangeProps) {
 
 interface SyncRequestCardProps {
   request: LenderSyncRequest;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
   onApprove: (id: string) => Promise<boolean>;
   onReject: (id: string) => Promise<boolean>;
   onMerge: (id: string, data: Record<string, unknown>) => Promise<boolean>;
 }
 
-function SyncRequestCard({ request, onApprove, onReject, onMerge }: SyncRequestCardProps) {
+function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onReject, onMerge }: SyncRequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -105,9 +108,16 @@ function SyncRequestCard({ request, onApprove, onReject, onMerge }: SyncRequestC
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-      <div className="border rounded-lg p-3 bg-card">
+      <div className={`border rounded-lg p-3 bg-card ${isSelected ? 'ring-2 ring-primary' : ''}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
+            {isPending && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => onToggleSelect(request.id)}
+                className="shrink-0"
+              />
+            )}
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
                 {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -226,6 +236,8 @@ interface LenderSyncRequestsPanelProps {
 export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequestsPanelProps) {
   const { requests, pendingCount, loading, refetch, approveRequest, rejectRequest, mergeRequest } = useLenderSyncRequests();
   const [showAll, setShowAll] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
   // Wrap approve/merge to also notify parent to refresh lenders
   const handleApprove = async (id: string) => {
@@ -246,6 +258,64 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const processedRequests = requests.filter(r => r.status !== 'pending');
+
+  // Get approvable requests (new_lender and update_existing, not merge_conflict)
+  const approvableRequests = pendingRequests.filter(r => r.request_type !== 'merge_conflict');
+  const selectedApprovable = approvableRequests.filter(r => selectedIds.has(r.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(approvableRequests.map(r => r.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedApprovable.length === 0) return;
+    
+    setIsBulkProcessing(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const request of selectedApprovable) {
+      const success = await approveRequest(request.id);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    setIsBulkProcessing(false);
+    setSelectedIds(new Set());
+
+    if (onLenderApproved) {
+      onLenderApproved();
+    }
+
+    if (failCount === 0) {
+      toast({ title: 'Bulk Approved', description: `Successfully approved ${successCount} lender(s).` });
+    } else {
+      toast({ 
+        title: 'Partial Success', 
+        description: `Approved ${successCount}, failed ${failCount}.`,
+        variant: 'destructive'
+      });
+    }
+  };
 
   if (loading) {
     return null;
@@ -280,12 +350,46 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Bulk actions bar */}
+        {approvableRequests.length > 0 && (
+          <div className="flex items-center justify-between mb-3 pb-3 border-b">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={selectedIds.size === approvableRequests.length && approvableRequests.length > 0}
+                onCheckedChange={(checked) => checked ? selectAll() : deselectAll()}
+              />
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size > 0 
+                  ? `${selectedApprovable.length} of ${approvableRequests.length} selected`
+                  : `Select all (${approvableRequests.length})`
+                }
+              </span>
+            </div>
+            {selectedApprovable.length > 0 && (
+              <Button 
+                size="sm" 
+                onClick={handleBulkApprove}
+                disabled={isBulkProcessing}
+              >
+                {isBulkProcessing ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <CheckCheck className="h-4 w-4 mr-1" />
+                )}
+                Approve All ({selectedApprovable.length})
+              </Button>
+            )}
+          </div>
+        )}
+
         <ScrollArea className="max-h-[400px]">
           <div className="space-y-2">
             {pendingRequests.map(request => (
               <SyncRequestCard
                 key={request.id}
                 request={request}
+                isSelected={selectedIds.has(request.id)}
+                onToggleSelect={toggleSelect}
                 onApprove={handleApprove}
                 onReject={rejectRequest}
                 onMerge={handleMerge}
@@ -300,6 +404,8 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                   <SyncRequestCard
                     key={request.id}
                     request={request}
+                    isSelected={false}
+                    onToggleSelect={() => {}}
                     onApprove={handleApprove}
                     onReject={rejectRequest}
                     onMerge={handleMerge}
