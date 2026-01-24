@@ -230,9 +230,7 @@ export function LenderSyncRequestsPanel() {
     return null;
   }
 
-  if (pendingCount === 0 && !showAll) {
-    return null;
-  }
+  // Always show when rendered - parent controls visibility
 
   return (
     <Card className="border-amber-500/30 bg-amber-500/5">
