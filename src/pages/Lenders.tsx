@@ -222,6 +222,8 @@ export default function Lenders() {
   const [showSyncPanel, setShowSyncPanel] = useState(false);
   const [showBankImportConfirm, setShowBankImportConfirm] = useState(false);
   const [showNonBankImportConfirm, setShowNonBankImportConfirm] = useState(false);
+  const [selectedLenderIds, setSelectedLenderIds] = useState<Set<string>>(new Set());
+  const [isPushingSelectedToFlex, setIsPushingSelectedToFlex] = useState(false);
 
   // Get pending sync requests count
   const { pendingCount: syncPendingCount } = useLenderSyncRequests();
@@ -398,6 +400,85 @@ export default function Lenders() {
   const openLenderDetailStable = useCallback((lender: MasterLender) => {
     openLenderDetail(lender);
   }, []);
+
+  // Selection handlers
+  const toggleLenderSelection = useCallback((lenderId: string) => {
+    setSelectedLenderIds(prev => {
+      const next = new Set(prev);
+      if (next.has(lenderId)) {
+        next.delete(lenderId);
+      } else {
+        next.add(lenderId);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllLenders = useCallback(() => {
+    setSelectedLenderIds(new Set(sortedLenders.map(l => l.id)));
+  }, [sortedLenders]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedLenderIds(new Set());
+  }, []);
+
+  const handlePushSelectedToFlex = useCallback(async () => {
+    if (selectedLenderIds.size === 0) return;
+    
+    setIsPushingSelectedToFlex(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      const selectedIds = Array.from(selectedLenderIds);
+      
+      // Process in batches of 5 to avoid overwhelming the API
+      const batchSize = 5;
+      for (let i = 0; i < selectedIds.length; i += batchSize) {
+        const batch = selectedIds.slice(i, i + batchSize);
+        const results = await Promise.allSettled(
+          batch.map(id => 
+            supabase.functions.invoke('sync-lender-to-flex', {
+              body: { lender_id: id },
+            })
+          )
+        );
+        
+        results.forEach(result => {
+          if (result.status === 'fulfilled' && !result.value.error) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (errorCount === 0) {
+        toast({
+          title: 'Push to FLEx complete',
+          description: `Successfully pushed ${successCount} lender${successCount !== 1 ? 's' : ''} to FLEx.`,
+        });
+      } else {
+        toast({
+          title: 'Push to FLEx completed with errors',
+          description: `Pushed ${successCount} lender${successCount !== 1 ? 's' : ''}, ${errorCount} failed.`,
+          variant: 'destructive',
+        });
+      }
+
+      clearSelection();
+      refetchMasterLenders();
+    } catch (error) {
+      console.error('Error pushing lenders to FLEx:', error);
+      toast({
+        title: 'Push to FLEx failed',
+        description: 'An error occurred while pushing lenders to FLEx.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPushingSelectedToFlex(false);
+    }
+  }, [selectedLenderIds, clearSelection, refetchMasterLenders]);
 
   const openAddDialog = () => {
     setEditingLenderId(null);
@@ -923,6 +1004,46 @@ export default function Lenders() {
                   </div>
                 </div>
 
+                {/* Bulk Selection Action Bar */}
+                {selectedLenderIds.size > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={selectedLenderIds.size === sortedLenders.length && sortedLenders.length > 0}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            selectAllLenders();
+                          } else {
+                            clearSelection();
+                          }
+                        }}
+                      />
+                      <span className="text-sm font-medium">
+                        {selectedLenderIds.size} lender{selectedLenderIds.size !== 1 ? 's' : ''} selected
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={clearSelection}>
+                        Clear
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handlePushSelectedToFlex}
+                        disabled={isPushingSelectedToFlex}
+                        className="gap-2"
+                      >
+                        {isPushingSelectedToFlex ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        Push to FLEx
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Loading State */}
                 {isLoading && (
                   <div className="space-y-3">
@@ -959,6 +1080,8 @@ export default function Lenders() {
                             summary={getLenderSummary(lender.name)}
                             isQuickUploading={isQuickUploading}
                             quickUploadLenderName={quickUploadTarget?.lenderName || null}
+                            isSelected={selectedLenderIds.has(lender.id)}
+                            onToggleSelect={toggleLenderSelection}
                             onOpenDetail={openLenderDetailStable}
                             onEdit={openEditDialogStable}
                             onDelete={handleDeleteStable}
@@ -1010,6 +1133,8 @@ export default function Lenders() {
                           summary={getLenderSummary(lender.name)}
                           isQuickUploading={isQuickUploading}
                           quickUploadLenderName={quickUploadTarget?.lenderName || null}
+                          isSelected={selectedLenderIds.has(lender.id)}
+                          onToggleSelect={toggleLenderSelection}
                           onOpenDetail={openLenderDetailStable}
                           onEdit={openEditDialogStable}
                           onDelete={handleDeleteStable}
