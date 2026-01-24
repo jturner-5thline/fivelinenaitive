@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +68,7 @@ import { LenderSpreadsheetView } from '@/components/lenders/LenderSpreadsheetVie
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
+import { useLenderSyncRequests } from '@/hooks/useLenderSyncRequests';
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
@@ -218,6 +219,10 @@ export default function Lenders() {
   const [advancedFilters, setAdvancedFilters] = useState<LenderFilters>(emptyFilters);
   const [tileDisplaySettings, setTileDisplaySettings] = useState<LenderTileDisplaySettings>(DEFAULT_TILE_DISPLAY_SETTINGS);
   const [isSyncingToFlex, setIsSyncingToFlex] = useState(false);
+  const [showSyncPanel, setShowSyncPanel] = useState(false);
+
+  // Get pending sync requests count
+  const { pendingCount: syncPendingCount } = useLenderSyncRequests();
 
   // Debounce search query for server-side search
   useEffect(() => {
@@ -705,6 +710,20 @@ export default function Lenders() {
                 <p className="text-muted-foreground">Manage your lender directory</p>
               </div>
               <div className="flex items-center gap-2">
+                <Button 
+                  variant={showSyncPanel || syncPendingCount > 0 ? "default" : "outline"} 
+                  size="sm" 
+                  className="gap-1 relative"
+                  onClick={() => setShowSyncPanel(!showSyncPanel)}
+                >
+                  <Bell className="h-4 w-4" />
+                  Sync Requests
+                  {syncPendingCount > 0 && (
+                    <Badge variant="destructive" className="ml-1 h-5 min-w-5 rounded-full text-xs px-1.5">
+                      {syncPendingCount}
+                    </Badge>
+                  )}
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-1">
@@ -779,8 +798,10 @@ export default function Lenders() {
             </div>
 
             <div className="space-y-4">
-                {/* Flex Sync Requests Panel */}
-                <LenderSyncRequestsPanel />
+                {/* Flex Sync Requests Panel - show when toggled or has pending requests */}
+                {(showSyncPanel || syncPendingCount > 0) && (
+                  <LenderSyncRequestsPanel />
+                )}
                 
                 {/* Advanced Filters Panel */}
                 <LenderFiltersPanel
