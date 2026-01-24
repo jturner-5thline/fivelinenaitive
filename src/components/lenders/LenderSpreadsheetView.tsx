@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { Building2, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MasterLender } from '@/hooks/useMasterLenders';
 
 interface LenderSpreadsheetViewProps {
@@ -12,6 +13,10 @@ interface LenderSpreadsheetViewProps {
   totalCount: number | null;
   onLoadMore: () => void;
   onRowClick?: (lender: MasterLender) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (lenderId: string) => void;
+  onSelectAll?: () => void;
+  onClearSelection?: () => void;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -140,8 +145,8 @@ function getSortValue(lender: MasterLender, key: ColumnKey): string | number | b
   return String(value).toLowerCase();
 }
 
-// Total width of all columns for the horizontal scroll
-const TOTAL_WIDTH = COLUMNS.reduce((sum, col) => sum + col.width, 0) + 50; // +50 for row number column
+// Total width of all columns for the horizontal scroll (add 40 for checkbox column)
+const TOTAL_WIDTH = COLUMNS.reduce((sum, col) => sum + col.width, 0) + 50 + 40; // +50 for row number, +40 for checkbox
 
 export function LenderSpreadsheetView({
   lenders,
@@ -151,6 +156,10 @@ export function LenderSpreadsheetView({
   totalCount,
   onLoadMore,
   onRowClick,
+  selectedIds,
+  onToggleSelect,
+  onSelectAll,
+  onClearSelection,
 }: LenderSpreadsheetViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sortState, setSortState] = useState<SortState>({ column: null, direction: null });
@@ -211,8 +220,23 @@ export function LenderSpreadsheetView({
         <div style={{ minWidth: TOTAL_WIDTH }}>
           {/* Header Row */}
           <div className="flex sticky top-0 z-10 bg-muted border-b border-border">
+            {/* Checkbox header */}
+            {onToggleSelect && (
+              <div className="flex-shrink-0 w-[40px] px-2 py-2 border-r border-border bg-muted sticky left-0 z-20 flex items-center justify-center">
+                <Checkbox
+                  checked={selectedIds && selectedIds.size === lenders.length && lenders.length > 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      onSelectAll?.();
+                    } else {
+                      onClearSelection?.();
+                    }
+                  }}
+                />
+              </div>
+            )}
             {/* Row number header */}
-            <div className="flex-shrink-0 w-[50px] px-2 py-2 text-xs font-semibold text-muted-foreground border-r border-border bg-muted sticky left-0 z-20">
+            <div className={`flex-shrink-0 w-[50px] px-2 py-2 text-xs font-semibold text-muted-foreground border-r border-border bg-muted ${onToggleSelect ? '' : 'sticky left-0'} z-20`}>
               #
             </div>
             {COLUMNS.map((col) => (
@@ -238,13 +262,26 @@ export function LenderSpreadsheetView({
             endReached={onLoadMore}
             itemContent={(index) => {
               const lender = sortedLenders[index];
+              const isSelected = selectedIds?.has(lender.id) ?? false;
               return (
                 <div
-                  className="flex border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors"
+                  className={`flex border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
                   onClick={() => onRowClick?.(lender)}
                 >
+                  {/* Checkbox */}
+                  {onToggleSelect && (
+                    <div 
+                      className="flex-shrink-0 w-[40px] px-2 py-1.5 border-r border-border/50 bg-muted/30 sticky left-0 z-10 flex items-center justify-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => onToggleSelect(lender.id)}
+                      />
+                    </div>
+                  )}
                   {/* Row number */}
-                  <div className="flex-shrink-0 w-[50px] px-2 py-1.5 text-xs text-muted-foreground border-r border-border/50 bg-muted/30 sticky left-0 z-10">
+                  <div className={`flex-shrink-0 w-[50px] px-2 py-1.5 text-xs text-muted-foreground border-r border-border/50 bg-muted/30 ${onToggleSelect ? '' : 'sticky left-0'} z-10`}>
                     {index + 1}
                   </div>
                   {COLUMNS.map((col) => (
