@@ -119,3 +119,6 @@ verify_jwt = true
 
 [functions.naitive-flex-sync]
 verify_jwt = false
+
+[functions.sync-lender-to-flex-webhook]
+verify_jwt = false
