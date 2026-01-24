@@ -308,6 +308,22 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
     return results;
   };
 
+  const syncLenderToFlex = async (lenderId: string): Promise<void> => {
+    try {
+      const { error } = await supabase.functions.invoke('sync-lender-to-flex', {
+        body: { lender_id: lenderId },
+      });
+      if (error) {
+        console.error('Failed to sync lender to Flex:', error);
+        // Don't show error toast - this is a background sync
+      } else {
+        console.log(`Lender ${lenderId} synced to Flex`);
+      }
+    } catch (err) {
+      console.error('Error syncing lender to Flex:', err);
+    }
+  };
+
   const addLender = async (lender: MasterLenderInsert): Promise<MasterLender | null> => {
     if (!user) return null;
 
@@ -331,6 +347,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
       // If we know the total count, increment it.
       setTotalCount((prev) => (typeof prev === 'number' ? prev + 1 : prev));
+
+      // Auto-sync to Flex (fire and forget)
+      syncLenderToFlex(data.id);
+
       return data as MasterLender;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add lender';
@@ -346,6 +366,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       if (updateError) throw updateError;
 
       setLenders((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+
+      // Auto-sync to Flex (fire and forget)
+      syncLenderToFlex(id);
+
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update lender';
