@@ -68,6 +68,7 @@ import { LenderSpreadsheetView } from '@/components/lenders/LenderSpreadsheetVie
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
+import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -774,6 +775,9 @@ export default function Lenders() {
             </div>
 
             <div className="space-y-4">
+                {/* Flex Sync Requests Panel */}
+                <LenderSyncRequestsPanel />
+                
                 {/* Advanced Filters Panel */}
                 <LenderFiltersPanel
                   filters={advancedFilters}

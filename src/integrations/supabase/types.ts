@@ -2601,6 +2601,65 @@ export type Database = {
           },
         ]
       }
+      lender_sync_requests: {
+        Row: {
+          changes_diff: Json | null
+          created_at: string
+          existing_lender_id: string | null
+          existing_lender_name: string | null
+          id: string
+          incoming_data: Json
+          processed_at: string | null
+          processed_by: string | null
+          processing_notes: string | null
+          request_type: string
+          source_lender_id: string | null
+          source_system: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          changes_diff?: Json | null
+          created_at?: string
+          existing_lender_id?: string | null
+          existing_lender_name?: string | null
+          id?: string
+          incoming_data: Json
+          processed_at?: string | null
+          processed_by?: string | null
+          processing_notes?: string | null
+          request_type: string
+          source_lender_id?: string | null
+          source_system?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          changes_diff?: Json | null
+          created_at?: string
+          existing_lender_id?: string | null
+          existing_lender_name?: string | null
+          id?: string
+          incoming_data?: Json
+          processed_at?: string | null
+          processed_by?: string | null
+          processing_notes?: string | null
+          request_type?: string
+          source_lender_id?: string | null
+          source_system?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_sync_requests_existing_lender_id_fkey"
+            columns: ["existing_lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_history: {
         Row: {
           browser: string | null
@@ -2655,11 +2714,13 @@ export type Database = {
           email: string | null
           external_created_by: string | null
           external_last_modified: string | null
+          flex_lender_id: string | null
           geo: string | null
           gift_address: string | null
           id: string
           industries: string[] | null
           industries_to_avoid: string[] | null
+          last_synced_from_flex: string | null
           lender_one_pager_url: string | null
           lender_type: string | null
           loan_types: string[] | null
@@ -2677,6 +2738,7 @@ export type Database = {
           relationship_owners: string | null
           sponsorship: string | null
           sub_debt: string | null
+          sync_source: string | null
           tier: string | null
           updated_at: string
           upfront_checklist: string | null
@@ -2696,11 +2758,13 @@ export type Database = {
           email?: string | null
           external_created_by?: string | null
           external_last_modified?: string | null
+          flex_lender_id?: string | null
           geo?: string | null
           gift_address?: string | null
           id?: string
           industries?: string[] | null
           industries_to_avoid?: string[] | null
+          last_synced_from_flex?: string | null
           lender_one_pager_url?: string | null
           lender_type?: string | null
           loan_types?: string[] | null
@@ -2718,6 +2782,7 @@ export type Database = {
           relationship_owners?: string | null
           sponsorship?: string | null
           sub_debt?: string | null
+          sync_source?: string | null
           tier?: string | null
           updated_at?: string
           upfront_checklist?: string | null
@@ -2737,11 +2802,13 @@ export type Database = {
           email?: string | null
           external_created_by?: string | null
           external_last_modified?: string | null
+          flex_lender_id?: string | null
           geo?: string | null
           gift_address?: string | null
           id?: string
           industries?: string[] | null
           industries_to_avoid?: string[] | null
+          last_synced_from_flex?: string | null
           lender_one_pager_url?: string | null
           lender_type?: string | null
           loan_types?: string[] | null
@@ -2759,6 +2826,7 @@ export type Database = {
           relationship_owners?: string | null
           sponsorship?: string | null
           sub_debt?: string | null
+          sync_source?: string | null
           tier?: string | null
           updated_at?: string
           upfront_checklist?: string | null
