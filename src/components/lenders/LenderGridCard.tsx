@@ -40,6 +40,8 @@ interface LenderGridCardProps {
   summary: LenderSummary;
   isQuickUploading: boolean;
   quickUploadLenderName: string | null;
+  isSelected?: boolean;
+  onToggleSelect?: (lenderId: string) => void;
   onOpenDetail: (lender: MasterLender) => void;
   onEdit: (lenderName: string) => void;
   onDelete: (id: string, name: string) => void;
@@ -61,6 +63,8 @@ export const LenderGridCard = memo(function LenderGridCard({
   summary,
   isQuickUploading,
   quickUploadLenderName,
+  isSelected = false,
+  onToggleSelect,
   onOpenDetail,
   onEdit,
   onDelete,
@@ -87,14 +91,27 @@ export const LenderGridCard = memo(function LenderGridCard({
 
   return (
     <div
-      className="relative bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer h-full min-h-[180px]"
+      className={`relative bg-muted/50 rounded-lg p-3 flex flex-col transition-transform duration-200 hover:scale-105 cursor-pointer h-full min-h-[180px] ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
       onClick={() => onOpenDetail(lender)}
     >
-      {/* Top left corner badges */}
-      <div className="absolute top-0 left-0 flex">
+      {/* Selection checkbox */}
+      {onToggleSelect && (
+        <div 
+          className="absolute top-2 left-2 z-10"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggleSelect(lender.id)}
+            className="bg-background"
+          />
+        </div>
+      )}
+      {/* Top left corner badges - shifted right when checkbox is visible */}
+      <div className={`absolute top-0 flex ${onToggleSelect ? 'left-8' : 'left-0'}`}>
         {lender.tier && (
           <Badge 
-            className={`text-xs rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none ${
+            className={`text-xs ${onToggleSelect ? 'rounded-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'} ${
               lender.tier === 'T1' ? 'bg-[#d1fae5] text-[#047857] hover:bg-[#d1fae5]' :
               lender.tier === 'T2' ? 'bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff]' :
               lender.tier === 'T3' ? 'bg-[#fef3c7] text-[#b45309] hover:bg-[#fef3c7]' :
@@ -105,12 +122,12 @@ export const LenderGridCard = memo(function LenderGridCard({
           </Badge>
         )}
         {lender.flex_lender_id && (
-          <Badge className={`text-xs bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff] ${lender.tier || (tileDisplaySettings.showActiveDealCount && activeDealCount > 0) ? 'rounded-none rounded-br-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
+          <Badge className={`text-xs bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff] ${lender.tier || (tileDisplaySettings.showActiveDealCount && activeDealCount > 0) ? 'rounded-none rounded-br-lg' : onToggleSelect ? 'rounded-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
             FLEx
           </Badge>
         )}
         {tileDisplaySettings.showActiveDealCount && activeDealCount > 0 && (
-          <Badge variant="default" className={`text-xs ${lender.tier || lender.flex_lender_id ? 'rounded-none rounded-br-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
+          <Badge variant="default" className={`text-xs ${lender.tier || lender.flex_lender_id ? 'rounded-none rounded-br-lg' : onToggleSelect ? 'rounded-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
             {activeDealCount} active
           </Badge>
         )}

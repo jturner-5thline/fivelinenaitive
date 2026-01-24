@@ -38,6 +38,8 @@ interface LenderListCardProps {
   summary: LenderSummary;
   isQuickUploading: boolean;
   quickUploadLenderName: string | null;
+  isSelected?: boolean;
+  onToggleSelect?: (lenderId: string) => void;
   onOpenDetail: (lender: MasterLender) => void;
   onEdit: (lenderName: string) => void;
   onDelete: (id: string, name: string) => void;
@@ -58,6 +60,8 @@ export const LenderListCard = memo(function LenderListCard({
   summary,
   isQuickUploading,
   quickUploadLenderName,
+  isSelected = false,
+  onToggleSelect,
   onOpenDetail,
   onEdit,
   onDelete,
@@ -78,9 +82,17 @@ export const LenderListCard = memo(function LenderListCard({
 
   return (
     <div 
-      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+      className={`flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer ${isSelected ? 'border-primary bg-primary/5' : ''}`}
       onClick={() => onOpenDetail(lender)}
     >
+      {onToggleSelect && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggleSelect(lender.id)}
+          />
+        </div>
+      )}
       <div className="p-2 bg-primary/10 rounded-lg">
         <Building2 className="h-5 w-5 text-primary" />
       </div>
