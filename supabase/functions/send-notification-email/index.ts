@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 interface NotificationPayload {
-  type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed' | 'new_suggestions';
+  type: 'deal_created' | 'deal_updated' | 'stage_changed' | 'lender_added' | 'lender_updated' | 'milestone_added' | 'milestone_completed' | 'milestone_missed' | 'new_suggestions' | 'flex_lender_sync';
   user_id: string;
   deal_id?: string;
   deal_name?: string;
@@ -18,9 +18,12 @@ interface NotificationPayload {
   milestone_title?: string;
   old_value?: string;
   new_value?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   suggestion_count?: number;
   agent_suggestion_count?: number;
+  // For flex_lender_sync
+  sync_request_type?: 'new_lender' | 'update_existing' | 'merge_conflict';
+  sync_count?: number;
 }
 
 const notificationTemplates: Record<string, { subject: string; getMessage: (data: NotificationPayload) => string }> = {
@@ -69,6 +72,21 @@ const notificationTemplates: Record<string, { subject: string; getMessage: (data
       return `Based on your recent activity, we've identified ${parts.join(' and ')} that could help optimize your workflow.`;
     },
   },
+  flex_lender_sync: {
+    subject: 'New Lender Sync Requests from Flex',
+    getMessage: (data) => {
+      const count = data.sync_count || 1;
+      const typeLabel = data.sync_request_type === 'new_lender' 
+        ? 'new lender' 
+        : data.sync_request_type === 'merge_conflict' 
+          ? 'merge conflict' 
+          : 'update';
+      if (count === 1) {
+        return `A ${typeLabel} request for "${data.lender_name}" has been received from Flex and is awaiting your review.`;
+      }
+      return `${count} lender sync requests have been received from Flex and are awaiting your review.`;
+    },
+  },
 };
 
 // Map notification types to their corresponding email preference columns
@@ -83,6 +101,7 @@ const preferenceMap: Record<string, string> = {
   milestone_completed: 'deal_updates_email',
   milestone_missed: 'deal_updates_email',
   new_suggestions: 'email_notifications', // Use global email setting
+  flex_lender_sync: 'lender_updates_email',
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -147,9 +166,18 @@ const handler = async (req: Request): Promise<Response> => {
     const message = template.getMessage(payload);
     const appUrl = "https://fivelinenaitive.lovable.app";
     const dealUrl = payload.deal_id ? `${appUrl}/deal/${payload.deal_id}` : null;
-    const actionUrl = payload.type === 'new_suggestions' 
-      ? (payload.agent_suggestion_count && payload.agent_suggestion_count > 0 ? `${appUrl}/agents` : `${appUrl}/workflows`)
-      : dealUrl;
+    let actionUrl: string | null = dealUrl;
+    let actionLabel = 'View Deal';
+    
+    if (payload.type === 'new_suggestions') {
+      actionUrl = payload.agent_suggestion_count && payload.agent_suggestion_count > 0 
+        ? `${appUrl}/agents` 
+        : `${appUrl}/workflows`;
+      actionLabel = 'View Recommendations';
+    } else if (payload.type === 'flex_lender_sync') {
+      actionUrl = `${appUrl}/lenders`;
+      actionLabel = 'Review Sync Requests';
+    }
 
     const emailResponse = await resend.emails.send({
       from: "nAItive <noreply@updates.naitive.co>",
@@ -189,7 +217,7 @@ const handler = async (req: Request): Promise<Response> => {
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                           <tr>
                             <td style="border-radius: 8px; background: linear-gradient(135deg, #8B5CF6 0%, #D946EF 100%);">
-                              <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">${payload.type === 'new_suggestions' ? 'View Recommendations' : 'View Deal'}</a>
+                              <a href="${actionUrl}" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">${actionLabel}</a>
                             </td>
                           </tr>
                         </table>
