@@ -219,9 +219,30 @@ function SyncRequestCard({ request, onApprove, onReject, onMerge }: SyncRequestC
   );
 }
 
-export function LenderSyncRequestsPanel() {
+interface LenderSyncRequestsPanelProps {
+  onLenderApproved?: () => void;
+}
+
+export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequestsPanelProps) {
   const { requests, pendingCount, loading, refetch, approveRequest, rejectRequest, mergeRequest } = useLenderSyncRequests();
   const [showAll, setShowAll] = useState(false);
+
+  // Wrap approve/merge to also notify parent to refresh lenders
+  const handleApprove = async (id: string) => {
+    const success = await approveRequest(id);
+    if (success && onLenderApproved) {
+      onLenderApproved();
+    }
+    return success;
+  };
+
+  const handleMerge = async (id: string, data: Record<string, unknown>) => {
+    const success = await mergeRequest(id, data);
+    if (success && onLenderApproved) {
+      onLenderApproved();
+    }
+    return success;
+  };
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const processedRequests = requests.filter(r => r.status !== 'pending');
@@ -265,9 +286,9 @@ export function LenderSyncRequestsPanel() {
               <SyncRequestCard
                 key={request.id}
                 request={request}
-                onApprove={approveRequest}
+                onApprove={handleApprove}
                 onReject={rejectRequest}
-                onMerge={mergeRequest}
+                onMerge={handleMerge}
               />
             ))}
             
@@ -279,9 +300,9 @@ export function LenderSyncRequestsPanel() {
                   <SyncRequestCard
                     key={request.id}
                     request={request}
-                    onApprove={approveRequest}
+                    onApprove={handleApprove}
                     onReject={rejectRequest}
-                    onMerge={mergeRequest}
+                    onMerge={handleMerge}
                   />
                 ))}
               </>
