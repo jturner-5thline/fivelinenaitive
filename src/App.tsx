@@ -35,6 +35,7 @@ import Settings from "./pages/Settings";
 import Account from "./pages/Account";
 import Lenders from "./pages/Lenders";
 import LenderDatabaseConfig from "./pages/LenderDatabaseConfig";
+import LenderSyncHistory from "./pages/LenderSyncHistory";
 import Preferences from "./pages/Preferences";
 import Analytics from "./pages/Analytics";
 import Reports from "./pages/Reports";
@@ -145,6 +146,9 @@ const App = () => (
                           } />
                           <Route path="/lenders/config" element={
                             <ProtectedRoute><AppLayout><LenderDatabaseConfig /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/lenders/sync-history" element={
+                            <ProtectedRoute><AppLayout><LenderSyncHistory /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/preferences" element={
                             <ProtectedRoute><AppLayout><Preferences /></AppLayout></ProtectedRoute>
