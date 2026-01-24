@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -216,6 +216,7 @@ export default function Lenders() {
   const [isSaving, setIsSaving] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<LenderFilters>(emptyFilters);
   const [tileDisplaySettings, setTileDisplaySettings] = useState<LenderTileDisplaySettings>(DEFAULT_TILE_DISPLAY_SETTINGS);
+  const [isSyncingToFlex, setIsSyncingToFlex] = useState(false);
 
   // Debounce search query for server-side search
   useEffect(() => {
@@ -634,6 +635,46 @@ export default function Lenders() {
     }
   };
 
+  const handleSyncToFlex = async () => {
+    setIsSyncingToFlex(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast({ 
+          title: 'Authentication required', 
+          description: 'Please log in to sync lenders to FLEx.', 
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      const response = await supabase.functions.invoke('sync-lenders-to-flex', {
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to sync lenders');
+      }
+
+      const result = response.data;
+      toast({ 
+        title: 'Sync complete', 
+        description: `Successfully synced ${result.synced} lenders to FLEx.`,
+      });
+    } catch (error) {
+      console.error('Flex sync error:', error);
+      toast({ 
+        title: 'Sync failed', 
+        description: error instanceof Error ? error.message : 'Could not sync lenders to FLEx.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSyncingToFlex(false);
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -702,6 +743,20 @@ export default function Lenders() {
                 <Button variant="ghost" size="sm" className="gap-1" onClick={() => setIsDuplicatesDialogOpen(true)}>
                   <Users className="h-4 w-4" />
                   Quick Merge
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1" 
+                  onClick={handleSyncToFlex}
+                  disabled={isSyncingToFlex || masterLenders.length === 0}
+                >
+                  {isSyncingToFlex ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  {isSyncingToFlex ? 'Syncing...' : 'Sync to FLEx'}
                 </Button>
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
