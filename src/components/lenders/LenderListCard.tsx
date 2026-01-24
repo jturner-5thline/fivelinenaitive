@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { Pencil, Trash2, Upload, Loader2, FileCheck, Megaphone, Building2 } from 'lucide-react';
+import { Pencil, Trash2, Upload, Loader2, FileCheck, Megaphone, Building2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -141,6 +141,16 @@ export const LenderListCard = memo(function LenderListCard({
               </>
             );
           })()}
+          {lender.flex_lender_id && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center">
+                  <RefreshCw className="h-3.5 w-3.5 text-success" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Synced with FLEx</TooltipContent>
+            </Tooltip>
+          )}
           {activeDealCount > 0 && (
             <Badge variant="default" className="text-xs">
               {activeDealCount} active
