@@ -69,6 +69,7 @@ import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lend
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
 import { useLenderSyncRequests } from '@/hooks/useLenderSyncRequests';
+import { useLenderSyncRealtimeNotifications } from '@/hooks/useLenderSyncRealtimeNotifications';
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
@@ -226,7 +227,10 @@ export default function Lenders() {
   const [isPushingSelectedToFlex, setIsPushingSelectedToFlex] = useState(false);
 
   // Get pending sync requests count
-  const { pendingCount: syncPendingCount } = useLenderSyncRequests();
+  const { pendingCount: syncPendingCount, refetch: refetchSyncRequests } = useLenderSyncRequests();
+
+  // Enable realtime notifications for new sync requests
+  useLenderSyncRealtimeNotifications(refetchSyncRequests);
 
   // Debounce search query for server-side search
   useEffect(() => {
