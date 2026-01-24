@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { Pencil, Trash2, Upload, Loader2, FileCheck, Megaphone, RefreshCw } from 'lucide-react';
+import { Pencil, Trash2, Upload, Loader2, FileCheck, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -105,14 +105,9 @@ export const LenderGridCard = memo(function LenderGridCard({
           </Badge>
         )}
         {lender.flex_lender_id && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className={`flex items-center justify-center bg-success/20 px-1.5 py-0.5 ${lender.tier || (tileDisplaySettings.showActiveDealCount && activeDealCount > 0) ? 'rounded-none rounded-br-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
-                <RefreshCw className="h-3 w-3 text-success" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>Synced with FLEx</TooltipContent>
-          </Tooltip>
+          <Badge className={`text-xs bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff] ${lender.tier || (tileDisplaySettings.showActiveDealCount && activeDealCount > 0) ? 'rounded-none rounded-br-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
+            FLEx
+          </Badge>
         )}
         {tileDisplaySettings.showActiveDealCount && activeDealCount > 0 && (
           <Badge variant="default" className={`text-xs ${lender.tier || lender.flex_lender_id ? 'rounded-none rounded-br-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
