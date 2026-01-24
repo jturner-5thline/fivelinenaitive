@@ -252,6 +252,7 @@ export default function Lenders() {
     deleteLender: deleteMasterLender,
     importLenders,
     mergeLenders,
+    fetchLenders: refetchMasterLenders,
   } = useMasterLenders({
     // This page needs the full lender list available for reliable cross-referencing
     // against deal activity (e.g., "Active Deals" filter).
@@ -800,7 +801,7 @@ export default function Lenders() {
             <div className="space-y-4">
                 {/* Flex Sync Requests Panel - show when toggled or has pending requests */}
                 {(showSyncPanel || syncPendingCount > 0) && (
-                  <LenderSyncRequestsPanel />
+                  <LenderSyncRequestsPanel onLenderApproved={refetchMasterLenders} />
                 )}
                 
                 {/* Advanced Filters Panel */}
