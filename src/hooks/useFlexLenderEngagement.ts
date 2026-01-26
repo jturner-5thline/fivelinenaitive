@@ -43,6 +43,18 @@ function calculateEngagementLevel(score: number): "hot" | "warm" | "cold" {
   return "cold";
 }
 
+// Only count these activity types as real FLEx lender engagement
+// These come directly from FLEx when lenders interact with deals
+const VALID_ENGAGEMENT_TYPES = [
+  'flex_deal_viewed',
+  'flex_file_downloaded',
+  'flex_info_requested',
+  'flex_deal_saved',
+  'flex_deal_shared',
+  'flex_nda_requested',
+  'flex_term_sheet_requested',
+];
+
 export function useFlexLenderEngagement(dealId: string | undefined) {
   const query = useQuery({
     queryKey: ["flex-lender-engagement", dealId],
@@ -53,12 +65,12 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
         .from("activity_logs")
         .select("*")
         .eq("deal_id", dealId)
-        .like("activity_type", "flex_%")
+        .in("activity_type", VALID_ENGAGEMENT_TYPES)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Group activities by lender
+      // Group activities by lender - only include activities with a lender_name
       const lenderMap = new Map<string, {
         lenderName: string;
         lenderEmail: string | null;
@@ -67,7 +79,11 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
 
       for (const activity of data || []) {
         const metadata = (activity.metadata || {}) as ActivityMetadata;
-        const lenderName = metadata.lender_name || "Unknown Lender";
+        const lenderName = metadata.lender_name;
+        
+        // Skip activities without a lender name - these are not real FLEx engagement
+        if (!lenderName) continue;
+        
         const lenderEmail = metadata.lender_email || null;
         const key = lenderEmail || lenderName;
 
