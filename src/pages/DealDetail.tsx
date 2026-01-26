@@ -2604,7 +2604,7 @@ export default function DealDetail() {
                                           {(() => {
                                             const totalHours = (deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0);
                                             if (totalHours === 0) return '-';
-                                            const revenuePerHour = deal.value / totalHours;
+                                            const revenuePerHour = (deal.totalFee ?? 0) / totalHours;
                                             return `$${revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
                                           })()}
                                         </span>
