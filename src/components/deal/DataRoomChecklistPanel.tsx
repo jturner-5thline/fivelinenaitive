@@ -693,15 +693,10 @@ export function DataRoomChecklistPanel({
                                   </Badge>
                                 )}
                                 {!linkedAttachment && !isUploading && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="flex items-center gap-1 text-xs text-amber-600">
-                                        <AlertCircle className="h-3 w-3" />
-                                        No file
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>No file uploaded for this item</TooltipContent>
-                                  </Tooltip>
+                                  <span className="flex items-center gap-1 text-xs text-amber-600">
+                                    <AlertCircle className="h-3 w-3" />
+                                    No file
+                                  </span>
                                 )}
                               </div>
                               {item.description && (
