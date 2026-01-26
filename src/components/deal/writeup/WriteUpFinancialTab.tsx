@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -160,8 +160,8 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
   const [showGmDelta, setShowGmDelta] = useState(true);
   const [showEbitdaDelta, setShowEbitdaDelta] = useState(true);
   
-  // Column widths state for resizable columns
-  const [columnWidths, setColumnWidths] = useState({
+  // Fixed column widths (not resizable)
+  const columnWidths = {
     year: 100,
     revenue: 140,
     revGrowth: 90,
@@ -169,33 +169,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
     gmDelta: 90,
     ebitda: 120,
     ebitdaDelta: 90,
-  });
-  
-  const resizingColumn = useRef<string | null>(null);
-  const startX = useRef(0);
-  const startWidth = useRef(0);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent, column: keyof typeof columnWidths) => {
-    resizingColumn.current = column;
-    startX.current = e.clientX;
-    startWidth.current = columnWidths[column];
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!resizingColumn.current) return;
-      const diff = e.clientX - startX.current;
-      const newWidth = Math.max(60, startWidth.current + diff);
-      setColumnWidths(prev => ({ ...prev, [resizingColumn.current!]: newWidth }));
-    };
-    
-    const handleMouseUp = () => {
-      resizingColumn.current = null;
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [columnWidths]);
+  };
 
   // Sort financial years chronologically
   const sortFinancialYearsChronologically = (years: FinancialYear[]): FinancialYear[] => {
@@ -520,21 +494,13 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
           <table className="w-full min-w-[750px]">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th style={{ width: columnWidths.year }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                <th style={{ width: columnWidths.year }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   Year
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'year')}
-                  />
                 </th>
-                <th style={{ width: columnWidths.revenue }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                <th style={{ width: columnWidths.revenue }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   Total Revenue
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'revenue')}
-                  />
                 </th>
-                <th style={{ width: columnWidths.revGrowth }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                <th style={{ width: columnWidths.revGrowth }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Checkbox 
                       checked={showRevGrowth} 
@@ -543,19 +509,11 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     />
                     <span>Rev. Growth</span>
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'revGrowth')}
-                  />
                 </th>
-                <th style={{ width: columnWidths.grossMargin }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                <th style={{ width: columnWidths.grossMargin }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   Gross Margin
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'grossMargin')}
-                  />
                 </th>
-                <th style={{ width: columnWidths.gmDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                <th style={{ width: columnWidths.gmDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Checkbox 
                       checked={showGmDelta} 
@@ -564,19 +522,11 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     />
                     <span>GM Δ</span>
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'gmDelta')}
-                  />
                 </th>
-                <th style={{ width: columnWidths.ebitda }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                <th style={{ width: columnWidths.ebitda }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   EBITDA
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'ebitda')}
-                  />
                 </th>
-                <th style={{ width: columnWidths.ebitdaDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                <th style={{ width: columnWidths.ebitdaDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Checkbox 
                       checked={showEbitdaDelta} 
@@ -585,10 +535,6 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     />
                     <span>EBITDA Δ</span>
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'ebitdaDelta')}
-                  />
                 </th>
                 <th className="w-12 py-3 px-2"></th>
               </tr>
