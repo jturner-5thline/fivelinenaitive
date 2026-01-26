@@ -2592,6 +2592,23 @@ export default function DealDetail() {
                                           min={0}
                                         />
                                       </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-sm w-32">Total Hours</span>
+                                        <span className="text-sm font-medium w-24">
+                                          {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-sm w-32">Revenue / Hour</span>
+                                        <span className="text-sm font-medium w-24">
+                                          {(() => {
+                                            const totalHours = (deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0);
+                                            if (totalHours === 0) return '-';
+                                            const revenuePerHour = deal.value / totalHours;
+                                            return `$${revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+                                          })()}
+                                        </span>
+                                      </div>
                                     </div>
                                     {/* Fees */}
                                     <div className="space-y-3">
