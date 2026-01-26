@@ -519,32 +519,20 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     onMouseDown={(e) => handleMouseDown(e, 'revenue')}
                   />
                 </th>
-                {showRevGrowth && (
-                  <th style={{ width: columnWidths.revGrowth }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
-                    <div className="flex items-center gap-2">
-                      <Checkbox 
-                        checked={showRevGrowth} 
-                        onCheckedChange={(checked) => setShowRevGrowth(!!checked)}
-                        className="h-3.5 w-3.5"
-                      />
-                      <span>Rev. Growth</span>
-                    </div>
-                    <div 
-                      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown(e, 'revGrowth')}
-                    />
-                  </th>
-                )}
-                {!showRevGrowth && (
-                  <th style={{ width: 40 }} className="py-3 px-2 text-sm font-medium text-muted-foreground">
+                <th style={{ width: columnWidths.revGrowth }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  <div className="flex items-center gap-2">
                     <Checkbox 
                       checked={showRevGrowth} 
                       onCheckedChange={(checked) => setShowRevGrowth(!!checked)}
                       className="h-3.5 w-3.5"
-                      title="Show Revenue Growth"
                     />
-                  </th>
-                )}
+                    <span>Rev. Growth</span>
+                  </div>
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'revGrowth')}
+                  />
+                </th>
                 <th style={{ width: columnWidths.grossMargin }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
                   Gross Margin
                   <div 
@@ -552,32 +540,20 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     onMouseDown={(e) => handleMouseDown(e, 'grossMargin')}
                   />
                 </th>
-                {showGmDelta && (
-                  <th style={{ width: columnWidths.gmDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
-                    <div className="flex items-center gap-2">
-                      <Checkbox 
-                        checked={showGmDelta} 
-                        onCheckedChange={(checked) => setShowGmDelta(!!checked)}
-                        className="h-3.5 w-3.5"
-                      />
-                      <span>GM Δ</span>
-                    </div>
-                    <div 
-                      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown(e, 'gmDelta')}
-                    />
-                  </th>
-                )}
-                {!showGmDelta && (
-                  <th style={{ width: 40 }} className="py-3 px-2 text-sm font-medium text-muted-foreground">
+                <th style={{ width: columnWidths.gmDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  <div className="flex items-center gap-2">
                     <Checkbox 
                       checked={showGmDelta} 
                       onCheckedChange={(checked) => setShowGmDelta(!!checked)}
                       className="h-3.5 w-3.5"
-                      title="Show GM Delta"
                     />
-                  </th>
-                )}
+                    <span>GM Δ</span>
+                  </div>
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'gmDelta')}
+                  />
+                </th>
                 <th style={{ width: columnWidths.ebitda }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
                   EBITDA
                   <div 
@@ -585,32 +561,20 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     onMouseDown={(e) => handleMouseDown(e, 'ebitda')}
                   />
                 </th>
-                {showEbitdaDelta && (
-                  <th style={{ width: columnWidths.ebitdaDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
-                    <div className="flex items-center gap-2">
-                      <Checkbox 
-                        checked={showEbitdaDelta} 
-                        onCheckedChange={(checked) => setShowEbitdaDelta(!!checked)}
-                        className="h-3.5 w-3.5"
-                      />
-                      <span>EBITDA Δ</span>
-                    </div>
-                    <div 
-                      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                      onMouseDown={(e) => handleMouseDown(e, 'ebitdaDelta')}
-                    />
-                  </th>
-                )}
-                {!showEbitdaDelta && (
-                  <th style={{ width: 40 }} className="py-3 px-2 text-sm font-medium text-muted-foreground">
+                <th style={{ width: columnWidths.ebitdaDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  <div className="flex items-center gap-2">
                     <Checkbox 
                       checked={showEbitdaDelta} 
                       onCheckedChange={(checked) => setShowEbitdaDelta(!!checked)}
                       className="h-3.5 w-3.5"
-                      title="Show EBITDA Delta"
                     />
-                  </th>
-                )}
+                    <span>EBITDA Δ</span>
+                  </div>
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'ebitdaDelta')}
+                  />
+                </th>
                 <th className="w-12 py-3 px-2"></th>
               </tr>
             </thead>
@@ -641,9 +605,9 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                         className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                       />
                     </td>
-                    {showRevGrowth ? (
-                      <td className="py-2 px-4">
-                        {(() => {
+                    <td className="py-2 px-4">
+                      {showRevGrowth ? (
+                        (() => {
                           const growth = calculateRevenueGrowth(index);
                           if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
                           const isPositive = growth.startsWith('+');
@@ -657,9 +621,9 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                               {growth}
                             </span>
                           );
-                        })()}
-                      </td>
-                    ) : <td className="py-2 px-2"></td>}
+                        })()
+                      ) : <span className="text-muted-foreground text-sm">—</span>}
+                    </td>
                     <td className="py-2 px-4">
                       <div className="relative">
                         <Input
@@ -681,9 +645,9 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                         )}
                       </div>
                     </td>
-                    {showGmDelta ? (
-                      <td className="py-2 px-4">
-                        {(() => {
+                    <td className="py-2 px-4">
+                      {showGmDelta ? (
+                        (() => {
                           const change = calculateGrossMarginChange(index);
                           if (change === null) return <span className="text-muted-foreground text-sm">—</span>;
                           const isPositive = change.startsWith('+');
@@ -697,9 +661,9 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                               {change}
                             </span>
                           );
-                        })()}
-                      </td>
-                    ) : <td className="py-2 px-2"></td>}
+                        })()
+                      ) : <span className="text-muted-foreground text-sm">—</span>}
+                    </td>
                     <td className="py-2 px-4">
                       <Input
                         value={item.ebitda}
@@ -712,9 +676,9 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                         )}
                       />
                     </td>
-                    {showEbitdaDelta ? (
-                      <td className="py-2 px-4">
-                        {(() => {
+                    <td className="py-2 px-4">
+                      {showEbitdaDelta ? (
+                        (() => {
                           const growth = calculateEbitdaGrowth(index);
                           if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
                           const isPositive = growth.startsWith('+');
@@ -728,9 +692,9 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                               {growth}
                             </span>
                           );
-                        })()}
-                      </td>
-                    ) : <td className="py-2 px-2"></td>}
+                        })()
+                      ) : <span className="text-muted-foreground text-sm">—</span>}
+                    </td>
                     <td className="py-2 px-2">
                       <Button
                         variant="ghost"
