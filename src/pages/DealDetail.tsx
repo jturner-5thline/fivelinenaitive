@@ -2477,7 +2477,7 @@ export default function DealDetail() {
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                  </div>
+                                    </div>
                                   
                                   {/* Right Column - Company Info */}
                                   <div className="space-y-3">
@@ -2555,6 +2555,103 @@ export default function DealDetail() {
                                           onChange={(referrer) => updateDeal('referredBy', referrer)}
                                           className="[&_input]:h-8 [&_input]:text-sm"
                                         />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Hours & Fees Section */}
+                                <Separator className="my-4" />
+                                <div className="space-y-3">
+                                  <h4 className="text-sm font-medium flex items-center gap-2">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    Hours & Fees
+                                  </h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Hours */}
+                                    <div className="space-y-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-sm w-32">Pre-Signing Hours</span>
+                                        <Input
+                                          type="number"
+                                          value={deal.preSigningHours ?? ''}
+                                          onChange={(e) => updateDeal('preSigningHours', e.target.value ? Number(e.target.value) : 0)}
+                                          placeholder="0"
+                                          className="w-24 h-8 text-sm"
+                                          min={0}
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-sm w-32">Post-Signing Hours</span>
+                                        <Input
+                                          type="number"
+                                          value={deal.postSigningHours ?? ''}
+                                          onChange={(e) => updateDeal('postSigningHours', e.target.value ? Number(e.target.value) : 0)}
+                                          placeholder="0"
+                                          className="w-24 h-8 text-sm"
+                                          min={0}
+                                        />
+                                      </div>
+                                    </div>
+                                    {/* Fees */}
+                                    <div className="space-y-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-sm w-32">Retainer Fee</span>
+                                        <div className="relative w-28">
+                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                                          <Input
+                                            type="number"
+                                            value={deal.retainerFee ?? ''}
+                                            onChange={(e) => updateDeal('retainerFee', e.target.value ? Number(e.target.value) : 0)}
+                                            placeholder="0"
+                                            className="pl-5 h-8 text-sm"
+                                            min={0}
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-sm w-32">Milestone Fee</span>
+                                        <div className="relative w-28">
+                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                                          <Input
+                                            type="number"
+                                            value={deal.milestoneFee ?? ''}
+                                            onChange={(e) => updateDeal('milestoneFee', e.target.value ? Number(e.target.value) : 0)}
+                                            placeholder="0"
+                                            className="pl-5 h-8 text-sm"
+                                            min={0}
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-sm w-32">Success Fee %</span>
+                                        <div className="relative w-28">
+                                          <Input
+                                            type="number"
+                                            value={deal.successFeePercent ?? ''}
+                                            onChange={(e) => updateDeal('successFeePercent', e.target.value ? Number(e.target.value) : 0)}
+                                            placeholder="0"
+                                            className="pr-6 h-8 text-sm"
+                                            min={0}
+                                            max={100}
+                                            step={0.1}
+                                          />
+                                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-sm w-32">Total Fee</span>
+                                        <div className="relative w-28">
+                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                                          <Input
+                                            type="number"
+                                            value={deal.totalFee ?? ''}
+                                            onChange={(e) => updateDeal('totalFee', e.target.value ? Number(e.target.value) : 0)}
+                                            placeholder="0"
+                                            className="pl-5 h-8 text-sm"
+                                            min={0}
+                                          />
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
