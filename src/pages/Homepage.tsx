@@ -7,6 +7,7 @@ import {
   HomepageScrollingTags,
   HomepageTestimonials,
   HomepageSecurity,
+  HomepageDataPrivacy,
   HomepageCTA,
   HomepageFooter,
   PlatformPreviewDealPipeline,
@@ -59,6 +60,8 @@ export default function Homepage() {
         <HomepageTestimonials />
         
         <HomepageSecurity />
+        
+        <HomepageDataPrivacy />
         
         <HomepageCTA />
         

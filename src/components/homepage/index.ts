@@ -5,6 +5,7 @@ export { HomepageFeatureSection } from "./HomepageFeatureSection";
 export { HomepageScrollingTags } from "./HomepageScrollingTags";
 export { HomepageTestimonials } from "./HomepageTestimonials";
 export { HomepageSecurity } from "./HomepageSecurity";
+export { HomepageDataPrivacy } from "./HomepageDataPrivacy";
 export { HomepageCTA } from "./HomepageCTA";
 export { HomepageFooter } from "./HomepageFooter";
 export { 
