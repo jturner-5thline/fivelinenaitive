@@ -428,16 +428,21 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
       if (deleteError) throw deleteError;
 
-      // Update local state
+      // Update local state immutably - create new array with updated primary and without merged entries
       setLenders((prev) => {
-        const updatedPrimary = prev.find((l) => l.id === keepId);
-        if (updatedPrimary) {
-          Object.assign(updatedPrimary, mergedData);
-        }
-        return prev.filter((l) => !mergeIds.includes(l.id));
+        return prev
+          .filter((l) => !mergeIds.includes(l.id))
+          .map((l) => (l.id === keepId ? { ...l, ...mergedData, updated_at: new Date().toISOString() } : l));
       });
 
       setTotalCount((prev) => (typeof prev === 'number' ? Math.max(0, prev - mergeIds.length) : prev));
+      
+      // Force a refetch to ensure UI is fully in sync with database
+      // Use setTimeout to allow state updates to settle first
+      setTimeout(() => {
+        fetchLenders();
+      }, 100);
+      
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to merge lenders';
