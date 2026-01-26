@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -153,6 +154,11 @@ const parseYearToNumber = (yearStr: string): number | null => {
 
 export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabProps) {
   const [grossMarginErrors, setGrossMarginErrors] = useState<Record<string, string | null>>({});
+  
+  // Column visibility toggles
+  const [showRevGrowth, setShowRevGrowth] = useState(true);
+  const [showGmDelta, setShowGmDelta] = useState(true);
+  const [showEbitdaDelta, setShowEbitdaDelta] = useState(true);
   
   // Column widths state for resizable columns
   const [columnWidths, setColumnWidths] = useState({
@@ -513,13 +519,32 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     onMouseDown={(e) => handleMouseDown(e, 'revenue')}
                   />
                 </th>
-                <th style={{ width: columnWidths.revGrowth }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
-                  Rev. Growth
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'revGrowth')}
-                  />
-                </th>
+                {showRevGrowth && (
+                  <th style={{ width: columnWidths.revGrowth }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                    <div className="flex items-center gap-2">
+                      <Checkbox 
+                        checked={showRevGrowth} 
+                        onCheckedChange={(checked) => setShowRevGrowth(!!checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <span>Rev. Growth</span>
+                    </div>
+                    <div 
+                      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown(e, 'revGrowth')}
+                    />
+                  </th>
+                )}
+                {!showRevGrowth && (
+                  <th style={{ width: 40 }} className="py-3 px-2 text-sm font-medium text-muted-foreground">
+                    <Checkbox 
+                      checked={showRevGrowth} 
+                      onCheckedChange={(checked) => setShowRevGrowth(!!checked)}
+                      className="h-3.5 w-3.5"
+                      title="Show Revenue Growth"
+                    />
+                  </th>
+                )}
                 <th style={{ width: columnWidths.grossMargin }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
                   Gross Margin
                   <div 
@@ -527,13 +552,32 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     onMouseDown={(e) => handleMouseDown(e, 'grossMargin')}
                   />
                 </th>
-                <th style={{ width: columnWidths.gmDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
-                  GM Δ
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'gmDelta')}
-                  />
-                </th>
+                {showGmDelta && (
+                  <th style={{ width: columnWidths.gmDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                    <div className="flex items-center gap-2">
+                      <Checkbox 
+                        checked={showGmDelta} 
+                        onCheckedChange={(checked) => setShowGmDelta(!!checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <span>GM Δ</span>
+                    </div>
+                    <div 
+                      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown(e, 'gmDelta')}
+                    />
+                  </th>
+                )}
+                {!showGmDelta && (
+                  <th style={{ width: 40 }} className="py-3 px-2 text-sm font-medium text-muted-foreground">
+                    <Checkbox 
+                      checked={showGmDelta} 
+                      onCheckedChange={(checked) => setShowGmDelta(!!checked)}
+                      className="h-3.5 w-3.5"
+                      title="Show GM Delta"
+                    />
+                  </th>
+                )}
                 <th style={{ width: columnWidths.ebitda }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
                   EBITDA
                   <div 
@@ -541,13 +585,32 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                     onMouseDown={(e) => handleMouseDown(e, 'ebitda')}
                   />
                 </th>
-                <th style={{ width: columnWidths.ebitdaDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
-                  EBITDA Δ
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
-                    onMouseDown={(e) => handleMouseDown(e, 'ebitdaDelta')}
-                  />
-                </th>
+                {showEbitdaDelta && (
+                  <th style={{ width: columnWidths.ebitdaDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                    <div className="flex items-center gap-2">
+                      <Checkbox 
+                        checked={showEbitdaDelta} 
+                        onCheckedChange={(checked) => setShowEbitdaDelta(!!checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <span>EBITDA Δ</span>
+                    </div>
+                    <div 
+                      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                      onMouseDown={(e) => handleMouseDown(e, 'ebitdaDelta')}
+                    />
+                  </th>
+                )}
+                {!showEbitdaDelta && (
+                  <th style={{ width: 40 }} className="py-3 px-2 text-sm font-medium text-muted-foreground">
+                    <Checkbox 
+                      checked={showEbitdaDelta} 
+                      onCheckedChange={(checked) => setShowEbitdaDelta(!!checked)}
+                      className="h-3.5 w-3.5"
+                      title="Show EBITDA Delta"
+                    />
+                  </th>
+                )}
                 <th className="w-12 py-3 px-2"></th>
               </tr>
             </thead>
@@ -578,23 +641,25 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                         className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                       />
                     </td>
-                    <td className="py-2 px-4">
-                      {(() => {
-                        const growth = calculateRevenueGrowth(index);
-                        if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
-                        const isPositive = growth.startsWith('+');
-                        const isNegative = growth.startsWith('-');
-                        return (
-                          <span className={cn(
-                            "text-sm font-medium",
-                            isPositive && "text-green-600 dark:text-green-500",
-                            isNegative && "text-red-600 dark:text-red-500"
-                          )}>
-                            {growth}
-                          </span>
-                        );
-                      })()}
-                    </td>
+                    {showRevGrowth ? (
+                      <td className="py-2 px-4">
+                        {(() => {
+                          const growth = calculateRevenueGrowth(index);
+                          if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
+                          const isPositive = growth.startsWith('+');
+                          const isNegative = growth.startsWith('-');
+                          return (
+                            <span className={cn(
+                              "text-sm font-medium",
+                              isPositive && "text-green-600 dark:text-green-500",
+                              isNegative && "text-red-600 dark:text-red-500"
+                            )}>
+                              {growth}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                    ) : <td className="py-2 px-2"></td>}
                     <td className="py-2 px-4">
                       <div className="relative">
                         <Input
@@ -616,23 +681,25 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                         )}
                       </div>
                     </td>
-                    <td className="py-2 px-4">
-                      {(() => {
-                        const change = calculateGrossMarginChange(index);
-                        if (change === null) return <span className="text-muted-foreground text-sm">—</span>;
-                        const isPositive = change.startsWith('+');
-                        const isNegative = change.startsWith('-');
-                        return (
-                          <span className={cn(
-                            "text-sm font-medium",
-                            isPositive && "text-green-600 dark:text-green-500",
-                            isNegative && "text-red-600 dark:text-red-500"
-                          )}>
-                            {change}
-                          </span>
-                        );
-                      })()}
-                    </td>
+                    {showGmDelta ? (
+                      <td className="py-2 px-4">
+                        {(() => {
+                          const change = calculateGrossMarginChange(index);
+                          if (change === null) return <span className="text-muted-foreground text-sm">—</span>;
+                          const isPositive = change.startsWith('+');
+                          const isNegative = change.startsWith('-');
+                          return (
+                            <span className={cn(
+                              "text-sm font-medium",
+                              isPositive && "text-green-600 dark:text-green-500",
+                              isNegative && "text-red-600 dark:text-red-500"
+                            )}>
+                              {change}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                    ) : <td className="py-2 px-2"></td>}
                     <td className="py-2 px-4">
                       <Input
                         value={item.ebitda}
@@ -645,23 +712,25 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                         )}
                       />
                     </td>
-                    <td className="py-2 px-4">
-                      {(() => {
-                        const growth = calculateEbitdaGrowth(index);
-                        if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
-                        const isPositive = growth.startsWith('+');
-                        const isNegative = growth.startsWith('-');
-                        return (
-                          <span className={cn(
-                            "text-sm font-medium",
-                            isPositive && "text-green-600 dark:text-green-500",
-                            isNegative && "text-red-600 dark:text-red-500"
-                          )}>
-                            {growth}
-                          </span>
-                        );
-                      })()}
-                    </td>
+                    {showEbitdaDelta ? (
+                      <td className="py-2 px-4">
+                        {(() => {
+                          const growth = calculateEbitdaGrowth(index);
+                          if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
+                          const isPositive = growth.startsWith('+');
+                          const isNegative = growth.startsWith('-');
+                          return (
+                            <span className={cn(
+                              "text-sm font-medium",
+                              isPositive && "text-green-600 dark:text-green-500",
+                              isNegative && "text-red-600 dark:text-red-500"
+                            )}>
+                              {growth}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                    ) : <td className="py-2 px-2"></td>}
                     <td className="py-2 px-2">
                       <Button
                         variant="ghost"
