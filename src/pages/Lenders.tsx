@@ -1081,6 +1081,17 @@ export default function Lenders() {
                       </Button>
                     </div>
                     <div className="flex items-center gap-2">
+                      {selectedLenderIds.size >= 2 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsSideBySideMergeOpen(true)}
+                          className="gap-2"
+                        >
+                          <Columns className="h-4 w-4" />
+                          Merge
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -1456,9 +1467,15 @@ export default function Lenders() {
 
       <SideBySideMergeDialog
         open={isSideBySideMergeOpen}
-        onOpenChange={setIsSideBySideMergeOpen}
+        onOpenChange={(open) => {
+          setIsSideBySideMergeOpen(open);
+          if (!open) {
+            clearSelection();
+          }
+        }}
         lenders={sortedLenders}
         onMergeLenders={async (keepId, mergeIds, mergedData) => { await mergeLenders(keepId, mergeIds, mergedData); }}
+        selectedLenderIds={selectedLenderIds.size >= 2 ? Array.from(selectedLenderIds) : undefined}
       />
 
       {/* Bank/Non-Bank Import Dialogs (controlled by dropdown) */}
