@@ -51,7 +51,14 @@ serve(async (req) => {
 
   try {
     const NAITIVE_FLEX_SYNC_KEY = Deno.env.get("NAITIVE_FLEX_SYNC_KEY");
-    const FLEX_API_URL = Deno.env.get("FLEX_API_URL") || "https://ndbrliydrlgtxcyfgyok.supabase.co/functions/v1";
+    const FLEX_API_URL_DEFAULT = "https://ndbrliydrlgtxcyfgyok.supabase.co/functions/v1";
+    
+    // Validate FLEX_API_URL - it might be set to an API key by mistake
+    let FLEX_API_URL = Deno.env.get("FLEX_API_URL");
+    if (!FLEX_API_URL || !FLEX_API_URL.startsWith("http")) {
+      console.warn("FLEX_API_URL not set or invalid, using default");
+      FLEX_API_URL = FLEX_API_URL_DEFAULT;
+    }
 
     if (!NAITIVE_FLEX_SYNC_KEY) {
       console.error("NAITIVE_FLEX_SYNC_KEY is not configured");
