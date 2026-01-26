@@ -113,9 +113,10 @@ interface FieldRowProps {
   selectedLenderIds: string[];
   onSelect: (lenderId: string) => void;
   onToggle: (lenderId: string) => void;
+  minColumnWidth?: string;
 }
 
-function FieldRow({ fieldDef, lenders, selectedLenderIds, onSelect, onToggle }: FieldRowProps) {
+function FieldRow({ fieldDef, lenders, selectedLenderIds, onSelect, onToggle, minColumnWidth = '1fr' }: FieldRowProps) {
   const Icon = fieldDef.icon;
   const isMultiSelect = fieldDef.multiSelect;
   const values = lenders.map(l => ({
@@ -146,7 +147,7 @@ function FieldRow({ fieldDef, lenders, selectedLenderIds, onSelect, onToggle }: 
           </Badge>
         )}
       </div>
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${lenders.length}, 1fr)` }}>
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${lenders.length}, minmax(${minColumnWidth}, 1fr))` }}>
         {values.map((val, idx) => {
           const isSelected = selectedLenderIds.includes(val.id);
           const hasValue = val.value != null && val.value !== '' && (Array.isArray(val.value) ? val.value.length > 0 : true);
@@ -164,7 +165,7 @@ function FieldRow({ fieldDef, lenders, selectedLenderIds, onSelect, onToggle }: 
               }}
               disabled={!hasValue}
               className={cn(
-                "p-3 text-left transition-all relative border-r last:border-r-0 border-border/30",
+                "p-3 text-left transition-all relative border-r last:border-r-0 border-border/30 min-w-[280px]",
                 hasValue && "hover:bg-primary/5 cursor-pointer",
                 !hasValue && "bg-muted/20 cursor-not-allowed",
                 isSelected && !isMultiSelect && "bg-primary/10 ring-2 ring-primary ring-inset",
@@ -278,44 +279,50 @@ function MergeView({
     onMerge(keepId, mergeIds, mergedData);
   };
 
+  // Calculate minimum column width based on number of lenders
+  const minColumnWidth = group.lenders.length > 3 ? '280px' : '1fr';
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Header with lender columns */}
-      <div className="border-b bg-muted/50 sticky top-0 z-10">
-        <div className="grid" style={{ gridTemplateColumns: `repeat(${group.lenders.length}, 1fr)` }}>
-          {group.lenders.map((lender, idx) => (
-            <div key={lender.id} className="p-3 border-r last:border-r-0 border-border/30">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Building2 className="h-4 w-4 text-primary" />
+    <div className="flex flex-col h-full min-w-0">
+      {/* Horizontally scrollable container for header and fields */}
+      <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
+        <div className="min-w-max">
+          {/* Header with lender columns */}
+          <div className="border-b bg-muted/50 sticky top-0 z-10">
+            <div className="grid" style={{ gridTemplateColumns: `repeat(${group.lenders.length}, minmax(${minColumnWidth}, 1fr))` }}>
+              {group.lenders.map((lender, idx) => (
+                <div key={lender.id} className="p-3 border-r last:border-r-0 border-border/30 min-w-[280px]">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{lender.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {idx === 0 ? 'Primary' : `Duplicate ${idx}`}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{lender.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {idx === 0 ? 'Primary' : `Duplicate ${idx}`}
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          <div className="divide-y divide-border/50">
+            {MERGE_FIELDS.map(field => (
+              <FieldRow
+                key={field.key}
+                fieldDef={field}
+                lenders={group.lenders}
+                selectedLenderIds={selections[field.key] || []}
+                onSelect={(lenderId) => handleFieldSelect(field.key, lenderId)}
+                onToggle={(lenderId) => handleFieldToggle(field.key, lenderId)}
+                minColumnWidth={minColumnWidth}
+              />
+            ))}
+          </div>
         </div>
       </div>
-
-      {/* Field rows */}
-      <ScrollArea className="flex-1">
-        <div className="divide-y divide-border/50">
-          {MERGE_FIELDS.map(field => (
-            <FieldRow
-              key={field.key}
-              fieldDef={field}
-              lenders={group.lenders}
-              selectedLenderIds={selections[field.key] || []}
-              onSelect={(lenderId) => handleFieldSelect(field.key, lenderId)}
-              onToggle={(lenderId) => handleFieldToggle(field.key, lenderId)}
-            />
-          ))}
-        </div>
-      </ScrollArea>
 
       {/* Actions */}
       <div className="border-t p-4 flex justify-between items-center bg-background">
