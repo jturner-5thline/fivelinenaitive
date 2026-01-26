@@ -92,7 +92,8 @@ const App = () => (
                       <BrowserRouter>
                         <CookieConsent />
                         <Routes>
-                          <Route path="/" element={<Waitlist />} />
+                        <Route path="/" element={<Homepage />} />
+                          <Route path="/waitlist" element={<Waitlist />} />
                           <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<Auth />} />
                           <Route path="/auth" element={<Auth />} />
