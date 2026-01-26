@@ -2141,7 +2141,7 @@ export default function DealDetail() {
             <div className="flex flex-col gap-6">
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'emails')}>
-                <TabsList className="inline-flex w-auto">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
                   <TabsTrigger value="lenders" className="gap-2">
                     Lenders
