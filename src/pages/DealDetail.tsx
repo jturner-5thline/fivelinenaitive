@@ -1766,7 +1766,7 @@ export default function DealDetail() {
         <GlobalSaveBar isAnySaving={isAnySaving} />
         <DealsHeader />
 
-        <main className="container mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 overflow-x-hidden">
+        <main className="container mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
           {/* Back button and Undo */}
           <div className="flex items-center justify-between mb-3">
             <Button variant="ghost" size="sm" className="gap-2" asChild>
@@ -3582,7 +3582,7 @@ export default function DealDetail() {
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
 
-                <TabsContent value="deal-writeup" className="mt-6 max-w-full overflow-x-hidden">
+                <TabsContent value="deal-writeup" className="mt-6 min-w-0">
                   <DealWriteUp
                     dealId={id!}
                     data={dealWriteUpData}

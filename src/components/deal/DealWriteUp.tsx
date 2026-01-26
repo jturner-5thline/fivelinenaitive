@@ -809,7 +809,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   };
 
   return (
-    <Card className="w-full max-w-full overflow-hidden">
+    <Card className="w-full max-w-full">
       <CardHeader>
         <div className="flex items-center justify-between gap-4 min-w-0">
           <div className="min-w-0">
@@ -822,12 +822,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6 overflow-hidden">
+      <CardContent className="space-y-6 min-w-0">
         {/* FLEx Sync History */}
         <FlexSyncHistory dealId={dealId} />
         
         {/* Edit Deal Section with Tabs or Long View */}
-        <div className="border rounded-lg p-6 space-y-6 overflow-hidden">
+        <div className="border rounded-lg p-6 space-y-6 min-w-0">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Edit Deal</h3>
             <TooltipProvider>
@@ -868,10 +868,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           {viewMode === 'tabs' && (
             <Tabs defaultValue="company-overview" className="w-full">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="company-overview">Company Overview</TabsTrigger>
-                <TabsTrigger value="financial">Financial</TabsTrigger>
-                <TabsTrigger value="highlights">Company Highlights</TabsTrigger>
-                <TabsTrigger value="key-items">Key Items</TabsTrigger>
+                <TabsTrigger value="company-overview" className="min-w-0 truncate">Company Overview</TabsTrigger>
+                <TabsTrigger value="financial" className="min-w-0 truncate">Financial</TabsTrigger>
+                <TabsTrigger value="highlights" className="min-w-0 truncate">Company Highlights</TabsTrigger>
+                <TabsTrigger value="key-items" className="min-w-0 truncate">Key Items</TabsTrigger>
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
@@ -896,7 +896,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             <div className="space-y-4">
               {/* Carousel Navigation Header */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
                   {CAROUSEL_SECTIONS.map((section, index) => (
                     <button
                       key={section.id}
@@ -1044,7 +1044,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             <div className="text-xs text-muted-foreground">
               Changes are saved automatically
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap justify-end">
               <Button variant="outline" onClick={onCancel}>
                 Done
               </Button>
