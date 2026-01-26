@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Filter, X, Pin, PinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +21,12 @@ import {
   STAGE_CONFIG, 
   STATUS_CONFIG, 
   ENGAGEMENT_TYPE_CONFIG,
-  MANAGERS,
   LENDERS,
+  Deal,
 } from '@/types/deal';
 import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
+import { useDealsContext } from '@/contexts/DealsContext';
 
 
 export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'lender' | 'referredBy';
@@ -55,6 +56,8 @@ export function FiltersPopover({
   onTogglePin,
 }: FiltersPopoverProps) {
   const [open, setOpen] = useState(false);
+  const { deals } = useDealsContext();
+  
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
@@ -70,10 +73,19 @@ export function FiltersPopover({
     label,
   }));
 
-  const managerOptions = MANAGERS.map((manager) => ({
-    value: manager,
-    label: manager,
-  }));
+  // Get unique managers from actual deals data
+  const managerOptions = useMemo(() => {
+    const managers = new Set<string>();
+    deals.forEach(deal => {
+      if (deal.manager && deal.manager.trim()) {
+        managers.add(deal.manager);
+      }
+    });
+    return Array.from(managers).sort().map(manager => ({
+      value: manager,
+      label: manager,
+    }));
+  }, [deals]);
 
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
@@ -232,6 +244,8 @@ export function FiltersPopover({
 
 // Export filter configs for use in quick filters
 export function useFilterConfigs() {
+  const { deals } = useDealsContext();
+  
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
@@ -247,10 +261,19 @@ export function useFilterConfigs() {
     label,
   }));
 
-  const managerOptions = MANAGERS.map((manager) => ({
-    value: manager,
-    label: manager,
-  }));
+  // Get unique managers from actual deals data
+  const managerOptions = useMemo(() => {
+    const managers = new Set<string>();
+    deals.forEach(deal => {
+      if (deal.manager && deal.manager.trim()) {
+        managers.add(deal.manager);
+      }
+    });
+    return Array.from(managers).sort().map(manager => ({
+      value: manager,
+      label: manager,
+    }));
+  }, [deals]);
 
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
