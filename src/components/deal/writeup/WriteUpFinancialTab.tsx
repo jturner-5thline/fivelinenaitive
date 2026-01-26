@@ -46,8 +46,8 @@ interface WriteUpFinancialTabProps {
 // Format currency value
 const formatCurrency = (value: string): string => {
   if (!value) return '';
-  if (value.startsWith('$')) return value;
-  const numericValue = value.replace(/[^0-9.]/g, '');
+  if (value.startsWith('$') || value.startsWith('(')) return value;
+  const numericValue = value.replace(/[^0-9.-]/g, '');
   if (numericValue && !isNaN(parseFloat(numericValue))) {
     const num = parseFloat(numericValue);
     const upperValue = value.toUpperCase();
@@ -63,6 +63,50 @@ const formatCurrency = (value: string): string => {
     return `$${num.toLocaleString()}`;
   }
   return value.startsWith('$') ? value : `$${value}`;
+};
+
+// Format EBITDA value - always in millions with 2 decimals, negative in parentheses
+const formatEbitda = (value: string): string => {
+  if (!value) return '';
+  
+  // Check if already formatted
+  if (value.startsWith('($') || (value.startsWith('$') && value.includes('MM'))) return value;
+  
+  // Handle parentheses format for negative
+  let isNegative = value.includes('-') || value.startsWith('(');
+  let cleanValue = value.replace(/[$(),\s-]/g, '').toUpperCase();
+  
+  // Extract numeric part
+  const numericMatch = cleanValue.match(/^(\d+\.?\d*)(MM|M|K|B)?$/);
+  if (!numericMatch) {
+    // Try to parse just the number
+    const justNum = cleanValue.replace(/[^0-9.]/g, '');
+    if (!justNum || isNaN(parseFloat(justNum))) return value;
+    cleanValue = justNum;
+  }
+  
+  let num = parseFloat(numericMatch ? numericMatch[1] : cleanValue);
+  const suffix = numericMatch ? numericMatch[2] : null;
+  
+  // Convert to actual value based on suffix
+  if (suffix === 'B') num *= 1000000000;
+  else if (suffix === 'MM') num *= 1000000;
+  else if (suffix === 'M') num *= 1000000;
+  else if (suffix === 'K') num *= 1000;
+  
+  // Convert to millions
+  const inMillions = num / 1000000;
+  
+  // Format with 2 decimal places
+  if (isNegative) {
+    return `($${inMillions.toFixed(2)}MM)`;
+  }
+  return `$${inMillions.toFixed(2)}MM`;
+};
+
+// Check if EBITDA value is negative
+const isNegativeEbitda = (value: string): boolean => {
+  return value.startsWith('($') || value.startsWith('(') || value.includes('-');
 };
 
 // Format percentage value with validation (max 150%)
@@ -410,9 +454,12 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                       <Input
                         value={item.ebitda}
                         onChange={(e) => updateFinancialYear(item.id, 'ebitda', e.target.value)}
-                        onBlur={(e) => updateFinancialYear(item.id, 'ebitda', formatCurrency(e.target.value))}
-                        placeholder="$903K"
-                        className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                        onBlur={(e) => updateFinancialYear(item.id, 'ebitda', formatEbitda(e.target.value))}
+                        placeholder="$1.00MM"
+                        className={cn(
+                          "h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0",
+                          isNegativeEbitda(item.ebitda) && "text-red-600 dark:text-red-500"
+                        )}
                       />
                     </td>
                     <td className="py-2 px-2">
