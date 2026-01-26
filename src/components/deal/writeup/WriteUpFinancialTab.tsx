@@ -243,7 +243,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
     return '0%';
   };
 
-  // Calculate YoY gross margin change (in percentage points)
+  // Calculate YoY gross margin growth (as percentage change)
   const calculateGrossMarginChange = (index: number): string | null => {
     if (data.financialYears.length < 2) return null;
     
@@ -269,14 +269,14 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
     const currentGM = parsePercent(currentRow.gross_margin);
     const previousGM = parsePercent(previousYearRow.gross_margin);
     
-    if (currentGM === null || previousGM === null) return null;
+    if (currentGM === null || previousGM === null || previousGM === 0) return null;
     
-    const change = currentGM - previousGM;
-    const formatted = change.toFixed(1);
+    const growthPercent = ((currentGM - previousGM) / Math.abs(previousGM)) * 100;
+    const formatted = growthPercent.toFixed(1);
     
-    if (change > 0) return `+${formatted}pp`;
-    if (change < 0) return `${formatted}pp`;
-    return '0pp';
+    if (growthPercent > 0) return `+${formatted}%`;
+    if (growthPercent < 0) return `${formatted}%`;
+    return '0%';
   };
 
   // Calculate YoY EBITDA growth
