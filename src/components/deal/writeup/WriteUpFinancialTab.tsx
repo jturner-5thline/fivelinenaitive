@@ -372,7 +372,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden">
       {/* Profitability & Gross Margins Row */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -516,8 +516,8 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
           </Button>
         </div>
         
-        <div className="border rounded-lg overflow-x-auto">
-          <table className="w-full" style={{ tableLayout: 'fixed' }}>
+        <div className="border rounded-lg overflow-x-auto max-w-full">
+          <table className="w-full min-w-[750px]">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th style={{ width: columnWidths.year }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
