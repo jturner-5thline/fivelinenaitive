@@ -3577,7 +3577,7 @@ export default function DealDetail() {
                   </Collapsible>
                 </TabsContent>
 
-                <TabsContent value="deal-management" className="mt-6 space-y-6">
+                <TabsContent value="deal-management" className="mt-6 space-y-6 overflow-hidden">
                   <FlexInfoNotificationsPanel dealId={id} />
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
