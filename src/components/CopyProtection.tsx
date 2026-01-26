@@ -1,17 +1,22 @@
 import { useCopyProtection } from '@/hooks/useCopyProtection';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CopyProtectionProps {
   children: React.ReactNode;
-  enabled?: boolean;
 }
 
-export const CopyProtection = ({ children, enabled = true }: CopyProtectionProps) => {
-  useCopyProtection(enabled);
+export const CopyProtection = ({ children }: CopyProtectionProps) => {
+  const { user } = useAuth();
+  
+  // Only enable copy protection when user is NOT signed in
+  const isProtectionEnabled = !user;
+  
+  useCopyProtection(isProtectionEnabled);
 
   return (
     <div
-      className={enabled ? 'select-none' : ''}
-      style={enabled ? { 
+      className={isProtectionEnabled ? 'select-none' : ''}
+      style={isProtectionEnabled ? { 
         WebkitUserSelect: 'none',
         MozUserSelect: 'none',
         msUserSelect: 'none',
