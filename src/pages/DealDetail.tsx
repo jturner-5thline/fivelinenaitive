@@ -3596,33 +3596,14 @@ export default function DealDetail() {
 
                 <TabsContent value="data-room" className="mt-6">
                   <Card 
-                    className={cn(
-                      "transition-all duration-200 relative",
-                      isDraggingOver && "ring-2 ring-primary ring-offset-2"
-                    )}
+                    className="transition-all duration-200 relative"
                     onDragOver={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setIsDraggingOver(true);
-                    }}
-                    onDragEnter={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDraggingOver(true);
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                        setIsDraggingOver(false);
-                      }
                     }}
                     onDrop={async (e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      // Only handle if not caught by category dropzones
-                      if (!isDraggingOver) return;
-                      setIsDraggingOver(false);
                       const files = Array.from(e.dataTransfer.files);
                       await handleFileDrop(files);
                     }}
@@ -3818,12 +3799,6 @@ export default function DealDetail() {
                         </CollapsibleContent>
                       </Collapsible>
                       
-                      {isDraggingOver && (
-                        <FileDropzoneOverlay
-                          onDropToCategory={handleFileDropToCategory}
-                          onDragEnd={() => setIsDraggingOver(false)}
-                        />
-                      )}
                       {isUploading && (
                         <div className="flex flex-col items-center justify-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
