@@ -1,8 +1,10 @@
+import { useState, useMemo } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -16,6 +18,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { DealWriteUpData } from '../DealWriteUp';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const INDUSTRY_OPTIONS = [
   'Technology',
@@ -123,6 +127,15 @@ interface WriteUpCompanyOverviewTabProps {
 }
 
 export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyOverviewTabProps) {
+  const [locationSearch, setLocationSearch] = useState('');
+  const [locationOpen, setLocationOpen] = useState(false);
+
+  const filteredLocations = useMemo(() => {
+    if (!locationSearch) return LOCATION_OPTIONS;
+    const search = locationSearch.toLowerCase();
+    return LOCATION_OPTIONS.filter(loc => loc.toLowerCase().includes(search));
+  }, [locationSearch]);
+
   return (
     <div className="space-y-6">
       {/* Company Name & URL Row */}
@@ -172,16 +185,54 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
         </div>
         <div className="space-y-2">
           <Label htmlFor="location">Location *</Label>
-          <Select value={data.location} onValueChange={(v) => updateField('location', v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select location" />
-            </SelectTrigger>
-            <SelectContent>
-              {LOCATION_OPTIONS.map(option => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={locationOpen} onOpenChange={setLocationOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={locationOpen}
+                className="w-full justify-between font-normal"
+              >
+                {data.location || "Select location"}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-0 bg-popover border z-50" align="start">
+              <div className="p-2 border-b">
+                <Input
+                  placeholder="Search locations..."
+                  value={locationSearch}
+                  onChange={(e) => setLocationSearch(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+              <ScrollArea className="h-[200px]">
+                <div className="p-1">
+                  {filteredLocations.length === 0 ? (
+                    <div className="py-2 px-3 text-sm text-muted-foreground">No locations found</div>
+                  ) : (
+                    filteredLocations.map(option => (
+                      <div
+                        key={option}
+                        className={cn(
+                          "flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-sm hover:bg-accent",
+                          data.location === option && "bg-accent"
+                        )}
+                        onClick={() => {
+                          updateField('location', option);
+                          setLocationOpen(false);
+                          setLocationSearch('');
+                        }}
+                      >
+                        <Check className={cn("h-4 w-4", data.location === option ? "opacity-100" : "opacity-0")} />
+                        {option}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
