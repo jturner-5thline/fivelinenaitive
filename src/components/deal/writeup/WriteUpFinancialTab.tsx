@@ -422,28 +422,43 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
         </div>
         <div className="space-y-2">
           <Label htmlFor="financialDataAsOf">Financial Data As Of</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'w-full justify-start text-left font-normal',
-                  !data.financialDataAsOf && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {data.financialDataAsOf ? format(data.financialDataAsOf, 'PPP') : 'Select date'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={data.financialDataAsOf ?? undefined}
-                onSelect={(date) => updateField('financialDataAsOf', date ?? null)}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex gap-2">
+            <Select 
+              value={data.financialDataAsOf ? format(data.financialDataAsOf, 'MMMM') : ''} 
+              onValueChange={(month) => {
+                const currentYear = data.financialDataAsOf ? data.financialDataAsOf.getFullYear() : new Date().getFullYear();
+                const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month);
+                if (monthIndex !== -1) {
+                  updateField('financialDataAsOf', new Date(currentYear, monthIndex, 1));
+                }
+              }}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(month => (
+                  <SelectItem key={month} value={month}>{month}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select 
+              value={data.financialDataAsOf ? data.financialDataAsOf.getFullYear().toString() : ''} 
+              onValueChange={(year) => {
+                const currentMonth = data.financialDataAsOf ? data.financialDataAsOf.getMonth() : 0;
+                updateField('financialDataAsOf', new Date(parseInt(year), currentMonth, 1));
+              }}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                  <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
