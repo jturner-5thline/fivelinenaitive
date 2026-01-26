@@ -49,7 +49,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const hasActivity = chartData && chartData.some(d => d.views > 0);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full overflow-hidden">
       {/* Main activity section */}
       <div className="lg:col-span-2 space-y-6">
       {/* FLEx Engagement Stats */}
