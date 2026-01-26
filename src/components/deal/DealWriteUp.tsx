@@ -809,7 +809,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   };
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
