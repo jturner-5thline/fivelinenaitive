@@ -230,9 +230,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
                 className="w-full justify-between font-normal"
               >
                 {data.dealTypes.length > 0
-                  ? data.dealTypes.length === 1
-                    ? data.dealTypes[0]
-                    : `${data.dealTypes.length} types selected`
+                  ? data.dealTypes.join(', ')
                   : "Select deal types"}
                 <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
