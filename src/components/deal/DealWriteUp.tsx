@@ -822,12 +822,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 overflow-hidden">
         {/* FLEx Sync History */}
         <FlexSyncHistory dealId={dealId} />
         
         {/* Edit Deal Section with Tabs or Long View */}
-        <div className="border rounded-lg p-6 space-y-6">
+        <div className="border rounded-lg p-6 space-y-6 overflow-hidden">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Edit Deal</h3>
             <TooltipProvider>
