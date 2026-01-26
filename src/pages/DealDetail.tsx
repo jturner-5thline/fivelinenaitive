@@ -2574,6 +2574,7 @@ export default function DealDetail() {
                                         <span className="text-muted-foreground text-sm w-32">Pre-Signing Hours</span>
                                         <Input
                                           type="number"
+                                          step="0.25"
                                           value={deal.preSigningHours ?? ''}
                                           onChange={(e) => updateDeal('preSigningHours', e.target.value ? Number(e.target.value) : 0)}
                                           placeholder="0"
@@ -2585,6 +2586,7 @@ export default function DealDetail() {
                                         <span className="text-muted-foreground text-sm w-32">Post-Signing Hours</span>
                                         <Input
                                           type="number"
+                                          step="0.25"
                                           value={deal.postSigningHours ?? ''}
                                           onChange={(e) => updateDeal('postSigningHours', e.target.value ? Number(e.target.value) : 0)}
                                           placeholder="0"
