@@ -3583,17 +3583,15 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="deal-writeup" className="mt-6">
-                  <div style={{ maxWidth: '1280px' }}>
-                    <DealWriteUp
-                      dealId={id!}
-                      data={dealWriteUpData}
-                      onChange={setDealWriteUpData}
-                      onSave={saveWriteupNow}
-                      onCancel={() => setDealInfoTab('deal-info')}
-                      isSaving={isSavingWriteup}
-                      autoSaveStatus={autoSaveStatus}
-                    />
-                  </div>
+                  <DealWriteUp
+                    dealId={id!}
+                    data={dealWriteUpData}
+                    onChange={setDealWriteUpData}
+                    onSave={saveWriteupNow}
+                    onCancel={() => setDealInfoTab('deal-info')}
+                    isSaving={isSavingWriteup}
+                    autoSaveStatus={autoSaveStatus}
+                  />
                 </TabsContent>
 
                 <TabsContent value="data-room" className="mt-6">
