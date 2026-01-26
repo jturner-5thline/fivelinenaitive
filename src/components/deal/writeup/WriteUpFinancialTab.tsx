@@ -350,6 +350,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                       <Input
                         value={item.revenue}
                         onChange={(e) => updateFinancialYear(item.id, 'revenue', e.target.value)}
+                        onBlur={(e) => updateFinancialYear(item.id, 'revenue', formatCurrency(e.target.value))}
                         placeholder="$24.72MM"
                         className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                       />
@@ -375,6 +376,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                       <Input
                         value={item.gross_margin}
                         onChange={(e) => updateFinancialYear(item.id, 'gross_margin', e.target.value)}
+                        onBlur={(e) => updateFinancialYear(item.id, 'gross_margin', formatPercentage(e.target.value))}
                         placeholder="53%"
                         className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                       />
@@ -383,7 +385,8 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                       <Input
                         value={item.ebitda}
                         onChange={(e) => updateFinancialYear(item.id, 'ebitda', e.target.value)}
-                        placeholder="$903k"
+                        onBlur={(e) => updateFinancialYear(item.id, 'ebitda', formatCurrency(e.target.value))}
+                        placeholder="$903K"
                         className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                       />
                     </td>
