@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear } from '@/components/deal/DealWriteUp';
+import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear, FinancialComment } from '@/components/deal/DealWriteUp';
 import { Json } from '@/integrations/supabase/types';
 
 interface DealWriteupRow {
@@ -97,6 +97,7 @@ export function useDealWriteup(dealId: string | undefined) {
         key_items: data.keyItems as unknown as Json,
         company_highlights: data.companyHighlights as unknown as Json,
         financial_years: data.financialYears as unknown as Json,
+        financial_comments: data.financialComments as unknown as Json,
         publish_as_anonymous: data.publishAsAnonymous,
       };
 
@@ -162,6 +163,12 @@ export function useDealWriteup(dealId: string | undefined) {
     if (row.financial_years && Array.isArray(row.financial_years)) {
       financialYears = row.financial_years as unknown as FinancialYear[];
     }
+
+    // Parse financial_comments from JSON (stored in financial_years or separately)
+    let financialComments: FinancialComment[] = [];
+    if ((row as any).financial_comments && Array.isArray((row as any).financial_comments)) {
+      financialComments = (row as any).financial_comments as unknown as FinancialComment[];
+    }
     
     return {
       companyName: row.company_name || '',
@@ -185,6 +192,7 @@ export function useDealWriteup(dealId: string | undefined) {
       keyItems,
       companyHighlights,
       financialYears,
+      financialComments,
       publishAsAnonymous: row.publish_as_anonymous || false,
     };
   }, []);

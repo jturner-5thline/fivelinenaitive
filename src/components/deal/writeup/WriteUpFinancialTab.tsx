@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { DealWriteUpData, FinancialYear } from '../DealWriteUp';
+import { DealWriteUpData, FinancialYear, FinancialComment } from '../DealWriteUp';
 
 const PROFITABILITY_OPTIONS = [
   'Profitable',
@@ -140,6 +140,29 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
 
   const deleteFinancialYear = (id: string) => {
     updateField('financialYears', data.financialYears.filter(item => item.id !== id));
+  };
+
+  // Financial comments handlers
+  const addFinancialComment = () => {
+    const newComment: FinancialComment = {
+      id: crypto.randomUUID(),
+      title: '',
+      description: '',
+    };
+    updateField('financialComments', [...(data.financialComments || []), newComment]);
+  };
+
+  const updateFinancialComment = (id: string, field: 'title' | 'description', value: string) => {
+    updateField(
+      'financialComments',
+      (data.financialComments || []).map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const deleteFinancialComment = (id: string) => {
+    updateField('financialComments', (data.financialComments || []).filter(item => item.id !== id));
   };
 
   // Calculate YoY revenue growth
@@ -380,6 +403,57 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Financial Commentary Comments Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-base font-semibold">Financial Commentary</Label>
+            <p className="text-sm text-muted-foreground mt-0.5">Additional notes and insights about financial performance</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={addFinancialComment}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Comment
+          </Button>
+        </div>
+        
+        {(!data.financialComments || data.financialComments.length === 0) ? (
+          <div className="border rounded-lg p-8 text-center text-muted-foreground">
+            <p className="text-sm">No financial comments added yet.</p>
+            <p className="text-xs mt-1">Click "Add Comment" to add financial insights.</p>
+          </div>
+        ) : (
+          data.financialComments.map((item) => (
+            <div key={item.id} className="border rounded-lg p-4 space-y-3 relative bg-muted/30">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={() => deleteFinancialComment(item.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <div className="space-y-2 pr-10">
+                <Label>Title</Label>
+                <Input
+                  value={item.title}
+                  onChange={(e) => updateFinancialComment(item.id, 'title', e.target.value)}
+                  placeholder="Strong Revenue Growth"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={item.description}
+                  onChange={(e) => updateFinancialComment(item.id, 'description', e.target.value)}
+                  placeholder="Revenue has grown 40% YoY driven by expansion into new markets..."
+                  className="min-h-[60px]"
+                />
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
