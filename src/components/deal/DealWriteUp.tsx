@@ -813,7 +813,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Deal Management</CardTitle>
+            <CardTitle>Deal Write Up</CardTitle>
             <CardDescription>Create, edit, and manage deal listings</CardDescription>
           </div>
           <div className="flex items-center gap-3">
