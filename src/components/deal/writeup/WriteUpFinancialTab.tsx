@@ -243,6 +243,90 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
     return '0%';
   };
 
+  // Calculate YoY gross margin change (in percentage points)
+  const calculateGrossMarginChange = (index: number): string | null => {
+    if (data.financialYears.length < 2) return null;
+    
+    const currentRow = data.financialYears[index];
+    const currentYear = parseYearToNumber(currentRow.year);
+    
+    if (currentYear === null) return null;
+    
+    const previousYearRow = data.financialYears.find(row => {
+      const rowYear = parseYearToNumber(row.year);
+      return rowYear === currentYear - 1;
+    });
+    
+    if (!previousYearRow) return null;
+    
+    // Parse percentage values
+    const parsePercent = (val: string): number | null => {
+      if (!val) return null;
+      const num = parseFloat(val.replace(/[^0-9.-]/g, ''));
+      return isNaN(num) ? null : num;
+    };
+    
+    const currentGM = parsePercent(currentRow.gross_margin);
+    const previousGM = parsePercent(previousYearRow.gross_margin);
+    
+    if (currentGM === null || previousGM === null) return null;
+    
+    const change = currentGM - previousGM;
+    const formatted = change.toFixed(1);
+    
+    if (change > 0) return `+${formatted}pp`;
+    if (change < 0) return `${formatted}pp`;
+    return '0pp';
+  };
+
+  // Calculate YoY EBITDA growth
+  const calculateEbitdaGrowth = (index: number): string | null => {
+    if (data.financialYears.length < 2) return null;
+    
+    const currentRow = data.financialYears[index];
+    const currentYear = parseYearToNumber(currentRow.year);
+    
+    if (currentYear === null) return null;
+    
+    const previousYearRow = data.financialYears.find(row => {
+      const rowYear = parseYearToNumber(row.year);
+      return rowYear === currentYear - 1;
+    });
+    
+    if (!previousYearRow) return null;
+    
+    // Parse EBITDA values
+    const parseEbitda = (val: string): number | null => {
+      if (!val) return null;
+      const isNegative = val.startsWith('($') || val.startsWith('(') || val.includes('-');
+      const cleanVal = val.replace(/[$(),\s-]/g, '').toUpperCase();
+      const match = cleanVal.match(/^(\d+\.?\d*)(MM|M|K|B)?$/);
+      if (!match) return null;
+      
+      let num = parseFloat(match[1]);
+      const suffix = match[2];
+      
+      if (suffix === 'B') num *= 1000000000;
+      else if (suffix === 'MM') num *= 1000000;
+      else if (suffix === 'M') num *= 1000000;
+      else if (suffix === 'K') num *= 1000;
+      
+      return isNegative ? -num : num;
+    };
+    
+    const currentEbitda = parseEbitda(currentRow.ebitda);
+    const previousEbitda = parseEbitda(previousYearRow.ebitda);
+    
+    if (currentEbitda === null || previousEbitda === null || previousEbitda === 0) return null;
+    
+    const growthPercent = ((currentEbitda - previousEbitda) / Math.abs(previousEbitda)) * 100;
+    const formatted = growthPercent.toFixed(1);
+    
+    if (growthPercent > 0) return `+${formatted}%`;
+    if (growthPercent < 0) return `${formatted}%`;
+    return '0%';
+  };
+
   return (
     <div className="space-y-6">
       {/* Profitability & Gross Margins Row */}
@@ -377,18 +461,20 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[120px]">Year</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[100px]">Year</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Total Revenue</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[100px]">Rev. Growth</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[90px]">Rev. Growth</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Gross Margin</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[90px]">GM Δ</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">EBITDA</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[90px]">EBITDA Δ</th>
                 <th className="w-12 py-3 px-2"></th>
               </tr>
             </thead>
             <tbody>
               {data.financialYears.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-muted-foreground text-sm">
+                  <td colSpan={8} className="py-8 text-center text-muted-foreground text-sm">
                     No financial years added yet. Click "Add Year" to get started.
                   </td>
                 </tr>
@@ -451,6 +537,23 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                       </div>
                     </td>
                     <td className="py-2 px-4">
+                      {(() => {
+                        const change = calculateGrossMarginChange(index);
+                        if (change === null) return <span className="text-muted-foreground text-sm">—</span>;
+                        const isPositive = change.startsWith('+');
+                        const isNegative = change.startsWith('-');
+                        return (
+                          <span className={cn(
+                            "text-sm font-medium",
+                            isPositive && "text-green-600 dark:text-green-500",
+                            isNegative && "text-red-600 dark:text-red-500"
+                          )}>
+                            {change}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="py-2 px-4">
                       <Input
                         value={item.ebitda}
                         onChange={(e) => updateFinancialYear(item.id, 'ebitda', e.target.value)}
@@ -461,6 +564,23 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                           isNegativeEbitda(item.ebitda) && "text-red-600 dark:text-red-500"
                         )}
                       />
+                    </td>
+                    <td className="py-2 px-4">
+                      {(() => {
+                        const growth = calculateEbitdaGrowth(index);
+                        if (growth === null) return <span className="text-muted-foreground text-sm">—</span>;
+                        const isPositive = growth.startsWith('+');
+                        const isNegative = growth.startsWith('-');
+                        return (
+                          <span className={cn(
+                            "text-sm font-medium",
+                            isPositive && "text-green-600 dark:text-green-500",
+                            isNegative && "text-red-600 dark:text-red-500"
+                          )}>
+                            {growth}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-2 px-2">
                       <Button
