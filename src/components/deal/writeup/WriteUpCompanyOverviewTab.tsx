@@ -276,9 +276,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
                 className="w-full justify-between font-normal"
               >
                 {data.billingModels.length > 0
-                  ? data.billingModels.length === 1
-                    ? data.billingModels[0]
-                    : `${data.billingModels.length} models selected`
+                  ? data.billingModels.join(', ')
                   : "Select billing models"}
                 <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
