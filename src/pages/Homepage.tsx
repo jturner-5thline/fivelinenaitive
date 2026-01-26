@@ -59,8 +59,6 @@ export default function Homepage() {
         
         <HomepageTestimonials />
         
-        <HomepageSecurity />
-        
         <HomepageDataPrivacy />
         
         <HomepageCTA />
