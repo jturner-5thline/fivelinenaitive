@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -217,6 +219,8 @@ const STATUS_OPTIONS = [
   'Closed',
 ];
 
+const WRITEUP_VIEW_MODE_KEY = 'deal-writeup-view-mode';
+
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
   const queryClient = useQueryClient();
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
@@ -231,6 +235,24 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const pendingPublishToastIdRef = useRef<string | number | null>(null);
   const { data: latestSync } = useLatestFlexSync(dealId);
   
+  // View mode state: 'tabs' or 'long'
+  const [viewMode, setViewMode] = useState<'tabs' | 'long'>(() => {
+    try {
+      const saved = localStorage.getItem(WRITEUP_VIEW_MODE_KEY);
+      return saved === 'long' ? 'long' : 'tabs';
+    } catch {
+      return 'tabs';
+    }
+  });
+
+  // Persist view mode to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(WRITEUP_VIEW_MODE_KEY, viewMode);
+    } catch {
+      // Ignore storage errors
+    }
+  }, [viewMode]);
   
   // Check if currently published on FLEx
   const isPublishedOnFlex = latestSync?.status === 'success';
@@ -755,36 +777,97 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         {/* FLEx Sync History */}
         <FlexSyncHistory dealId={dealId} />
         
-        {/* Edit Deal Section with Tabs */}
+        {/* Edit Deal Section with Tabs or Long View */}
         <div className="border rounded-lg p-6 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Edit Deal</h3>
+            <TooltipProvider>
+              <ToggleGroup 
+                type="single" 
+                value={viewMode} 
+                onValueChange={(value) => value && setViewMode(value as 'tabs' | 'long')}
+                className="border rounded-md"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <ToggleGroupItem value="tabs" aria-label="Tabbed view" size="sm">
+                      <LayoutGrid className="h-4 w-4" />
+                    </ToggleGroupItem>
+                  </TooltipTrigger>
+                  <TooltipContent>Tabbed view</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <ToggleGroupItem value="long" aria-label="Long form view" size="sm">
+                      <LayoutList className="h-4 w-4" />
+                    </ToggleGroupItem>
+                  </TooltipTrigger>
+                  <TooltipContent>Long form view</TooltipContent>
+                </Tooltip>
+              </ToggleGroup>
+            </TooltipProvider>
           </div>
           
-          <Tabs defaultValue="company-overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="company-overview">Company Overview</TabsTrigger>
-              <TabsTrigger value="financial">Financial</TabsTrigger>
-              <TabsTrigger value="highlights">Company Highlights</TabsTrigger>
-              <TabsTrigger value="key-items">Key Items</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="company-overview" className="mt-6">
-              <WriteUpCompanyOverviewTab data={data} updateField={updateField} />
-            </TabsContent>
-            
-            <TabsContent value="financial" className="mt-6">
-              <WriteUpFinancialTab data={data} updateField={updateField} />
-            </TabsContent>
-            
-            <TabsContent value="highlights" className="mt-6">
-              <WriteUpCompanyHighlightsTab data={data} updateField={updateField} />
-            </TabsContent>
-            
-            <TabsContent value="key-items" className="mt-6">
-              <WriteUpKeyItemsTab data={data} updateField={updateField} />
-            </TabsContent>
-          </Tabs>
+          {viewMode === 'tabs' ? (
+            <Tabs defaultValue="company-overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="company-overview">Company Overview</TabsTrigger>
+                <TabsTrigger value="financial">Financial</TabsTrigger>
+                <TabsTrigger value="highlights">Company Highlights</TabsTrigger>
+                <TabsTrigger value="key-items">Key Items</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="company-overview" className="mt-6">
+                <WriteUpCompanyOverviewTab data={data} updateField={updateField} />
+              </TabsContent>
+              
+              <TabsContent value="financial" className="mt-6">
+                <WriteUpFinancialTab data={data} updateField={updateField} />
+              </TabsContent>
+              
+              <TabsContent value="highlights" className="mt-6">
+                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} />
+              </TabsContent>
+              
+              <TabsContent value="key-items" className="mt-6">
+                <WriteUpKeyItemsTab data={data} updateField={updateField} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="space-y-8">
+              {/* Company Overview Section */}
+              <div className="space-y-4">
+                <div className="border-b pb-2">
+                  <h4 className="text-base font-semibold text-foreground">Company Overview</h4>
+                </div>
+                <WriteUpCompanyOverviewTab data={data} updateField={updateField} />
+              </div>
+              
+              {/* Financial Section */}
+              <div className="space-y-4">
+                <div className="border-b pb-2">
+                  <h4 className="text-base font-semibold text-foreground">Financial</h4>
+                </div>
+                <WriteUpFinancialTab data={data} updateField={updateField} />
+              </div>
+              
+              {/* Company Highlights Section */}
+              <div className="space-y-4">
+                <div className="border-b pb-2">
+                  <h4 className="text-base font-semibold text-foreground">Company Highlights</h4>
+                </div>
+                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} />
+              </div>
+              
+              {/* Key Items Section */}
+              <div className="space-y-4">
+                <div className="border-b pb-2">
+                  <h4 className="text-base font-semibold text-foreground">Key Items</h4>
+                </div>
+                <WriteUpKeyItemsTab data={data} updateField={updateField} />
+              </div>
+            </div>
+          )}
 
           {/* Publish as Anonymous */}
           <div className="flex items-start space-x-3 border-t pt-4">
