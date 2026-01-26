@@ -429,6 +429,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     keyItems: data.keyItems,
     companyHighlights: data.companyHighlights,
     financialYears: data.financialYears,
+    financialComments: data.financialComments,
     publishAsAnonymous: data.publishAsAnonymous,
   });
 

@@ -29,6 +29,7 @@ interface WriteUpData {
   keyItems: Array<{ id: string; title: string; description: string }>;
   companyHighlights: Array<{ id: string; title: string; description: string }>;
   financialYears: Array<{ id: string; year: string; revenue: string; gross_margin: string; ebitda: string }>;
+  financialComments: Array<{ id: string; title: string; description: string }>;
   publishAsAnonymous: boolean;
 }
 
@@ -342,6 +343,7 @@ serve(async (req) => {
         key_items: writeUpData!.keyItems?.length > 0 ? writeUpData!.keyItems : undefined,
         company_highlights: writeUpData!.companyHighlights?.length > 0 ? writeUpData!.companyHighlights : undefined,
         financial_years: writeUpData!.financialYears?.length > 0 ? writeUpData!.financialYears : undefined,
+        financial_comments: writeUpData!.financialComments?.length > 0 ? writeUpData!.financialComments : undefined,
         is_published: !writeUpData!.publishAsAnonymous,
       };
 
