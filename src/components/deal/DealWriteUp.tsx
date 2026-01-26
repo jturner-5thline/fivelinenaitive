@@ -809,14 +809,14 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="w-full max-w-full overflow-hidden">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-4 min-w-0">
+          <div className="min-w-0">
             <CardTitle>Deal Write Up</CardTitle>
             <CardDescription>Create, edit, and manage deal listings</CardDescription>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <FlexSyncStatusBadge dealId={dealId} />
             <AutoSaveIndicator status={autoSaveStatus} />
           </div>
