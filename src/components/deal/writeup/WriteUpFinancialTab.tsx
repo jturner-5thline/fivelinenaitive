@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -153,6 +153,44 @@ const parseYearToNumber = (yearStr: string): number | null => {
 
 export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabProps) {
   const [grossMarginErrors, setGrossMarginErrors] = useState<Record<string, string | null>>({});
+  
+  // Column widths state for resizable columns
+  const [columnWidths, setColumnWidths] = useState({
+    year: 100,
+    revenue: 140,
+    revGrowth: 90,
+    grossMargin: 120,
+    gmDelta: 90,
+    ebitda: 120,
+    ebitdaDelta: 90,
+  });
+  
+  const resizingColumn = useRef<string | null>(null);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent, column: keyof typeof columnWidths) => {
+    resizingColumn.current = column;
+    startX.current = e.clientX;
+    startWidth.current = columnWidths[column];
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizingColumn.current) return;
+      const diff = e.clientX - startX.current;
+      const newWidth = Math.max(60, startWidth.current + diff);
+      setColumnWidths(prev => ({ ...prev, [resizingColumn.current!]: newWidth }));
+    };
+    
+    const handleMouseUp = () => {
+      resizingColumn.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [columnWidths]);
+
   // Sort financial years chronologically
   const sortFinancialYearsChronologically = (years: FinancialYear[]): FinancialYear[] => {
     return [...years].sort((a, b) => {
@@ -457,17 +495,59 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
           </Button>
         </div>
         
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full">
+        <div className="border rounded-lg overflow-x-auto">
+          <table className="w-full" style={{ tableLayout: 'fixed' }}>
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[100px]">Year</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Total Revenue</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[90px]">Rev. Growth</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Gross Margin</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[90px]">GM Δ</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">EBITDA</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground w-[90px]">EBITDA Δ</th>
+                <th style={{ width: columnWidths.year }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  Year
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'year')}
+                  />
+                </th>
+                <th style={{ width: columnWidths.revenue }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  Total Revenue
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'revenue')}
+                  />
+                </th>
+                <th style={{ width: columnWidths.revGrowth }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  Rev. Growth
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'revGrowth')}
+                  />
+                </th>
+                <th style={{ width: columnWidths.grossMargin }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  Gross Margin
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'grossMargin')}
+                  />
+                </th>
+                <th style={{ width: columnWidths.gmDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  GM Δ
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'gmDelta')}
+                  />
+                </th>
+                <th style={{ width: columnWidths.ebitda }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  EBITDA
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'ebitda')}
+                  />
+                </th>
+                <th style={{ width: columnWidths.ebitdaDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground relative group">
+                  EBITDA Δ
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 group-hover:bg-border"
+                    onMouseDown={(e) => handleMouseDown(e, 'ebitdaDelta')}
+                  />
+                </th>
                 <th className="w-12 py-3 px-2"></th>
               </tr>
             </thead>
