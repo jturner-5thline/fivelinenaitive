@@ -2621,7 +2621,7 @@ export default function DealDetail() {
                                             value={deal.retainerFee ?? ''}
                                             onChange={(e) => updateDeal('retainerFee', e.target.value ? Number(e.target.value) : 0)}
                                             placeholder="0"
-                                            className="pl-5 h-8 text-sm"
+                                            className="pl-5 h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             min={0}
                                           />
                                         </div>
@@ -2635,7 +2635,7 @@ export default function DealDetail() {
                                             value={deal.milestoneFee ?? ''}
                                             onChange={(e) => updateDeal('milestoneFee', e.target.value ? Number(e.target.value) : 0)}
                                             placeholder="0"
-                                            className="pl-5 h-8 text-sm"
+                                            className="pl-5 h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             min={0}
                                           />
                                         </div>
@@ -2648,7 +2648,7 @@ export default function DealDetail() {
                                             value={deal.successFeePercent ?? ''}
                                             onChange={(e) => updateDeal('successFeePercent', e.target.value ? Number(e.target.value) : 0)}
                                             placeholder="0"
-                                            className="pr-6 h-8 text-sm"
+                                            className="pr-6 h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             min={0}
                                             max={100}
                                             step={0.1}
@@ -2665,7 +2665,7 @@ export default function DealDetail() {
                                             value={deal.totalFee ?? ''}
                                             onChange={(e) => updateDeal('totalFee', e.target.value ? Number(e.target.value) : 0)}
                                             placeholder="0"
-                                            className="pl-5 h-8 text-sm"
+                                            className="pl-5 h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             min={0}
                                           />
                                         </div>
