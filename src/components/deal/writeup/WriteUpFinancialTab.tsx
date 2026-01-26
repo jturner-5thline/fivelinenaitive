@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -64,15 +65,18 @@ const formatCurrency = (value: string): string => {
   return value.startsWith('$') ? value : `$${value}`;
 };
 
-// Format percentage value
-const formatPercentage = (value: string): string => {
-  if (!value) return '';
-  if (value.includes('%')) return value;
-  const numericValue = value.replace(/[^0-9.]/g, '');
+// Format percentage value with validation (max 150%)
+const formatPercentage = (value: string): { formatted: string; error: string | null } => {
+  if (!value) return { formatted: '', error: null };
+  const numericValue = value.replace(/[^0-9.-]/g, '');
   if (numericValue && !isNaN(parseFloat(numericValue))) {
-    return `${numericValue}%`;
+    const num = parseFloat(numericValue);
+    if (num > 150) {
+      return { formatted: '150%', error: 'Gross margin cannot exceed 150%' };
+    }
+    return { formatted: `${numericValue}%`, error: null };
   }
-  return value;
+  return { formatted: value.includes('%') ? value : value, error: null };
 };
 
 // Parse currency string to numeric value
@@ -104,6 +108,7 @@ const parseYearToNumber = (yearStr: string): number | null => {
 };
 
 export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabProps) {
+  const [grossMarginErrors, setGrossMarginErrors] = useState<Record<string, string | null>>({});
   // Sort financial years chronologically
   const sortFinancialYearsChronologically = (years: FinancialYear[]): FinancialYear[] => {
     return [...years].sort((a, b) => {
@@ -217,9 +222,17 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
             id="grossMargins"
             value={data.grossMargins}
             onChange={(e) => updateField('grossMargins', e.target.value)}
-            onBlur={(e) => updateField('grossMargins', formatPercentage(e.target.value))}
+            onBlur={(e) => {
+              const result = formatPercentage(e.target.value);
+              updateField('grossMargins', result.formatted);
+              setGrossMarginErrors(prev => ({ ...prev, main: result.error }));
+            }}
             placeholder="75%"
+            className={grossMarginErrors.main ? 'border-destructive' : ''}
           />
+          {grossMarginErrors.main && (
+            <p className="text-xs text-destructive mt-1">{grossMarginErrors.main}</p>
+          )}
         </div>
       </div>
 
@@ -373,13 +386,25 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                       })()}
                     </td>
                     <td className="py-2 px-4">
-                      <Input
-                        value={item.gross_margin}
-                        onChange={(e) => updateFinancialYear(item.id, 'gross_margin', e.target.value)}
-                        onBlur={(e) => updateFinancialYear(item.id, 'gross_margin', formatPercentage(e.target.value))}
-                        placeholder="53%"
-                        className="h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                      />
+                      <div className="relative">
+                        <Input
+                          value={item.gross_margin}
+                          onChange={(e) => updateFinancialYear(item.id, 'gross_margin', e.target.value)}
+                          onBlur={(e) => {
+                            const result = formatPercentage(e.target.value);
+                            updateFinancialYear(item.id, 'gross_margin', result.formatted);
+                            setGrossMarginErrors(prev => ({ ...prev, [item.id]: result.error }));
+                          }}
+                          placeholder="53%"
+                          className={cn(
+                            "h-8 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0",
+                            grossMarginErrors[item.id] && "text-destructive"
+                          )}
+                        />
+                        {grossMarginErrors[item.id] && (
+                          <p className="text-[10px] text-destructive absolute -bottom-3 left-0 whitespace-nowrap">{grossMarginErrors[item.id]}</p>
+                        )}
+                      </div>
                     </td>
                     <td className="py-2 px-4">
                       <Input
