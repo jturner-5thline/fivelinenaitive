@@ -52,6 +52,12 @@ export interface FinancialYear {
   ebitda: string;
 }
 
+export interface FinancialComment {
+  id: string;
+  title: string;
+  description: string;
+}
+
 export interface DealWriteUpData {
   companyName: string;
   companyUrl: string;
@@ -74,6 +80,7 @@ export interface DealWriteUpData {
   keyItems: KeyItem[];
   companyHighlights: CompanyHighlight[];
   financialYears: FinancialYear[];
+  financialComments: FinancialComment[];
   publishAsAnonymous: boolean;
 }
 
@@ -107,6 +114,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   keyItems: [],
   companyHighlights: [],
   financialYears: [],
+  financialComments: [],
   publishAsAnonymous: false,
 });
 
