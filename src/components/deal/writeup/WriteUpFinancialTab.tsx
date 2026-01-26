@@ -492,7 +492,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-base font-semibold">Financial Commentary</Label>
+            <Label className="text-base font-semibold">Financials</Label>
             <p className="text-xs text-muted-foreground mt-0.5">Historical and projected financial performance by year</p>
           </div>
           <Button variant="outline" size="sm" onClick={addFinancialYear}>
