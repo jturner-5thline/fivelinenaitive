@@ -21,6 +21,8 @@ interface SideBySideMergeDialogProps {
   onOpenChange: (open: boolean) => void;
   lenders: MasterLender[];
   onMergeLenders: (keepId: string, mergeIds: string[], mergedData: Partial<MasterLenderInsert>) => Promise<void>;
+  /** Optional: manually selected lender IDs to merge (bypasses duplicate detection) */
+  selectedLenderIds?: string[];
 }
 
 interface DuplicateGroup {
@@ -348,12 +350,31 @@ export function SideBySideMergeDialog({
   onOpenChange,
   lenders,
   onMergeLenders,
+  selectedLenderIds,
 }: SideBySideMergeDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
 
-  // Find duplicate groups
+  // Determine if we're in manual selection mode
+  const isManualSelectionMode = selectedLenderIds && selectedLenderIds.length >= 2;
+
+  // Find duplicate groups OR use manually selected lenders
   const duplicateGroups = useMemo(() => {
+    // If manual selection mode, create a single group from selected lenders
+    if (isManualSelectionMode) {
+      const selectedLenders = lenders.filter(l => selectedLenderIds.includes(l.id));
+      if (selectedLenders.length >= 2) {
+        return [{
+          normalizedName: 'manual-selection',
+          lenders: selectedLenders.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          ),
+        }];
+      }
+      return [];
+    }
+
+    // Otherwise, auto-detect duplicates by name
     const nameMap = new Map<string, MasterLender[]>();
     
     lenders.forEach(lender => {
@@ -376,7 +397,7 @@ export function SideBySideMergeDialog({
     });
 
     return groups.sort((a, b) => b.lenders.length - a.lenders.length);
-  }, [lenders]);
+  }, [lenders, selectedLenderIds, isManualSelectionMode]);
 
   const currentGroup = duplicateGroups[currentGroupIndex];
   const totalGroups = duplicateGroups.length;
@@ -447,9 +468,11 @@ export function SideBySideMergeDialog({
                 Side-by-Side Merge
               </DialogTitle>
               <DialogDescription className="mt-1">
-                {totalGroups > 0 
-                  ? `Group ${currentGroupIndex + 1} of ${totalGroups} • "${currentGroup?.lenders[0]?.name}"`
-                  : 'No duplicate lenders found'}
+                {isManualSelectionMode
+                  ? `Merging ${currentGroup?.lenders.length || 0} selected lenders`
+                  : totalGroups > 0 
+                    ? `Group ${currentGroupIndex + 1} of ${totalGroups} • "${currentGroup?.lenders[0]?.name}"`
+                    : 'No duplicate lenders found'}
               </DialogDescription>
             </div>
             {totalGroups > 1 && (
