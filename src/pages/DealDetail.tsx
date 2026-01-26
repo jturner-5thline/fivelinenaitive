@@ -2617,12 +2617,16 @@ export default function DealDetail() {
                                         <div className="relative w-28">
                                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                                           <Input
-                                            type="number"
-                                            value={deal.retainerFee ?? ''}
-                                            onChange={(e) => updateDeal('retainerFee', e.target.value ? Number(e.target.value) : 0)}
+                                            type="text"
+                                            value={deal.retainerFee ? Math.round(deal.retainerFee).toLocaleString() : ''}
+                                            onChange={(e) => {
+                                              const raw = e.target.value.replace(/,/g, '');
+                                              if (raw === '' || /^\d+$/.test(raw)) {
+                                                updateDeal('retainerFee', raw ? Number(raw) : 0);
+                                              }
+                                            }}
                                             placeholder="0"
-                                            className="pl-5 h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            min={0}
+                                            className="pl-5 h-8 text-sm"
                                           />
                                         </div>
                                       </div>
@@ -2631,12 +2635,16 @@ export default function DealDetail() {
                                         <div className="relative w-28">
                                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                                           <Input
-                                            type="number"
-                                            value={deal.milestoneFee ?? ''}
-                                            onChange={(e) => updateDeal('milestoneFee', e.target.value ? Number(e.target.value) : 0)}
+                                            type="text"
+                                            value={deal.milestoneFee ? Math.round(deal.milestoneFee).toLocaleString() : ''}
+                                            onChange={(e) => {
+                                              const raw = e.target.value.replace(/,/g, '');
+                                              if (raw === '' || /^\d+$/.test(raw)) {
+                                                updateDeal('milestoneFee', raw ? Number(raw) : 0);
+                                              }
+                                            }}
                                             placeholder="0"
-                                            className="pl-5 h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            min={0}
+                                            className="pl-5 h-8 text-sm"
                                           />
                                         </div>
                                       </div>
@@ -2661,12 +2669,16 @@ export default function DealDetail() {
                                         <div className="relative w-28">
                                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                                           <Input
-                                            type="number"
-                                            value={deal.totalFee ?? ''}
-                                            onChange={(e) => updateDeal('totalFee', e.target.value ? Number(e.target.value) : 0)}
+                                            type="text"
+                                            value={deal.totalFee ? Math.round(deal.totalFee).toLocaleString() : ''}
+                                            onChange={(e) => {
+                                              const raw = e.target.value.replace(/,/g, '');
+                                              if (raw === '' || /^\d+$/.test(raw)) {
+                                                updateDeal('totalFee', raw ? Number(raw) : 0);
+                                              }
+                                            }}
                                             placeholder="0"
-                                            className="pl-5 h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            min={0}
+                                            className="pl-5 h-8 text-sm"
                                           />
                                         </div>
                                       </div>
