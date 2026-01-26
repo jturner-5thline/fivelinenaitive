@@ -372,7 +372,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
   };
 
   return (
-    <div className="space-y-6 overflow-hidden">
+    <div className="space-y-6 min-w-0">
       {/* Profitability & Gross Margins Row */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
