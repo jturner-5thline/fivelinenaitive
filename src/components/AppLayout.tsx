@@ -29,7 +29,7 @@ function MainContent({
   return (
     <main
       className={cn(
-        "min-h-0 flex-1 flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-auto",
+        "min-h-0 min-w-0 flex-1 flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-auto",
         className,
       )}
       onClick={handleMainClick}
