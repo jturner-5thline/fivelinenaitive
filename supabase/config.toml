@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.sync-lender-to-flex-webhook]
 verify_jwt = false
+
+[functions.deal-space-ai]
+verify_jwt = false
