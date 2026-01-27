@@ -230,8 +230,8 @@ serve(async (req) => {
       );
     }
 
-    // For sync_data_room action, dataRoomFiles is required
-    if (action === "sync_data_room" && (!dataRoomFiles || dataRoomFiles.length === 0)) {
+    // For sync_data_room action, dataRoomFiles must be provided (can be empty array to clear data room)
+    if (action === "sync_data_room" && !dataRoomFiles) {
       console.error("Missing dataRoomFiles for sync_data_room action");
       return new Response(
         JSON.stringify({ error: "dataRoomFiles is required for sync_data_room action" }),
