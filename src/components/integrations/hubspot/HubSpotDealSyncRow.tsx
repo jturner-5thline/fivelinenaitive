@@ -37,30 +37,48 @@ export const HubSpotDealSyncRow = memo(function HubSpotDealSyncRow({
 }: HubSpotDealSyncRowProps) {
   return (
     <TableRow>
+      <HubSpotDealSyncCells
+        deal={deal}
+        isUnlinked={isUnlinked}
+        isSelected={isSelected}
+        ownerName={ownerName}
+        stageName={stageName}
+        onSelectDeal={onSelectDeal}
+        onLinkDeal={onLinkDeal}
+      />
+    </TableRow>
+  );
+});
+
+export const HubSpotDealSyncCells = memo(function HubSpotDealSyncCells({
+  deal,
+  isUnlinked,
+  isSelected,
+  ownerName,
+  stageName,
+  onSelectDeal,
+  onLinkDeal,
+}: HubSpotDealSyncRowProps) {
+  return (
+    <>
       <TableCell>
         {isUnlinked && (
-          <Checkbox 
+          <Checkbox
             checked={isSelected}
             onCheckedChange={(checked) => onSelectDeal(deal.id, checked as boolean)}
           />
         )}
       </TableCell>
-      <TableCell className="font-medium">
-        {deal.properties.dealname || 'Unnamed Deal'}
-      </TableCell>
+      <TableCell className="font-medium">{deal.properties.dealname || "Unnamed Deal"}</TableCell>
       <TableCell>{formatCurrency(deal.properties.amount)}</TableCell>
       <TableCell>
-        <Badge variant="secondary">
-          {stageName}
-        </Badge>
+        <Badge variant="secondary">{stageName}</Badge>
       </TableCell>
-      <TableCell className="text-muted-foreground">
-        {ownerName || '-'}
-      </TableCell>
+      <TableCell className="text-muted-foreground">{ownerName || "-"}</TableCell>
       <TableCell className="text-muted-foreground">
         {deal.properties.createdate
           ? formatDistanceToNow(new Date(deal.properties.createdate), { addSuffix: true })
-          : '-'}
+          : "-"}
       </TableCell>
       <TableCell>
         {isUnlinked ? (
@@ -77,16 +95,12 @@ export const HubSpotDealSyncRow = memo(function HubSpotDealSyncRow({
       </TableCell>
       <TableCell className="text-right">
         {isUnlinked && (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => onLinkDeal(deal)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => onLinkDeal(deal)}>
             <Link2 className="h-4 w-4 mr-1" />
             Link
           </Button>
         )}
       </TableCell>
-    </TableRow>
+    </>
   );
 });
