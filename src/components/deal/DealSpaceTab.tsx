@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, File, Trash2, Download, Send, Loader2, MessageSquare, FileText, Sparkles, X, Bot, User } from 'lucide-react';
+import { Upload, File, Trash2, Download, Send, Loader2, MessageSquare, FileText, Sparkles, X, Bot, User, Eye, History, Zap, ChevronRight, Table2, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,8 +20,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useDealSpaceDocuments, DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
+import { useDealSpaceConversations, DealSpaceMessage } from '@/hooks/useDealSpaceConversations';
+import { DealSpaceDocumentPreview } from './DealSpaceDocumentPreview';
+import { DealSpaceConversationHistory } from './DealSpaceConversationHistory';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import ReactMarkdown from 'react-markdown';
 
 interface DealSpaceTabProps {
   dealId: string;
@@ -35,13 +42,20 @@ const formatFileSize = (bytes: number) => {
 };
 
 const getFileIcon = (contentType: string | null, name: string) => {
-  if (contentType?.includes('pdf') || name.endsWith('.pdf')) {
+  const lowerName = name.toLowerCase();
+  if (contentType?.includes('pdf') || lowerName.endsWith('.pdf')) {
     return <FileText className="h-5 w-5 text-red-500" />;
   }
-  if (contentType?.includes('word') || name.endsWith('.docx') || name.endsWith('.doc')) {
+  if (contentType?.includes('word') || lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
     return <FileText className="h-5 w-5 text-blue-500" />;
   }
-  if (contentType?.includes('text') || name.endsWith('.txt') || name.endsWith('.md')) {
+  if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls')) {
+    return <Table2 className="h-5 w-5 text-green-500" />;
+  }
+  if (lowerName.endsWith('.pptx')) {
+    return <Presentation className="h-5 w-5 text-orange-500" />;
+  }
+  if (contentType?.includes('text') || lowerName.endsWith('.txt') || lowerName.endsWith('.md')) {
     return <FileText className="h-5 w-5 text-muted-foreground" />;
   }
   return <File className="h-5 w-5 text-muted-foreground" />;
@@ -49,10 +63,28 @@ const getFileIcon = (contentType: string | null, name: string) => {
 
 export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
   const { documents, isLoading, isUploading, uploadDocument, deleteDocument, getDownloadUrl } = useDealSpaceDocuments(dealId);
-  const { messages, sendMessage, clearMessages, isLoading: isAILoading } = useDealSpaceAI(dealId);
+  const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages } = useDealSpaceAI(dealId);
+  const { 
+    conversations, 
+    isLoading: isConversationsLoading,
+    createConversation,
+    deleteConversation,
+    updateConversationTitle,
+    loadConversationMessages,
+    saveMessage,
+  } = useDealSpaceConversations(dealId);
   
   const [question, setQuestion] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chat' | 'history'>('chat');
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<DealSpaceDocument | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summary, setSummary] = useState<{ text: string; keyPoints: string[] } | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -92,11 +124,40 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
     }
   }, [getDownloadUrl]);
 
-  const handleSendQuestion = useCallback(() => {
+  const handlePreview = useCallback((doc: DealSpaceDocument) => {
+    setPreviewDocument(doc);
+    setIsPreviewOpen(true);
+  }, []);
+
+  const handleSendQuestion = useCallback(async () => {
     if (!question.trim()) return;
+    
+    // If no active conversation, create one
+    let conversationId = selectedConversationId;
+    if (!conversationId) {
+      const newConvo = await createConversation(question.substring(0, 50) + (question.length > 50 ? '...' : ''));
+      if (newConvo) {
+        conversationId = newConvo.id;
+        setSelectedConversationId(conversationId);
+      }
+    }
+    
+    // Save user message
+    if (conversationId) {
+      await saveMessage(conversationId, 'user', question);
+    }
+    
     sendMessage(question);
     setQuestion('');
-  }, [question, sendMessage]);
+  }, [question, sendMessage, selectedConversationId, createConversation, saveMessage]);
+
+  // Save assistant response when it arrives
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.role === 'assistant' && selectedConversationId && !isAILoading) {
+      saveMessage(selectedConversationId, 'assistant', lastMessage.content, lastMessage.sources);
+    }
+  }, [messages, selectedConversationId, isAILoading, saveMessage]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -104,6 +165,57 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
       handleSendQuestion();
     }
   }, [handleSendQuestion]);
+
+  const handleSelectConversation = useCallback(async (conversationId: string) => {
+    setSelectedConversationId(conversationId);
+    setIsHistoryOpen(false);
+    
+    // Load messages for this conversation
+    const loadedMessages = await loadConversationMessages(conversationId);
+    const formattedMessages = loadedMessages.map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+      timestamp: new Date(m.created_at),
+      sources: m.sources as string[] | undefined,
+    }));
+    setMessages(formattedMessages);
+  }, [loadConversationMessages, setMessages]);
+
+  const handleNewConversation = useCallback(() => {
+    setSelectedConversationId(null);
+    clearMessages();
+    setIsHistoryOpen(false);
+  }, [clearMessages]);
+
+  const handleSummarize = useCallback(async () => {
+    if (documents.length === 0) return;
+    
+    setIsSummarizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('deal-space-ai', {
+        body: { dealId, action: 'summarize' },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setSummary({
+        text: data.summary,
+        keyPoints: data.keyPoints || [],
+      });
+      setShowSummary(true);
+      toast({ title: 'Summary generated', description: `Analyzed ${data.documentCount} document(s)` });
+    } catch (err) {
+      console.error('Summarization error:', err);
+      toast({
+        title: 'Summarization failed',
+        description: err instanceof Error ? err.message : 'Could not generate summary',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSummarizing(false);
+    }
+  }, [dealId, documents.length]);
 
   const suggestedQuestions = [
     "What are the key terms in this deal?",
@@ -117,15 +229,68 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
       {/* Documents Panel */}
       <Card className="flex flex-col">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Documents
-          </CardTitle>
-          <CardDescription>
-            Upload transcripts, notes, and files for AI analysis
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Documents
+              </CardTitle>
+              <CardDescription>
+                Upload transcripts, notes, and files for AI analysis
+              </CardDescription>
+            </div>
+            {documents.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSummarize}
+                disabled={isSummarizing}
+              >
+                {isSummarizing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Zap className="h-4 w-4 mr-2" />
+                )}
+                Summarize All
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
+          {/* Summary Section */}
+          {showSummary && summary && (
+            <Collapsible open={showSummary} onOpenChange={setShowSummary} className="mb-4">
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <CollapsibleTrigger className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-sm">AI Summary</span>
+                  </div>
+                  <ChevronRight className={cn(
+                    "h-4 w-4 transition-transform",
+                    showSummary && "rotate-90"
+                  )} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <ScrollArea className="max-h-[200px]">
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown>{summary.text}</ReactMarkdown>
+                    </div>
+                  </ScrollArea>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="mt-2 text-xs"
+                    onClick={() => setShowSummary(false)}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Close
+                  </Button>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          )}
+
           {/* Upload Area */}
           <div
             onDrop={handleDrop}
@@ -143,7 +308,7 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
               multiple
               className="hidden"
               onChange={(e) => handleFileUpload(e.target.files)}
-              accept=".pdf,.doc,.docx,.txt,.md,.rtf,.csv,.xlsx,.xls"
+              accept=".pdf,.doc,.docx,.txt,.md,.rtf,.csv,.xlsx,.xls,.pptx"
             />
             {isUploading ? (
               <div className="flex flex-col items-center gap-2">
@@ -163,7 +328,7 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
                   </button>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  PDF, Word, Text, Markdown, CSV, Excel
+                  PDF, Word, Text, Excel, PowerPoint
                 </p>
               </div>
             )}
@@ -182,12 +347,13 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
                 <p className="text-xs mt-1">Upload files to start asking questions</p>
               </div>
             ) : (
-              <ScrollArea className="h-[300px]">
+              <ScrollArea className="h-[250px]">
                 <div className="space-y-2 pr-4">
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group"
+                      className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group hover:bg-muted/80 transition-colors cursor-pointer"
+                      onClick={() => handlePreview(doc)}
                     >
                       {getFileIcon(doc.content_type, doc.name)}
                       <div className="flex-1 min-w-0">
@@ -201,7 +367,21 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => handleDownload(doc)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePreview(doc);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(doc);
+                          }}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
@@ -211,6 +391,7 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -261,15 +442,41 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
                 Ask questions about your uploaded documents
               </CardDescription>
             </div>
-            {messages.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearMessages} className="text-xs">
-                <X className="h-3 w-3 mr-1" />
-                Clear
+            <div className="flex items-center gap-2">
+              <Button 
+                variant={isHistoryOpen ? "secondary" : "ghost"} 
+                size="sm" 
+                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                className="text-xs"
+              >
+                <History className="h-3 w-3 mr-1" />
+                History
               </Button>
-            )}
+              {messages.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={handleNewConversation} className="text-xs">
+                  <X className="h-3 w-3 mr-1" />
+                  New
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col">
+          {/* History Panel */}
+          {isHistoryOpen && (
+            <div className="mb-4 p-3 bg-muted/30 rounded-lg border">
+              <DealSpaceConversationHistory
+                conversations={conversations}
+                selectedConversationId={selectedConversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewConversation={handleNewConversation}
+                onDeleteConversation={deleteConversation}
+                onUpdateTitle={updateConversationTitle}
+                isLoading={isConversationsLoading}
+              />
+            </div>
+          )}
+
           {/* Messages Area */}
           <ScrollArea className="flex-1 min-h-[300px] max-h-[400px] mb-4">
             {messages.length === 0 ? (
@@ -319,11 +526,17 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
                           : "bg-muted"
                       )}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      {msg.role === 'assistant' ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      )}
                       {msg.sources && msg.sources.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-border/50">
-                          <p className="text-xs opacity-70">Sources:</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <p className="text-xs opacity-70 mb-1">Sources:</p>
+                          <div className="flex flex-wrap gap-1">
                             {msg.sources.map((src, j) => (
                               <Badge key={j} variant="secondary" className="text-xs">
                                 {src}
@@ -348,7 +561,7 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
                     <div className="bg-muted rounded-lg p-3">
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm text-muted-foreground">Thinking...</span>
+                        <span className="text-sm text-muted-foreground">Analyzing documents...</span>
                       </div>
                     </div>
                   </div>
@@ -382,6 +595,14 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Document Preview Modal */}
+      <DealSpaceDocumentPreview
+        document={previewDocument}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        onDownload={handleDownload}
+      />
     </div>
   );
 }
