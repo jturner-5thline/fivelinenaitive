@@ -1398,6 +1398,47 @@ export type Database = {
           },
         ]
       }
+      deal_space_documents: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          deal_id: string
+          file_path: string
+          id: string
+          name: string
+          size_bytes: number
+          user_id: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          deal_id: string
+          file_path: string
+          id?: string
+          name: string
+          size_bytes?: number
+          user_id?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          deal_id?: string
+          file_path?: string
+          id?: string
+          name?: string
+          size_bytes?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_space_documents_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_status_notes: {
         Row: {
           created_at: string
