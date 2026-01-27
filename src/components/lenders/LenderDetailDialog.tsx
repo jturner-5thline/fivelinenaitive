@@ -28,10 +28,13 @@ import {
 } from '@/components/ui/tooltip';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachments, LenderAttachment, LENDER_ATTACHMENT_CATEGORIES, LenderAttachmentCategory } from '@/hooks/useLenderAttachments';
+import { useLenderContacts } from '@/hooks/useLenderContacts';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useLenderSectionOrder, LenderSectionId } from '@/hooks/useLenderSectionOrder';
 import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
+import { AddLenderContactDialog } from './AddLenderContactDialog';
+import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
 
 interface LenderInfo {
@@ -217,6 +220,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   
   const { attachments, isLoading: isLoadingAttachments, uploadMultipleAttachments, deleteAttachment } = useLenderAttachments(
     open ? lender?.name ?? null : null
+  );
+  
+  const { contacts: additionalContacts, addContact, deleteContact: deleteAdditionalContact } = useLenderContacts(
+    open ? lender?.id ?? null : null
   );
 
   // Initialize edit form when entering edit mode or when lender changes
@@ -571,12 +578,17 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
 
                 {/* Edit Mode: Contact Information */}
                 <section>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Contact
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                      Contact
+                    </h3>
+                    {lender?.id && (
+                      <AddLenderContactDialog onAdd={addContact} />
+                    )}
+                  </div>
                   <div className="grid gap-3">
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Contact Name</Label>
+                      <Label className="text-xs text-muted-foreground">Primary Contact Name</Label>
                       <Input
                         value={editForm.contactName}
                         onChange={(e) => setEditForm({ ...editForm, contactName: e.target.value })}
@@ -585,7 +597,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Email</Label>
+                      <Label className="text-xs text-muted-foreground">Primary Email</Label>
                       <Input
                         type="email"
                         value={editForm.email}
@@ -595,6 +607,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       />
                     </div>
                   </div>
+                  <LenderContactsList 
+                    contacts={additionalContacts} 
+                    onDelete={deleteAdditionalContact}
+                    isEditMode={true}
+                  />
                 </section>
                 <Separator />
 
@@ -911,9 +928,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       return (
                         <div key={sectionId}>
                           <section>
-                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                              Contact
-                            </h3>
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                                Contact
+                              </h3>
+                              {lender.id && (
+                                <AddLenderContactDialog onAdd={addContact} />
+                              )}
+                            </div>
                             <div className="grid grid-cols-2 gap-6">
                               {/* Left column - Contact details */}
                               <div className="grid gap-3">
@@ -955,7 +977,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                     </a>
                                   </div>
                                 )}
-                                {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
+                                {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && additionalContacts.length === 0 && (
                                   <p className="text-muted-foreground text-sm italic">No contact info</p>
                                 )}
                               </div>
@@ -975,6 +997,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 )}
                               </div>
                             </div>
+                            <LenderContactsList 
+                              contacts={additionalContacts} 
+                              onDelete={deleteAdditionalContact}
+                              isEditMode={false}
+                            />
                           </section>
                           {showSeparator && <Separator className="my-6" />}
                         </div>
