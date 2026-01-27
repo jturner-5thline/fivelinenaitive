@@ -36,9 +36,9 @@ export const HomepageCTA = () => {
               className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-base"
               asChild
             >
-              <a href="mailto:demo@5thline.com?subject=Demo Request">
+              <Link to="/waitlist">
                 Schedule a Demo
-              </a>
+              </Link>
             </Button>
           </div>
         </div>
