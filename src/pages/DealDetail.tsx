@@ -2160,8 +2160,10 @@ export default function DealDetail() {
             <div className="flex flex-col gap-6">
               {/* Tab Navigation */}
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
-                <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
-                  <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
+                <div className="flex items-center gap-2">
+                  <DealMemoDialog dealId={deal.id} companyName={deal.company} />
+                  <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
+                    <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
                   <TabsTrigger value="lenders" className="gap-2">
                     Lenders
                     {deal.lenders && deal.lenders.length > 0 && (
@@ -2195,7 +2197,8 @@ export default function DealDetail() {
                     <Mail className="h-4 w-4" />
                     Emails
                   </TabsTrigger>
-                </TabsList>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="deal-info" className={cn("mt-6 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Milestones Card */}
