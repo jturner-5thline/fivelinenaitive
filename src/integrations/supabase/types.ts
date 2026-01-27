@@ -1357,6 +1357,44 @@ export type Database = {
           },
         ]
       }
+      deal_ownership: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          owner_name: string
+          ownership_percentage: number
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          owner_name: string
+          ownership_percentage: number
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          owner_name?: string
+          ownership_percentage?: number
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_ownership_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_status_notes: {
         Row: {
           created_at: string
