@@ -80,6 +80,8 @@ export interface MasterLenderInsert {
   gift_address?: string | null;
   external_created_by?: string | null;
   external_last_modified?: string | null;
+  tier?: string | null;
+  active?: boolean | null;
 }
 
 export type MasterLendersMode = 'all' | 'paged';

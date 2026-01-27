@@ -81,6 +81,7 @@ export interface LenderEditData {
   ebitdaMin: string;
   companyRequirements: string;
   lenderNotes: string;
+  tier: string;
 }
 
 interface LenderDetailDialogProps {
@@ -214,6 +215,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     ebitdaMin: '',
     companyRequirements: '',
     lenderNotes: '',
+    tier: '',
   });
   
   const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
@@ -244,6 +246,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         ebitdaMin: lender.ebitdaMin?.toString() || '',
         companyRequirements: lender.companyRequirements || '',
         lenderNotes: lender.lenderNotes || '',
+        tier: lender.tier?.replace(/^T/, '') || '',
       });
     }
   }, [lender, isEditMode]);
@@ -272,6 +275,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         ebitdaMin: lender.ebitdaMin?.toString() || '',
         companyRequirements: lender.companyRequirements || '',
         lenderNotes: lender.lenderNotes || '',
+        tier: lender.tier?.replace(/^T/, '') || '',
       });
       setIsEditMode(true);
     }
@@ -439,14 +443,30 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       <DialogContent className="max-w-2xl max-h-[80vh] min-h-0 overflow-hidden !flex !flex-col">
         <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
           <DialogTitle className="flex items-center gap-2 text-xl">
-            {lender.tier && (
+            {isEditMode ? (
+              <Select
+                value={editForm.tier}
+                onValueChange={(value) => setEditForm({ ...editForm, tier: value === 'none' ? '' : value })}
+              >
+                <SelectTrigger className="w-[80px] h-8">
+                  <SelectValue placeholder="Tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="1">T1</SelectItem>
+                  <SelectItem value="2">T2</SelectItem>
+                  <SelectItem value="3">T3</SelectItem>
+                  <SelectItem value="4">T4</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : lender.tier ? (
               <Badge 
-                variant={lender.tier === '1' ? 'green' : lender.tier === '2' ? 'blue' : lender.tier === '3' ? 'amber' : 'purple'} 
+                variant={lender.tier === '1' || lender.tier === 'T1' ? 'green' : lender.tier === '2' || lender.tier === 'T2' ? 'blue' : lender.tier === '3' || lender.tier === 'T3' ? 'amber' : 'purple'} 
                 className="text-xs font-bold px-2 py-0.5"
               >
-                T{lender.tier}
+                {lender.tier.startsWith('T') ? lender.tier : `T${lender.tier}`}
               </Badge>
-            )}
+            ) : null}
             <Building2 className="h-6 w-6" />
             {isEditMode ? (
               <Input
