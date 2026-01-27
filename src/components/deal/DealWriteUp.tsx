@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import useEmblaCarousel from 'embla-carousel-react';
 import { FlexSyncStatusBadge, FlexSyncHistory } from '@/components/deal/FlexSyncHistory';
 import { useLatestFlexSync } from '@/hooks/useFlexSyncHistory';
+import { useDealOwnership } from '@/hooks/useDealOwnership';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -255,6 +256,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingPublishToastIdRef = useRef<string | number | null>(null);
   const { data: latestSync } = useLatestFlexSync(dealId);
+  const { owners } = useDealOwnership(dealId);
   
   // View mode state: 'tabs', 'long', or 'carousel'
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -432,6 +434,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     companyHighlights: data.companyHighlights,
     financialYears: data.financialYears,
     financialComments: data.financialComments,
+    ownership: owners,
     publishAsAnonymous: data.publishAsAnonymous,
   });
 
