@@ -479,7 +479,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               />
             ) : (
               <>
-                <span>{lender.name}</span>
+                <span className="whitespace-nowrap">{lender.name}</span>
                 {lender.lenderType && (
                   <Badge variant="outline" className="ml-1 text-xs font-normal">
                     {lender.lenderType}
