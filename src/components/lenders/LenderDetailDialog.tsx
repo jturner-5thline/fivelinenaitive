@@ -466,7 +466,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 {lender.tier.startsWith('T') ? lender.tier : `T${lender.tier}`}
               </Badge>
             ) : null}
-            <Building2 className="h-6 w-6 text-foreground" />
+            
             {isEditMode ? (
               <Input
                 value={editForm.name}
