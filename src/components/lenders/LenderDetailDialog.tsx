@@ -559,7 +559,13 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             </div>
           </div>
           {!isEditMode && lender.lenderType && (
-            <p className="text-sm text-muted-foreground">{lender.lenderType}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {lender.lenderType.split(',').map((type, idx) => (
+                <Badge key={idx} variant="outline" className="text-xs font-normal">
+                  {type.trim()}
+                </Badge>
+              ))}
+            </div>
           )}
         </DialogHeader>
 
