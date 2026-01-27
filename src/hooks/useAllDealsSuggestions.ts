@@ -12,6 +12,10 @@ export interface DealSuggestion {
   title: string;
   description: string;
   actionLabel?: string;
+  lenderId?: string;
+  lenderName?: string;
+  milestoneId?: string;
+  milestoneTitle?: string;
 }
 
 export function useAllDealsSuggestions(
@@ -46,6 +50,8 @@ export function useAllDealsSuggestions(
                 title: `Follow up with ${lender.name}`,
                 description: `${deal.company} • ${daysSinceUpdate} days since last update`,
                 actionLabel: 'Update Status',
+                lenderId: lender.id,
+                lenderName: lender.name,
               });
             } else if (daysSinceUpdate >= 5) {
               allSuggestions.push({
@@ -57,6 +63,8 @@ export function useAllDealsSuggestions(
                 title: `Check in with ${lender.name}`,
                 description: `${deal.company} • ${daysSinceUpdate} days since last update`,
                 actionLabel: 'Review',
+                lenderId: lender.id,
+                lenderName: lender.name,
               });
             }
           }
@@ -79,6 +87,8 @@ export function useAllDealsSuggestions(
               title: `Complete "${milestone.title}"`,
               description: `${deal.company} • ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue`,
               actionLabel: 'Mark Complete',
+              milestoneId: milestone.id,
+              milestoneTitle: milestone.title,
             });
           } else if (suggestionPrefs.upcomingMilestones && isToday(dueDate)) {
             allSuggestions.push({
@@ -90,6 +100,8 @@ export function useAllDealsSuggestions(
               title: `Complete "${milestone.title}" today`,
               description: `${deal.company} • Due today`,
               actionLabel: 'Mark Complete',
+              milestoneId: milestone.id,
+              milestoneTitle: milestone.title,
             });
           } else if (suggestionPrefs.upcomingMilestones && isTomorrow(dueDate)) {
             allSuggestions.push({
@@ -101,6 +113,8 @@ export function useAllDealsSuggestions(
               title: `Prepare for "${milestone.title}"`,
               description: `${deal.company} • Due tomorrow`,
               actionLabel: 'View Details',
+              milestoneId: milestone.id,
+              milestoneTitle: milestone.title,
             });
           }
         }
