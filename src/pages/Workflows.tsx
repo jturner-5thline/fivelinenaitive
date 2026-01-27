@@ -419,10 +419,6 @@ export default function Workflows() {
                   <MessageSquare className="h-4 w-4" />
                   Describe Workflow
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={handleFetchSuggestions}>
-                  <Lightbulb className="h-4 w-4" />
-                  AI Suggestions
-                </Button>
                 <Button variant="outline" className="gap-2" onClick={() => setShowTemplates(true)}>
                   <FileText className="h-4 w-4" />
                   Templates
@@ -440,9 +436,13 @@ export default function Workflows() {
                   <Workflow className="h-4 w-4" />
                   Workflows
                 </TabsTrigger>
-                <TabsTrigger value="suggestions" className="gap-2">
+                <TabsTrigger value="insights" className="gap-2">
                   <Sparkles className="h-4 w-4" />
                   AI Insights
+                </TabsTrigger>
+                <TabsTrigger value="suggestions" className="gap-2">
+                  <Lightbulb className="h-4 w-4" />
+                  AI Suggestions
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="gap-2">
                   <BarChart3 className="h-4 w-4" />
@@ -459,7 +459,7 @@ export default function Workflows() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="suggestions" className="space-y-6 mt-6">
+              <TabsContent value="insights" className="space-y-6 mt-6">
                 <div className="grid gap-6 lg:grid-cols-2">
                   <WorkflowSuggestionsPanel 
                     onCreateWorkflow={(data) => {
@@ -470,6 +470,86 @@ export default function Workflows() {
                   />
                   <TeamMetricsPanel />
                 </div>
+              </TabsContent>
+
+              <TabsContent value="suggestions" className="space-y-6 mt-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Lightbulb className="h-5 w-5" />
+                          AI-Generated Workflow Suggestions
+                        </CardTitle>
+                        <CardDescription>
+                          Let AI analyze your patterns and suggest automations
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        onClick={handleFetchSuggestions} 
+                        disabled={isLoadingSuggestions}
+                        className="gap-2"
+                      >
+                        {isLoadingSuggestions ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4" />
+                        )}
+                        Generate Suggestions
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {suggestions.length === 0 && !isLoadingSuggestions ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Lightbulb className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                        <p className="text-muted-foreground mb-2">No suggestions yet</p>
+                        <p className="text-sm text-muted-foreground">
+                          Click "Generate Suggestions" to get AI-powered workflow ideas based on your data
+                        </p>
+                      </div>
+                    ) : isLoadingSuggestions ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                        <p className="text-muted-foreground">Analyzing your patterns...</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {suggestions.map((suggestion) => (
+                          <Card key={suggestion.id} className="p-4 hover:bg-muted/50 transition-colors">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-medium">{suggestion.title}</h3>
+                                  <Badge variant={
+                                    suggestion.priority === 'high' ? 'destructive' : 
+                                    suggestion.priority === 'medium' ? 'default' : 'secondary'
+                                  }>
+                                    {suggestion.priority}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mb-2">{suggestion.description}</p>
+                                <Collapsible>
+                                  <CollapsibleTrigger className="text-xs text-primary hover:underline">
+                                    View reasoning
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="pt-2">
+                                    <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                                      {suggestion.reasoning}
+                                    </p>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </div>
+                              <Button size="sm" onClick={() => handleUseSuggestion(suggestion)}>
+                                Use This
+                              </Button>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="workflows" className="space-y-6 mt-6">
