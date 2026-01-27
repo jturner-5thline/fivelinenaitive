@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { DealsList } from '@/components/deals/DealsList';
+import { DealsPipelineView } from '@/components/deals/DealsPipelineView';
 import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
@@ -47,9 +48,9 @@ import { useWidgets } from '@/contexts/WidgetsContext';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline'>(() => {
     const stored = localStorage.getItem('deals-view-mode');
-    return (stored === 'grid' || stored === 'list') ? stored : 'grid';
+    return (stored === 'grid' || stored === 'list' || stored === 'pipeline') ? stored : 'grid';
   });
   const [specialWidgetsSectionExpanded, setSpecialWidgetsSectionExpanded] = useState(() => {
     const stored = localStorage.getItem('special-widgets-section-expanded');
@@ -350,10 +351,18 @@ export default function Dashboard() {
                   <Button
                     variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                     size="sm"
-                    className="h-8 px-2.5 rounded-l-none"
+                    className="h-8 px-2.5 rounded-none border-x"
                     onClick={() => setViewMode('list')}
                   >
                     <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'pipeline' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-8 px-2.5 rounded-l-none"
+                    onClick={() => setViewMode('pipeline')}
+                  >
+                    <Kanban className="h-4 w-4" />
                   </Button>
                 </div>
 
@@ -375,13 +384,20 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Deals Grid/List */}
+            {/* Deals Grid/List/Pipeline */}
             <div 
               className="opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
             >
               {isLoading ? (
                 <DealsListSkeleton groupByStatus={groupByStatus} />
+              ) : viewMode === 'pipeline' ? (
+                <DealsPipelineView
+                  deals={deals}
+                  onStatusChange={updateDealStatus}
+                  onMarkReviewed={handleMarkReviewed}
+                  onToggleFlag={handleToggleFlag}
+                />
               ) : (
                 <DealsList 
                   deals={deals} 
