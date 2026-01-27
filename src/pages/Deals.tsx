@@ -10,7 +10,7 @@ import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
 import { AlertsWidget } from '@/components/deals/AlertsWidget';
 import { MilestonesWidget } from '@/components/deals/MilestonesWidget';
-import { NotificationsBar } from '@/components/deals/NotificationsBar';
+
 import { FlexLeaderboardWidget } from '@/components/deals/FlexLeaderboardWidget';
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
 import { DemoBanner } from '@/components/deals/DemoBanner';
@@ -220,12 +220,6 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-              <div 
-                className="opacity-0"
-                style={{ animation: 'fadeInUp 0.4s ease-out 0.15s forwards' }}
-              >
-                <NotificationsBar deals={allDeals} />
-              </div>
             </div>
             
             <style>{`
