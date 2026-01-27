@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, forwardRef } from 'react';
 import { Loader2, Save, Undo2, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,13 +30,13 @@ interface SheetData {
   colWidths: number[];
 }
 
-export function ExcelViewer({ 
+export const ExcelViewer = forwardRef<HTMLDivElement, ExcelViewerProps>(function ExcelViewer({ 
   fileUrl, 
   fileName, 
   onSave, 
   onDownload,
   readOnly = false 
-}: ExcelViewerProps) {
+}, ref) {
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [sheets, setSheets] = useState<SheetData[]>([]);
   const [activeSheet, setActiveSheet] = useState<string>('');
@@ -426,4 +426,4 @@ export function ExcelViewer({
       </div>
     </div>
   );
-}
+});
