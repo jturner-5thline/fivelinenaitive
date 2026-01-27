@@ -207,14 +207,6 @@ export default function Dashboard() {
                             <h3 className="text-sm font-semibold">Milestones</h3>
                           </div>
                         )}
-                        {specialWidgets['flex-leaderboard'] && (
-                          <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                            <h3 className="text-sm font-semibold">FLEx Leaderboard</h3>
-                          </div>
-                        )}
-                        <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                          <h3 className="text-sm font-semibold">Smart Suggestions</h3>
-                        </div>
                       </div>
                     )}
                   </div>
