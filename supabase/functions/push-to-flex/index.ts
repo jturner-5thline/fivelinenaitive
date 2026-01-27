@@ -38,6 +38,7 @@ interface WriteUpData {
   financialYears: Array<{ id: string; year: string; revenue: string; gross_margin: string; ebitda: string }>;
   financialComments: Array<{ id: string; title: string; description: string }>;
   ownership: OwnershipEntry[];
+  totalEquityRaised: string;
   publishAsAnonymous: boolean;
 }
 
@@ -356,6 +357,7 @@ serve(async (req) => {
           name: o.owner_name,
           ownership: o.ownership_percentage,
         })) : undefined,
+        total_equity_raised: writeUpData!.totalEquityRaised || undefined,
         is_published: !writeUpData!.publishAsAnonymous,
       };
 

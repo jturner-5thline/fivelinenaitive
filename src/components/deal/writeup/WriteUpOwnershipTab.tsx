@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash2, Loader2, DollarSign } from 'lucide-react';
 import { useDealOwnership, DealOwner } from '@/hooks/useDealOwnership';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -11,11 +12,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { cn } from '@/lib/utils';
 
 interface WriteUpOwnershipTabProps {
   dealId: string;
 }
+
+// Format currency with commas
+const formatCurrencyDisplay = (value: string): string => {
+  if (!value) return '';
+  const numericValue = value.replace(/[^0-9.]/g, '');
+  const num = parseFloat(numericValue);
+  if (isNaN(num)) return '';
+  return num.toLocaleString('en-US', { maximumFractionDigits: 0 });
+};
 
 export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
   const {
@@ -25,9 +34,10 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
     addOwner,
     updateOwner,
     deleteOwner,
-    totalPercentage,
     canAddMore,
     maxOwners,
+    totalEquityRaised,
+    updateTotalEquityRaised,
   } = useDealOwnership(dealId);
 
   const [newOwnerName, setNewOwnerName] = useState('');
@@ -35,6 +45,27 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPercentage, setEditPercentage] = useState('');
+  const [equityInput, setEquityInput] = useState('');
+  const equityDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialize equity input from loaded data
+  useEffect(() => {
+    setEquityInput(formatCurrencyDisplay(totalEquityRaised));
+  }, [totalEquityRaised]);
+
+  const handleEquityChange = (value: string) => {
+    const formatted = formatCurrencyDisplay(value);
+    setEquityInput(formatted);
+
+    // Debounce the save
+    if (equityDebounceRef.current) {
+      clearTimeout(equityDebounceRef.current);
+    }
+    equityDebounceRef.current = setTimeout(() => {
+      const numericValue = value.replace(/[^0-9.]/g, '');
+      updateTotalEquityRaised(numericValue);
+    }, 500);
+  };
 
   const handleAddOwner = async () => {
     if (!newOwnerName.trim()) return;
@@ -94,7 +125,7 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
         Track up to {maxOwners} owners and their ownership percentages on the cap table.
       </p>
@@ -241,26 +272,22 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
         </Table>
       </div>
 
-      {/* Total percentage summary */}
-      <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
-        <span className="text-sm font-medium">Total Ownership</span>
-        <span
-          className={cn(
-            'text-sm font-semibold',
-            totalPercentage === 100
-              ? 'text-green-600 dark:text-green-400'
-              : totalPercentage > 100
-              ? 'text-destructive'
-              : 'text-muted-foreground'
-          )}
-        >
-          {totalPercentage.toFixed(2)}%
-          {totalPercentage !== 100 && (
-            <span className="ml-2 font-normal text-muted-foreground">
-              ({totalPercentage < 100 ? `${(100 - totalPercentage).toFixed(2)}% remaining` : 'exceeds 100%'})
-            </span>
-          )}
-        </span>
+      {/* Total Equity Raised */}
+      <div className="rounded-lg bg-muted/50 px-4 py-3">
+        <Label htmlFor="total-equity" className="text-sm font-medium">
+          Total Equity Raised to Date
+        </Label>
+        <div className="relative mt-2">
+          <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="total-equity"
+            type="text"
+            placeholder="0"
+            value={equityInput}
+            onChange={(e) => handleEquityChange(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {!canAddMore && (

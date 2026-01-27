@@ -13,17 +13,20 @@ const MAX_OWNERS = 5;
 
 export function useDealOwnership(dealId: string | undefined) {
   const [owners, setOwners] = useState<DealOwner[]>([]);
+  const [totalEquityRaised, setTotalEquityRaisedState] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchOwners = useCallback(async () => {
     if (!dealId) {
       setOwners([]);
+      setTotalEquityRaisedState('');
       setIsLoading(false);
       return;
     }
 
     try {
+      // Fetch ownership data
       const { data, error } = await supabase
         .from('deal_ownership')
         .select('id, owner_name, ownership_percentage, position')
@@ -38,6 +41,16 @@ export function useDealOwnership(dealId: string | undefined) {
         ownership_percentage: Number(d.ownership_percentage),
         position: d.position,
       })) || []);
+
+      // Fetch total equity raised from deal_writeups
+      const { data: writeupData, error: writeupError } = await supabase
+        .from('deal_writeups')
+        .select('total_equity_raised')
+        .eq('deal_id', dealId)
+        .maybeSingle();
+
+      if (writeupError) throw writeupError;
+      setTotalEquityRaisedState(writeupData?.total_equity_raised || '');
     } catch (error) {
       console.error('Error fetching ownership:', error);
       toast({
@@ -151,6 +164,30 @@ export function useDealOwnership(dealId: string | undefined) {
     }
   }, []);
 
+  const updateTotalEquityRaised = useCallback(async (value: string) => {
+    if (!dealId) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('deal_writeups')
+        .update({ total_equity_raised: value })
+        .eq('deal_id', dealId);
+
+      if (error) throw error;
+      setTotalEquityRaisedState(value);
+    } catch (error) {
+      console.error('Error updating total equity raised:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update total equity raised',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [dealId]);
+
   const totalPercentage = owners.reduce((sum, o) => sum + o.ownership_percentage, 0);
   const canAddMore = owners.length < MAX_OWNERS;
 
@@ -165,5 +202,7 @@ export function useDealOwnership(dealId: string | undefined) {
     canAddMore,
     maxOwners: MAX_OWNERS,
     refresh: fetchOwners,
+    totalEquityRaised,
+    updateTotalEquityRaised,
   };
 }

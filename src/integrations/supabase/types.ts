@@ -1460,6 +1460,7 @@ export type Database = {
           revenue_type: string | null
           status: string | null
           this_year_revenue: string | null
+          total_equity_raised: string | null
           updated_at: string
           use_of_funds: string | null
           user_id: string
@@ -1497,6 +1498,7 @@ export type Database = {
           revenue_type?: string | null
           status?: string | null
           this_year_revenue?: string | null
+          total_equity_raised?: string | null
           updated_at?: string
           use_of_funds?: string | null
           user_id: string
@@ -1534,6 +1536,7 @@ export type Database = {
           revenue_type?: string | null
           status?: string | null
           this_year_revenue?: string | null
+          total_equity_raised?: string | null
           updated_at?: string
           use_of_funds?: string | null
           user_id?: string
