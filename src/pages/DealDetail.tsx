@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2 } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -3798,6 +3798,64 @@ export default function DealDetail() {
                           <ClaapRecordingsPanel dealId={id!} />
                         </CollapsibleContent>
                       </Collapsible>
+                      
+                      {/* File Grid */}
+                      {isLoadingAttachments ? (
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+                          <p className="text-sm text-muted-foreground">Loading files...</p>
+                        </div>
+                      ) : attachments.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <LayoutGrid className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                          <p>No files uploaded yet</p>
+                          <p className="text-sm">Drag & drop files here or click Upload</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {Object.entries(attachmentsByCategory).map(([category, files]) => {
+                            const categoryLabel = DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === category)?.label || category;
+                            return (
+                              <Collapsible key={category} defaultOpen={true}>
+                                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors">
+                                  <div className="flex items-center gap-2">
+                                    <Folder className="h-4 w-4 text-primary" />
+                                    <span className="font-medium text-sm">{categoryLabel}</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {files.length}
+                                    </Badge>
+                                  </div>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="pt-2">
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                    {files.map((attachment) => (
+                                      <SortableAttachmentTile
+                                        key={attachment.id}
+                                        attachment={attachment}
+                                        formatFileSize={formatFileSize}
+                                        onDelete={deleteAttachment}
+                                        onView={(att) => att.url && window.open(att.url, '_blank')}
+                                        onDownload={(att) => {
+                                          if (att.url) {
+                                            const link = document.createElement('a');
+                                            link.href = att.url;
+                                            link.download = att.name;
+                                            link.click();
+                                          }
+                                        }}
+                                        isSelected={selectedAttachments.has(attachment.id)}
+                                        onToggleSelect={toggleAttachmentSelection}
+                                        selectionMode={selectedAttachments.size > 0}
+                                      />
+                                    ))}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            );
+                          })}
+                        </div>
+                      )}
                       
                       {isUploading && (
                         <div className="flex flex-col items-center justify-center py-8">
