@@ -65,7 +65,7 @@ const formatCurrency = (amount: string | undefined) => {
   }).format(parseFloat(amount));
 };
 
-export const HubSpotDealSync = memo(function HubSpotDealSync() {
+export function HubSpotDealSync() {
   const { data: hubspotDeals, isLoading: hubspotLoading, refetch: refetchHubspot } = useHubSpotDeals();
   const { data: pipelinesData } = useHubSpotPipelines();
   const { data: ownersData } = useHubSpotOwners();
@@ -490,4 +490,4 @@ export const HubSpotDealSync = memo(function HubSpotDealSync() {
       </Dialog>
     </div>
   );
-});
+}
