@@ -634,6 +634,7 @@ export default function Lenders() {
       min_revenue: data.minRevenue ? parseFloat(data.minRevenue) : null,
       ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
       company_requirements: data.companyRequirements.trim() || null,
+      tier: data.tier ? `T${data.tier}` : null,
     };
 
     // Check if name changed and new name already exists
