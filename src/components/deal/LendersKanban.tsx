@@ -111,10 +111,13 @@ function DraggableLenderTile({
         <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0 pr-6">
           <p className="text-sm font-medium mb-1 truncate">{lender.name}</p>
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="bg-secondary px-1.5 py-0.5 rounded text-[10px]">
-              {stageLabel}
-            </span>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className="bg-secondary px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1.5">
+                {lender.trackingStatus === 'passed' && (
+                  <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                )}
+                {stageLabel}
+              </span>
             {timeAgo && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
