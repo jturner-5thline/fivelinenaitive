@@ -1,14 +1,16 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Save, Loader2 } from "lucide-react";
+import { Plus, Save, Loader2, Upload, ClipboardPaste } from "lucide-react";
 import { FinancialCategory, FinancialLineItem, FinancialDataEntry, PeriodColumn, FinancePeriodType, FinancialPeriod } from "@/hooks/useFinanceDataRange";
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from "@/utils/currencyFormat";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 interface FinancialStatementTableRangeProps {
   title: string;
@@ -23,6 +25,13 @@ interface FinancialStatementTableRangeProps {
   onUpdateData: (periodId: string, lineItemId: string, amount: number, notes?: string) => Promise<boolean>;
   onCreatePeriod: (column: PeriodColumn) => Promise<FinancialPeriod | null>;
   onRefresh: () => Promise<void>;
+}
+
+interface CellPosition {
+  rowIndex: number;
+  colIndex: number;
+  lineItemId: string;
+  periodId: string;
 }
 
 export function FinancialStatementTableRange({
@@ -43,6 +52,19 @@ export function FinancialStatementTableRange({
   const [editValue, setEditValue] = useState("");
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [creatingPeriod, setCreatingPeriod] = useState<string | null>(null);
+  const [selectedCell, setSelectedCell] = useState<CellPosition | null>(null);
+  const [isPasting, setIsPasting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Get flattened list of line items (excluding category headers)
+  const flatLineItems = categories.flatMap(cat => 
+    lineItems.filter(li => li.category_id === cat.id)
+  );
+
+  // Get periods that exist
+  const existingPeriodColumns = periodColumns.filter(col => col.period);
 
   const getDataForCell = useCallback((periodId: string | undefined, lineItemId: string) => {
     if (!periodId) return undefined;
@@ -84,6 +106,183 @@ export function FinancialStatementTableRange({
     setCreatingPeriod(null);
   };
 
+  const handleCellSelect = (lineItemId: string, periodId: string, rowIndex: number, colIndex: number) => {
+    setSelectedCell({ rowIndex, colIndex, lineItemId, periodId });
+  };
+
+  // Parse clipboard data (tab-separated values)
+  const parseClipboardData = (text: string): string[][] => {
+    const rows = text.trim().split(/\r?\n/);
+    return rows.map(row => row.split('\t'));
+  };
+
+  // Parse a cell value to a number
+  const parseCellValue = (value: string): number => {
+    // Remove currency symbols, commas, spaces, parentheses for negative
+    let cleaned = value.replace(/[$,\s]/g, '').trim();
+    
+    // Handle accounting format negatives (1,000) -> -1000
+    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      cleaned = '-' + cleaned.slice(1, -1);
+    }
+    
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : Math.round(num);
+  };
+
+  // Handle paste event
+  const handlePaste = useCallback(async (e: ClipboardEvent) => {
+    if (!selectedCell || isPasting) return;
+    
+    const clipboardData = e.clipboardData?.getData('text');
+    if (!clipboardData) return;
+
+    e.preventDefault();
+    setIsPasting(true);
+
+    try {
+      const data = parseClipboardData(clipboardData);
+      const updates: { periodId: string; lineItemId: string; amount: number }[] = [];
+
+      for (let rowOffset = 0; rowOffset < data.length; rowOffset++) {
+        const row = data[rowOffset];
+        const targetRowIndex = selectedCell.rowIndex + rowOffset;
+        
+        if (targetRowIndex >= flatLineItems.length) break;
+        const targetLineItem = flatLineItems[targetRowIndex];
+
+        for (let colOffset = 0; colOffset < row.length; colOffset++) {
+          const targetColIndex = selectedCell.colIndex + colOffset;
+          
+          if (targetColIndex >= existingPeriodColumns.length) break;
+          const targetPeriod = existingPeriodColumns[targetColIndex].period;
+          
+          if (!targetPeriod) continue;
+
+          const cellValue = row[colOffset];
+          if (cellValue.trim() === '') continue;
+
+          const amount = parseCellValue(cellValue);
+          updates.push({
+            periodId: targetPeriod.id,
+            lineItemId: targetLineItem.id,
+            amount
+          });
+        }
+      }
+
+      // Apply all updates
+      let successCount = 0;
+      for (const update of updates) {
+        const success = await onUpdateData(update.periodId, update.lineItemId, update.amount);
+        if (success) successCount++;
+      }
+
+      toast.success(`Pasted ${successCount} values successfully`);
+    } catch (error) {
+      console.error('Error pasting data:', error);
+      toast.error('Failed to paste data');
+    } finally {
+      setIsPasting(false);
+    }
+  }, [selectedCell, isPasting, flatLineItems, existingPeriodColumns, onUpdateData]);
+
+  // Handle Excel file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json<string[]>(firstSheet, { header: 1 });
+
+      if (jsonData.length < 2) {
+        toast.error('Excel file must have at least a header row and one data row');
+        return;
+      }
+
+      // First row is headers (should be period labels)
+      const headers = jsonData[0] as string[];
+      const dataRows = jsonData.slice(1);
+
+      // Match headers to period columns
+      const headerToPeriodMap = new Map<number, PeriodColumn>();
+      headers.forEach((header, index) => {
+        if (index === 0) return; // Skip first column (line item names)
+        
+        const headerStr = String(header).trim().toLowerCase();
+        const matchingPeriod = existingPeriodColumns.find(col => 
+          col.label.toLowerCase().includes(headerStr) ||
+          col.shortLabel.toLowerCase().includes(headerStr) ||
+          headerStr.includes(col.shortLabel.toLowerCase())
+        );
+        
+        if (matchingPeriod) {
+          headerToPeriodMap.set(index, matchingPeriod);
+        }
+      });
+
+      // Match line items by name
+      const updates: { periodId: string; lineItemId: string; amount: number }[] = [];
+
+      for (const row of dataRows) {
+        if (!row || row.length === 0) continue;
+        
+        const lineItemName = String(row[0] || '').trim().toLowerCase();
+        const matchingLineItem = flatLineItems.find(li => 
+          li.name.toLowerCase() === lineItemName ||
+          li.name.toLowerCase().includes(lineItemName) ||
+          lineItemName.includes(li.name.toLowerCase())
+        );
+
+        if (!matchingLineItem) continue;
+
+        for (let colIndex = 1; colIndex < row.length; colIndex++) {
+          const period = headerToPeriodMap.get(colIndex);
+          if (!period?.period) continue;
+
+          const cellValue = String(row[colIndex] || '').trim();
+          if (cellValue === '') continue;
+
+          const amount = parseCellValue(cellValue);
+          updates.push({
+            periodId: period.period.id,
+            lineItemId: matchingLineItem.id,
+            amount
+          });
+        }
+      }
+
+      // Apply all updates
+      let successCount = 0;
+      for (const update of updates) {
+        const success = await onUpdateData(update.periodId, update.lineItemId, update.amount);
+        if (success) successCount++;
+      }
+
+      toast.success(`Imported ${successCount} values from Excel`);
+    } catch (error) {
+      console.error('Error reading Excel file:', error);
+      toast.error('Failed to read Excel file');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Add paste event listener
+  useEffect(() => {
+    const handlePasteEvent = (e: ClipboardEvent) => handlePaste(e);
+    document.addEventListener('paste', handlePasteEvent);
+    return () => document.removeEventListener('paste', handlePasteEvent);
+  }, [handlePaste]);
+
   if (isLoading) {
     return (
       <Card>
@@ -106,11 +305,55 @@ export function FinancialStatementTableRange({
     items: lineItems.filter(li => li.category_id === category.id)
   }));
 
+  // Calculate row indices for each line item
+  let currentRowIndex = 0;
+  const lineItemRowIndices = new Map<string, number>();
+  flatLineItems.forEach((item, index) => {
+    lineItemRowIndices.set(item.id, index);
+  });
+
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center gap-2">
-        {icon}
-        <CardTitle>{title}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="flex items-center gap-2">
+          {icon}
+          <CardTitle>{title}</CardTitle>
+        </div>
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+                  <ClipboardPaste className="h-3 w-3" />
+                  <span>Select a cell, then paste from Excel</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Click a cell to select it, then use Ctrl+V (Cmd+V on Mac) to paste data from Excel</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || existingPeriodColumns.length === 0}
+          >
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Upload className="h-4 w-4 mr-2" />
+            )}
+            Import Excel
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {periodColumns.length === 0 ? (
@@ -119,17 +362,25 @@ export function FinancialStatementTableRange({
             <p className="text-sm mt-1">Adjust the date range to view financial data.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" ref={tableRef}>
+            {isPasting && (
+              <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-20">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Pasting data...</span>
+                </div>
+              </div>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[200px] min-w-[200px] sticky left-0 bg-background z-10">Line Item</TableHead>
-                  {periodColumns.map(col => (
-                    <TableHead key={col.label} className="text-right min-w-[120px]">
+                  {periodColumns.map((col, colIndex) => (
+                    <TableHead key={col.label} className="text-right min-w-[100px]">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="cursor-default">{col.shortLabel}</span>
+                            <span className="cursor-default text-xs">{col.shortLabel}</span>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{col.label}</p>
@@ -155,82 +406,100 @@ export function FinancialStatementTableRange({
                         </TableCell>
                       </TableRow>
                     )}
-                    {items.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell className="pl-8 sticky left-0 bg-background z-10">{item.name}</TableCell>
-                        {periodColumns.map(col => {
-                          const period = col.period;
-                          
-                          if (!period) {
-                            return (
-                              <TableCell key={col.label} className="text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-xs text-muted-foreground hover:text-foreground"
-                                  onClick={() => handleCreatePeriod(col)}
-                                  disabled={creatingPeriod === col.label}
-                                >
-                                  {creatingPeriod === col.label ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Plus className="h-3 w-3" />
-                                  )}
-                                </Button>
-                              </TableCell>
-                            );
-                          }
-
-                          const data = getDataForCell(period.id, item.id);
-                          const cellKey = `${period.id}-${item.id}`;
-                          const isEditing = editingCell === cellKey;
-                          const isSaving = savingCell === cellKey;
-                          const currentAmount = data?.amount ?? 0;
-
-                          return (
-                            <TableCell key={col.label} className="text-right">
-                              {isEditing ? (
-                                <div className="flex items-center justify-end gap-1">
-                                  <div className="relative">
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
-                                    <Input
-                                      value={editValue}
-                                      onChange={(e) => setEditValue(formatAmountWithCommas(e.target.value))}
-                                      onKeyDown={(e) => handleKeyDown(e, period.id, item.id)}
-                                      className="w-24 pl-5 text-right text-sm h-8"
-                                      autoFocus
-                                    />
-                                  </div>
+                    {items.map(item => {
+                      const rowIndex = lineItemRowIndices.get(item.id) ?? 0;
+                      
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="pl-8 sticky left-0 bg-background z-10 text-sm">{item.name}</TableCell>
+                          {periodColumns.map((col, colIndex) => {
+                            const period = col.period;
+                            const periodColIndex = existingPeriodColumns.findIndex(p => p.label === col.label);
+                            
+                            if (!period) {
+                              return (
+                                <TableCell key={col.label} className="text-right">
                                   <Button
-                                    size="icon"
                                     variant="ghost"
-                                    className="h-6 w-6"
-                                    onClick={() => handleSave(period.id, item.id)}
-                                    disabled={isSaving}
+                                    size="sm"
+                                    className="text-xs text-muted-foreground hover:text-foreground h-6 w-6 p-0"
+                                    onClick={() => handleCreatePeriod(col)}
+                                    disabled={creatingPeriod === col.label}
                                   >
-                                    {isSaving ? (
+                                    {creatingPeriod === col.label ? (
                                       <Loader2 className="h-3 w-3 animate-spin" />
                                     ) : (
-                                      <Save className="h-3 w-3" />
+                                      <Plus className="h-3 w-3" />
                                     )}
                                   </Button>
-                                </div>
-                              ) : (
-                                <button
-                                  className={cn(
-                                    "px-2 py-1 rounded hover:bg-muted/50 transition-colors cursor-pointer text-sm",
-                                    currentAmount < 0 && "text-destructive"
-                                  )}
-                                  onClick={() => handleStartEdit(period.id, item.id, currentAmount)}
-                                >
-                                  ${formatCurrencyInputValue(currentAmount)}
-                                </button>
-                              )}
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
+                                </TableCell>
+                              );
+                            }
+
+                            const data = getDataForCell(period.id, item.id);
+                            const cellKey = `${period.id}-${item.id}`;
+                            const isEditing = editingCell === cellKey;
+                            const isSaving = savingCell === cellKey;
+                            const currentAmount = data?.amount ?? 0;
+                            const isSelected = selectedCell?.lineItemId === item.id && 
+                                              selectedCell?.periodId === period.id;
+
+                            return (
+                              <TableCell 
+                                key={col.label} 
+                                className={cn(
+                                  "text-right p-0",
+                                  isSelected && "ring-2 ring-primary ring-inset"
+                                )}
+                                onClick={() => handleCellSelect(item.id, period.id, rowIndex, periodColIndex)}
+                              >
+                                {isEditing ? (
+                                  <div className="flex items-center justify-end gap-1 p-1">
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+                                      <Input
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(formatAmountWithCommas(e.target.value))}
+                                        onKeyDown={(e) => handleKeyDown(e, period.id, item.id)}
+                                        className="w-20 pl-5 text-right text-xs h-7"
+                                        autoFocus
+                                      />
+                                    </div>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      onClick={() => handleSave(period.id, item.id)}
+                                      disabled={isSaving}
+                                    >
+                                      {isSaving ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Save className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    className={cn(
+                                      "w-full px-2 py-1.5 text-right hover:bg-muted/50 transition-colors cursor-pointer text-xs",
+                                      currentAmount < 0 && "text-destructive"
+                                    )}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStartEdit(period.id, item.id, currentAmount);
+                                    }}
+                                    onDoubleClick={() => handleStartEdit(period.id, item.id, currentAmount)}
+                                  >
+                                    ${formatCurrencyInputValue(currentAmount)}
+                                  </button>
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })}
                   </React.Fragment>
                 ))}
               </TableBody>
