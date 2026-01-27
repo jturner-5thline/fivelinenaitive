@@ -456,7 +456,6 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   <SelectItem value="1">T1</SelectItem>
                   <SelectItem value="2">T2</SelectItem>
                   <SelectItem value="3">T3</SelectItem>
-                  <SelectItem value="4">T4</SelectItem>
                 </SelectContent>
               </Select>
             ) : lender.tier ? (
