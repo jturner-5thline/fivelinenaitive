@@ -31,6 +31,7 @@ import { WriteUpCompanyOverviewTab } from './writeup/WriteUpCompanyOverviewTab';
 import { WriteUpFinancialTab } from './writeup/WriteUpFinancialTab';
 import { WriteUpCompanyHighlightsTab } from './writeup/WriteUpCompanyHighlightsTab';
 import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
+import { WriteUpOwnershipTab } from './writeup/WriteUpOwnershipTab';
 
 export interface KeyItem {
   id: string;
@@ -238,6 +239,7 @@ const CAROUSEL_SECTIONS = [
   { id: 'financial', title: 'Financial' },
   { id: 'highlights', title: 'Company Highlights' },
   { id: 'key-items', title: 'Key Items' },
+  { id: 'ownership', title: 'Ownership' },
 ];
 
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
@@ -873,11 +875,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           
           {viewMode === 'tabs' && (
             <Tabs defaultValue="company-overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="company-overview" className="min-w-0 truncate">Company Overview</TabsTrigger>
                 <TabsTrigger value="financial" className="min-w-0 truncate">Financial</TabsTrigger>
                 <TabsTrigger value="highlights" className="min-w-0 truncate">Company Highlights</TabsTrigger>
                 <TabsTrigger value="key-items" className="min-w-0 truncate">Key Items</TabsTrigger>
+                <TabsTrigger value="ownership" className="min-w-0 truncate">Ownership</TabsTrigger>
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
@@ -894,6 +897,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               
               <TabsContent value="key-items" className="mt-6">
                 <WriteUpKeyItemsTab data={data} updateField={updateField} />
+              </TabsContent>
+
+              <TabsContent value="ownership" className="mt-6">
+                <WriteUpOwnershipTab dealId={dealId} />
               </TabsContent>
             </Tabs>
           )}
@@ -967,6 +974,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                       <WriteUpKeyItemsTab data={data} updateField={updateField} />
                     </div>
                   </div>
+                  <div className="flex-[0_0_100%] min-w-0 px-1">
+                    <div className="border rounded-lg p-6 bg-muted/20">
+                      <h4 className="text-base font-semibold text-foreground mb-4 border-b pb-2">Ownership</h4>
+                      <WriteUpOwnershipTab dealId={dealId} />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1021,6 +1034,14 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <h4 className="text-base font-semibold text-foreground">Key Items</h4>
                 </div>
                 <WriteUpKeyItemsTab data={data} updateField={updateField} />
+              </div>
+
+              {/* Ownership Section */}
+              <div className="space-y-4">
+                <div className="border-b pb-2">
+                  <h4 className="text-base font-semibold text-foreground">Ownership</h4>
+                </div>
+                <WriteUpOwnershipTab dealId={dealId} />
               </div>
             </div>
           )}
