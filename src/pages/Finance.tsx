@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,11 +7,16 @@ import { ProfitAndLossStatementRange } from "@/components/finance/ProfitAndLossS
 import { BalanceSheetStatementRange } from "@/components/finance/BalanceSheetStatementRange";
 import { CashFlowStatementRange } from "@/components/finance/CashFlowStatementRange";
 import { FinanceChangeLog } from "@/components/finance/FinanceChangeLog";
+import { DriverInputsPanel, useDriverInputs, DriverInputs } from "@/components/finance/DriverInputsPanel";
+import { FinancialKPIDashboard } from "@/components/finance/FinancialKPIDashboard";
+import { FinanceLayoutToggle, DriverLayout } from "@/components/finance/FinanceLayoutToggle";
 import { useFinanceDataRange, FinancePeriodType } from "@/hooks/useFinanceDataRange";
 import { useCompany } from "@/hooks/useCompany";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, TrendingUp, Wallet, ArrowDownUp, History } from "lucide-react";
+import { Building2, TrendingUp, Wallet, ArrowDownUp, History, Settings2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export default function Finance() {
   const { company, isLoading: companyLoading } = useCompany();
@@ -19,6 +24,11 @@ export default function Finance() {
   const [startDate, setStartDate] = useState<Date>(() => startOfMonth(subMonths(new Date(), 5)));
   const [endDate, setEndDate] = useState<Date>(() => endOfMonth(new Date()));
   const [activeTab, setActiveTab] = useState("pnl");
+  const [driverLayout, setDriverLayout] = useState<DriverLayout>('sidebar');
+  const [showFormulas, setShowFormulas] = useState(false);
+  
+  // Driver inputs state
+  const { inputs: driverInputs, handleInputChange, resetToDefaults } = useDriverInputs();
 
   const { 
     periods, 
@@ -32,6 +42,13 @@ export default function Finance() {
     createPeriod,
     refreshData
   } = useFinanceDataRange(company?.id, periodType, startDate, endDate);
+
+  const handleApplyDrivers = useCallback(() => {
+    toast.success('Drivers applied', {
+      description: 'Financial calculations updated with new driver values'
+    });
+    refreshData();
+  }, [refreshData]);
 
   if (companyLoading) {
     return (
@@ -62,6 +79,9 @@ export default function Finance() {
     );
   }
 
+  const showDriversPanel = driverLayout !== 'hidden';
+  const isSidebarLayout = driverLayout === 'sidebar';
+
   return (
     <AppLayout>
       <div className="p-6 space-y-6">
@@ -74,90 +94,140 @@ export default function Finance() {
               Financial forecasting and tracking for {company.name}
             </p>
           </div>
-          <FinanceDateRangePicker
-            periodType={periodType}
-            setPeriodType={setPeriodType}
-            startDate={startDate}
-            setStartDate={setStartDate}
-            endDate={endDate}
-            setEndDate={setEndDate}
-          />
+          <div className="flex items-center gap-3 flex-wrap">
+            <FinanceLayoutToggle 
+              layout={driverLayout} 
+              onLayoutChange={setDriverLayout}
+            />
+            <FinanceDateRangePicker
+              periodType={periodType}
+              setPeriodType={setPeriodType}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+            />
+          </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full max-w-[600px] grid-cols-4">
-            <TabsTrigger value="pnl" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">P&L</span>
-            </TabsTrigger>
-            <TabsTrigger value="balance" className="flex items-center gap-2">
-              <Wallet className="h-4 w-4" />
-              <span className="hidden sm:inline">Balance Sheet</span>
-            </TabsTrigger>
-            <TabsTrigger value="cashflow" className="flex items-center gap-2">
-              <ArrowDownUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Cash Flow</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">Change Log</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* KPI Dashboard - always at top */}
+        <FinancialKPIDashboard
+          periodColumns={periodColumns}
+          financialData={financialData}
+          lineItems={lineItems.filter(li => 
+            li.statement_type === 'pnl' || li.statement_type === 'balance_sheet'
+          )}
+          driverInputs={driverInputs}
+          showFormulas={showFormulas}
+        />
 
-          <TabsContent value="pnl">
-            <ProfitAndLossStatementRange
-              companyId={company.id}
-              periodType={periodType}
-              periodColumns={periodColumns}
-              categories={categories.filter(c => c.statement_type === 'pnl')}
-              lineItems={lineItems.filter(li => li.statement_type === 'pnl')}
-              financialData={financialData}
-              isLoading={isLoading}
-              onUpdateData={updateFinancialData}
-              onCreatePeriod={createPeriod}
-              onRefresh={refreshData}
-            />
-          </TabsContent>
+        {/* Driver Inputs - Top Layout */}
+        {showDriversPanel && !isSidebarLayout && (
+          <DriverInputsPanel
+            inputs={driverInputs}
+            onInputChange={handleInputChange}
+            onApplyDrivers={handleApplyDrivers}
+            showFormulas={showFormulas}
+            onToggleFormulas={setShowFormulas}
+            layout="top"
+          />
+        )}
 
-          <TabsContent value="balance">
-            <BalanceSheetStatementRange
-              companyId={company.id}
-              periodType={periodType}
-              periodColumns={periodColumns}
-              categories={categories.filter(c => c.statement_type === 'balance_sheet')}
-              lineItems={lineItems.filter(li => li.statement_type === 'balance_sheet')}
-              financialData={financialData}
-              isLoading={isLoading}
-              onUpdateData={updateFinancialData}
-              onCreatePeriod={createPeriod}
-              onRefresh={refreshData}
+        {/* Main content with optional sidebar */}
+        <div className={cn(
+          "flex gap-6",
+          isSidebarLayout && showDriversPanel ? "flex-row" : "flex-col"
+        )}>
+          {/* Driver Inputs - Sidebar Layout */}
+          {showDriversPanel && isSidebarLayout && (
+            <DriverInputsPanel
+              inputs={driverInputs}
+              onInputChange={handleInputChange}
+              onApplyDrivers={handleApplyDrivers}
+              showFormulas={showFormulas}
+              onToggleFormulas={setShowFormulas}
+              layout="sidebar"
             />
-          </TabsContent>
+          )}
 
-          <TabsContent value="cashflow">
-            <CashFlowStatementRange
-              companyId={company.id}
-              periodType={periodType}
-              periodColumns={periodColumns}
-              categories={categories.filter(c => c.statement_type === 'cash_flow')}
-              lineItems={lineItems.filter(li => li.statement_type === 'cash_flow')}
-              financialData={financialData}
-              isLoading={isLoading}
-              onUpdateData={updateFinancialData}
-              onCreatePeriod={createPeriod}
-              onRefresh={refreshData}
-            />
-          </TabsContent>
+          {/* Statements Tabs */}
+          <div className="flex-1 min-w-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="grid w-full max-w-[600px] grid-cols-4">
+                <TabsTrigger value="pnl" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="hidden sm:inline">P&L</span>
+                </TabsTrigger>
+                <TabsTrigger value="balance" className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4" />
+                  <span className="hidden sm:inline">Balance Sheet</span>
+                </TabsTrigger>
+                <TabsTrigger value="cashflow" className="flex items-center gap-2">
+                  <ArrowDownUp className="h-4 w-4" />
+                  <span className="hidden sm:inline">Cash Flow</span>
+                </TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  <span className="hidden sm:inline">Change Log</span>
+                </TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="history">
-            <FinanceChangeLog
-              changeLogs={changeLogs}
-              lineItems={lineItems}
-              periods={periods}
-              isLoading={isLoading}
-            />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="pnl">
+                <ProfitAndLossStatementRange
+                  companyId={company.id}
+                  periodType={periodType}
+                  periodColumns={periodColumns}
+                  categories={categories.filter(c => c.statement_type === 'pnl')}
+                  lineItems={lineItems.filter(li => li.statement_type === 'pnl')}
+                  financialData={financialData}
+                  isLoading={isLoading}
+                  onUpdateData={updateFinancialData}
+                  onCreatePeriod={createPeriod}
+                  onRefresh={refreshData}
+                />
+              </TabsContent>
+
+              <TabsContent value="balance">
+                <BalanceSheetStatementRange
+                  companyId={company.id}
+                  periodType={periodType}
+                  periodColumns={periodColumns}
+                  categories={categories.filter(c => c.statement_type === 'balance_sheet')}
+                  lineItems={lineItems.filter(li => li.statement_type === 'balance_sheet')}
+                  financialData={financialData}
+                  isLoading={isLoading}
+                  onUpdateData={updateFinancialData}
+                  onCreatePeriod={createPeriod}
+                  onRefresh={refreshData}
+                />
+              </TabsContent>
+
+              <TabsContent value="cashflow">
+                <CashFlowStatementRange
+                  companyId={company.id}
+                  periodType={periodType}
+                  periodColumns={periodColumns}
+                  categories={categories.filter(c => c.statement_type === 'cash_flow')}
+                  lineItems={lineItems.filter(li => li.statement_type === 'cash_flow')}
+                  financialData={financialData}
+                  isLoading={isLoading}
+                  onUpdateData={updateFinancialData}
+                  onCreatePeriod={createPeriod}
+                  onRefresh={refreshData}
+                />
+              </TabsContent>
+
+              <TabsContent value="history">
+                <FinanceChangeLog
+                  changeLogs={changeLogs}
+                  lineItems={lineItems}
+                  periods={periods}
+                  isLoading={isLoading}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );
