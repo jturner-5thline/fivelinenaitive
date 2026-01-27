@@ -24,13 +24,13 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
     
     try {
       const { data, error } = await supabase
-        .from('deal_space_documents')
+        .from('deal_space_documents' as any)
         .select('*')
         .eq('deal_id', dealId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setDocuments(data || []);
+      setDocuments((data as unknown as DealSpaceDocument[]) || []);
     } catch (error) {
       console.error('Error fetching deal space documents:', error);
     } finally {
@@ -63,7 +63,7 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
 
       // Create database record
       const { data, error: dbError } = await supabase
-        .from('deal_space_documents')
+        .from('deal_space_documents' as any)
         .insert({
           deal_id: dealId,
           name: file.name,
@@ -77,9 +77,10 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
 
       if (dbError) throw dbError;
 
-      setDocuments(prev => [data, ...prev]);
+      const newDoc = data as unknown as DealSpaceDocument;
+      setDocuments(prev => [newDoc, ...prev]);
       toast({ title: 'Document uploaded', description: `${file.name} added to Deal Space` });
-      return data;
+      return newDoc;
     } catch (error) {
       console.error('Error uploading document:', error);
       toast({ 
@@ -105,7 +106,7 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
 
       // Delete from database
       const { error: dbError } = await supabase
-        .from('deal_space_documents')
+        .from('deal_space_documents' as any)
         .delete()
         .eq('id', doc.id);
 

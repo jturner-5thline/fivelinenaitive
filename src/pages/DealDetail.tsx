@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -59,6 +59,7 @@ import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
+import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
@@ -293,7 +294,7 @@ export default function DealDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightStale = searchParams.get('highlight') === 'stale';
   const deleteAction = searchParams.get('action') === 'delete';
-  const initialTab = searchParams.get('tab') as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'emails' | null;
+  const initialTab = searchParams.get('tab') as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading } = useMasterLenders();
   const { stages: configuredStages, substages: configuredSubstages, passReasons } = useLenderStages();
@@ -413,12 +414,12 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'emails'>(initialTab || 'deal-info');
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails'>(initialTab || 'deal-info');
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
   
   // Track tab direction for swipe animation
-  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'emails'] as const;
+  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'emails'] as const;
   
   const handleTabChange = useCallback((newTab: typeof dealInfoTab) => {
     const prevIndex = DEAL_TABS.indexOf(prevTabRef.current);
@@ -2157,7 +2158,7 @@ export default function DealDetail() {
             {/* Main Content */}
             <div className="flex flex-col gap-6">
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'emails')}>
+              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
                 <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
                   <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
                   <TabsTrigger value="lenders" className="gap-2">
@@ -2184,6 +2185,10 @@ export default function DealDetail() {
                         {attachments.length}
                       </Badge>
                     )}
+                  </TabsTrigger>
+                  <TabsTrigger value="deal-space" className="gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Deal Space
                   </TabsTrigger>
                   <TabsTrigger value="emails" className="gap-2">
                     <Mail className="h-4 w-4" />
@@ -3902,6 +3907,10 @@ export default function DealDetail() {
                       )}
                     </CardContent>
                   </Card>
+                </TabsContent>
+
+                <TabsContent value="deal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-space-${tabDirection}`}>
+                  <DealSpaceTab dealId={id!} />
                 </TabsContent>
 
                 <TabsContent value="emails" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`emails-${tabDirection}`}>
