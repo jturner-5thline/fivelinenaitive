@@ -39,9 +39,10 @@ interface DealCardProps {
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;
+  compact?: boolean;
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, compact = false }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
@@ -102,7 +103,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   return (
     <Link to={`/deal/${deal.id}`} className="block h-full">
-      <Card className={`group cursor-pointer h-[280px] flex flex-col relative ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+      <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
         {timeAgoData.isStale && (
           <TooltipProvider>
             <Tooltip>
@@ -119,7 +120,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </Tooltip>
           </TooltipProvider>
         )}
-        {timeAgoData.isStale && onMarkReviewed && (
+        {timeAgoData.isStale && onMarkReviewed && !compact && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -143,11 +144,11 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </Tooltip>
           </TooltipProvider>
         )}
-      <CardHeader className="space-y-0 pb-3 flex-shrink-0">
+      <CardHeader className={`space-y-0 ${compact ? 'pb-2 p-3' : 'pb-3'} flex-shrink-0`}>
         <div className="flex flex-row items-center justify-between">
-          <h3 className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] leading-tight truncate max-w-[180px]">{deal.company}</h3>
+          <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] leading-tight truncate ${compact ? 'max-w-[140px]' : 'max-w-[180px]'}`}>{deal.company}</h3>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">{formatCurrencyValue(deal.value)}</span>
+            <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]`}>{formatCurrencyValue(deal.value)}</span>
             {onToggleFlag && (
               <>
                 <TooltipProvider>
@@ -250,19 +251,21 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </DropdownMenu>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-4">
+        <div className={`flex items-center gap-2 ${compact ? 'mt-2' : 'mt-4'} flex-wrap`}>
           <Badge
             variant="outline"
             className={`${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg`}
           >
             {statusConfig.label}
           </Badge>
-          <Badge
-            variant="outline"
-            className="text-xs rounded-lg"
-          >
-            {stageConfig.label}
-          </Badge>
+          {!compact && (
+            <Badge
+              variant="outline"
+              className="text-xs rounded-lg"
+            >
+              {stageConfig.label}
+            </Badge>
+          )}
           {deal.migratedFromPersonal && (
             <TooltipProvider>
               <Tooltip>
@@ -324,7 +327,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </TooltipProvider>
           )}
         </div>
-        {deal.notes && deal.notes !== '<p></p>' ? (
+        {!compact && deal.notes && deal.notes !== '<p></p>' ? (
           <HoverCard openDelay={300}>
             <HoverCardTrigger asChild>
               <div 
@@ -339,47 +342,49 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
               />
             </HoverCardContent>
           </HoverCard>
-        ) : (
+        ) : !compact ? (
           <p className="text-sm line-clamp-2 mt-4 min-h-[2.5rem] text-muted-foreground/50 italic">
             No Status
           </p>
-        )}
+        ) : null}
       </CardHeader>
-      <CardContent className="space-y-4 mt-auto flex-shrink-0">
+      {!compact && (
+        <CardContent className="space-y-4 mt-auto flex-shrink-0">
 
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <User className="h-3.5 w-3.5" />
-            <span className="truncate">{deal.manager || 'No manager'}</span>
-          </div>
-          {deal.dealOwner && (
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground/70">Owner:</span>
-              <span className="truncate">{deal.dealOwner}</span>
+              <User className="h-3.5 w-3.5" />
+              <span className="truncate">{deal.manager || 'No manager'}</span>
             </div>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
-          <Badge variant="secondary" className="text-xs rounded-lg">
-            {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-          </Badge>
-          {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
-            <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
-              {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
-            </Badge>
-          )}
-          {dealTypeLabels.map((label, index) => (
-            <Badge key={index} variant="outline" className="text-xs rounded-lg">
-              {label}
-            </Badge>
-          ))}
-          <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ml-auto ${timeAgoData.highlightClass}`}>
-            <Clock className="h-3 w-3" />
-            <span>{timeAgoData.text}</span>
+            {deal.dealOwner && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground/70">Owner:</span>
+                <span className="truncate">{deal.dealOwner}</span>
+              </div>
+            )}
           </div>
-        </div>
-      </CardContent>
+
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
+            <Badge variant="secondary" className="text-xs rounded-lg">
+              {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+            </Badge>
+            {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
+              <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
+                {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
+              </Badge>
+            )}
+            {dealTypeLabels.map((label, index) => (
+              <Badge key={index} variant="outline" className="text-xs rounded-lg">
+                {label}
+              </Badge>
+            ))}
+            <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ml-auto ${timeAgoData.highlightClass}`}>
+              <Clock className="h-3 w-3" />
+              <span>{timeAgoData.text}</span>
+            </div>
+          </div>
+        </CardContent>
+      )}
     </Card>
     </Link>
   );
