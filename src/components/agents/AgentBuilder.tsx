@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import type { Agent, CreateAgentData } from '@/hooks/useAgents';
 import { AgentToolsBuilder, type AgentTool } from './AgentToolsBuilder';
+import { AgentConfigWizard } from './AgentConfigWizard';
 import { FeatureWalkthrough } from '@/components/help/FeatureWalkthrough';
 import { featureGuides } from '@/data/featureWalkthroughs';
 
@@ -112,6 +113,7 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
 
   // Help walkthrough
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [showWizard, setShowWizard] = useState(!initialData); // Show wizard for new agents
   const agentGuide = featureGuides.find(g => g.title === 'Building AI Agents') || null;
 
   // Tools / Workflow
@@ -151,6 +153,37 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
     setCanSearchWeb(newTools.some(t => t.type === 'web_search' && t.enabled));
   };
 
+  // Handle wizard completion
+  const handleWizardComplete = (config: {
+    name: string;
+    description: string;
+    systemPrompt: string;
+    personality: string;
+    canAccessDeals: boolean;
+    canAccessLenders: boolean;
+    canAccessActivities: boolean;
+    canAccessMilestones: boolean;
+  }) => {
+    setName(config.name);
+    setDescription(config.description);
+    setSystemPrompt(config.systemPrompt);
+    setPersonality(config.personality);
+    setCanAccessDeals(config.canAccessDeals);
+    setCanAccessLenders(config.canAccessLenders);
+    setCanAccessActivities(config.canAccessActivities);
+    setCanAccessMilestones(config.canAccessMilestones);
+    
+    // Update tools to match
+    const newTools: AgentTool[] = [];
+    if (config.canAccessDeals) newTools.push({ id: 'deals_wizard', type: 'deals', name: 'Deal Data', enabled: true, config: {} });
+    if (config.canAccessLenders) newTools.push({ id: 'lenders_wizard', type: 'lenders', name: 'Lender Data', enabled: true, config: {} });
+    if (config.canAccessActivities) newTools.push({ id: 'activities_wizard', type: 'activities', name: 'Activity Logs', enabled: true, config: {} });
+    if (config.canAccessMilestones) newTools.push({ id: 'milestones_wizard', type: 'milestones', name: 'Milestones', enabled: true, config: {} });
+    setTools(newTools);
+    
+    setShowWizard(false);
+  };
+
   const handleSave = async () => {
     await onSave({
       name,
@@ -170,6 +203,16 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
   };
 
   const isValid = name.trim() && systemPrompt.trim();
+
+  // Show wizard for new agents
+  if (showWizard && !initialData) {
+    return (
+      <AgentConfigWizard
+        onComplete={handleWizardComplete}
+        onCancel={() => setShowWizard(false)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
