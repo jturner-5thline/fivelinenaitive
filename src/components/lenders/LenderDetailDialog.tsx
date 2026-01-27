@@ -442,13 +442,13 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     }}>
       <DialogContent className="max-w-2xl max-h-[80vh] min-h-0 overflow-hidden !flex !flex-col">
         <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="flex items-center gap-2 text-xl text-foreground">
             {isEditMode ? (
               <Select
-                value={editForm.tier}
+                value={editForm.tier || 'none'}
                 onValueChange={(value) => setEditForm({ ...editForm, tier: value === 'none' ? '' : value })}
               >
-                <SelectTrigger className="w-[80px] h-8">
+                <SelectTrigger className="w-[80px] h-8 text-foreground">
                   <SelectValue placeholder="Tier" />
                 </SelectTrigger>
                 <SelectContent>
@@ -467,12 +467,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 {lender.tier.startsWith('T') ? lender.tier : `T${lender.tier}`}
               </Badge>
             ) : null}
-            <Building2 className="h-6 w-6" />
+            <Building2 className="h-6 w-6 text-foreground" />
             {isEditMode ? (
               <Input
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="h-8 text-lg font-semibold max-w-[200px]"
+                className="h-8 text-lg font-semibold max-w-[300px] text-foreground"
                 placeholder="Lender name"
               />
             ) : (
