@@ -1,6 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { FinancePeriodType } from "@/pages/Finance";
+import { FinancePeriodType } from "@/hooks/useFinanceDataRange";
 
 interface FinancePeriodSelectorProps {
   periodType: FinancePeriodType;

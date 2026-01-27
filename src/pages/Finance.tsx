@@ -1,25 +1,23 @@
 import { useState } from "react";
+import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FinancePeriodSelector } from "@/components/finance/FinancePeriodSelector";
-import { ProfitAndLossStatement } from "@/components/finance/ProfitAndLossStatement";
-import { BalanceSheetStatement } from "@/components/finance/BalanceSheetStatement";
-import { CashFlowStatement } from "@/components/finance/CashFlowStatement";
+import { FinanceDateRangePicker } from "@/components/finance/FinanceDateRangePicker";
+import { ProfitAndLossStatementRange } from "@/components/finance/ProfitAndLossStatementRange";
+import { BalanceSheetStatementRange } from "@/components/finance/BalanceSheetStatementRange";
+import { CashFlowStatementRange } from "@/components/finance/CashFlowStatementRange";
 import { FinanceChangeLog } from "@/components/finance/FinanceChangeLog";
-import { useFinanceData } from "@/hooks/useFinanceData";
+import { useFinanceDataRange, FinancePeriodType } from "@/hooks/useFinanceDataRange";
 import { useCompany } from "@/hooks/useCompany";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Building2, TrendingUp, Wallet, ArrowDownUp, History } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-
-export type FinancePeriodType = 'monthly' | 'quarterly' | 'annual';
 
 export default function Finance() {
   const { company, isLoading: companyLoading } = useCompany();
   const [periodType, setPeriodType] = useState<FinancePeriodType>('monthly');
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number | undefined>(new Date().getMonth() + 1);
-  const [selectedQuarter, setSelectedQuarter] = useState<number | undefined>(Math.ceil((new Date().getMonth() + 1) / 3));
+  const [startDate, setStartDate] = useState<Date>(() => startOfMonth(subMonths(new Date(), 5)));
+  const [endDate, setEndDate] = useState<Date>(() => endOfMonth(new Date()));
   const [activeTab, setActiveTab] = useState("pnl");
 
   const { 
@@ -28,11 +26,12 @@ export default function Finance() {
     lineItems, 
     financialData, 
     changeLogs,
+    periodColumns,
     isLoading, 
     updateFinancialData,
     createPeriod,
     refreshData
-  } = useFinanceData(company?.id, periodType, selectedYear, selectedMonth, selectedQuarter);
+  } = useFinanceDataRange(company?.id, periodType, startDate, endDate);
 
   if (companyLoading) {
     return (
@@ -75,15 +74,13 @@ export default function Finance() {
               Financial forecasting and tracking for {company.name}
             </p>
           </div>
-          <FinancePeriodSelector
+          <FinanceDateRangePicker
             periodType={periodType}
             setPeriodType={setPeriodType}
-            selectedYear={selectedYear}
-            setSelectedYear={setSelectedYear}
-            selectedMonth={selectedMonth}
-            setSelectedMonth={setSelectedMonth}
-            selectedQuarter={selectedQuarter}
-            setSelectedQuarter={setSelectedQuarter}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
           />
         </div>
 
@@ -108,13 +105,10 @@ export default function Finance() {
           </TabsList>
 
           <TabsContent value="pnl">
-            <ProfitAndLossStatement
+            <ProfitAndLossStatementRange
               companyId={company.id}
               periodType={periodType}
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-              selectedQuarter={selectedQuarter}
-              periods={periods}
+              periodColumns={periodColumns}
               categories={categories.filter(c => c.statement_type === 'pnl')}
               lineItems={lineItems.filter(li => li.statement_type === 'pnl')}
               financialData={financialData}
@@ -126,13 +120,10 @@ export default function Finance() {
           </TabsContent>
 
           <TabsContent value="balance">
-            <BalanceSheetStatement
+            <BalanceSheetStatementRange
               companyId={company.id}
               periodType={periodType}
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-              selectedQuarter={selectedQuarter}
-              periods={periods}
+              periodColumns={periodColumns}
               categories={categories.filter(c => c.statement_type === 'balance_sheet')}
               lineItems={lineItems.filter(li => li.statement_type === 'balance_sheet')}
               financialData={financialData}
@@ -144,13 +135,10 @@ export default function Finance() {
           </TabsContent>
 
           <TabsContent value="cashflow">
-            <CashFlowStatement
+            <CashFlowStatementRange
               companyId={company.id}
               periodType={periodType}
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-              selectedQuarter={selectedQuarter}
-              periods={periods}
+              periodColumns={periodColumns}
               categories={categories.filter(c => c.statement_type === 'cash_flow')}
               lineItems={lineItems.filter(li => li.statement_type === 'cash_flow')}
               financialData={financialData}
