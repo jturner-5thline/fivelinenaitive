@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, FileText, Download, ExternalLink, Table2, Presentation } from 'lucide-react';
+import { Loader2, FileText, Download, ExternalLink, Table2, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
+import { ExcelViewerDialog } from './ExcelViewerDialog';
 
 interface DealSpaceDocumentPreviewProps {
   document: DealSpaceDocument | null;
@@ -23,7 +23,7 @@ export function DealSpaceDocumentPreview({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [previewType, setPreviewType] = useState<'embed' | 'text' | 'unsupported'>('unsupported');
+  const [previewType, setPreviewType] = useState<'embed' | 'text' | 'excel' | 'unsupported'>('unsupported');
 
   useEffect(() => {
     if (!document || !isOpen) {
@@ -46,8 +46,10 @@ export function DealSpaceDocumentPreview({
         
         setPreviewUrl(data.signedUrl);
 
-        // Determine preview type
-        if (fileName.endsWith('.pdf')) {
+        // Determine preview type - Excel files use special viewer
+        if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+          setPreviewType('excel');
+        } else if (fileName.endsWith('.pdf')) {
           setPreviewType('embed');
         } else if (
           fileName.endsWith('.txt') || 
@@ -62,11 +64,9 @@ export function DealSpaceDocumentPreview({
           setPreviewType('text');
         } else if (
           fileName.endsWith('.docx') || 
-          fileName.endsWith('.xlsx') || 
-          fileName.endsWith('.xls') ||
           fileName.endsWith('.pptx')
         ) {
-          // For Office documents, use Google Docs Viewer
+          // For Office documents (non-Excel), use Google Docs Viewer
           setPreviewType('embed');
         } else {
           setPreviewType('unsupported');
@@ -85,13 +85,22 @@ export function DealSpaceDocumentPreview({
   if (!document) return null;
 
   const fileName = document.name.toLowerCase();
-  const isOfficeDoc = fileName.endsWith('.docx') || fileName.endsWith('.xlsx') || 
-                      fileName.endsWith('.xls') || fileName.endsWith('.pptx');
+  const isExcelFile = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+  const isOfficeDoc = fileName.endsWith('.docx') || fileName.endsWith('.pptx');
+
+  // Use the dedicated Excel viewer for Excel files
+  if (isExcelFile) {
+    return (
+      <ExcelViewerDialog
+        document={document}
+        isOpen={isOpen}
+        onClose={onClose}
+        onDownload={onDownload}
+      />
+    );
+  }
 
   const getFileIcon = () => {
-    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      return <Table2 className="h-5 w-5 text-green-500" />;
-    }
     if (fileName.endsWith('.pptx')) {
       return <Presentation className="h-5 w-5 text-orange-500" />;
     }
