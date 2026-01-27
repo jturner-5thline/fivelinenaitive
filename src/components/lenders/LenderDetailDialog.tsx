@@ -444,125 +444,123 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       onOpenChange(newOpen);
     }}>
       <DialogContent className="max-w-2xl max-h-[80vh] min-h-0 overflow-hidden !flex !flex-col">
-        <DialogHeader className="flex flex-row items-start justify-between gap-4 pr-8">
-          <DialogTitle className="flex items-center gap-2 text-xl text-foreground">
-            {isEditMode ? (
-              <Select
-                value={editForm.tier || 'none'}
-                onValueChange={(value) => setEditForm({ ...editForm, tier: value === 'none' ? '' : value })}
-              >
-                <SelectTrigger className="w-[80px] h-8 text-foreground">
-                  <SelectValue placeholder="Tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="1">T1</SelectItem>
-                  <SelectItem value="2">T2</SelectItem>
-                  <SelectItem value="3">T3</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : lender.tier ? (
-              <Badge 
-                variant={lender.tier === '1' || lender.tier === 'T1' ? 'green' : lender.tier === '2' || lender.tier === 'T2' ? 'blue' : lender.tier === '3' || lender.tier === 'T3' ? 'amber' : 'purple'} 
-                className="text-xs font-bold px-2 py-0.5"
-              >
-                {lender.tier.startsWith('T') ? lender.tier : `T${lender.tier}`}
-              </Badge>
-            ) : null}
-            
-            {isEditMode ? (
-              <Input
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="h-8 text-lg font-semibold max-w-[300px] text-foreground"
-                placeholder="Lender name"
-              />
-            ) : (
-              <>
+        <DialogHeader className="flex flex-col gap-1 pr-8">
+          <div className="flex flex-row items-center justify-between gap-4">
+            <DialogTitle className="flex items-center gap-2 text-xl text-foreground">
+              {isEditMode ? (
+                <Select
+                  value={editForm.tier || 'none'}
+                  onValueChange={(value) => setEditForm({ ...editForm, tier: value === 'none' ? '' : value })}
+                >
+                  <SelectTrigger className="w-[80px] h-8 text-foreground">
+                    <SelectValue placeholder="Tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="1">T1</SelectItem>
+                    <SelectItem value="2">T2</SelectItem>
+                    <SelectItem value="3">T3</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : lender.tier ? (
+                <Badge 
+                  variant={lender.tier === '1' || lender.tier === 'T1' ? 'green' : lender.tier === '2' || lender.tier === 'T2' ? 'blue' : lender.tier === '3' || lender.tier === 'T3' ? 'amber' : 'purple'} 
+                  className="text-xs font-bold px-2 py-0.5"
+                >
+                  {lender.tier.startsWith('T') ? lender.tier : `T${lender.tier}`}
+                </Badge>
+              ) : null}
+              
+              {isEditMode ? (
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="h-8 text-lg font-semibold max-w-[300px] text-foreground"
+                  placeholder="Lender name"
+                />
+              ) : (
                 <span className="whitespace-nowrap">{lender.name}</span>
-                {lender.lenderType && (
-                  <Badge variant="outline" className="ml-1 text-xs font-normal">
-                    {lender.lenderType}
-                  </Badge>
-                )}
-              </>
-            )}
-          </DialogTitle>
-          <div className="flex items-center gap-1">
-            {isEditMode ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 gap-1.5"
-                  onClick={handleCancelEdit}
-                  disabled={isSaving}
-                >
-                  <X className="h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-8 gap-1.5"
-                  onClick={handleSaveEdit}
-                  disabled={isSaving}
-                >
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Save
-                </Button>
-              </>
-            ) : (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setIsReorderDialogOpen(true)}
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Customize layout</TooltipContent>
-                </Tooltip>
-                {onSave && (
+              )}
+            </DialogTitle>
+            <div className="flex items-center gap-1">
+              {isEditMode ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                  >
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={handleSaveEdit}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={handleEnterEditMode}
+                        onClick={() => setIsReorderDialogOpen(true)}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Settings2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Edit lender</TooltipContent>
+                    <TooltipContent>Customize layout</TooltipContent>
                   </Tooltip>
-                )}
-                {onDelete && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          onOpenChange(false);
-                          onDelete(lender.name);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Delete lender</TooltipContent>
-                  </Tooltip>
-                )}
-              </>
-            )}
+                  {onSave && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={handleEnterEditMode}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit lender</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {onDelete && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            onOpenChange(false);
+                            onDelete(lender.name);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete lender</TooltipContent>
+                    </Tooltip>
+                  )}
+                </>
+              )}
+            </div>
           </div>
+          {!isEditMode && lender.lenderType && (
+            <p className="text-sm text-muted-foreground">{lender.lenderType}</p>
+          )}
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto pr-4">
