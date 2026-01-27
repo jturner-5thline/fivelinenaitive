@@ -22,9 +22,12 @@ import {
   Users,
   Sparkles,
   Puzzle,
+  HelpCircle,
 } from 'lucide-react';
 import type { Agent, CreateAgentData } from '@/hooks/useAgents';
 import { AgentToolsBuilder, type AgentTool } from './AgentToolsBuilder';
+import { FeatureWalkthrough } from '@/components/help/FeatureWalkthrough';
+import { featureGuides } from '@/data/featureWalkthroughs';
 
 interface AgentBuilderProps {
   initialData?: Agent;
@@ -107,6 +110,10 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
   const [isShared, setIsShared] = useState(initialData?.is_shared ?? false);
   const [isPublic, setIsPublic] = useState(initialData?.is_public ?? false);
 
+  // Help walkthrough
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const agentGuide = featureGuides.find(g => g.title === 'Building AI Agents') || null;
+
   // Tools / Workflow
   const [tools, setTools] = useState<AgentTool[]>(() => {
     // Initialize with data access tools based on initial permissions
@@ -166,6 +173,26 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
 
   return (
     <div className="space-y-6">
+      {/* Help Button */}
+      <div className="flex justify-end">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setShowWalkthrough(true)}
+          className="gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <HelpCircle className="h-4 w-4" />
+          How to build an agent
+        </Button>
+      </div>
+
+      {/* Walkthrough Dialog */}
+      <FeatureWalkthrough 
+        guide={agentGuide} 
+        open={showWalkthrough} 
+        onOpenChange={setShowWalkthrough} 
+      />
+
       {/* Quick Start Templates */}
       {!initialData && (
         <Card>
