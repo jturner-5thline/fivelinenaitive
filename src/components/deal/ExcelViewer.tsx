@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback, useRef, forwardRef } from 'react';
-import { Loader2, Save, Undo2, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Loader2, Save, Undo2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
@@ -30,13 +28,13 @@ interface SheetData {
   colWidths: number[];
 }
 
-export const ExcelViewer = forwardRef<HTMLDivElement, ExcelViewerProps>(function ExcelViewer({ 
+export function ExcelViewer({ 
   fileUrl, 
   fileName, 
   onSave, 
   onDownload,
   readOnly = false 
-}, ref) {
+}: ExcelViewerProps) {
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [sheets, setSheets] = useState<SheetData[]>([]);
   const [activeSheet, setActiveSheet] = useState<string>('');
@@ -426,4 +424,4 @@ export const ExcelViewer = forwardRef<HTMLDivElement, ExcelViewerProps>(function
       </div>
     </div>
   );
-});
+}
