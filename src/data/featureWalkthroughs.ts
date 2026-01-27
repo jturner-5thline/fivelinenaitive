@@ -259,6 +259,57 @@ export const featureGuides: FeatureGuide[] = [
   },
   {
     icon: Workflow,
+    title: 'Building Workflows',
+    description: 'Create automated processes',
+    tips: [
+      'Use the Visual Builder for a drag-and-drop experience',
+      'Start with the Workflow Assistant to quickly configure based on your goals',
+      'Add conditions to make workflows run only when specific criteria are met',
+      'Use delays to schedule actions for later execution',
+    ],
+    walkthrough: [
+      {
+        title: 'Start with the Assistant (optional)',
+        description: 'Click "New Workflow" to open the Workflow Assistant. Answer questions about what you want to achieve, what should trigger it, and what should happen.',
+        action: 'Click "New Workflow"',
+        tip: 'The assistant will pre-configure your workflow based on your answers.',
+      },
+      {
+        title: 'Choose your builder',
+        description: 'Switch between Visual Builder (drag-and-drop nodes) or Classic View (form-based). Visual Builder is great for complex workflows with multiple steps.',
+        action: 'Select builder tab',
+      },
+      {
+        title: 'Add a trigger',
+        description: 'In Visual Builder, drag a trigger from the palette (Deal Stage Change, New Deal, Scheduled, etc.). This defines when your workflow runs.',
+        action: 'Drag trigger node',
+        tip: 'You can only have one trigger per workflow.',
+      },
+      {
+        title: 'Add actions',
+        description: 'Drag action nodes like Send Notification, Send Email, or Call Webhook. Connect them in sequence to define what happens.',
+        action: 'Add action nodes',
+      },
+      {
+        title: 'Add logic (optional)',
+        description: 'Use Condition nodes to add if/then branching, Filter nodes to process specific records, or Human Approval to pause for manual review.',
+        action: 'Add logic nodes',
+      },
+      {
+        title: 'Configure each node',
+        description: 'Click any node to configure it in the right panel. Set trigger conditions, notification messages, webhook URLs, etc.',
+        action: 'Click node to configure',
+      },
+      {
+        title: 'Save and activate',
+        description: 'Name your workflow, toggle it active, and click Save. The workflow will start running automatically when triggered.',
+        action: 'Click "Save Workflow"',
+        route: '/workflows',
+      },
+    ],
+  },
+  {
+    icon: Workflow,
     title: 'Workflows',
     description: 'Automate repetitive tasks',
     tips: [
