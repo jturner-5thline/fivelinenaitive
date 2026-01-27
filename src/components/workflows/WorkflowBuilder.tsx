@@ -1,14 +1,19 @@
 import { useState } from 'react';
-import { Plus, Trash2, Zap, Bell, Mail, Clock, ArrowRight, GitBranch, Timer, Link2 } from 'lucide-react';
+import { Plus, Trash2, Zap, Bell, Mail, Clock, ArrowRight, GitBranch, Timer, Link2, Puzzle, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WorkflowConfigWizard } from './WorkflowConfigWizard';
+import { WorkflowToolsBuilder, type WorkflowNode } from './WorkflowToolsBuilder';
+import { FeatureWalkthrough } from '@/components/help/FeatureWalkthrough';
+import { featureGuides } from '@/data/featureWalkthroughs';
 
 export type TriggerType = 'deal_stage_change' | 'lender_stage_change' | 'new_deal' | 'deal_closed' | 'scheduled';
 
@@ -89,6 +94,12 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving, avail
   const [triggerType, setTriggerType] = useState<TriggerType>(initialData?.triggerType || 'deal_stage_change');
   const [triggerConfig, setTriggerConfig] = useState<Record<string, any>>(initialData?.triggerConfig || {});
   const [actions, setActions] = useState<WorkflowAction[]>(initialData?.actions || []);
+  
+  // Wizard & modular builder state
+  const [showWizard, setShowWizard] = useState(!initialData);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [workflowNodes, setWorkflowNodes] = useState<WorkflowNode[]>([]);
+  const workflowGuide = featureGuides.find(g => g.title === 'Building Workflows') || null;
 
   const addAction = (type: ActionType) => {
     const newAction: WorkflowAction = {
@@ -124,6 +135,55 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving, avail
       triggerConfig,
       actions,
     });
+  };
+
+  // Handle wizard completion
+  const handleWizardComplete = (data: WorkflowData) => {
+    setName(data.name);
+    setDescription(data.description);
+    setIsActive(data.isActive);
+    setTriggerType(data.triggerType);
+    setTriggerConfig(data.triggerConfig);
+    setActions(data.actions);
+    setShowWizard(false);
+  };
+
+  // Convert modular nodes to actions (sync between builder types)
+  const handleNodesChange = (nodes: WorkflowNode[]) => {
+    setWorkflowNodes(nodes);
+    
+    // Extract trigger from nodes
+    const triggerNode = nodes.find(n => n.type.startsWith('trigger_') && n.enabled);
+    if (triggerNode) {
+      const typeMap: Record<string, TriggerType> = {
+        trigger_deal_stage: 'deal_stage_change',
+        trigger_lender_stage: 'lender_stage_change',
+        trigger_new_deal: 'new_deal',
+        trigger_deal_closed: 'deal_closed',
+        trigger_scheduled: 'scheduled',
+      };
+      if (typeMap[triggerNode.type]) {
+        setTriggerType(typeMap[triggerNode.type]);
+        setTriggerConfig(triggerNode.config);
+      }
+    }
+    
+    // Extract actions from nodes
+    const actionNodes = nodes.filter(n => n.type.startsWith('action_') && n.enabled);
+    const newActions: WorkflowAction[] = actionNodes.map(node => {
+      const typeMap: Record<string, ActionType> = {
+        action_notification: 'send_notification',
+        action_email: 'send_email',
+        action_webhook: 'webhook',
+        action_update_field: 'update_field',
+      };
+      return {
+        id: node.id,
+        type: typeMap[node.type] || 'send_notification',
+        config: node.config,
+      };
+    });
+    setActions(newActions);
   };
 
   const renderTriggerConfig = () => {
@@ -449,39 +509,117 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving, avail
 
   const selectedTrigger = TRIGGER_OPTIONS.find(t => t.value === triggerType);
 
+  // Show wizard for new workflows
+  if (showWizard && !initialData) {
+    return (
+      <WorkflowConfigWizard
+        onComplete={handleWizardComplete}
+        onCancel={() => setShowWizard(false)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Basic Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Basic Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Workflow Name</Label>
-            <Input
-              placeholder="e.g., Notify on Deal Close"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>Description (optional)</Label>
-            <Textarea
-              placeholder="What does this workflow do?"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Active</Label>
-              <p className="text-sm text-muted-foreground">Enable or disable this workflow</p>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Help Button */}
+      <div className="flex justify-end">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setShowWalkthrough(true)}
+          className="gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <HelpCircle className="h-4 w-4" />
+          How to build a workflow
+        </Button>
+      </div>
+
+      {/* Walkthrough Dialog */}
+      <FeatureWalkthrough 
+        guide={workflowGuide} 
+        open={showWalkthrough} 
+        onOpenChange={setShowWalkthrough} 
+      />
+
+      <Tabs defaultValue="modular" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="modular" className="gap-2">
+            <Puzzle className="h-4 w-4" />
+            Visual Builder
+          </TabsTrigger>
+          <TabsTrigger value="classic" className="gap-2">
+            <Zap className="h-4 w-4" />
+            Classic View
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="modular" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Build Your Workflow</CardTitle>
+              <CardDescription>
+                Drag nodes from the palette to create a visual workflow
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label>Workflow Name</Label>
+                  <Input
+                    placeholder="e.g., Notify on Deal Close"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-end gap-4">
+                  <div className="flex-1">
+                    <Label>Status</Label>
+                    <div className="flex items-center gap-2 h-10">
+                      <Switch checked={isActive} onCheckedChange={setIsActive} />
+                      <span className="text-sm text-muted-foreground">
+                        {isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <WorkflowToolsBuilder nodes={workflowNodes} onNodesChange={handleNodesChange} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="classic" className="space-y-4">
+          {/* Basic Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Workflow Name</Label>
+                <Input
+                  placeholder="e.g., Notify on Deal Close"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Description (optional)</Label>
+                <Textarea
+                  placeholder="What does this workflow do?"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Active</Label>
+                  <p className="text-sm text-muted-foreground">Enable or disable this workflow</p>
+                </div>
+                <Switch checked={isActive} onCheckedChange={setIsActive} />
+              </div>
+            </CardContent>
+          </Card>
 
       {/* Trigger */}
       <Card>
@@ -594,6 +732,8 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving, avail
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Footer */}
       <div className="flex justify-end gap-2">
