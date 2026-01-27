@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -29,22 +31,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useHubSpotDeals, useHubSpotPipelines, HubSpotDeal } from "@/hooks/useHubSpot";
+import { useHubSpotDeals, useHubSpotPipelines, useHubSpotOwners, HubSpotDeal } from "@/hooks/useHubSpot";
 import { useDeals } from "@/hooks/useDeals";
+import { useDealsContext } from "@/contexts/DealsContext";
+import { useDealStages } from "@/contexts/DealStagesContext";
 import { 
-  ArrowRightLeft, 
   Download, 
-  Upload, 
   CheckCircle2, 
-  XCircle,
   Loader2,
   Link2,
   Unlink,
   RefreshCw,
-  AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  FileDown,
+  Settings2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { DealStage, EngagementType } from "@/types/deal";
 
 interface SyncMapping {
   hubspotDealId: string;
@@ -55,17 +58,48 @@ interface SyncMapping {
   lastSync?: string;
 }
 
+// Default stage mapping from HubSpot stages to nAitive stages
+const DEFAULT_STAGE_MAPPING: Record<string, DealStage> = {
+  'appointmentscheduled': 'client-strategy-review',
+  'qualifiedtobuy': 'write-up-pending',
+  'presentationscheduled': 'submitted-to-lenders',
+  'decisionmakerboughtin': 'lenders-in-review',
+  'contractsent': 'terms-issued',
+  'closedwon': 'closed-won',
+  'closedlost': 'closed-lost',
+};
+
 export function HubSpotDealSync() {
   const { data: hubspotDeals, isLoading: hubspotLoading, refetch: refetchHubspot } = useHubSpotDeals();
   const { data: pipelinesData } = useHubSpotPipelines();
+  const { data: ownersData } = useHubSpotOwners();
   const { deals: localDeals, isLoading: localLoading } = useDeals();
+  const { createDeal } = useDealsContext();
+  const { stages } = useDealStages();
   
   const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [isMappingDialogOpen, setIsMappingDialogOpen] = useState(false);
   const [dealToLink, setDealToLink] = useState<HubSpotDeal | null>(null);
   const [selectedLocalDeal, setSelectedLocalDeal] = useState<string>("");
-  const [syncDirection, setSyncDirection] = useState<'import' | 'export'>('import');
+  const [stageMapping, setStageMapping] = useState<Record<string, string>>({});
+
+  // Get all unique stages from HubSpot pipelines
+  const hubspotStages = useMemo(() => {
+    if (!pipelinesData?.results) return [];
+    const stages: Array<{ id: string; label: string; pipelineName: string }> = [];
+    pipelinesData.results.forEach(pipeline => {
+      pipeline.stages.forEach(stage => {
+        stages.push({
+          id: stage.id,
+          label: stage.label,
+          pipelineName: pipeline.label,
+        });
+      });
+    });
+    return stages;
+  }, [pipelinesData]);
 
   // Calculate sync mappings
   const syncMappings = useMemo<SyncMapping[]>(() => {
@@ -108,6 +142,34 @@ export function HubSpotDealSync() {
     return stageId;
   };
 
+  const getOwnerName = (ownerId: string | undefined) => {
+    if (!ownerId || !ownersData?.results) return null;
+    const owner = ownersData.results.find(o => o.id === ownerId);
+    if (owner) {
+      return `${owner.firstName} ${owner.lastName}`.trim() || owner.email;
+    }
+    return null;
+  };
+
+  // Map HubSpot stage to nAitive stage
+  const mapHubSpotStage = (hubspotStageId: string | undefined): DealStage => {
+    if (!hubspotStageId) return 'final-credit-items';
+    
+    // Check custom mapping first
+    if (stageMapping[hubspotStageId]) {
+      return stageMapping[hubspotStageId] as DealStage;
+    }
+    
+    // Fall back to default mapping
+    const stageLower = hubspotStageId.toLowerCase();
+    if (DEFAULT_STAGE_MAPPING[stageLower]) {
+      return DEFAULT_STAGE_MAPPING[stageLower];
+    }
+    
+    // Default to first stage
+    return 'final-credit-items';
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedDeals(new Set(unlinkedDeals.map(m => m.hubspotDealId)));
@@ -133,18 +195,54 @@ export function HubSpotDealSync() {
     }
 
     setIsImporting(true);
-    
-    // In a real implementation, you'd call an API to create deals
-    const totalSelected = selectedDeals.size;
-    toast.info(`Would import ${totalSelected} deals - implement createDeal in useDeals hook`);
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    let successCount = 0;
+    let errorCount = 0;
 
-    setIsImporting(false);
-    setSelectedDeals(new Set());
-    
-    // TODO: Replace with actual import logic and track success/error counts
-    toast.success(`Import process completed for ${totalSelected} deal(s)`);
+    try {
+      const dealsToImport = hubspotDeals?.results?.filter(d => selectedDeals.has(d.id)) || [];
+      
+      for (const hsDeal of dealsToImport) {
+        try {
+          const ownerName = getOwnerName(hsDeal.properties.hubspot_owner_id);
+          const mappedStage = mapHubSpotStage(hsDeal.properties.dealstage);
+          
+          const newDeal = await createDeal({
+            company: hsDeal.properties.dealname || 'Imported Deal',
+            value: hsDeal.properties.amount ? parseFloat(hsDeal.properties.amount) : 0,
+            stage: mappedStage,
+            status: 'on-track',
+            engagementType: 'guided' as EngagementType,
+            manager: ownerName || undefined,
+            notes: `Imported from HubSpot (ID: ${hsDeal.id})`,
+          });
+          
+          if (newDeal) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (err) {
+          console.error(`Failed to import deal ${hsDeal.properties.dealname}:`, err);
+          errorCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Successfully imported ${successCount} deal(s)`);
+      }
+      if (errorCount > 0) {
+        toast.error(`Failed to import ${errorCount} deal(s)`);
+      }
+      
+      setSelectedDeals(new Set());
+      // Refetch to update sync status
+      refetchHubspot();
+    } catch (error) {
+      console.error('Import error:', error);
+      toast.error('Import failed');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleLinkDeal = (hsDeal: HubSpotDeal) => {
@@ -161,6 +259,23 @@ export function HubSpotDealSync() {
     setIsLinkDialogOpen(false);
     setDealToLink(null);
     setSelectedLocalDeal("");
+  };
+
+  const openMappingDialog = () => {
+    // Initialize mapping with any saved values or defaults
+    const initialMapping: Record<string, string> = {};
+    hubspotStages.forEach(stage => {
+      initialMapping[stage.id] = stageMapping[stage.id] || 
+        DEFAULT_STAGE_MAPPING[stage.id.toLowerCase()] || 
+        'final-credit-items';
+    });
+    setStageMapping(initialMapping);
+    setIsMappingDialogOpen(true);
+  };
+
+  const saveStageMapping = () => {
+    toast.success('Stage mapping saved');
+    setIsMappingDialogOpen(false);
   };
 
   if (hubspotLoading || localLoading) {
@@ -228,6 +343,10 @@ export function HubSpotDealSync() {
               <CardDescription>Import HubSpot deals or link to existing local deals</CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={openMappingDialog}>
+                <Settings2 className="h-4 w-4 mr-2" />
+                Stage Mapping
+              </Button>
               <Button variant="outline" size="sm" onClick={() => refetchHubspot()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
@@ -240,7 +359,7 @@ export function HubSpotDealSync() {
                 {isImporting ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
-                  <Download className="h-4 w-4 mr-2" />
+                  <FileDown className="h-4 w-4 mr-2" />
                 )}
                 Import Selected ({selectedDeals.size})
               </Button>
@@ -268,6 +387,7 @@ export function HubSpotDealSync() {
                     <TableHead>HubSpot Deal</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Stage</TableHead>
+                    <TableHead>Owner</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -277,6 +397,7 @@ export function HubSpotDealSync() {
                   {hubspotDeals?.results?.map((deal) => {
                     const mapping = syncMappings.find(m => m.hubspotDealId === deal.id);
                     const isUnlinked = mapping?.status === 'unlinked';
+                    const ownerName = getOwnerName(deal.properties.hubspot_owner_id);
                     
                     return (
                       <TableRow key={deal.id}>
@@ -296,6 +417,9 @@ export function HubSpotDealSync() {
                           <Badge variant="secondary">
                             {getStageName(deal.properties.dealstage)}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {ownerName || '-'}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {deal.properties.createdate
@@ -391,6 +515,67 @@ export function HubSpotDealSync() {
             <Button onClick={confirmLinkDeal} disabled={!selectedLocalDeal}>
               <Link2 className="h-4 w-4 mr-2" />
               Link Deals
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stage Mapping Dialog */}
+      <Dialog open={isMappingDialogOpen} onOpenChange={setIsMappingDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Stage Mapping</DialogTitle>
+            <DialogDescription>
+              Map HubSpot deal stages to nAItive deal stages for imported deals
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="h-[400px] pr-4">
+            <div className="space-y-4">
+              {hubspotStages.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">
+                  No HubSpot pipelines found. Connect to HubSpot first.
+                </p>
+              ) : (
+                hubspotStages.map((hsStage) => (
+                  <div key={hsStage.id} className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <Label className="text-sm font-medium">{hsStage.label}</Label>
+                      <p className="text-xs text-muted-foreground">{hsStage.pipelineName}</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1">
+                      <Select
+                        value={stageMapping[hsStage.id] || 'final-credit-items'}
+                        onValueChange={(value) => setStageMapping(prev => ({
+                          ...prev,
+                          [hsStage.id]: value
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {stages.map((stage) => (
+                            <SelectItem key={stage.id} value={stage.id}>
+                              {stage.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMappingDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveStageMapping}>
+              Save Mapping
             </Button>
           </DialogFooter>
         </DialogContent>
