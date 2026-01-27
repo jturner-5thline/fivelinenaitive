@@ -1,4 +1,4 @@
-import { Plus, Users, BarChart3, FileText, Settings, Bell, Flag, Building2, Workflow, Mail } from 'lucide-react';
+import { Plus, Users, BarChart3, FileText, Settings, Bell, Flag, Building2, Workflow, Mail, Bot } from 'lucide-react';
 import type { FeatureGuide } from '@/components/help/FeatureWalkthrough';
 
 /**
@@ -417,6 +417,58 @@ export const featureGuides: FeatureGuide[] = [
         description: 'On any deal page, go to the "Emails" tab to see all correspondence linked to that deal.',
         action: 'Open deal\'s Emails tab',
         tip: 'Linked emails help keep a complete record of deal communications.',
+      },
+    ],
+  },
+  {
+    icon: Bot,
+    title: 'Building AI Agents',
+    description: 'Create custom AI assistants',
+    tips: [
+      'Use the Workflow tab to build modular agents with drag-and-drop tools',
+      'Start with a template to quickly configure common agent types',
+      'Fine-tune agent behavior with personality and temperature settings',
+      'Share agents with your team or make them public',
+    ],
+    walkthrough: [
+      {
+        title: 'Start with a template (optional)',
+        description: 'Choose from Quick Start Templates like Deal Advisor, Lender Matcher, or Pipeline Coach to pre-fill common configurations.',
+        action: 'Click a template button',
+        tip: 'Templates set up the name, emoji, personality, and system prompt for you.',
+      },
+      {
+        title: 'Build your workflow',
+        description: 'In the Workflow tab, drag tools from the palette on the left into your agent. Choose from Data Sources, AI Models, Capabilities, Integrations, and Logic.',
+        action: 'Drag tools to the canvas',
+        tip: 'Each tool you add expands what your agent can do.',
+      },
+      {
+        title: 'Configure each tool',
+        description: 'Click on any tool in the workflow canvas to configure it. Set options like access levels, API endpoints, or model parameters.',
+        action: 'Select a tool to configure',
+      },
+      {
+        title: 'Define identity',
+        description: 'Switch to the Identity tab to set your agent\'s name, avatar emoji, personality style, and system prompt.',
+        action: 'Fill in Identity fields',
+        tip: 'The system prompt is the core instruction that defines your agent\'s expertise.',
+      },
+      {
+        title: 'Set permissions',
+        description: 'Use the Permissions tab to control what data your agent can access: deals, lenders, activities, milestones.',
+        action: 'Toggle permission switches',
+      },
+      {
+        title: 'Adjust advanced settings',
+        description: 'Fine-tune the temperature slider in Advanced tab. Lower values (0.3) give focused responses; higher values (0.9) are more creative.',
+        action: 'Adjust temperature slider',
+      },
+      {
+        title: 'Save your agent',
+        description: 'Click "Create Agent" to save. Your agent will appear in your agents list and be ready to use.',
+        action: 'Click "Create Agent"',
+        route: '/agents',
       },
     ],
   },
