@@ -177,53 +177,46 @@ export default function Dashboard() {
                   className="opacity-0"
                   style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
                 >
-                  <div className="flex gap-6">
-                    {/* Left: Main Widgets (narrower) */}
-                    <div className="w-[380px] shrink-0">
-                      <WidgetsSection deals={allDeals} />
-                    </div>
-                    
-                    {/* Right: Insights & Alerts */}
-                    <div className="flex-1">
-                      <button
-                        onClick={() => setSpecialWidgetsSectionExpanded(!specialWidgetsSectionExpanded)}
-                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
-                      >
-                        <ChevronRight 
-                          className={`h-4 w-4 transition-transform duration-200 ${specialWidgetsSectionExpanded ? 'rotate-90' : ''}`} 
-                        />
-                        <span className="font-medium">Insights & Alerts</span>
-                      </button>
-                      {specialWidgetsSectionExpanded ? (
-                        <div className="grid grid-cols-1 gap-3">
-                          {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
-                          {specialWidgets['milestones'] && <MilestonesWidget />}
-                          {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
-                          <AllSuggestionsWidget deals={allDeals} />
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-3">
-                          {specialWidgets['stale-deals'] && (
-                            <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                              <h3 className="text-sm font-semibold">Stale Deals Alert</h3>
-                            </div>
-                          )}
-                          {specialWidgets['milestones'] && (
-                            <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                              <h3 className="text-sm font-semibold">Milestones</h3>
-                            </div>
-                          )}
-                          {specialWidgets['flex-leaderboard'] && (
-                            <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                              <h3 className="text-sm font-semibold">FLEx Leaderboard</h3>
-                            </div>
-                          )}
+                  <WidgetsSection deals={allDeals} />
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setSpecialWidgetsSectionExpanded(!specialWidgetsSectionExpanded)}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+                    >
+                      <ChevronRight 
+                        className={`h-4 w-4 transition-transform duration-200 ${specialWidgetsSectionExpanded ? 'rotate-90' : ''}`} 
+                      />
+                      <span className="font-medium">Insights & Alerts</span>
+                    </button>
+                    {specialWidgetsSectionExpanded ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                        {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
+                        {specialWidgets['milestones'] && <MilestonesWidget />}
+                        {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
+                        <AllSuggestionsWidget deals={allDeals} />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                        {specialWidgets['stale-deals'] && (
                           <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                            <h3 className="text-sm font-semibold">Smart Suggestions</h3>
+                            <h3 className="text-sm font-semibold">Stale Deals Alert</h3>
                           </div>
+                        )}
+                        {specialWidgets['milestones'] && (
+                          <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
+                            <h3 className="text-sm font-semibold">Milestones</h3>
+                          </div>
+                        )}
+                        {specialWidgets['flex-leaderboard'] && (
+                          <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
+                            <h3 className="text-sm font-semibold">FLEx Leaderboard</h3>
+                          </div>
+                        )}
+                        <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
+                          <h3 className="text-sm font-semibold">Smart Suggestions</h3>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
