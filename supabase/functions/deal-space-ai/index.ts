@@ -1,10 +1,147 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+import * as pdfParse from "https://esm.sh/pdf-parse@1.1.1";
+import mammoth from "https://esm.sh/mammoth@1.6.0";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Extract text from PDF
+async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<string> {
+  try {
+    const uint8Array = new Uint8Array(arrayBuffer);
+    const result = await pdfParse.default(uint8Array);
+    return result.text || "";
+  } catch (error) {
+    console.error("PDF extraction error:", error);
+    return "[PDF content could not be extracted]";
+  }
+}
+
+// Extract text from Word documents (.docx)
+async function extractDocxText(arrayBuffer: ArrayBuffer): Promise<string> {
+  try {
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value || "";
+  } catch (error) {
+    console.error("DOCX extraction error:", error);
+    return "[Word document content could not be extracted]";
+  }
+}
+
+// Extract text from Excel files (.xlsx, .xls)
+function extractExcelText(arrayBuffer: ArrayBuffer): string {
+  try {
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const allText: string[] = [];
+    
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      const csv = XLSX.utils.sheet_to_csv(sheet);
+      allText.push(`### Sheet: ${sheetName}\n${csv}`);
+    }
+    
+    return allText.join("\n\n");
+  } catch (error) {
+    console.error("Excel extraction error:", error);
+    return "[Excel content could not be extracted]";
+  }
+}
+
+// Extract text from PowerPoint files (.pptx)
+async function extractPptxText(arrayBuffer: ArrayBuffer): Promise<string> {
+  try {
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const slideTexts: string[] = [];
+    
+    // Get all slide files
+    const slideFiles = Object.keys(zip.files)
+      .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/slide(\d+)/)?.[1] || "0");
+        const numB = parseInt(b.match(/slide(\d+)/)?.[1] || "0");
+        return numA - numB;
+      });
+    
+    for (const slideFile of slideFiles) {
+      const slideXml = await zip.files[slideFile].async("string");
+      // Extract text from XML - simple regex to get text content
+      const textMatches = slideXml.match(/<a:t>([^<]*)<\/a:t>/g) || [];
+      const slideText = textMatches
+        .map(match => match.replace(/<\/?a:t>/g, ""))
+        .filter(text => text.trim())
+        .join(" ");
+      
+      if (slideText.trim()) {
+        const slideNum = slideFile.match(/slide(\d+)/)?.[1] || "?";
+        slideTexts.push(`Slide ${slideNum}: ${slideText}`);
+      }
+    }
+    
+    return slideTexts.join("\n\n") || "[No text found in presentation]";
+  } catch (error) {
+    console.error("PPTX extraction error:", error);
+    return "[PowerPoint content could not be extracted]";
+  }
+}
+
+// Main content extraction function
+async function extractContent(fileData: Blob, fileName: string): Promise<string> {
+  const lowerName = fileName.toLowerCase();
+  const arrayBuffer = await fileData.arrayBuffer();
+  
+  // Plain text files
+  if (lowerName.endsWith(".txt") || lowerName.endsWith(".md") || lowerName.endsWith(".csv")) {
+    return await fileData.text();
+  }
+  
+  // PDF files
+  if (lowerName.endsWith(".pdf")) {
+    return await extractPdfText(arrayBuffer);
+  }
+  
+  // Word documents
+  if (lowerName.endsWith(".docx")) {
+    return await extractDocxText(arrayBuffer);
+  }
+  
+  // Excel files
+  if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+    return extractExcelText(arrayBuffer);
+  }
+  
+  // PowerPoint files
+  if (lowerName.endsWith(".pptx")) {
+    return await extractPptxText(arrayBuffer);
+  }
+  
+  // JSON files
+  if (lowerName.endsWith(".json")) {
+    try {
+      const text = await fileData.text();
+      return JSON.stringify(JSON.parse(text), null, 2);
+    } catch {
+      return await fileData.text();
+    }
+  }
+  
+  // Try to read as text for other formats
+  try {
+    const text = await fileData.text();
+    // Check if it looks like binary (has too many non-printable chars)
+    const nonPrintable = (text.match(/[\x00-\x08\x0E-\x1F]/g) || []).length;
+    if (nonPrintable / text.length > 0.1) {
+      return `[Binary file: ${fileName} - content type not supported for text extraction]`;
+    }
+    return text;
+  } catch {
+    return `[Binary file: ${fileName}]`;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -37,11 +174,13 @@ serve(async (req) => {
       throw new Error("Failed to fetch documents");
     }
 
-    // Fetch document contents from storage
+    // Fetch document contents from storage and extract text
     const documentContents: { name: string; content: string }[] = [];
     
     for (const doc of documents || []) {
       try {
+        console.log(`Processing document: ${doc.name}`);
+        
         const { data: fileData, error: downloadError } = await supabase.storage
           .from("deal-space")
           .download(doc.file_path);
@@ -51,30 +190,17 @@ serve(async (req) => {
           continue;
         }
 
-        // Extract text content based on file type
-        let content = "";
-        const fileName = doc.name.toLowerCase();
+        const content = await extractContent(fileData, doc.name);
         
-        if (fileName.endsWith(".txt") || fileName.endsWith(".md") || fileName.endsWith(".csv")) {
-          content = await fileData.text();
-        } else if (fileName.endsWith(".pdf")) {
-          // For PDFs, we'd need a PDF parsing library
-          // For now, note that the file exists but content needs parsing
-          content = `[PDF document: ${doc.name} - Content extraction pending]`;
-        } else if (fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
-          // For Word docs, we'd need a docx parsing library
-          content = `[Word document: ${doc.name} - Content extraction pending]`;
-        } else {
-          // Try to read as text for other formats
-          try {
-            content = await fileData.text();
-          } catch {
-            content = `[Binary file: ${doc.name}]`;
-          }
-        }
-
-        if (content) {
-          documentContents.push({ name: doc.name, content });
+        if (content && !content.startsWith("[Binary file:")) {
+          // Truncate very large documents to prevent context overflow
+          const maxChars = 50000;
+          const truncatedContent = content.length > maxChars 
+            ? content.substring(0, maxChars) + "\n...[Content truncated due to length]"
+            : content;
+          
+          documentContents.push({ name: doc.name, content: truncatedContent });
+          console.log(`Successfully extracted ${truncatedContent.length} chars from ${doc.name}`);
         }
       } catch (err) {
         console.error(`Error processing ${doc.name}:`, err);
@@ -97,7 +223,8 @@ Instructions:
 - When citing information, mention which document it came from
 - Be concise but thorough
 - If asked about something not in the documents, acknowledge that and offer to help with what's available
-- Format your responses clearly with bullet points or sections when appropriate`;
+- Format your responses clearly with bullet points or sections when appropriate
+- For financial data or spreadsheets, summarize key figures and trends`;
 
     // Call Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
