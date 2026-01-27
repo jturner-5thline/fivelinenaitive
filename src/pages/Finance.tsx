@@ -13,7 +13,7 @@ import { FinanceLayoutToggle, DriverLayout } from "@/components/finance/FinanceL
 import { useFinanceDataRange, FinancePeriodType } from "@/hooks/useFinanceDataRange";
 import { useCompany } from "@/hooks/useCompany";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, TrendingUp, Wallet, ArrowDownUp, History, Settings2 } from "lucide-react";
+import { Building2, TrendingUp, Wallet, ArrowDownUp, History, BarChart3 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -110,17 +110,6 @@ export default function Finance() {
           </div>
         </div>
 
-        {/* KPI Dashboard - always at top */}
-        <FinancialKPIDashboard
-          periodColumns={periodColumns}
-          financialData={financialData}
-          lineItems={lineItems.filter(li => 
-            li.statement_type === 'pnl' || li.statement_type === 'balance_sheet'
-          )}
-          driverInputs={driverInputs}
-          showFormulas={showFormulas}
-        />
-
         {/* Driver Inputs - Top Layout */}
         {showDriversPanel && !isSidebarLayout && (
           <DriverInputsPanel
@@ -153,7 +142,7 @@ export default function Finance() {
           {/* Statements Tabs */}
           <div className="flex-1 min-w-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full max-w-[600px] grid-cols-4">
+              <TabsList className="grid w-full max-w-[750px] grid-cols-5">
                 <TabsTrigger value="pnl" className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
                   <span className="hidden sm:inline">P&L</span>
@@ -165,6 +154,10 @@ export default function Finance() {
                 <TabsTrigger value="cashflow" className="flex items-center gap-2">
                   <ArrowDownUp className="h-4 w-4" />
                   <span className="hidden sm:inline">Cash Flow</span>
+                </TabsTrigger>
+                <TabsTrigger value="kpis" className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">KPIs & Ratios</span>
                 </TabsTrigger>
                 <TabsTrigger value="history" className="flex items-center gap-2">
                   <History className="h-4 w-4" />
@@ -214,6 +207,18 @@ export default function Finance() {
                   onUpdateData={updateFinancialData}
                   onCreatePeriod={createPeriod}
                   onRefresh={refreshData}
+                />
+              </TabsContent>
+
+              <TabsContent value="kpis">
+                <FinancialKPIDashboard
+                  periodColumns={periodColumns}
+                  financialData={financialData}
+                  lineItems={lineItems.filter(li => 
+                    li.statement_type === 'pnl' || li.statement_type === 'balance_sheet'
+                  )}
+                  driverInputs={driverInputs}
+                  showFormulas={showFormulas}
                 />
               </TabsContent>
 
