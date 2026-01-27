@@ -414,6 +414,23 @@ export default function DealDetail() {
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'emails'>(initialTab || 'deal-info');
+  const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
+  const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
+  
+  // Track tab direction for swipe animation
+  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'emails'] as const;
+  
+  const handleTabChange = useCallback((newTab: typeof dealInfoTab) => {
+    const prevIndex = DEAL_TABS.indexOf(prevTabRef.current);
+    const newIndex = DEAL_TABS.indexOf(newTab);
+    
+    if (prevIndex !== newIndex) {
+      setTabDirection(newIndex > prevIndex ? 'right' : 'left');
+    }
+    
+    prevTabRef.current = newTab;
+    setDealInfoTab(newTab);
+  }, []);
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
   
@@ -2140,7 +2157,7 @@ export default function DealDetail() {
             {/* Main Content */}
             <div className="flex flex-col gap-6">
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => setDealInfoTab(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'emails')}>
+              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'emails')}>
                 <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-1 text-muted-foreground">
                   <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
                   <TabsTrigger value="lenders" className="gap-2">
@@ -2174,7 +2191,7 @@ export default function DealDetail() {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="deal-info" className="mt-6 space-y-3">
+                <TabsContent value="deal-info" className={cn("mt-6 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Milestones Card */}
                   <Card>
                     <CardContent className="pt-4">
@@ -2766,7 +2783,7 @@ export default function DealDetail() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="lenders" className="mt-6 space-y-6">
+                <TabsContent value="lenders" className={cn("mt-6 space-y-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
               {/* Lenders Card */}
               <Collapsible open={isLendersExpanded} onOpenChange={setIsLendersExpanded}>
                 <Card>
@@ -3597,12 +3614,12 @@ export default function DealDetail() {
                   </Collapsible>
                 </TabsContent>
 
-                <TabsContent value="deal-management" className="mt-6 space-y-6 overflow-hidden">
+                <TabsContent value="deal-management" className={cn("mt-6 space-y-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
                   <FlexInfoNotificationsPanel dealId={id} />
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
 
-                <TabsContent value="deal-writeup" className="mt-6 min-w-0">
+                <TabsContent value="deal-writeup" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-writeup-${tabDirection}`}>
                   <DealWriteUp
                     dealId={id!}
                     data={dealWriteUpData}
@@ -3614,7 +3631,7 @@ export default function DealDetail() {
                   />
                 </TabsContent>
 
-                <TabsContent value="data-room" className="mt-6">
+                <TabsContent value="data-room" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
                   <Card 
                     className="transition-all duration-200 relative"
                     onDragOver={(e) => {
@@ -3887,7 +3904,7 @@ export default function DealDetail() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="emails" className="mt-6">
+                <TabsContent value="emails" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`emails-${tabDirection}`}>
                   <DealEmailsTab dealId={id!} />
                 </TabsContent>
               </Tabs>
