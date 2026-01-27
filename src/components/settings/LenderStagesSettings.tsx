@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, GripVertical, Layers, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Pencil, Trash2, GripVertical, Layers, ChevronDown, Save, Loader2, RotateCcw } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -50,7 +50,6 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useLenderStages, StageOption, StageGroup, STAGE_GROUPS } from '@/contexts/LenderStagesContext';
-import { SaveIndicator } from '@/components/ui/save-indicator';
 
 interface SortableStageItemProps {
   stage: StageOption;
@@ -166,7 +165,21 @@ interface LenderStagesSettingsProps {
 }
 
 export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsProps) {
-  const { stages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup, isSaving } = useLenderStages();
+  const { stages: contextStages, addStage, updateStage, deleteStage, reorderStages, getStagesByGroup, isSaving: contextSaving } = useLenderStages();
+  
+  // Local state for pending changes
+  const [localStages, setLocalStages] = useState<StageOption[]>(contextStages);
+  const [savedStages, setSavedStages] = useState<StageOption[]>(contextStages);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Sync local state when context changes
+  useEffect(() => {
+    setLocalStages(contextStages);
+    setSavedStages(contextStages);
+  }, [contextStages]);
+
+  const hasUnsavedChanges = JSON.stringify(localStages) !== JSON.stringify(savedStages);
+
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-lender-stages-open');
     return saved !== null ? saved === 'true' : false;
@@ -209,16 +222,19 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
     }
 
     if (editingStage) {
-      updateStage(editingStage.id, { label: label.trim(), group: selectedGroup });
-      toast({ title: 'Stage updated', description: `${label.trim()} has been updated.` });
+      setLocalStages(localStages.map(s => s.id === editingStage.id ? { ...s, label: label.trim(), group: selectedGroup } : s));
     } else {
-      const exists = stages.some(s => s.label.toLowerCase() === label.trim().toLowerCase());
+      const exists = localStages.some(s => s.label.toLowerCase() === label.trim().toLowerCase());
       if (exists) {
         toast({ title: 'Error', description: 'A stage with this name already exists', variant: 'destructive' });
         return;
       }
-      addStage({ label: label.trim(), group: selectedGroup });
-      toast({ title: 'Stage added', description: `${label.trim()} has been added.` });
+      const newStage: StageOption = {
+        id: crypto.randomUUID(),
+        label: label.trim(),
+        group: selectedGroup,
+      };
+      setLocalStages([...localStages, newStage]);
     }
 
     setIsDialogOpen(false);
@@ -227,24 +243,78 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
   };
 
   const handleDelete = (stage: StageOption) => {
-    deleteStage(stage.id);
-    toast({ title: 'Stage deleted', description: `${stage.label} has been removed.` });
+    setLocalStages(localStages.filter(s => s.id !== stage.id));
   };
 
   const handleGroupChange = (stageId: string, group: StageGroup) => {
-    updateStage(stageId, { group });
-    toast({ title: 'Group updated', description: 'Stage group has been changed.' });
+    setLocalStages(localStages.map(s => s.id === stageId ? { ...s, group } : s));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = stages.findIndex((s) => s.id === active.id);
-      const newIndex = stages.findIndex((s) => s.id === over.id);
-      const newStages = arrayMove(stages, oldIndex, newIndex);
-      reorderStages(newStages);
+      const oldIndex = localStages.findIndex((s) => s.id === active.id);
+      const newIndex = localStages.findIndex((s) => s.id === over.id);
+      setLocalStages(arrayMove(localStages, oldIndex, newIndex));
     }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Apply all changes to context (which saves to database)
+      reorderStages(localStages);
+      setSavedStages(localStages);
+      toast({ title: 'Lender stages saved', description: 'Your changes have been saved successfully.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save lender stages', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setLocalStages(savedStages);
+  };
+
+  const SaveBar = () => {
+    if (!hasUnsavedChanges && !isSaving) return null;
+    
+    return (
+      <div className="flex items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
+        <p className="text-sm text-muted-foreground">
+          {isSaving ? 'Saving changes...' : 'You have unsaved changes'}
+        </p>
+        <div className="flex items-center gap-2">
+          {!isSaving && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          )}
+          <Button
+            variant="gradient"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="gap-1.5"
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -259,7 +329,6 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Layers className="h-5 w-5" />
                     Lender Stages
-                    <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} teamSync />
                   </CardTitle>
                   <CardDescription>Configure stages and assign them to groups. Changes sync to your entire team.</CardDescription>
                 </div>
@@ -273,10 +342,13 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
             )}
           </CardHeader>
           <CollapsibleContent>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Top Save Bar */}
+              <SaveBar />
+              
               <div className="flex flex-wrap gap-2 mb-4">
                 {STAGE_GROUPS.map((group) => {
-                  const count = getStagesByGroup(group.id).length;
+                  const count = localStages.filter(s => s.group === group.id).length;
                   return (
                     <Badge key={group.id} variant="secondary" className="gap-1.5">
                       <span className={`h-2 w-2 rounded-full ${group.color}`} />
@@ -290,9 +362,9 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SortableContext items={stages.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                <SortableContext items={localStages.map(s => s.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-2">
-                    {stages.map((stage, index) => (
+                    {localStages.map((stage, index) => (
                       <SortableStageItem
                         key={stage.id}
                         stage={stage}
@@ -303,7 +375,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                         isAdmin={isAdmin}
                       />
                     ))}
-                    {stages.length === 0 && (
+                    {localStages.length === 0 && (
                       <p className="text-center text-muted-foreground py-8">
                         No stages configured. Add one to get started.
                       </p>
@@ -311,6 +383,9 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                   </div>
                 </SortableContext>
               </DndContext>
+              
+              {/* Bottom Save Bar */}
+              <SaveBar />
             </CardContent>
           </CollapsibleContent>
         </Card>

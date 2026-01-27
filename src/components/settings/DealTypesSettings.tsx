@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, Tag, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Pencil, Trash2, Tag, ChevronDown, Save, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -24,26 +24,68 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { useDealTypes } from '@/contexts/DealTypesContext';
+
+interface DealType {
+  id: string;
+  label: string;
+}
+
+const DEFAULT_DEAL_TYPES: DealType[] = [
+  { id: 'venture-debt', label: 'Venture Debt' },
+  { id: 'asset-based-lending', label: 'Asset-Based Lending' },
+  { id: 'revenue-based-financing', label: 'Revenue-Based Financing' },
+  { id: 'mezzanine', label: 'Mezzanine' },
+  { id: 'term-loan', label: 'Term Loan' },
+  { id: 'line-of-credit', label: 'Line of Credit' },
+  { id: 'equipment-financing', label: 'Equipment Financing' },
+  { id: 'factoring', label: 'Factoring' },
+];
 
 interface DealTypesSettingsProps {
   isAdmin?: boolean;
 }
 
 export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
-  const { dealTypes, addDealType, updateDealType, deleteDealType } = useDealTypes();
+  // Load from localStorage
+  const [dealTypes, setDealTypes] = useState<DealType[]>(() => {
+    const saved = localStorage.getItem('dealTypes');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return DEFAULT_DEAL_TYPES;
+      }
+    }
+    return DEFAULT_DEAL_TYPES;
+  });
+  
+  const [savedDealTypes, setSavedDealTypes] = useState<DealType[]>(() => {
+    const saved = localStorage.getItem('dealTypes');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return DEFAULT_DEAL_TYPES;
+      }
+    }
+    return DEFAULT_DEAL_TYPES;
+  });
+
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-deal-types-open');
     return saved !== null ? saved === 'true' : false;
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [label, setLabel] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const hasUnsavedChanges = JSON.stringify(dealTypes) !== JSON.stringify(savedDealTypes);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     localStorage.setItem('settings-deal-types-open', String(open));
   };
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [label, setLabel] = useState('');
 
   const openAddDialog = () => {
     setEditingId(null);
@@ -67,16 +109,14 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
     }
 
     if (editingId) {
-      updateDealType(editingId, { label: label.trim() });
-      toast({ title: 'Deal type updated' });
+      setDealTypes(dealTypes.map(dt => dt.id === editingId ? { ...dt, label: label.trim() } : dt));
     } else {
       const existingId = label.trim().toLowerCase().replace(/\s+/g, '-');
       if (dealTypes.some(dt => dt.id === existingId)) {
         toast({ title: 'Error', description: 'A deal type with this name already exists', variant: 'destructive' });
         return;
       }
-      addDealType({ label: label.trim() });
-      toast({ title: 'Deal type added' });
+      setDealTypes([...dealTypes, { id: existingId, label: label.trim() }]);
     }
 
     setIsDialogOpen(false);
@@ -85,8 +125,63 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
   };
 
   const handleDelete = (id: string) => {
-    deleteDealType(id);
-    toast({ title: 'Deal type deleted' });
+    setDealTypes(dealTypes.filter(dt => dt.id !== id));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      localStorage.setItem('dealTypes', JSON.stringify(dealTypes));
+      setSavedDealTypes(dealTypes);
+      toast({ title: 'Deal types saved', description: 'Your changes have been saved successfully.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save deal types', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setDealTypes(savedDealTypes);
+  };
+
+  const SaveBar = () => {
+    if (!hasUnsavedChanges && !isSaving) return null;
+    
+    return (
+      <div className="flex items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
+        <p className="text-sm text-muted-foreground">
+          {isSaving ? 'Saving changes...' : 'You have unsaved changes'}
+        </p>
+        <div className="flex items-center gap-2">
+          {!isSaving && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          )}
+          <Button
+            variant="gradient"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="gap-1.5"
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -114,7 +209,10 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
             )}
           </CardHeader>
           <CollapsibleContent>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Top Save Bar */}
+              <SaveBar />
+              
               <div className="space-y-2">
                 {dealTypes.map((dealType) => (
                   <div
@@ -167,6 +265,9 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
                   </p>
                 )}
               </div>
+              
+              {/* Bottom Save Bar */}
+              <SaveBar />
             </CardContent>
           </CollapsibleContent>
         </Card>

@@ -1,10 +1,12 @@
-import { Lightbulb, AlertTriangle, Target, Bell, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { Lightbulb, AlertTriangle, Target, Bell, ChevronDown, Save, Loader2, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { usePreferences, SuggestionPreferences } from '@/contexts/PreferencesContext';
+import { toast } from '@/hooks/use-toast';
 
 interface SuggestionSettingsProps {
   collapsible?: boolean;
@@ -86,18 +88,84 @@ const suggestionOptions: Array<{
 
 export function SuggestionSettings({ collapsible = false, open, onOpenChange }: SuggestionSettingsProps) {
   const { preferences, updatePreference } = usePreferences();
+  
+  // Local state for pending changes
+  const [localSuggestions, setLocalSuggestions] = useState<SuggestionPreferences>(() => ({
+    ...preferences.suggestions
+  }));
+  const [isSaving, setIsSaving] = useState(false);
+
+  const hasUnsavedChanges = JSON.stringify(localSuggestions) !== JSON.stringify(preferences.suggestions);
 
   const handleToggle = (key: keyof SuggestionPreferences, value: boolean) => {
-    updatePreference('suggestions', {
-      ...preferences.suggestions,
+    setLocalSuggestions(prev => ({
+      ...prev,
       [key]: value,
-    });
+    }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      updatePreference('suggestions', localSuggestions);
+      toast({ title: 'Suggestion settings saved', description: 'Your preferences have been updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save settings', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setLocalSuggestions({ ...preferences.suggestions });
   };
 
   const isOpen = open ?? true;
 
+  const SaveBar = () => {
+    if (!hasUnsavedChanges && !isSaving) return null;
+    
+    return (
+      <div className="flex items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
+        <p className="text-sm text-muted-foreground">
+          {isSaving ? 'Saving changes...' : 'You have unsaved changes'}
+        </p>
+        <div className="flex items-center gap-2">
+          {!isSaving && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          )}
+          <Button
+            variant="gradient"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="gap-1.5"
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   const content = (
     <CardContent className="space-y-4">
+      {/* Top Save Bar */}
+      <SaveBar />
+      
       <p className="text-sm text-muted-foreground">
         Choose which types of smart suggestions appear in the dashboard widget and on deal pages.
       </p>
@@ -118,13 +186,16 @@ export function SuggestionSettings({ collapsible = false, open, onOpenChange }: 
               </Label>
               <Switch
                 id={option.key}
-                checked={preferences.suggestions?.[option.key] ?? true}
+                checked={localSuggestions?.[option.key] ?? true}
                 onCheckedChange={(checked) => handleToggle(option.key, checked)}
               />
             </div>
           );
         })}
       </div>
+      
+      {/* Bottom Save Bar */}
+      <SaveBar />
     </CardContent>
   );
 

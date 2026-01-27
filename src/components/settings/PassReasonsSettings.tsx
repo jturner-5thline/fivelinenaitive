@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, XCircle, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, GripVertical, Pencil, Trash2, XCircle, ChevronDown, Save, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -25,7 +25,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useLenderStages, PassReasonOption } from '@/contexts/LenderStagesContext';
 import { toast } from '@/hooks/use-toast';
-import { SaveIndicator } from '@/components/ui/save-indicator';
 import {
   DndContext,
   closestCenter,
@@ -129,7 +128,21 @@ interface PassReasonsSettingsProps {
 }
 
 export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps) {
-  const { passReasons, addPassReason, updatePassReason, deletePassReason, reorderPassReasons, isSaving } = useLenderStages();
+  const { passReasons: contextPassReasons, addPassReason, updatePassReason, deletePassReason, reorderPassReasons, isSaving: contextSaving } = useLenderStages();
+  
+  // Local state for pending changes
+  const [localPassReasons, setLocalPassReasons] = useState<PassReasonOption[]>(contextPassReasons);
+  const [savedPassReasons, setSavedPassReasons] = useState<PassReasonOption[]>(contextPassReasons);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Sync local state when context changes
+  useEffect(() => {
+    setLocalPassReasons(contextPassReasons);
+    setSavedPassReasons(contextPassReasons);
+  }, [contextPassReasons]);
+
+  const hasUnsavedChanges = JSON.stringify(localPassReasons) !== JSON.stringify(savedPassReasons);
+
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-pass-reasons-open');
     return saved !== null ? saved === 'true' : false;
@@ -153,36 +166,94 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = passReasons.findIndex((r) => r.id === active.id);
-      const newIndex = passReasons.findIndex((r) => r.id === over.id);
-      reorderPassReasons(arrayMove(passReasons, oldIndex, newIndex));
+      const oldIndex = localPassReasons.findIndex((r) => r.id === active.id);
+      const newIndex = localPassReasons.findIndex((r) => r.id === over.id);
+      setLocalPassReasons(arrayMove(localPassReasons, oldIndex, newIndex));
     }
   };
 
   const handleAddReason = () => {
     if (!newReasonLabel.trim()) return;
-    addPassReason({ label: newReasonLabel.trim() });
+    const newReason: PassReasonOption = {
+      id: crypto.randomUUID(),
+      label: newReasonLabel.trim(),
+    };
+    setLocalPassReasons([...localPassReasons, newReason]);
     setNewReasonLabel('');
     setIsAddDialogOpen(false);
-    toast({ title: "Pass reason added" });
   };
 
   const handleUpdateReason = () => {
     if (!editingReason || !newReasonLabel.trim()) return;
-    updatePassReason(editingReason.id, { label: newReasonLabel.trim() });
+    setLocalPassReasons(localPassReasons.map(r => r.id === editingReason.id ? { ...r, label: newReasonLabel.trim() } : r));
     setNewReasonLabel('');
     setEditingReason(null);
-    toast({ title: "Pass reason updated" });
   };
 
   const handleDeleteReason = (id: string) => {
-    deletePassReason(id);
-    toast({ title: "Pass reason deleted" });
+    setLocalPassReasons(localPassReasons.filter(r => r.id !== id));
   };
 
   const openEditDialog = (reason: PassReasonOption) => {
     setEditingReason(reason);
     setNewReasonLabel(reason.label);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Apply all changes to context (which saves to database)
+      reorderPassReasons(localPassReasons);
+      setSavedPassReasons(localPassReasons);
+      toast({ title: 'Pass reasons saved', description: 'Your changes have been saved successfully.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save pass reasons', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setLocalPassReasons(savedPassReasons);
+  };
+
+  const SaveBar = () => {
+    if (!hasUnsavedChanges && !isSaving) return null;
+    
+    return (
+      <div className="flex items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
+        <p className="text-sm text-muted-foreground">
+          {isSaving ? 'Saving changes...' : 'You have unsaved changes'}
+        </p>
+        <div className="flex items-center gap-2">
+          {!isSaving && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          )}
+          <Button
+            variant="gradient"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="gap-1.5"
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -196,7 +267,6 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
                 <CardTitle className="text-lg flex items-center gap-2">
                   <XCircle className="h-5 w-5" />
                   Pass Reasons
-                  <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} teamSync />
                 </CardTitle>
                 <CardDescription>Configure the reasons shown when marking a lender as passed. Changes sync to your entire team.</CardDescription>
               </div>
@@ -210,18 +280,21 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
           )}
         </CardHeader>
         <CollapsibleContent>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Top Save Bar */}
+            <SaveBar />
+            
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={passReasons.map(r => r.id)}
+                items={localPassReasons.map(r => r.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-2">
-                  {passReasons.map((reason) => (
+                  {localPassReasons.map((reason) => (
                     <SortableReasonItem
                       key={reason.id}
                       reason={reason}
@@ -234,11 +307,14 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
               </SortableContext>
             </DndContext>
 
-            {passReasons.length === 0 && (
+            {localPassReasons.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No pass reasons configured. Add one to get started.
               </p>
             )}
+            
+            {/* Bottom Save Bar */}
+            <SaveBar />
           </CardContent>
         </CollapsibleContent>
       </Card>

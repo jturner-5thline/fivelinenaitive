@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { GripVertical, Plus, Pencil, Trash2, GitBranch, Star } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { GripVertical, Plus, Pencil, Trash2, GitBranch, Star, Save, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,7 +26,15 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useDealStages, DealStageOption } from '@/contexts/DealStagesContext';
+import { STAGE_CONFIG } from '@/types/deal';
+import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
+
+export interface DealStageOption {
+  id: string;
+  label: string;
+  color: string;
+}
 
 const STAGE_COLORS = [
   { value: 'bg-slate-500', label: 'Slate' },
@@ -42,6 +50,13 @@ const STAGE_COLORS = [
   { value: 'bg-orange-500', label: 'Orange' },
   { value: 'bg-yellow-500', label: 'Yellow' },
 ];
+
+// Convert STAGE_CONFIG to array format for default stages
+const defaultStages: DealStageOption[] = Object.entries(STAGE_CONFIG).map(([id, config]) => ({
+  id,
+  label: config.label,
+  color: config.color,
+}));
 
 interface SortableStageItemProps {
   stage: DealStageOption;
@@ -126,8 +141,34 @@ interface DealStagesSettingsProps {
   isAdmin?: boolean;
 }
 
+// Helper to validate and parse stages from JSON
+const parseStagesFromJson = (json: Json | null): DealStageOption[] | null => {
+  if (!json || !Array.isArray(json)) return null;
+  
+  const validStages = json.filter((item): item is { id: string; label: string; color: string } => {
+    return (
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as Record<string, unknown>).id === 'string' &&
+      typeof (item as Record<string, unknown>).label === 'string' &&
+      typeof (item as Record<string, unknown>).color === 'string'
+    );
+  });
+  
+  return validStages.length > 0 ? validStages : null;
+};
+
 export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) {
-  const { stages, defaultStageId, setDefaultStageId, addStage, updateStage, deleteStage, reorderStages } = useDealStages();
+  // Local state for editing
+  const [stages, setStages] = useState<DealStageOption[]>(defaultStages);
+  const [defaultStageId, setDefaultStageId] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Track saved state for comparison
+  const [savedStages, setSavedStages] = useState<DealStageOption[]>(defaultStages);
+  const [savedDefaultStageId, setSavedDefaultStageId] = useState<string | null>(null);
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<DealStageOption | null>(null);
   const [label, setLabel] = useState('');
@@ -136,6 +177,58 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
     const saved = localStorage.getItem('dealStagesSettingsOpen');
     return saved ? JSON.parse(saved) : true;
   });
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load from database on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data: membership } = await supabase
+          .from('company_members')
+          .select('company_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (membership?.company_id) {
+          setCompanyId(membership.company_id);
+
+          const { data: settings } = await supabase
+            .from('company_settings')
+            .select('default_deal_stage_id, deal_stages')
+            .eq('company_id', membership.company_id)
+            .maybeSingle();
+
+          const dbStages = parseStagesFromJson(settings?.deal_stages ?? null);
+          if (dbStages) {
+            setStages(dbStages);
+            setSavedStages(dbStages);
+          }
+          
+          if (settings?.default_deal_stage_id) {
+            setDefaultStageId(settings.default_deal_stage_id);
+            setSavedDefaultStageId(settings.default_deal_stage_id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching deal stages:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = 
+    JSON.stringify(stages) !== JSON.stringify(savedStages) ||
+    defaultStageId !== savedDefaultStageId;
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -169,11 +262,10 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
     }
 
     if (editingStage) {
-      updateStage(editingStage.id, { label: label.trim(), color });
-      toast.success('Stage updated');
+      setStages(stages.map(s => s.id === editingStage.id ? { ...s, label: label.trim(), color } : s));
     } else {
-      addStage({ label: label.trim(), color });
-      toast.success('Stage added');
+      const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      setStages([...stages, { id, label: label.trim(), color }]);
     }
     setIsDialogOpen(false);
   };
@@ -183,19 +275,14 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
       toast.error('You must have at least one stage');
       return;
     }
-    deleteStage(id);
-    toast.success('Stage deleted');
+    if (defaultStageId === id) {
+      setDefaultStageId(null);
+    }
+    setStages(stages.filter(s => s.id !== id));
   };
 
-  const handleSetDefault = async (stageId: string) => {
-    if (defaultStageId === stageId) {
-      await setDefaultStageId(null);
-      toast.success('Default stage cleared');
-    } else {
-      await setDefaultStageId(stageId);
-      const stage = stages.find(s => s.id === stageId);
-      toast.success(`"${stage?.label}" set as default stage`);
-    }
+  const handleSetDefault = (stageId: string) => {
+    setDefaultStageId(defaultStageId === stageId ? null : stageId);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -203,9 +290,118 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
     if (over && active.id !== over.id) {
       const oldIndex = stages.findIndex((s) => s.id === active.id);
       const newIndex = stages.findIndex((s) => s.id === over.id);
-      reorderStages(arrayMove(stages, oldIndex, newIndex));
+      setStages(arrayMove(stages, oldIndex, newIndex));
     }
   };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Save to localStorage
+      localStorage.setItem('dealStages', JSON.stringify(stages));
+      if (defaultStageId) {
+        localStorage.setItem('defaultDealStageId', defaultStageId);
+      } else {
+        localStorage.removeItem('defaultDealStageId');
+      }
+
+      // Save to database if user has a company
+      if (companyId) {
+        const { data: existing } = await supabase
+          .from('company_settings')
+          .select('id')
+          .eq('company_id', companyId)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase
+            .from('company_settings')
+            .update({ 
+              deal_stages: stages as unknown as Json,
+              default_deal_stage_id: defaultStageId 
+            })
+            .eq('company_id', companyId);
+        } else {
+          await supabase
+            .from('company_settings')
+            .insert({ 
+              company_id: companyId, 
+              deal_stages: stages as unknown as Json,
+              default_deal_stage_id: defaultStageId 
+            });
+        }
+      }
+
+      setSavedStages(stages);
+      setSavedDefaultStageId(defaultStageId);
+      toast.success('Deal stages saved successfully');
+    } catch (error) {
+      console.error('Error saving deal stages:', error);
+      toast.error('Failed to save deal stages');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setStages(savedStages);
+    setDefaultStageId(savedDefaultStageId);
+  };
+
+  const SaveBar = () => {
+    if (!hasUnsavedChanges && !isSaving) return null;
+    
+    return (
+      <div className="flex items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
+        <p className="text-sm text-muted-foreground">
+          {isSaving ? 'Saving changes...' : 'You have unsaved changes'}
+        </p>
+        <div className="flex items-center gap-2">
+          {!isSaving && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          )}
+          <Button
+            variant="gradient"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="gap-1.5"
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <GitBranch className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Deal Stages</CardTitle>
+              <CardDescription>Loading...</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -231,6 +427,9 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="space-y-4">
+              {/* Top Save Bar */}
+              <SaveBar />
+              
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -266,6 +465,9 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
                   Add Stage
                 </Button>
               )}
+              
+              {/* Bottom Save Bar */}
+              <SaveBar />
             </CardContent>
           </CollapsibleContent>
         </Card>

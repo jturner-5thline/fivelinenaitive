@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, GripVertical, Flag, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Pencil, Trash2, GripVertical, Flag, ChevronDown, Save, Loader2, RotateCcw } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -42,7 +42,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { useLenderStages, SubstageOption } from '@/contexts/LenderStagesContext';
-import { SaveIndicator } from '@/components/ui/save-indicator';
 
 interface SortableSubstageItemProps {
   substage: SubstageOption;
@@ -134,7 +133,21 @@ interface LenderSubstagesSettingsProps {
 }
 
 export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSettingsProps) {
-  const { substages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages, isSaving } = useLenderStages();
+  const { substages: contextSubstages, addSubstage, updateSubstage, deleteSubstage, reorderSubstages, isSaving: contextSaving } = useLenderStages();
+  
+  // Local state for pending changes
+  const [localSubstages, setLocalSubstages] = useState<SubstageOption[]>(contextSubstages);
+  const [savedSubstages, setSavedSubstages] = useState<SubstageOption[]>(contextSubstages);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Sync local state when context changes
+  useEffect(() => {
+    setLocalSubstages(contextSubstages);
+    setSavedSubstages(contextSubstages);
+  }, [contextSubstages]);
+
+  const hasUnsavedChanges = JSON.stringify(localSubstages) !== JSON.stringify(savedSubstages);
+
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('settings-lender-milestones-open');
     return saved !== null ? saved === 'true' : false;
@@ -174,16 +187,18 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
     }
 
     if (editingSubstage) {
-      updateSubstage(editingSubstage.id, { label: label.trim() });
-      toast({ title: 'Milestone updated', description: `${label.trim()} has been updated.` });
+      setLocalSubstages(localSubstages.map(s => s.id === editingSubstage.id ? { ...s, label: label.trim() } : s));
     } else {
-      const exists = substages.some(s => s.label.toLowerCase() === label.trim().toLowerCase());
+      const exists = localSubstages.some(s => s.label.toLowerCase() === label.trim().toLowerCase());
       if (exists) {
         toast({ title: 'Error', description: 'A milestone with this name already exists', variant: 'destructive' });
         return;
       }
-      addSubstage({ label: label.trim() });
-      toast({ title: 'Milestone added', description: `${label.trim()} has been added.` });
+      const newSubstage: SubstageOption = {
+        id: crypto.randomUUID(),
+        label: label.trim(),
+      };
+      setLocalSubstages([...localSubstages, newSubstage]);
     }
 
     setIsDialogOpen(false);
@@ -192,19 +207,74 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
   };
 
   const handleDelete = (substage: SubstageOption) => {
-    deleteSubstage(substage.id);
-    toast({ title: 'Milestone deleted', description: `${substage.label} has been removed.` });
+    setLocalSubstages(localSubstages.filter(s => s.id !== substage.id));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = substages.findIndex((s) => s.id === active.id);
-      const newIndex = substages.findIndex((s) => s.id === over.id);
-      const newSubstages = arrayMove(substages, oldIndex, newIndex);
-      reorderSubstages(newSubstages);
+      const oldIndex = localSubstages.findIndex((s) => s.id === active.id);
+      const newIndex = localSubstages.findIndex((s) => s.id === over.id);
+      setLocalSubstages(arrayMove(localSubstages, oldIndex, newIndex));
     }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Apply all changes to context (which saves to database)
+      reorderSubstages(localSubstages);
+      setSavedSubstages(localSubstages);
+      toast({ title: 'Lender milestones saved', description: 'Your changes have been saved successfully.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save lender milestones', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setLocalSubstages(savedSubstages);
+  };
+
+  const SaveBar = () => {
+    if (!hasUnsavedChanges && !isSaving) return null;
+    
+    return (
+      <div className="flex items-center justify-between gap-4 p-3 bg-muted/50 rounded-lg border">
+        <p className="text-sm text-muted-foreground">
+          {isSaving ? 'Saving changes...' : 'You have unsaved changes'}
+        </p>
+        <div className="flex items-center gap-2">
+          {!isSaving && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </Button>
+          )}
+          <Button
+            variant="gradient"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="gap-1.5"
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -219,7 +289,6 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Flag className="h-5 w-5" />
                     Lender Milestones
-                    <SaveIndicator isSaving={isSaving} showSuccess={!isSaving} teamSync />
                   </CardTitle>
                   <CardDescription>Configure milestone options for detailed lender tracking. Changes sync to your entire team.</CardDescription>
                 </div>
@@ -233,15 +302,18 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
             )}
           </CardHeader>
           <CollapsibleContent>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Top Save Bar */}
+              <SaveBar />
+              
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SortableContext items={substages.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                <SortableContext items={localSubstages.map(s => s.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-2">
-                    {substages.map((substage, index) => (
+                    {localSubstages.map((substage, index) => (
                       <SortableSubstageItem
                         key={substage.id}
                         substage={substage}
@@ -251,7 +323,7 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
                         isAdmin={isAdmin}
                       />
                     ))}
-                    {substages.length === 0 && (
+                    {localSubstages.length === 0 && (
                       <p className="text-center text-muted-foreground py-8">
                         No milestones configured. Add one to get started.
                       </p>
@@ -259,6 +331,9 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
                   </div>
                 </SortableContext>
               </DndContext>
+              
+              {/* Bottom Save Bar */}
+              <SaveBar />
             </CardContent>
           </CollapsibleContent>
         </Card>
