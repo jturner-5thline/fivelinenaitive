@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lightbulb, Zap, TrendingUp, Clock, Sparkles, ArrowRight, Maximize2, Edit3 } from 'lucide-react';
+import { Lightbulb, Zap, TrendingUp, Clock, Sparkles, ArrowRight, Maximize2, Edit3, LayoutList, GalleryHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Deal } from '@/types/deal';
 import { useAllMilestones } from '@/hooks/useAllMilestones';
 import { useAllDealsSuggestions, DealSuggestion } from '@/hooks/useAllDealsSuggestions';
@@ -26,6 +27,8 @@ import { SuggestionActionDialog } from './SuggestionActionDialog';
 interface SmartSuggestionsDropdownProps {
   deals: Deal[];
 }
+
+type ViewMode = 'list' | 'carousel';
 
 const priorityConfig = {
   high: { color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
@@ -48,6 +51,16 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
   const [dialogOpen, setDialogOpen] = useState(false);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<DealSuggestion | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (localStorage.getItem('suggestions-view-mode') as ViewMode) || 'list';
+  });
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // Persist view mode
+  useEffect(() => {
+    localStorage.setItem('suggestions-view-mode', viewMode);
+  }, [viewMode]);
 
   const hasNotifications = counts.total > 0;
   const highPriorityCount = counts.high;
@@ -262,43 +275,177 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (open) setCarouselIndex(0);
+      }}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              All Recommended Actions
-              {counts.total > 0 && (
-                <Badge variant="outline" className="ml-2">
-                  {counts.total} items
-                </Badge>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="space-y-6 pb-4">
-              {Object.entries(groupedSuggestions).map(([type, items]) => {
-                if (items.length === 0) return null;
-                const config = typeConfig[type as keyof typeof typeConfig];
-                const Icon = config.icon;
-                
-                return (
-                  <div key={type}>
-                    <div className={`flex items-center gap-2 mb-3 ${config.color}`}>
-                      <Icon className="h-4 w-4" />
-                      <span className="font-semibold">{config.label}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {items.length}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1 border rounded-lg bg-card/50">
-                      {items.map((suggestion) => renderSuggestionItem(suggestion))}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                All Recommended Actions
+                {counts.total > 0 && (
+                  <Badge variant="outline" className="ml-2">
+                    {counts.total} items
+                  </Badge>
+                )}
+              </DialogTitle>
+              <ToggleGroup 
+                type="single" 
+                value={viewMode} 
+                onValueChange={(val) => val && setViewMode(val as ViewMode)}
+                className="bg-muted rounded-md p-0.5"
+              >
+                <ToggleGroupItem value="list" aria-label="List view" className="h-7 w-7 p-0 data-[state=on]:bg-background">
+                  <LayoutList className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="carousel" aria-label="Carousel view" className="h-7 w-7 p-0 data-[state=on]:bg-background">
+                  <GalleryHorizontal className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
-          </ScrollArea>
+          </DialogHeader>
+          
+          {viewMode === 'list' ? (
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <div className="space-y-6 pb-4">
+                {Object.entries(groupedSuggestions).map(([type, items]) => {
+                  if (items.length === 0) return null;
+                  const config = typeConfig[type as keyof typeof typeConfig];
+                  const Icon = config.icon;
+                  
+                  return (
+                    <div key={type}>
+                      <div className={`flex items-center gap-2 mb-3 ${config.color}`}>
+                        <Icon className="h-4 w-4" />
+                        <span className="font-semibold">{config.label}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {items.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1 border rounded-lg bg-card/50">
+                        {items.map((suggestion) => renderSuggestionItem(suggestion))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0">
+              {/* Carousel Navigation */}
+              <div className="flex items-center justify-between mb-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCarouselIndex(Math.max(0, carouselIndex - 1))}
+                  disabled={carouselIndex === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {carouselIndex + 1} of {suggestions.length}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCarouselIndex(Math.min(suggestions.length - 1, carouselIndex + 1))}
+                  disabled={carouselIndex >= suggestions.length - 1}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Carousel Content */}
+              <div 
+                ref={carouselRef}
+                className="flex-1 overflow-hidden relative"
+              >
+                <div 
+                  className="flex transition-transform duration-300 ease-out h-full"
+                  style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
+                >
+                  {suggestions.map((suggestion) => {
+                    const config = typeConfig[suggestion.type as keyof typeof typeConfig];
+                    const pConfig = priorityConfig[suggestion.priority];
+                    const Icon = config.icon;
+                    const actionable = isActionable(suggestion);
+                    
+                    return (
+                      <div
+                        key={suggestion.id}
+                        className="w-full flex-shrink-0 px-2"
+                      >
+                        <div 
+                          className={`h-full border rounded-xl p-6 bg-card/50 ${pConfig.border} cursor-pointer hover:shadow-md transition-shadow`}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className={`p-3 rounded-lg ${pConfig.bg}`}>
+                              <Icon className={`h-6 w-6 ${pConfig.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className={`text-xs font-medium mb-1 ${config.color}`}>
+                                {config.label}
+                              </div>
+                              <h3 className="text-lg font-semibold mb-2">
+                                {suggestion.title}
+                              </h3>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                {suggestion.description}
+                              </p>
+                              {suggestion.actionLabel && actionable && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={(e) => handleActionClick(suggestion, e)}
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                  {suggestion.actionLabel}
+                                </Button>
+                              )}
+                              {suggestion.actionLabel && !actionable && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={() => handleSuggestionClick(suggestion)}
+                                >
+                                  {suggestion.actionLabel}
+                                  <ArrowRight className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Dot Indicators */}
+              <div className="flex justify-center gap-1.5 mt-4 pt-2 border-t">
+                {suggestions.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCarouselIndex(idx)}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      idx === carouselIndex 
+                        ? 'bg-primary' 
+                        : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
