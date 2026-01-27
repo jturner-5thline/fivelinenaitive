@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GripVertical, RotateCcw, Search, MessageSquare, Clock, AlertCircle, FileText, CheckSquare } from 'lucide-react';
+import { GripVertical, RotateCcw, Search, MessageSquare, Clock, AlertCircle, FileText, CheckSquare, Eye, EyeOff, Lock } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -26,14 +26,18 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { DealPanelId } from '@/hooks/useDealPanelOrder';
+import { DealPanelId, ALWAYS_VISIBLE_PANELS } from '@/hooks/useDealPanelOrder';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface DealPanelReorderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   panelOrder: DealPanelId[];
+  panelVisibility: Record<DealPanelId, boolean>;
   onReorder: (fromIndex: number, toIndex: number) => void;
+  onToggleVisibility: (panelId: DealPanelId) => void;
   onReset: () => void;
 }
 
@@ -49,9 +53,12 @@ const PANEL_CONFIG: Record<DealPanelId, { label: string; icon: React.ComponentTy
 interface SortablePanelItemProps {
   id: DealPanelId;
   index: number;
+  isVisible: boolean;
+  isLocked: boolean;
+  onToggle: () => void;
 }
 
-function SortablePanelItem({ id, index }: SortablePanelItemProps) {
+function SortablePanelItem({ id, index, isVisible, isLocked, onToggle }: SortablePanelItemProps) {
   const {
     attributes,
     listeners,
@@ -75,7 +82,8 @@ function SortablePanelItem({ id, index }: SortablePanelItemProps) {
       style={style}
       className={cn(
         'flex items-center gap-3 p-3 bg-card border border-border rounded-lg',
-        isDragging && 'opacity-50 shadow-lg z-50'
+        isDragging && 'opacity-50 shadow-lg z-50',
+        !isVisible && 'opacity-60'
       )}
     >
       <button
@@ -87,7 +95,36 @@ function SortablePanelItem({ id, index }: SortablePanelItemProps) {
       </button>
       <span className="text-muted-foreground text-sm font-medium w-6">{index + 1}</span>
       <Icon className="h-4 w-4 text-muted-foreground" />
-      <span className="font-medium">{config.label}</span>
+      <span className={cn("font-medium flex-1", !isVisible && "text-muted-foreground")}>
+        {config.label}
+      </span>
+      
+      {isLocked ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Lock className="h-4 w-4" />
+              <span className="text-xs">Always on</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>This widget cannot be hidden</p>
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <div className="flex items-center gap-2">
+          {isVisible ? (
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+          )}
+          <Switch
+            checked={isVisible}
+            onCheckedChange={onToggle}
+            aria-label={`Toggle ${config.label} visibility`}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -96,14 +133,18 @@ export function DealPanelReorderDialog({
   open,
   onOpenChange,
   panelOrder,
+  panelVisibility,
   onReorder,
+  onToggleVisibility,
   onReset,
 }: DealPanelReorderDialogProps) {
   const [localOrder, setLocalOrder] = useState(panelOrder);
+  const [localVisibility, setLocalVisibility] = useState(panelVisibility);
 
   useEffect(() => {
     setLocalOrder(panelOrder);
-  }, [panelOrder, open]);
+    setLocalVisibility(panelVisibility);
+  }, [panelOrder, panelVisibility, open]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -122,6 +163,14 @@ export function DealPanelReorderDialog({
     }
   };
 
+  const handleLocalToggle = (panelId: DealPanelId) => {
+    if (ALWAYS_VISIBLE_PANELS.includes(panelId)) return;
+    setLocalVisibility(prev => ({
+      ...prev,
+      [panelId]: !prev[panelId],
+    }));
+  };
+
   const handleSave = () => {
     // Apply reorders from original to final order
     const originalOrder = [...panelOrder];
@@ -134,6 +183,15 @@ export function DealPanelReorderDialog({
         originalOrder.splice(newIndex, 0, moved);
       }
     });
+    
+    // Apply visibility changes
+    Object.keys(localVisibility).forEach((panelId) => {
+      const id = panelId as DealPanelId;
+      if (localVisibility[id] !== panelVisibility[id]) {
+        onToggleVisibility(id);
+      }
+    });
+    
     onOpenChange(false);
   };
 
@@ -142,17 +200,23 @@ export function DealPanelReorderDialog({
     onOpenChange(false);
   };
 
+  const visibleCount = Object.values(localVisibility).filter(Boolean).length;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Reorder Panels</DialogTitle>
+          <DialogTitle>Customize Widgets</DialogTitle>
           <DialogDescription>
-            Drag and drop to reorder the panels in the Deal Information tab.
+            Drag to reorder and toggle visibility of widgets. Some widgets are always visible.
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
+          <div className="flex items-center justify-between mb-3 text-sm text-muted-foreground">
+            <span>{visibleCount} of {localOrder.length} widgets visible</span>
+          </div>
+          
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -161,7 +225,14 @@ export function DealPanelReorderDialog({
             <SortableContext items={localOrder} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {localOrder.map((id, index) => (
-                  <SortablePanelItem key={id} id={id} index={index} />
+                  <SortablePanelItem 
+                    key={id} 
+                    id={id} 
+                    index={index}
+                    isVisible={localVisibility[id] ?? true}
+                    isLocked={ALWAYS_VISIBLE_PANELS.includes(id)}
+                    onToggle={() => handleLocalToggle(id)}
+                  />
                 ))}
               </div>
             </SortableContext>
@@ -178,7 +249,7 @@ export function DealPanelReorderDialog({
               Cancel
             </Button>
             <Button onClick={handleSave}>
-              Save Order
+              Save Changes
             </Button>
           </div>
         </DialogFooter>

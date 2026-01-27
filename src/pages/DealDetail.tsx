@@ -450,7 +450,7 @@ export default function DealDetail() {
   }, [isSuggestionsPanelOpen]);
   
   // Panel reorder functionality
-  const { panelOrder, reorderPanels, resetToDefault } = useDealPanelOrder();
+  const { panelOrder, panelVisibility, visiblePanels, reorderPanels, togglePanelVisibility, isPanelVisible, resetToDefault } = useDealPanelOrder();
   const [isPanelReorderDialogOpen, setIsPanelReorderDialogOpen] = useState(false);
   
   // Mark info requests as read when Deal Management tab is viewed
@@ -2201,10 +2201,10 @@ export default function DealDetail() {
                     </Button>
                   </div>
 
-                  {/* Panels rendered in custom order */}
-                  {panelOrder.reduce((acc: React.ReactNode[], panelId, index) => {
+                  {/* Panels rendered in custom order - only visible panels */}
+                  {visiblePanels.reduce((acc: React.ReactNode[], panelId, index) => {
                     // Pair panels together for 2-column layout
-                    const nextPanelId = panelOrder[index + 1];
+                    const nextPanelId = visiblePanels[index + 1];
                     
                     // Only process even indices to create pairs
                     if (index % 2 !== 0) return acc;
@@ -4323,7 +4323,9 @@ export default function DealDetail() {
         open={isPanelReorderDialogOpen}
         onOpenChange={setIsPanelReorderDialogOpen}
         panelOrder={panelOrder}
+        panelVisibility={panelVisibility}
         onReorder={reorderPanels}
+        onToggleVisibility={togglePanelVisibility}
         onReset={resetToDefault}
       />
     </>
