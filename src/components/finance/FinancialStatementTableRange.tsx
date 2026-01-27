@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Save, Loader2, Upload, ClipboardPaste } from "lucide-react";
+import { Plus, Save, Loader2, Upload, ClipboardPaste, Undo2 } from "lucide-react";
 import { FinancialCategory, FinancialLineItem, FinancialDataEntry, PeriodColumn, FinancePeriodType, FinancialPeriod } from "@/hooks/useFinanceDataRange";
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from "@/utils/currencyFormat";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+
+// Type for undo history
+interface UndoEntry {
+  periodId: string;
+  lineItemId: string;
+  previousAmount: number;
+  newAmount: number;
+  timestamp: number;
+}
 
 interface FinancialStatementTableRangeProps {
   title: string;
@@ -55,8 +64,10 @@ export function FinancialStatementTableRange({
   const [selectedCell, setSelectedCell] = useState<CellPosition | null>(null);
   const [isPasting, setIsPasting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [undoHistory, setUndoHistory] = useState<UndoEntry[]>([]);
   const tableRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Get flattened list of line items (excluding category headers)
   const flatLineItems = categories.flatMap(cat => 
@@ -73,17 +84,29 @@ export function FinancialStatementTableRange({
     );
   }, [financialData]);
 
-  const handleStartEdit = (periodId: string, lineItemId: string, currentValue: number) => {
+  const handleStartEdit = (periodId: string, lineItemId: string, currentValue: number, replaceValue?: string) => {
     const key = `${periodId}-${lineItemId}`;
     setEditingCell(key);
-    setEditValue(formatCurrencyInputValue(currentValue));
+    setEditValue(replaceValue !== undefined ? replaceValue : formatCurrencyInputValue(currentValue));
   };
 
-  const handleSave = async (periodId: string, lineItemId: string) => {
+  const handleSave = async (periodId: string, lineItemId: string, previousAmount?: number) => {
     const key = `${periodId}-${lineItemId}`;
     setSavingCell(key);
     
     const numericValue = parseCurrencyInputValue(editValue) || 0;
+    
+    // Store previous value for undo
+    if (previousAmount !== undefined && previousAmount !== numericValue) {
+      setUndoHistory(prev => [...prev.slice(-19), {
+        periodId,
+        lineItemId,
+        previousAmount,
+        newAmount: numericValue,
+        timestamp: Date.now()
+      }]);
+    }
+    
     const success = await onUpdateData(periodId, lineItemId, numericValue);
     
     if (success) {
@@ -92,11 +115,141 @@ export function FinancialStatementTableRange({
     setSavingCell(null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, periodId: string, lineItemId: string) => {
+  // Undo last change
+  const handleUndo = useCallback(async () => {
+    if (undoHistory.length === 0) return;
+    
+    const lastChange = undoHistory[undoHistory.length - 1];
+    setUndoHistory(prev => prev.slice(0, -1));
+    
+    const success = await onUpdateData(lastChange.periodId, lastChange.lineItemId, lastChange.previousAmount);
+    if (success) {
+      toast.success('Change undone', {
+        description: `Reverted to $${formatCurrencyInputValue(lastChange.previousAmount)}`,
+        icon: <Undo2 className="h-4 w-4" />
+      });
+    }
+  }, [undoHistory, onUpdateData]);
+
+  // Navigate to adjacent cell
+  const navigateToCell = useCallback((direction: 'up' | 'down' | 'left' | 'right' | 'tab' | 'shift-tab') => {
+    if (!selectedCell) return;
+    
+    let newRowIndex = selectedCell.rowIndex;
+    let newColIndex = selectedCell.colIndex;
+    
+    switch (direction) {
+      case 'up':
+        newRowIndex = Math.max(0, selectedCell.rowIndex - 1);
+        break;
+      case 'down':
+        newRowIndex = Math.min(flatLineItems.length - 1, selectedCell.rowIndex + 1);
+        break;
+      case 'left':
+        newColIndex = Math.max(0, selectedCell.colIndex - 1);
+        break;
+      case 'right':
+      case 'tab':
+        if (selectedCell.colIndex < existingPeriodColumns.length - 1) {
+          newColIndex = selectedCell.colIndex + 1;
+        } else if (direction === 'tab' && selectedCell.rowIndex < flatLineItems.length - 1) {
+          newColIndex = 0;
+          newRowIndex = selectedCell.rowIndex + 1;
+        }
+        break;
+      case 'shift-tab':
+        if (selectedCell.colIndex > 0) {
+          newColIndex = selectedCell.colIndex - 1;
+        } else if (selectedCell.rowIndex > 0) {
+          newColIndex = existingPeriodColumns.length - 1;
+          newRowIndex = selectedCell.rowIndex - 1;
+        }
+        break;
+    }
+    
+    const newLineItem = flatLineItems[newRowIndex];
+    const newPeriod = existingPeriodColumns[newColIndex]?.period;
+    
+    if (newLineItem && newPeriod) {
+      setSelectedCell({
+        rowIndex: newRowIndex,
+        colIndex: newColIndex,
+        lineItemId: newLineItem.id,
+        periodId: newPeriod.id
+      });
+    }
+  }, [selectedCell, flatLineItems, existingPeriodColumns]);
+
+  // Handle keyboard navigation and inline editing
+  const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Don't interfere with editing mode
+    if (editingCell) return;
+    
+    // Undo with Ctrl+Z
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      e.preventDefault();
+      handleUndo();
+      return;
+    }
+    
+    if (!selectedCell) return;
+    
+    // Navigation keys
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault();
+        navigateToCell('up');
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        navigateToCell('down');
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        navigateToCell('left');
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        navigateToCell('right');
+        break;
+      case 'Tab':
+        e.preventDefault();
+        navigateToCell(e.shiftKey ? 'shift-tab' : 'tab');
+        break;
+      case 'Enter':
+        // Start editing on Enter
+        e.preventDefault();
+        const data = getDataForCell(selectedCell.periodId, selectedCell.lineItemId);
+        handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, data?.amount ?? 0);
+        break;
+      case 'Escape':
+        setSelectedCell(null);
+        break;
+      default:
+        // Start editing when typing a number or backspace
+        if (/^[0-9]$/.test(e.key)) {
+          e.preventDefault();
+          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, e.key);
+        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+          e.preventDefault();
+          handleStartEdit(selectedCell.periodId, selectedCell.lineItemId, 0, '');
+        }
+        break;
+    }
+  }, [editingCell, selectedCell, navigateToCell, handleUndo, getDataForCell, handleStartEdit]);
+
+  const handleEditKeyDown = (e: React.KeyboardEvent, periodId: string, lineItemId: string, previousAmount: number) => {
     if (e.key === 'Enter') {
-      handleSave(periodId, lineItemId);
+      e.preventDefault();
+      handleSave(periodId, lineItemId, previousAmount);
+      // Move to next cell after save
+      setTimeout(() => navigateToCell('down'), 50);
     } else if (e.key === 'Escape') {
       setEditingCell(null);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      handleSave(periodId, lineItemId, previousAmount);
+      setTimeout(() => navigateToCell(e.shiftKey ? 'shift-tab' : 'tab'), 50);
     }
   };
 
@@ -325,14 +478,30 @@ export function FinancialStatementTableRange({
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
                   <ClipboardPaste className="h-3 w-3" />
-                  <span>Select a cell, then paste from Excel</span>
+                  <span>Tab/Arrow keys to navigate • Type to edit • Ctrl+Z to undo</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Click a cell to select it, then use Ctrl+V (Cmd+V on Mac) to paste data from Excel</p>
+                <div className="space-y-1 text-xs">
+                  <p><strong>Navigation:</strong> Arrow keys, Tab/Shift+Tab</p>
+                  <p><strong>Edit:</strong> Type numbers directly or press Enter</p>
+                  <p><strong>Undo:</strong> Ctrl+Z (Cmd+Z on Mac)</p>
+                  <p><strong>Paste:</strong> Select cell, then Ctrl+V</p>
+                </div>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          {undoHistory.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleUndo}
+              className="text-xs h-7"
+            >
+              <Undo2 className="h-3 w-3 mr-1" />
+              Undo
+            </Button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -362,7 +531,12 @@ export function FinancialStatementTableRange({
             <p className="text-sm mt-1">Adjust the date range to view financial data.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto" ref={tableRef}>
+          <div 
+            className="overflow-x-auto focus:outline-none" 
+            ref={tableRef}
+            tabIndex={0}
+            onKeyDown={handleTableKeyDown}
+          >
             {isPasting && (
               <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-20">
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -458,9 +632,19 @@ export function FinancialStatementTableRange({
                                     <div className="relative">
                                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
                                       <Input
+                                        ref={inputRef}
                                         value={editValue}
                                         onChange={(e) => setEditValue(formatAmountWithCommas(e.target.value))}
-                                        onKeyDown={(e) => handleKeyDown(e, period.id, item.id)}
+                                        onKeyDown={(e) => handleEditKeyDown(e, period.id, item.id, currentAmount)}
+                                        onBlur={() => {
+                                          // Save on blur if value changed
+                                          const numericValue = parseCurrencyInputValue(editValue) || 0;
+                                          if (numericValue !== currentAmount) {
+                                            handleSave(period.id, item.id, currentAmount);
+                                          } else {
+                                            setEditingCell(null);
+                                          }
+                                        }}
                                         className="w-20 pl-5 text-right text-xs h-7"
                                         autoFocus
                                       />
@@ -469,7 +653,7 @@ export function FinancialStatementTableRange({
                                       size="icon"
                                       variant="ghost"
                                       className="h-6 w-6"
-                                      onClick={() => handleSave(period.id, item.id)}
+                                      onClick={() => handleSave(period.id, item.id, currentAmount)}
                                       disabled={isSaving}
                                     >
                                       {isSaving ? (
@@ -483,11 +667,12 @@ export function FinancialStatementTableRange({
                                   <button
                                     className={cn(
                                       "w-full px-2 py-1.5 text-right hover:bg-muted/50 transition-colors cursor-pointer text-xs",
-                                      currentAmount < 0 && "text-destructive"
+                                      currentAmount < 0 && "text-destructive",
+                                      isSelected && "bg-primary/10"
                                     )}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleStartEdit(period.id, item.id, currentAmount);
+                                      handleCellSelect(item.id, period.id, rowIndex, periodColIndex);
                                     }}
                                     onDoubleClick={() => handleStartEdit(period.id, item.id, currentAmount)}
                                   >
