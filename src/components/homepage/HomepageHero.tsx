@@ -7,7 +7,7 @@ export const HomepageHero = () => {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#010114]">
       {/* Spinning Globe Background */}
       <SpinningGlobe />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a12]" />
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-6 text-center pt-20">
