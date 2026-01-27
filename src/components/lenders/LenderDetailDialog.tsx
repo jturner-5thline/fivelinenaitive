@@ -958,20 +958,6 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <div className="grid grid-cols-2 gap-6">
                               {/* Left column - Contact details */}
                               <div className="grid gap-3">
-                                {lender.website && (
-                                  <div className="flex items-center gap-3">
-                                    <Globe className="h-4 w-4 text-muted-foreground" />
-                                    <a 
-                                      href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer" 
-                                      className="text-primary hover:underline flex items-center gap-1"
-                                    >
-                                      {lender.website.replace(/^https?:\/\//, '')}
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </div>
-                                )}
                                 {lender.contact.name && (
                                   <div className="flex items-center gap-3">
                                     <User className="h-4 w-4 text-muted-foreground" />
@@ -996,7 +982,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                     </a>
                                   </div>
                                 )}
-                                {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && additionalContacts.length === 0 && (
+                                {!lender.contact.name && !lender.contact.email && !lender.contact.phone && additionalContacts.length === 0 && (
                                   <p className="text-muted-foreground text-sm italic">No contact info</p>
                                 )}
                               </div>
@@ -1110,7 +1096,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <div className="flex items-center justify-between mb-3">
                               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
                                 <Paperclip className="h-4 w-4" />
-                                Attachments ({attachments.length})
+                                Attachments ({attachments.length + (lender.website ? 1 : 0)})
                               </h3>
                             </div>
                             
@@ -1397,7 +1383,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
                       <Paperclip className="h-4 w-4" />
-                      Attachments ({attachments.length})
+                      Attachments ({attachments.length + (lender.website ? 1 : 0)})
                     </h3>
                   </div>
                   
@@ -1507,8 +1493,37 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     <div className="flex items-center justify-center py-4">
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
-                  ) : attachments.length > 0 ? (
+                  ) : (attachments.length > 0 || lender.website) ? (
                     <div className="space-y-4">
+                      {/* One-Pager from lender_one_pager_url */}
+                      {lender.website && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="purple" className="text-xs">
+                              One-Pager
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg group">
+                              <a
+                                href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 flex-1 min-w-0 hover:text-primary"
+                              >
+                                <FileText className="h-4 w-4 shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate">Lender One-Pager</p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {lender.website.replace(/^https?:\/\//, '').split('/').pop() || 'External Link'}
+                                  </p>
+                                </div>
+                                <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       {Object.entries(groupedAttachments).map(([category, catAttachments]) => (
                         <div key={category}>
                           <div className="flex items-center gap-2 mb-2">
