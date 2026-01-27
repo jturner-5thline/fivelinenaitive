@@ -352,10 +352,9 @@ serve(async (req) => {
         company_highlights: writeUpData!.companyHighlights?.length > 0 ? writeUpData!.companyHighlights : undefined,
         financial_years: writeUpData!.financialYears?.length > 0 ? writeUpData!.financialYears : undefined,
         financial_comments: writeUpData!.financialComments?.length > 0 ? writeUpData!.financialComments : undefined,
-        ownership: writeUpData!.ownership?.length > 0 ? writeUpData!.ownership.map(o => ({
-          owner_name: o.owner_name,
-          ownership_percentage: o.ownership_percentage,
-          position: o.position,
+        cap_table: writeUpData!.ownership?.length > 0 ? writeUpData!.ownership.map(o => ({
+          name: o.owner_name,
+          ownership: o.ownership_percentage,
         })) : undefined,
         is_published: !writeUpData!.publishAsAnonymous,
       };
