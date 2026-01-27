@@ -1,17 +1,9 @@
 import { useState, useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -41,8 +33,8 @@ import {
   Settings2
 } from "lucide-react";
 import { DealStage, EngagementType } from "@/types/deal";
-import { HubSpotDealSyncRow } from "./HubSpotDealSyncRow";
 import { HubSpotSyncSummaryCards } from "./HubSpotSyncSummaryCards";
+import { HubSpotDealSyncVirtualTable } from "./HubSpotDealSyncVirtualTable";
 
 interface SyncMapping {
   hubspotDealId: string;
@@ -363,41 +355,17 @@ export const HubSpotDealSync = memo(function HubSpotDealSync() {
               <p className="text-sm">No unlinked HubSpot deals found.</p>
             </div>
           ) : (
-            <ScrollArea className="h-[400px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox 
-                        checked={selectedDeals.size === unlinkedDeals.length && unlinkedDeals.length > 0}
-                        onCheckedChange={handleSelectAll}
-                      />
-                    </TableHead>
-                    <TableHead>HubSpot Deal</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Stage</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {hubspotDeals?.results?.map((deal) => (
-                    <HubSpotDealSyncRow
-                      key={deal.id}
-                      deal={deal}
-                      isUnlinked={unlinkedDealIds.has(deal.id)}
-                      isSelected={selectedDeals.has(deal.id)}
-                      ownerName={getOwnerName(deal.properties.hubspot_owner_id)}
-                      stageName={getStageName(deal.properties.dealstage)}
-                      onSelectDeal={handleSelectDeal}
-                      onLinkDeal={handleLinkDeal}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+            <HubSpotDealSyncVirtualTable
+              deals={hubspotDeals?.results ?? []}
+              selectedDeals={selectedDeals}
+              unlinkedDealIds={unlinkedDealIds}
+              unlinkedDealsCount={unlinkedDeals.length}
+              getOwnerName={getOwnerName}
+              getStageName={getStageName}
+              onSelectAll={handleSelectAll}
+              onSelectDeal={handleSelectDeal}
+              onLinkDeal={handleLinkDeal}
+            />
           )}
         </CardContent>
       </Card>
