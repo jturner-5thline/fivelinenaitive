@@ -8,6 +8,13 @@ const corsHeaders = {
 
 const FLEX_API_URL = "https://ndbrliydrlgtxcyfgyok.supabase.co/functions/v1/naitive-flex-sync";
 
+interface OwnershipEntry {
+  id: string;
+  owner_name: string;
+  ownership_percentage: number;
+  position: number;
+}
+
 interface WriteUpData {
   companyName: string;
   companyUrl: string;
@@ -30,6 +37,7 @@ interface WriteUpData {
   companyHighlights: Array<{ id: string; title: string; description: string }>;
   financialYears: Array<{ id: string; year: string; revenue: string; gross_margin: string; ebitda: string }>;
   financialComments: Array<{ id: string; title: string; description: string }>;
+  ownership: OwnershipEntry[];
   publishAsAnonymous: boolean;
 }
 
@@ -344,6 +352,11 @@ serve(async (req) => {
         company_highlights: writeUpData!.companyHighlights?.length > 0 ? writeUpData!.companyHighlights : undefined,
         financial_years: writeUpData!.financialYears?.length > 0 ? writeUpData!.financialYears : undefined,
         financial_comments: writeUpData!.financialComments?.length > 0 ? writeUpData!.financialComments : undefined,
+        ownership: writeUpData!.ownership?.length > 0 ? writeUpData!.ownership.map(o => ({
+          owner_name: o.owner_name,
+          ownership_percentage: o.ownership_percentage,
+          position: o.position,
+        })) : undefined,
         is_published: !writeUpData!.publishAsAnonymous,
       };
 
