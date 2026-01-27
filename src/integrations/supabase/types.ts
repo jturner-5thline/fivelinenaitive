@@ -4716,6 +4716,7 @@ export type Database = {
         Args: { _deal_id: string; _user_id: string }
         Returns: boolean
       }
+      can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_company_role: {
