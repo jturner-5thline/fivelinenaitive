@@ -100,6 +100,22 @@ export default function Dashboard() {
     }
   };
 
+  const handleStageChange = async (dealId: string, newStage: string) => {
+    try {
+      await updateDeal(dealId, { stage: newStage });
+      toast({ 
+        title: "Deal stage updated", 
+        description: "The deal has been moved to a new stage." 
+      });
+    } catch (error) {
+      toast({ 
+        title: "Failed to update deal stage", 
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleToggleFlag = async (dealId: string, isFlagged: boolean, flagNotes?: string) => {
     try {
       await updateDeal(dealId, { isFlagged, flagNotes: flagNotes ?? '' });
@@ -395,6 +411,7 @@ export default function Dashboard() {
                 <DealsPipelineView
                   deals={deals}
                   onStatusChange={updateDealStatus}
+                  onStageChange={handleStageChange}
                   onMarkReviewed={handleMarkReviewed}
                   onToggleFlag={handleToggleFlag}
                 />
