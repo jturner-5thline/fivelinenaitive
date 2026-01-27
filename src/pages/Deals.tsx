@@ -189,14 +189,14 @@ export default function Dashboard() {
                       <span className="font-medium">Insights & Alerts</span>
                     </button>
                     {specialWidgetsSectionExpanded ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                         {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
                         {specialWidgets['milestones'] && <MilestonesWidget />}
                         {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
                         <AllSuggestionsWidget deals={allDeals} />
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                         {specialWidgets['stale-deals'] && (
                           <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
                             <h3 className="text-sm font-semibold">Stale Deals Alert</h3>
