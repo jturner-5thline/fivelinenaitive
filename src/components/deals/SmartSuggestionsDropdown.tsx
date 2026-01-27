@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lightbulb, Zap, TrendingUp, Clock, Sparkles, ArrowRight, Maximize2 } from 'lucide-react';
+import { Lightbulb, Zap, TrendingUp, Clock, Sparkles, ArrowRight, Maximize2, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -21,6 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Deal } from '@/types/deal';
 import { useAllMilestones } from '@/hooks/useAllMilestones';
 import { useAllDealsSuggestions, DealSuggestion } from '@/hooks/useAllDealsSuggestions';
+import { SuggestionActionDialog } from './SuggestionActionDialog';
 
 interface SmartSuggestionsDropdownProps {
   deals: Deal[];
@@ -41,13 +42,20 @@ const typeConfig = {
 
 export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProps) {
   const navigate = useNavigate();
-  const { milestonesMap } = useAllMilestones();
+  const { milestonesMap, refetch: refetchMilestones } = useAllMilestones();
   const { suggestions, counts } = useAllDealsSuggestions(deals, milestonesMap);
   const [open, setOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<DealSuggestion | null>(null);
 
   const hasNotifications = counts.total > 0;
   const highPriorityCount = counts.high;
+
+  // Check if suggestion has actionable context (lender or milestone)
+  const isActionable = (suggestion: DealSuggestion) => {
+    return !!suggestion.lenderId || !!suggestion.milestoneId;
+  };
 
   const handleSuggestionClick = (suggestion: DealSuggestion) => {
     setOpen(false);
@@ -55,9 +63,21 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
     navigate(`/deal/${suggestion.dealId}`);
   };
 
+  const handleActionClick = (suggestion: DealSuggestion, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(false);
+    setDialogOpen(false);
+    setSelectedSuggestion(suggestion);
+    setActionDialogOpen(true);
+  };
+
   const handleViewAll = () => {
     setOpen(false);
     setDialogOpen(true);
+  };
+
+  const handleActionComplete = () => {
+    refetchMilestones();
   };
 
   // Group suggestions by type
@@ -80,12 +100,13 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
     const config = typeConfig[suggestion.type as keyof typeof typeConfig];
     const pConfig = priorityConfig[suggestion.priority];
     const Icon = config.icon;
+    const actionable = isActionable(suggestion);
 
     return (
       <div
         key={suggestion.id}
         onClick={() => handleSuggestionClick(suggestion)}
-        className={`flex items-start gap-3 ${compact ? 'py-2.5 px-2' : 'py-3 px-4'} cursor-pointer hover:bg-accent/50 rounded-md`}
+        className={`flex items-start gap-3 ${compact ? 'py-2.5 px-2' : 'py-3 px-4'} cursor-pointer hover:bg-accent/50 rounded-md group`}
       >
         <div className={`p-1.5 rounded-md ${pConfig.bg} shrink-0 mt-0.5`}>
           <Icon className={`h-3.5 w-3.5 ${pConfig.color}`} />
@@ -97,7 +118,18 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
           <p className="text-xs text-muted-foreground mt-0.5">
             {suggestion.description}
           </p>
-          {suggestion.actionLabel && (
+          {suggestion.actionLabel && actionable && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-auto p-0 mt-1.5 ${pConfig.color} hover:bg-transparent hover:underline`}
+              onClick={(e) => handleActionClick(suggestion, e)}
+            >
+              <Edit3 className="h-3 w-3 mr-1" />
+              {suggestion.actionLabel}
+            </Button>
+          )}
+          {suggestion.actionLabel && !actionable && (
             <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1.5 ${pConfig.color}`}>
               {suggestion.actionLabel}
               <ArrowRight className="h-3 w-3" />
@@ -162,31 +194,47 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
                           <Icon className="h-3.5 w-3.5" />
                           {config.label} ({items.length})
                         </div>
-                        {items.slice(0, 3).map((suggestion) => (
-                          <DropdownMenuItem
-                            key={suggestion.id}
-                            onClick={() => handleSuggestionClick(suggestion)}
-                            className="flex items-start gap-3 py-2.5 px-2 cursor-pointer hover:bg-accent/50 rounded-md mx-1"
-                          >
-                            <div className={`p-1.5 rounded-md ${priorityConfig[suggestion.priority].bg} shrink-0 mt-0.5`}>
-                              <Icon className={`h-3.5 w-3.5 ${priorityConfig[suggestion.priority].color}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium leading-tight">
-                                {suggestion.title}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {suggestion.description}
-                              </p>
-                              {suggestion.actionLabel && (
-                                <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1.5 ${priorityConfig[suggestion.priority].color}`}>
-                                  {suggestion.actionLabel}
-                                  <ArrowRight className="h-3 w-3" />
-                                </span>
-                              )}
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
+                        {items.slice(0, 3).map((suggestion) => {
+                          const pConfig = priorityConfig[suggestion.priority];
+                          const actionable = isActionable(suggestion);
+                          
+                          return (
+                            <DropdownMenuItem
+                              key={suggestion.id}
+                              onClick={() => handleSuggestionClick(suggestion)}
+                              className="flex items-start gap-3 py-2.5 px-2 cursor-pointer hover:bg-accent/50 rounded-md mx-1"
+                            >
+                              <div className={`p-1.5 rounded-md ${pConfig.bg} shrink-0 mt-0.5`}>
+                                <Icon className={`h-3.5 w-3.5 ${pConfig.color}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium leading-tight">
+                                  {suggestion.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {suggestion.description}
+                                </p>
+                                {suggestion.actionLabel && actionable && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-auto p-0 mt-1.5 text-xs ${pConfig.color} hover:bg-transparent hover:underline`}
+                                    onClick={(e) => handleActionClick(suggestion, e)}
+                                  >
+                                    <Edit3 className="h-3 w-3 mr-1" />
+                                    {suggestion.actionLabel}
+                                  </Button>
+                                )}
+                                {suggestion.actionLabel && !actionable && (
+                                  <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1.5 ${pConfig.color}`}>
+                                    {suggestion.actionLabel}
+                                    <ArrowRight className="h-3 w-3" />
+                                  </span>
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                          );
+                        })}
                         {items.length > 3 && (
                           <div className="px-3 py-1.5 text-xs text-muted-foreground">
                             +{items.length - 3} more
@@ -253,6 +301,13 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      <SuggestionActionDialog
+        suggestion={selectedSuggestion}
+        open={actionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        onComplete={handleActionComplete}
+      />
     </>
   );
 }
