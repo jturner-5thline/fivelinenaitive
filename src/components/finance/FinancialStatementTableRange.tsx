@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Save, Loader2, Upload, ClipboardPaste, Undo2 } from "lucide-react";
+import { Plus, Save, Loader2, Upload, ClipboardPaste, Undo2, Copy, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { FinancialCategory, FinancialLineItem, FinancialDataEntry, PeriodColumn, FinancePeriodType, FinancialPeriod } from "@/hooks/useFinanceDataRange";
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from "@/utils/currencyFormat";
 import { cn } from "@/lib/utils";
@@ -180,6 +180,77 @@ export function FinancialStatementTableRange({
     }
   }, [selectedCell, flatLineItems, existingPeriodColumns]);
 
+  // Copy selected cell or range to clipboard
+  const handleCopy = useCallback(() => {
+    if (!selectedCell) return;
+    
+    const data = getDataForCell(selectedCell.periodId, selectedCell.lineItemId);
+    const value = data?.amount ?? 0;
+    const formattedValue = `$${formatCurrencyInputValue(value)}`;
+    
+    navigator.clipboard.writeText(formattedValue).then(() => {
+      toast.success('Copied to clipboard', {
+        description: formattedValue,
+        icon: <Copy className="h-4 w-4" />
+      });
+    }).catch(() => {
+      toast.error('Failed to copy');
+    });
+  }, [selectedCell, getDataForCell]);
+
+  // Get variance vs prior period
+  const getVarianceInfo = useCallback((periodId: string, lineItemId: string, currentAmount: number) => {
+    const colIndex = existingPeriodColumns.findIndex(col => col.period?.id === periodId);
+    if (colIndex <= 0) return null; // No prior period
+    
+    const priorPeriod = existingPeriodColumns[colIndex - 1]?.period;
+    if (!priorPeriod) return null;
+    
+    const priorData = getDataForCell(priorPeriod.id, lineItemId);
+    const priorAmount = priorData?.amount ?? 0;
+    
+    if (priorAmount === 0 && currentAmount === 0) return null;
+    
+    const absoluteChange = currentAmount - priorAmount;
+    const percentChange = priorAmount !== 0 
+      ? ((currentAmount - priorAmount) / Math.abs(priorAmount)) * 100 
+      : currentAmount !== 0 ? 100 : 0;
+    
+    return {
+      priorAmount,
+      absoluteChange,
+      percentChange,
+      isPositive: absoluteChange > 0,
+      isNegative: absoluteChange < 0,
+      isZero: absoluteChange === 0
+    };
+  }, [existingPeriodColumns, getDataForCell]);
+
+  // Get conditional formatting class based on value
+  const getConditionalClass = useCallback((amount: number, variance: ReturnType<typeof getVarianceInfo>) => {
+    const classes: string[] = [];
+    
+    // Base negative formatting
+    if (amount < 0) {
+      classes.push('text-destructive');
+    }
+    
+    // Variance-based background tint
+    if (variance) {
+      if (variance.percentChange > 20) {
+        classes.push('bg-success/10');
+      } else if (variance.percentChange < -20) {
+        classes.push('bg-destructive/10');
+      } else if (variance.percentChange > 10) {
+        classes.push('bg-success/5');
+      } else if (variance.percentChange < -10) {
+        classes.push('bg-destructive/5');
+      }
+    }
+    
+    return classes.join(' ');
+  }, []);
+
   // Handle keyboard navigation and inline editing
   const handleTableKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Don't interfere with editing mode
@@ -189,6 +260,13 @@ export function FinancialStatementTableRange({
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
       e.preventDefault();
       handleUndo();
+      return;
+    }
+    
+    // Copy with Ctrl+C
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      e.preventDefault();
+      handleCopy();
       return;
     }
     
@@ -236,7 +314,7 @@ export function FinancialStatementTableRange({
         }
         break;
     }
-  }, [editingCell, selectedCell, navigateToCell, handleUndo, getDataForCell, handleStartEdit]);
+  }, [editingCell, selectedCell, navigateToCell, handleUndo, handleCopy, getDataForCell, handleStartEdit]);
 
   const handleEditKeyDown = (e: React.KeyboardEvent, periodId: string, lineItemId: string, previousAmount: number) => {
     if (e.key === 'Enter') {
@@ -617,6 +695,8 @@ export function FinancialStatementTableRange({
                             const currentAmount = data?.amount ?? 0;
                             const isSelected = selectedCell?.lineItemId === item.id && 
                                               selectedCell?.periodId === period.id;
+                            const variance = getVarianceInfo(period.id, item.id, currentAmount);
+                            const conditionalClass = getConditionalClass(currentAmount, variance);
 
                             return (
                               <TableCell 
@@ -664,20 +744,67 @@ export function FinancialStatementTableRange({
                                     </Button>
                                   </div>
                                 ) : (
-                                  <button
-                                    className={cn(
-                                      "w-full px-2 py-1.5 text-right hover:bg-muted/50 transition-colors cursor-pointer text-xs",
-                                      currentAmount < 0 && "text-destructive",
-                                      isSelected && "bg-primary/10"
-                                    )}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCellSelect(item.id, period.id, rowIndex, periodColIndex);
-                                    }}
-                                    onDoubleClick={() => handleStartEdit(period.id, item.id, currentAmount)}
-                                  >
-                                    ${formatCurrencyInputValue(currentAmount)}
-                                  </button>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          className={cn(
+                                            "w-full px-2 py-1.5 text-right hover:bg-muted/50 transition-colors cursor-pointer text-xs",
+                                            conditionalClass,
+                                            isSelected && "bg-primary/10"
+                                          )}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCellSelect(item.id, period.id, rowIndex, periodColIndex);
+                                          }}
+                                          onDoubleClick={() => handleStartEdit(period.id, item.id, currentAmount)}
+                                        >
+                                          ${formatCurrencyInputValue(currentAmount)}
+                                          {variance && variance.percentChange !== 0 && (
+                                            <span className={cn(
+                                              "ml-1 inline-flex items-center",
+                                              variance.isPositive ? "text-success" : "text-destructive"
+                                            )}>
+                                              {variance.isPositive ? (
+                                                <TrendingUp className="h-2.5 w-2.5" />
+                                              ) : (
+                                                <TrendingDown className="h-2.5 w-2.5" />
+                                              )}
+                                            </span>
+                                          )}
+                                        </button>
+                                      </TooltipTrigger>
+                                      {variance && (
+                                        <TooltipContent side="top" className="text-xs">
+                                          <div className="space-y-1">
+                                            <div className="flex items-center justify-between gap-4">
+                                              <span className="text-muted-foreground">Prior Period:</span>
+                                              <span>${formatCurrencyInputValue(variance.priorAmount)}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-4">
+                                              <span className="text-muted-foreground">Change:</span>
+                                              <span className={cn(
+                                                variance.isPositive && "text-success",
+                                                variance.isNegative && "text-destructive"
+                                              )}>
+                                                {variance.isPositive ? '+' : ''}${formatCurrencyInputValue(variance.absoluteChange)}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-4 border-t pt-1">
+                                              <span className="text-muted-foreground">% Change:</span>
+                                              <span className={cn(
+                                                "font-medium",
+                                                variance.isPositive && "text-success",
+                                                variance.isNegative && "text-destructive"
+                                              )}>
+                                                {variance.isPositive ? '+' : ''}{variance.percentChange.toFixed(1)}%
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                  </TooltipProvider>
                                 )}
                               </TableCell>
                             );
