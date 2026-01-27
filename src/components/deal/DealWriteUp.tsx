@@ -812,9 +812,15 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     <Card className="w-full max-w-full">
       <CardHeader>
         <div className="flex items-center justify-between gap-4 min-w-0">
-          <div className="min-w-0">
+          <div className="min-w-0 flex items-center gap-3">
             <CardTitle>Deal Write Up</CardTitle>
-            <CardDescription>Create, edit, and manage deal listings</CardDescription>
+            <Badge 
+              variant={isPublishedOnFlex ? 'green' : data.status === 'Closed' ? 'gray' : 'amber'}
+              className="shrink-0"
+            >
+              {isPublishedOnFlex ? 'Published' : data.status === 'Closed' ? 'Closed' : 'Draft'}
+            </Badge>
+            <CardDescription className="hidden sm:block">Create, edit, and manage deal listings</CardDescription>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <FlexSyncStatusBadge dealId={dealId} />
