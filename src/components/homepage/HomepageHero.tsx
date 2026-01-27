@@ -50,7 +50,7 @@ export const HomepageHero = () => {
           className="bg-white text-primary hover:bg-white/90 px-8 py-6 text-base"
           asChild
         >
-          <Link to="/login">Request a Demo</Link>
+          <Link to="/waitlist">Request a Demo</Link>
         </Button>
       </div>
 

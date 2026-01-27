@@ -25,7 +25,7 @@ export const HomepageCTA = () => {
               className="bg-white text-primary hover:bg-white/90 px-8 py-6 text-base"
               asChild
             >
-              <Link to="/login">
+              <Link to="/waitlist">
                 Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>

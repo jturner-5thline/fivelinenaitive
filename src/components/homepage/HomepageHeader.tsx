@@ -19,14 +19,14 @@ export const HomepageHeader = () => {
             className="text-white/80 hover:text-white hover:bg-white/10"
             asChild
           >
-            <Link to="/login">Log in</Link>
+            <Link to="/waitlist">Log in</Link>
           </Button>
           <Button 
             size="sm" 
             className="bg-white text-primary hover:bg-white/90"
             asChild
           >
-            <Link to="/login">Request Demo</Link>
+            <Link to="/waitlist">Request Demo</Link>
           </Button>
         </div>
       </div>

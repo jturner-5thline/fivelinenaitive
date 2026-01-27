@@ -57,7 +57,7 @@ export const HomepageSecurity = () => {
               className="border-white/20 text-white hover:bg-white/10"
               asChild
             >
-              <Link to="/login">
+              <Link to="/waitlist">
                 <Lock className="w-4 h-4 mr-2" />
                 Learn more about security
               </Link>
