@@ -28,12 +28,13 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDataRoomChecklist, useDealChecklistStatus, ChecklistItem } from '@/hooks/useDataRoomChecklist';
 import { useDealChecklistItems, DealChecklistItem } from '@/hooks/useDealChecklistItems';
-import { useChecklistCategories, getCategoryColorClasses } from '@/hooks/useChecklistCategories';
+import { useChecklistCategories, getCategoryColorClasses, CategoryColor, CategoryIcon } from '@/hooks/useChecklistCategories';
 import { useDealAttachments } from '@/hooks/useDealAttachments';
 import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
 import { DataRoomGridView } from './DataRoomGridView';
 import { ChecklistItemDropzone } from './ChecklistItemDropzone';
 import { AddChecklistItemDialog } from './AddChecklistItemDialog';
+import { AddDataRoomFolderDialog } from './AddDataRoomFolderDialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -105,8 +106,13 @@ export function DataRoomChecklistPanel({
   const { items: templateItems, loading: loadingTemplateItems } = useDataRoomChecklist();
   const { items: dealSpecificItems, loading: loadingDealItems, addItem: addDealItem, deleteItem: deleteDealItem } = useDealChecklistItems(dealId);
   const { statuses, toggleItemStatus, unlinkAttachment, linkAttachment } = useDealChecklistStatus(dealId);
-  const { categories: categoryConfigs, getCategoryByName } = useChecklistCategories();
+  const { categories: categoryConfigs, categoryNames, getCategoryByName, addCategory } = useChecklistCategories();
   const { uploadAttachment, refetch: refetchAttachments } = useDealAttachments(dealId);
+  
+  // Handle adding a new folder
+  const handleAddFolder = async (name: string, icon: CategoryIcon, color: CategoryColor) => {
+    return await addCategory(name, icon, color);
+  };
   
   // Combine template items and deal-specific items
   const checklistItems: UnifiedChecklistItem[] = useMemo(() => {
@@ -402,10 +408,16 @@ export function DataRoomChecklistPanel({
               </p>
             )}
           </div>
-          <AddChecklistItemDialog
-            categories={categoryConfigs}
-            onAdd={addDealItem}
-          />
+          <div className="flex items-center gap-2">
+            <AddDataRoomFolderDialog 
+              onAdd={handleAddFolder}
+              existingFolderNames={categoryNames}
+            />
+            <AddChecklistItemDialog
+              categories={categoryConfigs}
+              onAdd={addDealItem}
+            />
+          </div>
         </div>
       </div>
 
