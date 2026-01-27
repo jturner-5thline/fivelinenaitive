@@ -70,13 +70,10 @@ export function SuggestionActionDialog({
       if (suggestion.lenderId && lender) {
         const lenderUpdates: Record<string, unknown> = {};
         
-        // Add note to existing notes
+        // Set the new note - this will trigger the history logic in updateLender
+        // which automatically saves the previous note to lender_notes_history
         if (note.trim()) {
-          const timestamp = new Date().toLocaleString();
-          const newNote = `[${timestamp}] ${note.trim()}`;
-          lenderUpdates.notes = lender.notes 
-            ? `${lender.notes}\n\n${newNote}`
-            : newNote;
+          lenderUpdates.notes = note.trim();
         }
 
         // Update stage if changed
