@@ -19,12 +19,13 @@ export interface Widget {
   color: 'primary' | 'accent' | 'success' | 'warning' | 'destructive';
 }
 
-export type SpecialWidget = 'stale-deals' | 'milestones' | 'flex-leaderboard';
+export type SpecialWidget = 'stale-deals' | 'milestones' | 'flex-leaderboard' | 'smart-suggestions';
 
 export const SPECIAL_WIDGET_OPTIONS: { value: SpecialWidget; label: string; description: string }[] = [
   { value: 'stale-deals', label: 'Alerts', description: 'Stale deals and lenders needing updates' },
   { value: 'milestones', label: 'Milestones', description: 'View upcoming and overdue milestones' },
   { value: 'flex-leaderboard', label: 'FLEx Leaderboard', description: 'Top 5 deals with highest lender interest from FLEx' },
+  { value: 'smart-suggestions', label: 'Smart Suggestions', description: 'AI-powered deal insights and recommendations' },
 ];
 
 export const METRIC_OPTIONS: { value: WidgetMetric; label: string }[] = [
@@ -59,6 +60,7 @@ const DEFAULT_SPECIAL_WIDGETS: Record<SpecialWidget, boolean> = {
   'stale-deals': false,
   'milestones': true,
   'flex-leaderboard': true,
+  'smart-suggestions': true,
 };
 
 const STORAGE_KEY = 'dashboard-widgets';
