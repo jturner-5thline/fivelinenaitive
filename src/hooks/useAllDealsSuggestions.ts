@@ -43,9 +43,9 @@ export function useAllDealsSuggestions(
                 dealName: deal.company,
                 type: 'warning',
                 priority: 'high',
-                title: `${lender.name} hasn't been updated in ${daysSinceUpdate} days`,
-                description: `On deal "${deal.company}"`,
-                actionLabel: 'Update Lender',
+                title: `Follow up with ${lender.name}`,
+                description: `${deal.company} • ${daysSinceUpdate} days since last update`,
+                actionLabel: 'Update Status',
               });
             } else if (daysSinceUpdate >= 5) {
               allSuggestions.push({
@@ -54,8 +54,8 @@ export function useAllDealsSuggestions(
                 dealName: deal.company,
                 type: 'warning',
                 priority: 'medium',
-                title: `${lender.name} needs attention`,
-                description: `${daysSinceUpdate} days since last update on "${deal.company}"`,
+                title: `Check in with ${lender.name}`,
+                description: `${deal.company} • ${daysSinceUpdate} days since last update`,
                 actionLabel: 'Review',
               });
             }
@@ -76,9 +76,9 @@ export function useAllDealsSuggestions(
               dealName: deal.company,
               type: 'warning',
               priority: daysOverdue >= 7 ? 'high' : 'medium',
-              title: `"${milestone.title}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue`,
-              description: `On deal "${deal.company}"`,
-              actionLabel: 'Complete or Reschedule',
+              title: `Complete "${milestone.title}"`,
+              description: `${deal.company} • ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue`,
+              actionLabel: 'Mark Complete',
             });
           } else if (suggestionPrefs.upcomingMilestones && isToday(dueDate)) {
             allSuggestions.push({
@@ -87,8 +87,8 @@ export function useAllDealsSuggestions(
               dealName: deal.company,
               type: 'reminder',
               priority: 'high',
-              title: `"${milestone.title}" is due today`,
-              description: `On deal "${deal.company}"`,
+              title: `Complete "${milestone.title}" today`,
+              description: `${deal.company} • Due today`,
               actionLabel: 'Mark Complete',
             });
           } else if (suggestionPrefs.upcomingMilestones && isTomorrow(dueDate)) {
@@ -98,9 +98,9 @@ export function useAllDealsSuggestions(
               dealName: deal.company,
               type: 'reminder',
               priority: 'medium',
-              title: `"${milestone.title}" is due tomorrow`,
-              description: `On deal "${deal.company}"`,
-              actionLabel: 'View',
+              title: `Prepare for "${milestone.title}"`,
+              description: `${deal.company} • Due tomorrow`,
+              actionLabel: 'View Details',
             });
           }
         }
@@ -116,9 +116,9 @@ export function useAllDealsSuggestions(
             dealName: deal.company,
             type: 'opportunity',
             priority: 'high',
-            title: `${termSheetLenders.length} lender${termSheetLenders.length > 1 ? 's at' : ' at'} Term Sheet`,
-            description: `${deal.company} - ${termSheetLenders.map(l => l.name).join(', ')}`,
-            actionLabel: 'Focus on closing',
+            title: `Close ${deal.company} with ${termSheetLenders.length === 1 ? termSheetLenders[0].name : `${termSheetLenders.length} lenders`}`,
+            description: `Term sheet${termSheetLenders.length > 1 ? 's' : ''} ready • ${termSheetLenders.map(l => l.name).join(', ')}`,
+            actionLabel: 'Review Terms',
           });
         }
       }
@@ -134,8 +134,8 @@ export function useAllDealsSuggestions(
             dealName: deal.company,
             type: 'warning',
             priority: daysSinceDealUpdate >= 14 ? 'high' : 'medium',
-            title: `No updates in ${daysSinceDealUpdate} days`,
-            description: `"${deal.company}" needs attention`,
+            title: `Update status on ${deal.company}`,
+            description: `No activity in ${daysSinceDealUpdate} days`,
             actionLabel: 'Review Deal',
           });
         }
@@ -156,8 +156,8 @@ export function useAllDealsSuggestions(
             dealName: deal.company,
             type: 'action',
             priority: 'medium',
-            title: `${stuckLenders.length} lenders stuck in early stages`,
-            description: `"${deal.company}" - consider follow-up or moving to pass`,
+            title: `Move forward or pass on ${stuckLenders.length} lenders`,
+            description: `${deal.company} • Stuck in early stages 10+ days`,
             actionLabel: 'Review Lenders',
           });
         }
