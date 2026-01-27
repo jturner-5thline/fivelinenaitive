@@ -256,7 +256,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingPublishToastIdRef = useRef<string | number | null>(null);
   const { data: latestSync } = useLatestFlexSync(dealId);
-  const { owners } = useDealOwnership(dealId);
+  const { owners, totalEquityRaised } = useDealOwnership(dealId);
   
   // View mode state: 'tabs', 'long', or 'carousel'
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -435,6 +435,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     financialYears: data.financialYears,
     financialComments: data.financialComments,
     ownership: owners,
+    totalEquityRaised: totalEquityRaised,
     publishAsAnonymous: data.publishAsAnonymous,
   });
 
