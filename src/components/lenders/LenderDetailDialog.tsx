@@ -32,7 +32,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useLenderSectionOrder, LenderSectionId } from '@/hooks/useLenderSectionOrder';
 import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
-import { LenderContactsSection } from './LenderContactsSection';
 import { cn } from '@/lib/utils';
 
 interface LenderInfo {
@@ -573,9 +572,29 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 {/* Edit Mode: Contact Information */}
                 <section>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Contacts
+                    Contact
                   </h3>
-                  <LenderContactsSection lenderId={lender.id || null} isEditMode={true} />
+                  <div className="grid gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Contact Name</Label>
+                      <Input
+                        value={editForm.contactName}
+                        onChange={(e) => setEditForm({ ...editForm, contactName: e.target.value })}
+                        placeholder="Primary contact name"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Email</Label>
+                      <Input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        placeholder="email@example.com"
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
                 </section>
                 <Separator />
 
@@ -893,30 +912,55 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <div key={sectionId}>
                           <section>
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                              Contacts
+                              Contact
                             </h3>
-                            <div className="space-y-4">
-                              {/* Website */}
-                              {lender.website && (
-                                <div className="flex items-center gap-3">
-                                  <Globe className="h-4 w-4 text-muted-foreground" />
-                                  <a 
-                                    href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="text-primary hover:underline flex items-center gap-1"
-                                  >
-                                    {lender.website.replace(/^https?:\/\//, '')}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                </div>
-                              )}
-                              
-                              {/* Multiple Contacts Section */}
-                              <LenderContactsSection lenderId={lender.id || null} />
-                              
-                              {/* Relationship Owners */}
-                              <div className="pt-2">
+                            <div className="grid grid-cols-2 gap-6">
+                              {/* Left column - Contact details */}
+                              <div className="grid gap-3">
+                                {lender.website && (
+                                  <div className="flex items-center gap-3">
+                                    <Globe className="h-4 w-4 text-muted-foreground" />
+                                    <a 
+                                      href={lender.website.startsWith('http') ? lender.website : `https://${lender.website}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      {lender.website.replace(/^https?:\/\//, '')}
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  </div>
+                                )}
+                                {lender.contact.name && (
+                                  <div className="flex items-center gap-3">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    <span>
+                                      {lender.contact.name}{lender.contact.title && `, ${lender.contact.title}`}
+                                    </span>
+                                  </div>
+                                )}
+                                {lender.contact.email && (
+                                  <div className="flex items-center gap-3">
+                                    <Mail className="h-4 w-4 text-muted-foreground" />
+                                    <a href={`mailto:${lender.contact.email}`} className="text-primary hover:underline">
+                                      {lender.contact.email}
+                                    </a>
+                                  </div>
+                                )}
+                                {lender.contact.phone && (
+                                  <div className="flex items-center gap-3">
+                                    <Phone className="h-4 w-4 text-muted-foreground" />
+                                    <a href={`tel:${lender.contact.phone}`} className="hover:underline">
+                                      {lender.contact.phone}
+                                    </a>
+                                  </div>
+                                )}
+                                {!lender.website && !lender.contact.name && !lender.contact.email && !lender.contact.phone && (
+                                  <p className="text-muted-foreground text-sm italic">No contact info</p>
+                                )}
+                              </div>
+                              {/* Right column - Relationship Owners */}
+                              <div>
                                 <Label className="text-xs text-muted-foreground mb-2 block">Relationship Owner(s)</Label>
                                 {lender.relationshipOwners ? (
                                   <div className="flex flex-wrap gap-1.5">
