@@ -91,6 +91,7 @@ interface LenderDetailDialogProps {
   onEdit?: (lenderName: string) => void;
   onDelete?: (lenderName: string) => void;
   onSave?: (lenderId: string, data: LenderEditData) => Promise<void>;
+  initialEditMode?: boolean;
 }
 
 function formatFileSize(bytes: number): string {
@@ -188,7 +189,7 @@ function HorizontalScrollContainer({ children }: { children: React.ReactNode }) 
   );
 }
 
-export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave }: LenderDetailDialogProps) {
+export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false }: LenderDetailDialogProps) {
   const { deals } = useDealsContext();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -197,7 +198,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<LenderAttachmentCategory>('general');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(initialEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState<LenderEditData>({
@@ -251,12 +252,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     }
   }, [lender, isEditMode]);
 
-  // Reset edit mode when dialog closes
+  // Reset edit mode when dialog closes, or set it when opened with initialEditMode
   useEffect(() => {
     if (!open) {
       setIsEditMode(false);
+    } else if (initialEditMode) {
+      setIsEditMode(true);
     }
-  }, [open]);
+  }, [open, initialEditMode]);
 
   const handleEnterEditMode = () => {
     if (lender) {

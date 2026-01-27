@@ -285,6 +285,7 @@ export default function Lenders() {
   };
   const [selectedLender, setSelectedLender] = useState<LenderInfo | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isDetailEditMode, setIsDetailEditMode] = useState(false);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   const fetchLenderSummary = useCallback(async (lenderName: string, websiteUrl: string) => {
@@ -353,8 +354,9 @@ export default function Lenders() {
     return counts;
   }, [deals, masterLenders]);
 
-  const openLenderDetail = (lender: MasterLender) => {
+  const openLenderDetail = (lender: MasterLender, editMode = false) => {
     setSelectedLender(masterLenderToLenderInfo(lender));
+    setIsDetailEditMode(editMode);
     setIsDetailOpen(true);
   };
 
@@ -544,22 +546,8 @@ export default function Lenders() {
   const openEditDialog = (lenderName: string) => {
     const lender = masterLenders.find(l => l.name === lenderName);
     if (lender) {
-      setEditingLenderId(lender.id);
-      setForm({
-        id: lender.id,
-        name: lender.name,
-        contactName: lender.contact_name || '',
-        contactTitle: lender.contact_title || '',
-        email: lender.email || '',
-        lenderType: lender.lender_type || '',
-        loanTypes: lender.loan_types?.join(', ') || '',
-        minDeal: lender.min_deal?.toString() || '',
-        maxDeal: lender.max_deal?.toString() || '',
-        industries: lender.industries?.join(', ') || '',
-        geo: lender.geo || '',
-        description: lender.deal_structure_notes || '',
-      });
-      setIsDialogOpen(true);
+      // Open the detail dialog in edit mode
+      openLenderDetail(lender, true);
     }
   };
 
@@ -1444,12 +1432,16 @@ export default function Lenders() {
       <LenderDetailDialog
         lender={selectedLender}
         open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
+        onOpenChange={(open) => {
+          setIsDetailOpen(open);
+          if (!open) setIsDetailEditMode(false);
+        }}
         onSave={handleInlineSave}
         onDelete={(lenderName) => {
           const lender = masterLenders.find(l => l.name === lenderName);
           if (lender) handleDelete(lender.id, lender.name);
         }}
+        initialEditMode={isDetailEditMode}
       />
 
       <ImportLendersDialog
