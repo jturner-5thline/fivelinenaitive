@@ -96,5 +96,6 @@ export function useDealSpaceAI(dealId: string | undefined) {
     sendMessage,
     clearMessages,
     isLoading,
+    setMessages,
   };
 }
