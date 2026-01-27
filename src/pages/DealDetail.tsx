@@ -61,6 +61,7 @@ import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggesti
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
+import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
@@ -2405,8 +2406,11 @@ export default function DealDetail() {
                         case 'deal-information':
                           return (
                             <Card key={id}>
-                              <CardHeader>
-                                <CardTitle className="text-lg">Deal Information</CardTitle>
+                              <CardHeader className="flex flex-row items-center justify-between py-4">
+                                <div className="flex items-center gap-2">
+                                  <DealMemoDialog dealId={deal.id} companyName={deal.company} />
+                                  <CardTitle className="text-lg">Deal Information</CardTitle>
+                                </div>
                               </CardHeader>
                               <CardContent className="space-y-4">
                                 <div className="space-y-1.5">

@@ -1313,6 +1313,59 @@ export type Database = {
           },
         ]
       }
+      deal_memos: {
+        Row: {
+          analyst_notes: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          highlights: string | null
+          hurdles: string | null
+          id: string
+          lender_notes: string | null
+          narrative: string | null
+          other_notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          analyst_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          highlights?: string | null
+          hurdles?: string | null
+          id?: string
+          lender_notes?: string | null
+          narrative?: string | null
+          other_notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          analyst_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          highlights?: string | null
+          hurdles?: string | null
+          id?: string
+          lender_notes?: string | null
+          narrative?: string | null
+          other_notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_memos_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_milestones: {
         Row: {
           completed: boolean
