@@ -7,10 +7,10 @@ import { Json } from '@/integrations/supabase/types';
 export type StageGroup = 'active' | 'on-deck' | 'passed' | 'on-hold';
 
 export const STAGE_GROUPS: { id: StageGroup; label: string; color: string }[] = [
-  { id: 'active', label: 'Active', color: 'bg-green-500' },
-  { id: 'on-deck', label: 'On Deck', color: 'bg-blue-500' },
-  { id: 'passed', label: 'Passed', color: 'bg-red-500' },
   { id: 'on-hold', label: 'On Hold', color: 'bg-yellow-500' },
+  { id: 'on-deck', label: 'On Deck', color: 'bg-blue-500' },
+  { id: 'active', label: 'Active', color: 'bg-green-500' },
+  { id: 'passed', label: 'Passed', color: 'bg-red-500' },
 ];
 
 export interface StageOption {
