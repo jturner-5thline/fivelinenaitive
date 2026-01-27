@@ -220,6 +220,11 @@ serve(async (req) => {
       return await handleSummarize(dealId);
     }
 
+    // Handle write-up extraction action
+    if (action === "extract-writeup") {
+      return await handleExtractWriteUp(dealId);
+    }
+
     if (!dealId || !messages || !Array.isArray(messages)) {
       return new Response(
         JSON.stringify({ error: "dealId and messages are required" }),
@@ -510,6 +515,171 @@ Be concise but thorough. Only include sections that have relevant content from t
     console.error("Summarization error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Summarization failed" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Handle write-up data extraction
+async function handleExtractWriteUp(dealId: string) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get documents from the deal space
+    const { data: documents, error: docsError } = await supabase
+      .from("deal_space_documents")
+      .select("id, name, file_path, content_type")
+      .eq("deal_id", dealId);
+
+    if (docsError) throw new Error("Failed to fetch documents");
+    if (!documents || documents.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No documents to extract from", extractedFields: [] }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Extract all document contents with source tracking
+    const documentContents: { name: string; content: string }[] = [];
+    for (const doc of documents) {
+      try {
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from("deal-space")
+          .download(doc.file_path);
+
+        if (downloadError) continue;
+
+        const extracted = await extractContent(fileData, doc.name);
+        if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
+          documentContents.push({
+            name: doc.name,
+            content: extracted.text.substring(0, 30000),
+          });
+        }
+      } catch (err) {
+        console.error(`Error processing ${doc.name}:`, err);
+      }
+    }
+
+    if (documentContents.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Could not extract content from documents", extractedFields: [] }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const combinedContent = documentContents
+      .map(d => `### Document: ${d.name}\n${d.content}`)
+      .join("\n\n---\n\n");
+
+    // Call Lovable AI for structured extraction
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const extractionPrompt = `You are an expert at extracting structured deal information from documents.
+Analyze the following documents and extract any relevant information that could be used to fill out a deal write-up form.
+
+The fields you should look for are:
+- companyName: The company name
+- companyUrl: Company website URL
+- linkedinUrl: LinkedIn profile URL
+- industries: List of industries (e.g., ["Technology", "Healthcare"])
+- location: Company location/headquarters (US state, country, etc.)
+- yearFounded: Year the company was founded
+- headcount: Number of employees
+- dealTypes: Types of deal (e.g., ["Growth Capital", "Acquisition"])
+- billingModels: How the company charges (e.g., ["Subscription", "Usage-based"])
+- profitability: One of "Profitable", "Break-even", "Pre-profit", or "Negative"
+- grossMargins: Gross margin percentage (e.g., "75%")
+- capitalAsk: Amount of capital being raised (e.g., "$5M" or "$5,000,000")
+- useOfFunds: How the capital will be used
+- existingDebtDetails: Information about existing debt
+- description: Company overview/description (2-3 sentences)
+- accountingSystem: Accounting software used (e.g., "QuickBooks", "NetSuite")
+- companyHighlights: Array of key highlights, each with title and description
+- keyItems: Array of key deal items, each with title and description
+
+For each field you can extract, provide:
+1. The field name (exactly as listed above)
+2. The extracted value
+3. A confidence level: "high" (explicitly stated), "medium" (inferred from context), or "low" (uncertain)
+4. The source document name
+5. The location in the document (page number, section, etc.) if available
+
+Respond ONLY with a valid JSON object in this exact format:
+{
+  "extractedFields": [
+    {
+      "field": "companyName",
+      "value": "TechCorp Inc",
+      "confidence": "high",
+      "source": "Pitch Deck.pdf",
+      "sourceLocation": "Page 1"
+    }
+  ]
+}
+
+Only include fields where you found relevant information. Do not guess or make up values.
+For array fields like industries, dealTypes, billingModels, provide arrays.
+For companyHighlights and keyItems, provide arrays of objects with {id: "unique-id", title: "...", description: "..."}.`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: extractionPrompt },
+          { role: "user", content: `Extract deal write-up information from these documents:\n\n${combinedContent}` }
+        ],
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      throw new Error("AI extraction failed");
+    }
+
+    const aiData = await aiResponse.json();
+    const responseContent = aiData.choices?.[0]?.message?.content || "{}";
+
+    // Parse the JSON response
+    let extractedData: { extractedFields: unknown[] } = { extractedFields: [] };
+    try {
+      // Remove markdown code blocks if present
+      const cleanedContent = responseContent
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+      extractedData = JSON.parse(cleanedContent);
+    } catch (parseError) {
+      console.error("Failed to parse AI response:", parseError, responseContent);
+      // Try to extract JSON from the response
+      const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          extractedData = JSON.parse(jsonMatch[0]);
+        } catch {
+          console.error("Failed to extract JSON from response");
+        }
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        extractedFields: extractedData.extractedFields || [],
+        documentCount: documents.length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Write-up extraction error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Extraction failed", extractedFields: [] }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

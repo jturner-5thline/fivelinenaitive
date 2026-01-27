@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, GalleryHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, GalleryHorizontal, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -7,6 +7,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { FlexSyncStatusBadge, FlexSyncHistory } from '@/components/deal/FlexSyncHistory';
 import { useLatestFlexSync } from '@/hooks/useFlexSyncHistory';
 import { useDealOwnership } from '@/hooks/useDealOwnership';
+import { useDealSpaceAutoFill, ExtractedWriteUpField } from '@/hooks/useDealSpaceAutoFill';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -33,6 +34,7 @@ import { WriteUpFinancialTab } from './writeup/WriteUpFinancialTab';
 import { WriteUpCompanyHighlightsTab } from './writeup/WriteUpCompanyHighlightsTab';
 import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
 import { WriteUpOwnershipTab } from './writeup/WriteUpOwnershipTab';
+import { WriteUpAutoFillDialog } from './WriteUpAutoFillDialog';
 
 export interface KeyItem {
   id: string;
@@ -257,6 +259,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const pendingPublishToastIdRef = useRef<string | number | null>(null);
   const { data: latestSync } = useLatestFlexSync(dealId);
   const { owners, totalEquityRaised } = useDealOwnership(dealId);
+  
+  // Auto-fill from Deal Space
+  const { isExtracting, extractedFields, extractWriteUpData, clearExtractedFields } = useDealSpaceAutoFill(dealId);
+  const [showAutoFillDialog, setShowAutoFillDialog] = useState(false);
+  const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
+  const [autoFillDocumentCount, setAutoFillDocumentCount] = useState(0);
   
   // View mode state: 'tabs', 'long', or 'carousel'
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -814,6 +822,38 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     updateField('financialYears', data.financialYears.filter(item => item.id !== id));
   };
 
+  // Auto-fill handlers
+  const handleAutoFillClick = async () => {
+    const result = await extractWriteUpData();
+    if (result && result.extractedFields.length > 0) {
+      setAutoFillDocumentCount(result.documentCount);
+      setShowAutoFillDialog(true);
+    } else if (result) {
+      toast.info('No extractable data found in Deal Space documents');
+    }
+  };
+
+  const handleApplyAutoFill = (selectedFields: ExtractedWriteUpField[]) => {
+    const newData = { ...data };
+    const appliedFieldNames = new Set<string>();
+
+    for (const field of selectedFields) {
+      const fieldName = field.field as keyof DealWriteUpData;
+      if (fieldName in newData) {
+        (newData as Record<string, unknown>)[fieldName] = field.value;
+        appliedFieldNames.add(fieldName);
+      }
+    }
+
+    onChange(newData);
+    setAutoFilledFields(appliedFieldNames);
+    clearExtractedFields();
+    
+    toast.success(`Auto-filled ${selectedFields.length} field${selectedFields.length !== 1 ? 's' : ''}`, {
+      description: 'Review the highlighted fields and make any adjustments',
+    });
+  };
+
   return (
     <Card className="w-full max-w-full">
       <CardHeader>
@@ -840,8 +880,37 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         
         {/* Edit Deal Section with Tabs or Long View */}
         <div className="border rounded-lg p-6 space-y-6 min-w-0">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Edit Deal</h3>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold">Edit Deal</h3>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAutoFillClick}
+                      disabled={isExtracting}
+                      className="gap-2"
+                    >
+                      {isExtracting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      )}
+                      Auto-Fill from Deal Space
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Extract data from uploaded Deal Space documents</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              {autoFilledFields.size > 0 && (
+                <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
+                  <Sparkles className="h-3 w-3" />
+                  {autoFilledFields.size} field{autoFilledFields.size !== 1 ? 's' : ''} auto-filled
+                </Badge>
+              )}
+            </div>
             <TooltipProvider>
               <ToggleGroup 
                 type="single" 
@@ -1324,6 +1393,16 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Auto-Fill Dialog */}
+      <WriteUpAutoFillDialog
+        open={showAutoFillDialog}
+        onOpenChange={setShowAutoFillDialog}
+        extractedFields={extractedFields}
+        currentData={data}
+        onApply={handleApplyAutoFill}
+        documentCount={autoFillDocumentCount}
+      />
 
     </Card>
   );
