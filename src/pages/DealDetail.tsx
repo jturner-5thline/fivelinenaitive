@@ -2932,13 +2932,23 @@ export default function DealDetail() {
                                   >
                                     <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
                                       <SelectValue>
-                                        {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                        <span className="flex items-center gap-1.5">
+                                          {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && (
+                                            <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                                          )}
+                                          {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                        </span>
                                       </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                       {configuredStages.map((stage) => (
                                         <SelectItem key={stage.id} value={stage.id}>
-                                          {stage.label}
+                                          <span className="flex items-center gap-1.5">
+                                            {stage.group === 'passed' && (
+                                              <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                                            )}
+                                            {stage.label}
+                                          </span>
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -3303,13 +3313,23 @@ export default function DealDetail() {
                                           >
                                             <SelectTrigger className="w-full h-7 text-xs rounded-lg px-2 bg-secondary border-0 justify-start">
                                               <SelectValue>
-                                                {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                                <span className="flex items-center gap-1.5">
+                                                  {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && (
+                                                    <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                                                  )}
+                                                  {configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                                </span>
                                               </SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
                                               {configuredStages.map((stage) => (
                                                 <SelectItem key={stage.id} value={stage.id}>
-                                                  {stage.label}
+                                                  <span className="flex items-center gap-1.5">
+                                                    {stage.group === 'passed' && (
+                                                      <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                                                    )}
+                                                    {stage.label}
+                                                  </span>
                                                 </SelectItem>
                                               ))}
                                             </SelectContent>
