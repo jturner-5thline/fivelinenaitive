@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles, Workflow, Bot } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles, Workflow, Bot, DollarSign } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +39,7 @@ const menuItems = [
   { title: "Sales & BD", url: "/sales-bd", icon: Users, featureKey: "sales_bd" },
   { title: "HR", url: "/hr", icon: UserCog, featureKey: "hr" },
   { title: "Operations", url: "/operations", icon: Cog, featureKey: "operations" },
+  { title: "Finance", url: "/finance", icon: DollarSign, featureKey: "finance" },
 ];
 
 const footerItems = [
