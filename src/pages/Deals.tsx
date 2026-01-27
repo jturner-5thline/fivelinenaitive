@@ -193,7 +193,7 @@ export default function Dashboard() {
                         {specialWidgets['stale-deals'] && <AlertsWidget deals={allDeals} />}
                         {specialWidgets['milestones'] && <MilestonesWidget />}
                         {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
-                        <AllSuggestionsWidget deals={allDeals} />
+                        {specialWidgets['smart-suggestions'] && <AllSuggestionsWidget deals={allDeals} />}
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
