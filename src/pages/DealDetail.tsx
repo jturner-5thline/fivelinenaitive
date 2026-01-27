@@ -2886,7 +2886,7 @@ export default function DealDetail() {
                                     >
                                       {lender.name}
                                     </button>
-                                    {(() => {
+                                    {lender.trackingStatus !== 'passed' && (() => {
                                       const timeInfo = getLenderTimeInfo(lender.updatedAt);
                                       return timeInfo.text ? (
                                         <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
@@ -3267,7 +3267,7 @@ export default function DealDetail() {
                                             >
                                               {lender.name}
                                             </button>
-                                            {(() => {
+                                            {lender.trackingStatus !== 'passed' && (() => {
                                               const timeInfo = getLenderTimeInfo(lender.updatedAt);
                                               return timeInfo.text ? (
                                                 <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>

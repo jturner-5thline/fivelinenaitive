@@ -118,7 +118,7 @@ function DraggableLenderTile({
                 )}
                 {stageLabel}
               </span>
-            {timeAgo && (
+            {timeAgo && lender.trackingStatus !== 'passed' && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {timeAgo}
