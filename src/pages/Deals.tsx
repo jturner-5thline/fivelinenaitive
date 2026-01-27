@@ -16,7 +16,7 @@ import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBan
 import { DemoBanner } from '@/components/deals/DemoBanner';
 import { DemoTour } from '@/components/deals/DemoTour';
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
-import { AllSuggestionsWidget } from '@/components/deals/AllSuggestionsWidget';
+import { SmartSuggestionsDropdown } from '@/components/deals/SmartSuggestionsDropdown';
 import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
@@ -135,6 +135,7 @@ export default function Dashboard() {
               >
                 <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">5th Line</h1>
                 <div className="flex items-center gap-2">
+                  <SmartSuggestionsDropdown deals={allDeals} />
                   <FlaggedDealsPanel deals={allDeals} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -193,7 +194,6 @@ export default function Dashboard() {
                         {specialWidgets['stale-deals'] && <AlertsWidget deals={allDeals} />}
                         {specialWidgets['milestones'] && <MilestonesWidget />}
                         
-                        {specialWidgets['smart-suggestions'] && <AllSuggestionsWidget deals={allDeals} />}
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
