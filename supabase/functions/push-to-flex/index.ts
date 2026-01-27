@@ -368,6 +368,7 @@ serve(async (req) => {
       activityDescription = "Deal pushed to FLEx";
     }
 
+    console.log(`totalEquityRaised from writeUpData: "${writeUpData?.totalEquityRaised}"`);
     console.log(`${action} deal ${dealId} on FLEx:`, JSON.stringify(flexPayload, null, 2));
 
     // Send to FLEx API
