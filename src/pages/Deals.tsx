@@ -11,7 +11,7 @@ import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleto
 import { AlertsWidget } from '@/components/deals/AlertsWidget';
 import { MilestonesWidget } from '@/components/deals/MilestonesWidget';
 
-import { FlexLeaderboardWidget } from '@/components/deals/FlexLeaderboardWidget';
+
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
 import { DemoBanner } from '@/components/deals/DemoBanner';
 import { DemoTour } from '@/components/deals/DemoTour';
@@ -192,7 +192,7 @@ export default function Dashboard() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                         {specialWidgets['stale-deals'] && <AlertsWidget deals={allDeals} />}
                         {specialWidgets['milestones'] && <MilestonesWidget />}
-                        {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
+                        
                         {specialWidgets['smart-suggestions'] && <AllSuggestionsWidget deals={allDeals} />}
                       </div>
                     ) : (
