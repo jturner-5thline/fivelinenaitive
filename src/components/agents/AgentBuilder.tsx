@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,6 @@ import {
   Bot, 
   Settings, 
   Shield, 
-  Wand2, 
   Database, 
   Building2, 
   Activity, 
@@ -21,10 +20,11 @@ import {
   Search,
   Globe,
   Users,
-  Lock,
-  Sparkles
+  Sparkles,
+  Puzzle,
 } from 'lucide-react';
 import type { Agent, CreateAgentData } from '@/hooks/useAgents';
+import { AgentToolsBuilder, type AgentTool } from './AgentToolsBuilder';
 
 interface AgentBuilderProps {
   initialData?: Agent;
@@ -107,11 +107,41 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
   const [isShared, setIsShared] = useState(initialData?.is_shared ?? false);
   const [isPublic, setIsPublic] = useState(initialData?.is_public ?? false);
 
+  // Tools / Workflow
+  const [tools, setTools] = useState<AgentTool[]>(() => {
+    // Initialize with data access tools based on initial permissions
+    const initialTools: AgentTool[] = [];
+    if (initialData?.can_access_deals) {
+      initialTools.push({ id: 'deals_init', type: 'deals', name: 'Deal Data', enabled: true, config: {} });
+    }
+    if (initialData?.can_access_lenders) {
+      initialTools.push({ id: 'lenders_init', type: 'lenders', name: 'Lender Data', enabled: true, config: {} });
+    }
+    if (initialData?.can_access_activities) {
+      initialTools.push({ id: 'activities_init', type: 'activities', name: 'Activity Logs', enabled: true, config: {} });
+    }
+    if (initialData?.can_access_milestones) {
+      initialTools.push({ id: 'milestones_init', type: 'milestones', name: 'Milestones', enabled: true, config: {} });
+    }
+    return initialTools;
+  });
+
   const applyTemplate = (template: typeof PROMPT_TEMPLATES[0]) => {
     setName(template.name);
     setAvatarEmoji(template.emoji);
     setSystemPrompt(template.prompt);
     setPersonality(template.personality);
+  };
+
+  // Sync tools to permissions
+  const handleToolsChange = (newTools: AgentTool[]) => {
+    setTools(newTools);
+    // Update permissions based on tools
+    setCanAccessDeals(newTools.some(t => t.type === 'deals' && t.enabled));
+    setCanAccessLenders(newTools.some(t => t.type === 'lenders' && t.enabled));
+    setCanAccessActivities(newTools.some(t => t.type === 'activities' && t.enabled));
+    setCanAccessMilestones(newTools.some(t => t.type === 'milestones' && t.enabled));
+    setCanSearchWeb(newTools.some(t => t.type === 'web_search' && t.enabled));
   };
 
   const handleSave = async () => {
@@ -122,11 +152,11 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
       system_prompt: systemPrompt,
       personality,
       temperature,
-      can_access_deals: canAccessDeals,
-      can_access_lenders: canAccessLenders,
-      can_access_activities: canAccessActivities,
-      can_access_milestones: canAccessMilestones,
-      can_search_web: canSearchWeb,
+      can_access_deals: tools.some(t => t.type === 'deals' && t.enabled) || canAccessDeals,
+      can_access_lenders: tools.some(t => t.type === 'lenders' && t.enabled) || canAccessLenders,
+      can_access_activities: tools.some(t => t.type === 'activities' && t.enabled) || canAccessActivities,
+      can_access_milestones: tools.some(t => t.type === 'milestones' && t.enabled) || canAccessMilestones,
+      can_search_web: tools.some(t => t.type === 'web_search' && t.enabled) || canSearchWeb,
       is_shared: isShared,
       is_public: isPublic,
     });
@@ -166,11 +196,15 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
         </Card>
       )}
 
-      <Tabs defaultValue="basic" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="workflow" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="workflow" className="gap-2">
+            <Puzzle className="h-4 w-4" />
+            Workflow
+          </TabsTrigger>
           <TabsTrigger value="basic" className="gap-2">
             <Bot className="h-4 w-4" />
-            Basic
+            Identity
           </TabsTrigger>
           <TabsTrigger value="permissions" className="gap-2">
             <Shield className="h-4 w-4" />
@@ -181,6 +215,20 @@ export function AgentBuilder({ initialData, onSave, onCancel, isSaving }: AgentB
             Advanced
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="workflow" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Build Your Agent</CardTitle>
+              <CardDescription>
+                Add tools, integrations, and logic to create a modular AI agent
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AgentToolsBuilder tools={tools} onToolsChange={handleToolsChange} />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="basic" className="space-y-4">
           <Card>
