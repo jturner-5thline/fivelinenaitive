@@ -8,7 +8,7 @@ import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
-import { StaleDealsWidget } from '@/components/deals/StaleDealsWidget';
+import { AlertsWidget } from '@/components/deals/AlertsWidget';
 import { MilestonesWidget } from '@/components/deals/MilestonesWidget';
 import { NotificationsBar } from '@/components/deals/NotificationsBar';
 import { FlexLeaderboardWidget } from '@/components/deals/FlexLeaderboardWidget';
@@ -190,7 +190,7 @@ export default function Dashboard() {
                     </button>
                     {specialWidgetsSectionExpanded ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                        {specialWidgets['stale-deals'] && <StaleDealsWidget deals={allDeals} />}
+                        {specialWidgets['stale-deals'] && <AlertsWidget deals={allDeals} />}
                         {specialWidgets['milestones'] && <MilestonesWidget />}
                         {specialWidgets['flex-leaderboard'] && <FlexLeaderboardWidget deals={allDeals} />}
                         <AllSuggestionsWidget deals={allDeals} />
@@ -199,7 +199,7 @@ export default function Dashboard() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
                         {specialWidgets['stale-deals'] && (
                           <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                            <h3 className="text-sm font-semibold">Stale Deals Alert</h3>
+                            <h3 className="text-sm font-semibold">Alerts</h3>
                           </div>
                         )}
                         {specialWidgets['milestones'] && (
