@@ -22,7 +22,7 @@ export interface Widget {
 export type SpecialWidget = 'stale-deals' | 'milestones' | 'flex-leaderboard';
 
 export const SPECIAL_WIDGET_OPTIONS: { value: SpecialWidget; label: string; description: string }[] = [
-  { value: 'stale-deals', label: 'Stale Deals', description: 'Alert for deals with no recent updates' },
+  { value: 'stale-deals', label: 'Alerts', description: 'Stale deals and lenders needing updates' },
   { value: 'milestones', label: 'Milestones', description: 'View upcoming and overdue milestones' },
   { value: 'flex-leaderboard', label: 'FLEx Leaderboard', description: 'Top 5 deals with highest lender interest from FLEx' },
 ];
