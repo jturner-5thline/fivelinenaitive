@@ -1971,6 +1971,290 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_change_logs: {
+        Row: {
+          change_reason: string | null
+          changed_at: string | null
+          changed_by: string | null
+          company_id: string
+          financial_data_id: string
+          id: string
+          line_item_id: string
+          new_amount: number
+          period_id: string
+          previous_amount: number | null
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_at?: string | null
+          changed_by?: string | null
+          company_id: string
+          financial_data_id: string
+          id?: string
+          line_item_id: string
+          new_amount: number
+          period_id: string
+          previous_amount?: number | null
+        }
+        Update: {
+          change_reason?: string | null
+          changed_at?: string | null
+          changed_by?: string | null
+          company_id?: string
+          financial_data_id?: string
+          id?: string
+          line_item_id?: string
+          new_amount?: number
+          period_id?: string
+          previous_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_change_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_change_logs_financial_data_id_fkey"
+            columns: ["financial_data_id"]
+            isOneToOne: false
+            referencedRelation: "financial_data"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_change_logs_line_item_id_fkey"
+            columns: ["line_item_id"]
+            isOneToOne: false
+            referencedRelation: "financial_line_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_change_logs_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "financial_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_data: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string | null
+          id: string
+          line_item_id: string
+          notes: string | null
+          period_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          created_at?: string | null
+          id?: string
+          line_item_id: string
+          notes?: string | null
+          period_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          line_item_id?: string
+          notes?: string | null
+          period_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_data_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_data_line_item_id_fkey"
+            columns: ["line_item_id"]
+            isOneToOne: false
+            referencedRelation: "financial_line_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_data_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "financial_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_line_item_categories: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_system: boolean | null
+          name: string
+          parent_category_id: string | null
+          statement_type: Database["public"]["Enums"]["financial_statement_type"]
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          parent_category_id?: string | null
+          statement_type: Database["public"]["Enums"]["financial_statement_type"]
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          parent_category_id?: string | null
+          statement_type?: Database["public"]["Enums"]["financial_statement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_line_item_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_line_item_categories_parent_category_id_fkey"
+            columns: ["parent_category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_line_item_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_line_items: {
+        Row: {
+          calculation_formula: string | null
+          category_id: string | null
+          company_id: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_calculated: boolean | null
+          is_system: boolean | null
+          name: string
+          statement_type: Database["public"]["Enums"]["financial_statement_type"]
+        }
+        Insert: {
+          calculation_formula?: string | null
+          category_id?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_calculated?: boolean | null
+          is_system?: boolean | null
+          name: string
+          statement_type: Database["public"]["Enums"]["financial_statement_type"]
+        }
+        Update: {
+          calculation_formula?: string | null
+          category_id?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_calculated?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          statement_type?: Database["public"]["Enums"]["financial_statement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_line_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_line_item_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_line_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_periods: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          created_by: string | null
+          end_date: string
+          id: string
+          is_locked: boolean | null
+          month: number | null
+          period_type: Database["public"]["Enums"]["financial_period_type"]
+          quarter: number | null
+          start_date: string
+          updated_at: string | null
+          year: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          created_by?: string | null
+          end_date: string
+          id?: string
+          is_locked?: boolean | null
+          month?: number | null
+          period_type: Database["public"]["Enums"]["financial_period_type"]
+          quarter?: number | null
+          start_date: string
+          updated_at?: string | null
+          year: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          is_locked?: boolean | null
+          month?: number | null
+          period_type?: Database["public"]["Enums"]["financial_period_type"]
+          quarter?: number | null
+          start_date?: string
+          updated_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_periods_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flex_info_notifications: {
         Row: {
           company_name: string | null
@@ -4809,6 +5093,8 @@ export type Database = {
       company_role: "owner" | "admin" | "member"
       data_access_scope: "all" | "team" | "own" | "none"
       feature_status: "disabled" | "staging" | "deployed"
+      financial_period_type: "monthly" | "quarterly" | "annual"
+      financial_statement_type: "pnl" | "balance_sheet" | "cash_flow"
       lender_pass_reason_category:
         | "deal_size_mismatch"
         | "industry_exclusion"
@@ -4949,6 +5235,8 @@ export const Constants = {
       company_role: ["owner", "admin", "member"],
       data_access_scope: ["all", "team", "own", "none"],
       feature_status: ["disabled", "staging", "deployed"],
+      financial_period_type: ["monthly", "quarterly", "annual"],
+      financial_statement_type: ["pnl", "balance_sheet", "cash_flow"],
       lender_pass_reason_category: [
         "deal_size_mismatch",
         "industry_exclusion",
