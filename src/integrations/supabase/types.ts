@@ -795,6 +795,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          deal_stages: Json | null
           default_deal_stage_id: string | null
           id: string
           permission_settings: Json | null
@@ -803,6 +804,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          deal_stages?: Json | null
           default_deal_stage_id?: string | null
           id?: string
           permission_settings?: Json | null
@@ -811,6 +813,7 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          deal_stages?: Json | null
           default_deal_stage_id?: string | null
           id?: string
           permission_settings?: Json | null
