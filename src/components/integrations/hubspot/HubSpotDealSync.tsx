@@ -1,16 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -36,18 +33,16 @@ import { useDeals } from "@/hooks/useDeals";
 import { useDealsContext } from "@/contexts/DealsContext";
 import { useDealStages } from "@/contexts/DealStagesContext";
 import { 
-  Download, 
   CheckCircle2, 
   Loader2,
-  Link2,
-  Unlink,
   RefreshCw,
   ArrowRight,
   FileDown,
   Settings2
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 import { DealStage, EngagementType } from "@/types/deal";
+import { HubSpotDealSyncRow } from "./HubSpotDealSyncRow";
+import { HubSpotSyncSummaryCards } from "./HubSpotSyncSummaryCards";
 
 interface SyncMapping {
   hubspotDealId: string;
@@ -69,7 +64,16 @@ const DEFAULT_STAGE_MAPPING: Record<string, DealStage> = {
   'closedlost': 'closed-lost',
 };
 
-export function HubSpotDealSync() {
+const formatCurrency = (amount: string | undefined) => {
+  if (!amount) return "-";
+  return new Intl.NumberFormat("en-US", { 
+    style: "currency", 
+    currency: "USD", 
+    maximumFractionDigits: 0 
+  }).format(parseFloat(amount));
+};
+
+export const HubSpotDealSync = memo(function HubSpotDealSync() {
   const { data: hubspotDeals, isLoading: hubspotLoading, refetch: refetchHubspot } = useHubSpotDeals();
   const { data: pipelinesData } = useHubSpotPipelines();
   const { data: ownersData } = useHubSpotOwners();
@@ -85,74 +89,94 @@ export function HubSpotDealSync() {
   const [selectedLocalDeal, setSelectedLocalDeal] = useState<string>("");
   const [stageMapping, setStageMapping] = useState<Record<string, string>>({});
 
-  // Get all unique stages from HubSpot pipelines
+  // Get all unique stages from HubSpot pipelines - memoized
   const hubspotStages = useMemo(() => {
     if (!pipelinesData?.results) return [];
-    const stages: Array<{ id: string; label: string; pipelineName: string }> = [];
+    const stagesList: Array<{ id: string; label: string; pipelineName: string }> = [];
     pipelinesData.results.forEach(pipeline => {
       pipeline.stages.forEach(stage => {
-        stages.push({
+        stagesList.push({
           id: stage.id,
           label: stage.label,
           pipelineName: pipeline.label,
         });
       });
     });
-    return stages;
+    return stagesList;
   }, [pipelinesData]);
 
-  // Calculate sync mappings
-  const syncMappings = useMemo<SyncMapping[]>(() => {
-    if (!hubspotDeals?.results) return [];
+  // Create lookup maps for O(1) access instead of repeated finds
+  const localDealsMap = useMemo(() => {
+    if (!localDeals) return new Map<string, typeof localDeals[0]>();
+    const map = new Map<string, typeof localDeals[0]>();
+    localDeals.forEach(deal => {
+      map.set(deal.company.toLowerCase(), deal);
+    });
+    return map;
+  }, [localDeals]);
+
+  const ownersMap = useMemo(() => {
+    if (!ownersData?.results) return new Map<string, string>();
+    const map = new Map<string, string>();
+    ownersData.results.forEach(owner => {
+      const name = `${owner.firstName} ${owner.lastName}`.trim() || owner.email;
+      map.set(owner.id, name);
+    });
+    return map;
+  }, [ownersData]);
+
+  const stagesMap = useMemo(() => {
+    if (!pipelinesData?.results) return new Map<string, string>();
+    const map = new Map<string, string>();
+    pipelinesData.results.forEach(pipeline => {
+      pipeline.stages.forEach(stage => {
+        map.set(stage.id, stage.label);
+      });
+    });
+    return map;
+  }, [pipelinesData]);
+
+  // Calculate sync mappings with lookup maps
+  const { syncMappings, unlinkedDeals, syncedDeals } = useMemo(() => {
+    if (!hubspotDeals?.results) return { syncMappings: [], unlinkedDeals: [], syncedDeals: [] };
     
-    return hubspotDeals.results.map((hsDeal) => {
-      // Try to find matching local deal by name
-      const matchingLocal = localDeals?.find(
-        (ld) => ld.company.toLowerCase() === hsDeal.properties.dealname?.toLowerCase()
-      );
+    const mappings: SyncMapping[] = hubspotDeals.results.map((hsDeal) => {
+      const dealName = hsDeal.properties.dealname?.toLowerCase() || '';
+      const matchingLocal = localDealsMap.get(dealName);
       
       return {
         hubspotDealId: hsDeal.id,
         localDealId: matchingLocal?.id || null,
         hubspotDealName: hsDeal.properties.dealname || 'Unnamed Deal',
         localDealName: matchingLocal?.company || null,
-        status: matchingLocal ? 'synced' : 'unlinked',
+        status: matchingLocal ? 'synced' as const : 'unlinked' as const,
       };
     });
-  }, [hubspotDeals, localDeals]);
 
-  const unlinkedDeals = syncMappings.filter(m => m.status === 'unlinked');
-  const syncedDeals = syncMappings.filter(m => m.status === 'synced');
+    const unlinked = mappings.filter(m => m.status === 'unlinked');
+    const synced = mappings.filter(m => m.status === 'synced');
 
-  const formatCurrency = (amount: string | undefined) => {
-    if (!amount) return "-";
-    return new Intl.NumberFormat("en-US", { 
-      style: "currency", 
-      currency: "USD", 
-      maximumFractionDigits: 0 
-    }).format(parseFloat(amount));
-  };
+    return { syncMappings: mappings, unlinkedDeals: unlinked, syncedDeals: synced };
+  }, [hubspotDeals, localDealsMap]);
 
-  const getStageName = (stageId: string | undefined) => {
-    if (!stageId || !pipelinesData?.results) return stageId || '-';
-    for (const pipeline of pipelinesData.results) {
-      const stage = pipeline.stages.find(s => s.id === stageId);
-      if (stage) return stage.label;
-    }
-    return stageId;
-  };
+  // Create a set for O(1) lookup of unlinked deal IDs
+  const unlinkedDealIds = useMemo(() => 
+    new Set(unlinkedDeals.map(m => m.hubspotDealId)), 
+    [unlinkedDeals]
+  );
 
-  const getOwnerName = (ownerId: string | undefined) => {
-    if (!ownerId || !ownersData?.results) return null;
-    const owner = ownersData.results.find(o => o.id === ownerId);
-    if (owner) {
-      return `${owner.firstName} ${owner.lastName}`.trim() || owner.email;
-    }
-    return null;
-  };
+  const getStageName = useCallback((stageId: string | undefined) => {
+    if (!stageId) return '-';
+    return stagesMap.get(stageId) || stageId;
+  }, [stagesMap]);
+
+  const getOwnerName = useCallback((ownerId: string | undefined) => {
+    if (!ownerId) return null;
+    return ownersMap.get(ownerId) || null;
+  }, [ownersMap]);
 
   // Map HubSpot stage to nAitive stage
-  const mapHubSpotStage = (hubspotStageId: string | undefined): DealStage => {
+  const mapHubSpotStage = useCallback((hubspotStageId: string | undefined): DealStage => {
     if (!hubspotStageId) return 'final-credit-items';
     
     // Check custom mapping first
@@ -168,27 +192,29 @@ export function HubSpotDealSync() {
     
     // Default to first stage
     return 'final-credit-items';
-  };
+  }, [stageMapping]);
 
-  const handleSelectAll = (checked: boolean) => {
+  const handleSelectAll = useCallback((checked: boolean) => {
     if (checked) {
       setSelectedDeals(new Set(unlinkedDeals.map(m => m.hubspotDealId)));
     } else {
       setSelectedDeals(new Set());
     }
-  };
+  }, [unlinkedDeals]);
 
-  const handleSelectDeal = (dealId: string, checked: boolean) => {
-    const newSelected = new Set(selectedDeals);
-    if (checked) {
-      newSelected.add(dealId);
-    } else {
-      newSelected.delete(dealId);
-    }
-    setSelectedDeals(newSelected);
-  };
+  const handleSelectDeal = useCallback((dealId: string, checked: boolean) => {
+    setSelectedDeals(prev => {
+      const newSelected = new Set(prev);
+      if (checked) {
+        newSelected.add(dealId);
+      } else {
+        newSelected.delete(dealId);
+      }
+      return newSelected;
+    });
+  }, []);
 
-  const handleImportSelected = async () => {
+  const handleImportSelected = useCallback(async () => {
     if (selectedDeals.size === 0) {
       toast.error("No deals selected");
       return;
@@ -235,7 +261,6 @@ export function HubSpotDealSync() {
       }
       
       setSelectedDeals(new Set());
-      // Refetch to update sync status
       refetchHubspot();
     } catch (error) {
       console.error('Import error:', error);
@@ -243,26 +268,24 @@ export function HubSpotDealSync() {
     } finally {
       setIsImporting(false);
     }
-  };
+  }, [selectedDeals, hubspotDeals, getOwnerName, mapHubSpotStage, createDeal, refetchHubspot]);
 
-  const handleLinkDeal = (hsDeal: HubSpotDeal) => {
+  const handleLinkDeal = useCallback((hsDeal: HubSpotDeal) => {
     setDealToLink(hsDeal);
     setSelectedLocalDeal("");
     setIsLinkDialogOpen(true);
-  };
+  }, []);
 
-  const confirmLinkDeal = () => {
+  const confirmLinkDeal = useCallback(() => {
     if (!dealToLink || !selectedLocalDeal) return;
     
-    // In a real implementation, you'd save this mapping to the database
     toast.success(`Linked "${dealToLink.properties.dealname}" to local deal`);
     setIsLinkDialogOpen(false);
     setDealToLink(null);
     setSelectedLocalDeal("");
-  };
+  }, [dealToLink, selectedLocalDeal]);
 
-  const openMappingDialog = () => {
-    // Initialize mapping with any saved values or defaults
+  const openMappingDialog = useCallback(() => {
     const initialMapping: Record<string, string> = {};
     hubspotStages.forEach(stage => {
       initialMapping[stage.id] = stageMapping[stage.id] || 
@@ -271,12 +294,16 @@ export function HubSpotDealSync() {
     });
     setStageMapping(initialMapping);
     setIsMappingDialogOpen(true);
-  };
+  }, [hubspotStages, stageMapping]);
 
-  const saveStageMapping = () => {
+  const saveStageMapping = useCallback(() => {
     toast.success('Stage mapping saved');
     setIsMappingDialogOpen(false);
-  };
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    refetchHubspot();
+  }, [refetchHubspot]);
 
   if (hubspotLoading || localLoading) {
     return (
@@ -290,49 +317,11 @@ export function HubSpotDealSync() {
   return (
     <div className="space-y-6">
       {/* Sync Summary */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-lg bg-primary/10">
-                <Download className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{hubspotDeals?.results?.length || 0}</p>
-                <p className="text-sm text-muted-foreground">HubSpot Deals</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-lg bg-green-500/10">
-                <Link2 className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{syncedDeals.length}</p>
-                <p className="text-sm text-muted-foreground">Synced</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-lg bg-yellow-500/10">
-                <Unlink className="h-5 w-5 text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{unlinkedDeals.length}</p>
-                <p className="text-sm text-muted-foreground">Unlinked</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <HubSpotSyncSummaryCards
+        totalDeals={hubspotDeals?.results?.length || 0}
+        syncedCount={syncedDeals.length}
+        unlinkedCount={unlinkedDeals.length}
+      />
 
       {/* Sync Actions */}
       <Card>
@@ -347,7 +336,7 @@ export function HubSpotDealSync() {
                 <Settings2 className="h-4 w-4 mr-2" />
                 Stage Mapping
               </Button>
-              <Button variant="outline" size="sm" onClick={() => refetchHubspot()}>
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
@@ -394,66 +383,18 @@ export function HubSpotDealSync() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {hubspotDeals?.results?.map((deal) => {
-                    const mapping = syncMappings.find(m => m.hubspotDealId === deal.id);
-                    const isUnlinked = mapping?.status === 'unlinked';
-                    const ownerName = getOwnerName(deal.properties.hubspot_owner_id);
-                    
-                    return (
-                      <TableRow key={deal.id}>
-                        <TableCell>
-                          {isUnlinked && (
-                            <Checkbox 
-                              checked={selectedDeals.has(deal.id)}
-                              onCheckedChange={(checked) => handleSelectDeal(deal.id, checked as boolean)}
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {deal.properties.dealname || 'Unnamed Deal'}
-                        </TableCell>
-                        <TableCell>{formatCurrency(deal.properties.amount)}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {getStageName(deal.properties.dealstage)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {ownerName || '-'}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {deal.properties.createdate
-                            ? formatDistanceToNow(new Date(deal.properties.createdate), { addSuffix: true })
-                            : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {isUnlinked ? (
-                            <Badge variant="outline" className="text-yellow-600 border-yellow-500/30">
-                              <Unlink className="h-3 w-3 mr-1" />
-                              Unlinked
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-green-600 border-green-500/30">
-                              <Link2 className="h-3 w-3 mr-1" />
-                              Synced
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {isUnlinked && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleLinkDeal(deal)}
-                            >
-                              <Link2 className="h-4 w-4 mr-1" />
-                              Link
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {hubspotDeals?.results?.map((deal) => (
+                    <HubSpotDealSyncRow
+                      key={deal.id}
+                      deal={deal}
+                      isUnlinked={unlinkedDealIds.has(deal.id)}
+                      isSelected={selectedDeals.has(deal.id)}
+                      ownerName={getOwnerName(deal.properties.hubspot_owner_id)}
+                      stageName={getStageName(deal.properties.dealstage)}
+                      onSelectDeal={handleSelectDeal}
+                      onLinkDeal={handleLinkDeal}
+                    />
+                  ))}
                 </TableBody>
               </Table>
             </ScrollArea>
@@ -513,7 +454,6 @@ export function HubSpotDealSync() {
               Cancel
             </Button>
             <Button onClick={confirmLinkDeal} disabled={!selectedLocalDeal}>
-              <Link2 className="h-4 w-4 mr-2" />
               Link Deals
             </Button>
           </DialogFooter>
@@ -582,4 +522,4 @@ export function HubSpotDealSync() {
       </Dialog>
     </div>
   );
-}
+});
