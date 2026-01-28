@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
 import { DealSuggestion } from '@/hooks/useAllDealsSuggestions';
 import { SuggestionActionDialog } from '@/components/deals/SuggestionActionDialog';
+import { NotificationSectionId } from '@/hooks/useNotificationSectionOrder';
 
 interface AlertItem {
   id: string;
@@ -101,6 +102,7 @@ interface NotificationCarouselViewProps {
   markFlexAsRead: (ids: string[]) => void;
   onClose: () => void;
   onSuggestionsRefresh?: () => void;
+  sectionOrder: NotificationSectionId[];
 }
 
 export function NotificationCarouselView({
@@ -116,6 +118,7 @@ export function NotificationCarouselView({
   markFlexAsRead,
   onClose,
   onSuggestionsRefresh,
+  sectionOrder,
 }: NotificationCarouselViewProps) {
   const [selectedSuggestion, setSelectedSuggestion] = useState<DealSuggestion | null>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
@@ -130,79 +133,64 @@ export function NotificationCarouselView({
   const handleActionComplete = () => {
     onSuggestionsRefresh?.();
   };
-  // Build sections array dynamically based on available data
+  // Section configuration map
+  const sectionConfigMap: Record<NotificationSectionId, SectionConfig | null> = useMemo(() => ({
+    alerts: alerts.length > 0 ? {
+      id: 'alerts',
+      title: 'Alerts',
+      icon: AlertTriangle,
+      iconColor: 'text-warning',
+      bgColor: 'bg-warning/10',
+      count: alerts.length,
+    } : null,
+    flex: flexNotifications.length > 0 ? {
+      id: 'flex',
+      title: 'FLEx Engagement',
+      icon: Zap,
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      bgColor: 'bg-amber-500/10',
+      count: flexNotifications.length,
+    } : null,
+    tasks: tasks.length > 0 ? {
+      id: 'tasks',
+      title: 'Tasks & Reminders',
+      icon: CalendarClock,
+      iconColor: 'text-primary',
+      bgColor: 'bg-primary/10',
+      count: tasks.length,
+    } : null,
+    suggestions: suggestions.length > 0 ? {
+      id: 'suggestions',
+      title: 'Recommended Actions',
+      icon: Sparkles,
+      iconColor: 'text-primary',
+      bgColor: 'bg-primary/10',
+      count: suggestions.length,
+    } : null,
+    milestones: (overdueMilestones.length + upcomingMilestones.length) > 0 ? {
+      id: 'milestones',
+      title: 'Milestones',
+      icon: Target,
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-500/10',
+      count: overdueMilestones.length + upcomingMilestones.length,
+    } : null,
+    activity: activities.length > 0 ? {
+      id: 'activity',
+      title: 'Recent Activity',
+      icon: Activity,
+      iconColor: 'text-muted-foreground',
+      bgColor: 'bg-muted/30',
+      count: activities.length,
+    } : null,
+  }), [alerts, flexNotifications, tasks, suggestions, overdueMilestones, upcomingMilestones, activities]);
+
+  // Build sections array based on sectionOrder
   const sections = useMemo(() => {
-    const sectionList: SectionConfig[] = [];
-    
-    if (alerts.length > 0) {
-      sectionList.push({
-        id: 'alerts',
-        title: 'Alerts',
-        icon: AlertTriangle,
-        iconColor: 'text-warning',
-        bgColor: 'bg-warning/10',
-        count: alerts.length,
-      });
-    }
-    
-    if (flexNotifications.length > 0) {
-      sectionList.push({
-        id: 'flex',
-        title: 'FLEx Engagement',
-        icon: Zap,
-        iconColor: 'text-amber-600 dark:text-amber-400',
-        bgColor: 'bg-amber-500/10',
-        count: flexNotifications.length,
-      });
-    }
-    
-    if (tasks.length > 0) {
-      sectionList.push({
-        id: 'tasks',
-        title: 'Tasks & Reminders',
-        icon: CalendarClock,
-        iconColor: 'text-primary',
-        bgColor: 'bg-primary/10',
-        count: tasks.length,
-      });
-    }
-    
-    if (suggestions.length > 0) {
-      sectionList.push({
-        id: 'suggestions',
-        title: 'Recommended Actions',
-        icon: Sparkles,
-        iconColor: 'text-primary',
-        bgColor: 'bg-primary/10',
-        count: suggestions.length,
-      });
-    }
-    
-    const milestonesCount = overdueMilestones.length + upcomingMilestones.length;
-    if (milestonesCount > 0) {
-      sectionList.push({
-        id: 'milestones',
-        title: 'Milestones',
-        icon: Target,
-        iconColor: 'text-purple-600 dark:text-purple-400',
-        bgColor: 'bg-purple-500/10',
-        count: milestonesCount,
-      });
-    }
-    
-    if (activities.length > 0) {
-      sectionList.push({
-        id: 'activity',
-        title: 'Recent Activity',
-        icon: Activity,
-        iconColor: 'text-muted-foreground',
-        bgColor: 'bg-muted/30',
-        count: activities.length,
-      });
-    }
-    
-    return sectionList;
-  }, [alerts, flexNotifications, tasks, suggestions, overdueMilestones, upcomingMilestones, activities]);
+    return sectionOrder
+      .map(id => sectionConfigMap[id])
+      .filter((config): config is SectionConfig => config !== null);
+  }, [sectionOrder, sectionConfigMap]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
