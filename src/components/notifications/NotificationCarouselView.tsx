@@ -159,14 +159,6 @@ export function NotificationCarouselView({
       bgColor: 'bg-primary/10',
       count: tasks.length,
     } : null,
-    milestones: (overdueMilestones.length > 0 || upcomingMilestones.length > 0) ? {
-      id: 'milestones',
-      title: 'Milestones',
-      icon: Target,
-      iconColor: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-500/10',
-      count: overdueMilestones.length + upcomingMilestones.length,
-    } : null,
     suggestions: suggestions.length > 0 ? {
       id: 'suggestions',
       title: 'Recommended Actions',
@@ -183,7 +175,7 @@ export function NotificationCarouselView({
       bgColor: 'bg-muted/30',
       count: activities.length,
     } : null,
-  }), [alerts, flexNotifications, tasks, overdueMilestones, upcomingMilestones, suggestions, activities]);
+  }), [alerts, flexNotifications, tasks, suggestions, activities]);
 
   // Build sections array based on sectionOrder
   const sections = useMemo(() => {
