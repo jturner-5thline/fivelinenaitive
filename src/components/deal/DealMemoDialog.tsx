@@ -218,13 +218,13 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1">
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="py-4 space-y-6">
+            <div className="py-4 px-6 space-y-6">
               {/* Narrative Section */}
               <div>
                 <label className="text-sm font-medium text-foreground block mb-2">
