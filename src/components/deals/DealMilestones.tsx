@@ -156,7 +156,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
         {!isExpanded && milestones.length > 0 && (
-          <div className="relative py-1 pb-2 overflow-visible">
+          <div className="relative py-1 pb-2 overflow-hidden">
             {/* Connecting line that spans the full width */}
             <div className="absolute top-[18px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
             
@@ -170,7 +170,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
               />
             )}
             
-            <div className="relative flex justify-between min-w-0 overflow-hidden">
+            <div className="relative flex justify-between min-w-0 w-full overflow-hidden">
               {milestones.map((milestone) => (
                 <div key={milestone.id} className="flex flex-col items-center min-w-0 flex-shrink-0" style={{ maxWidth: `${100 / milestones.length}%` }}>
                   {/* Diamond Icon */}
