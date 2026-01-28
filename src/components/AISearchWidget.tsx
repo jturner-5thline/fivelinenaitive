@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAISearch, AISearchResult } from '@/hooks/useAISearch';
-import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { useFeatureAccess } from '@/hooks/useFeatureFlags';
 import { cn } from '@/lib/utils';
 import { MorphingBlob } from './MorphingBlob';
 
@@ -22,7 +22,7 @@ export function AISearchWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const { search, result, isSearching, clear, getNavigationPath } = useAISearch();
-  const { canAccessChatWidget } = useUserPermissions();
+  const { hasAccess: canAccessChatWidget, isLoading: isLoadingAccess } = useFeatureAccess('chat_widget');
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -71,8 +71,8 @@ export function AISearchWidget() {
     }
   }, [inputValue, search, clear]);
 
-  // Don't render if user doesn't have permission (must be AFTER all hooks)
-  if (!canAccessChatWidget) {
+  // Don't render if user doesn't have permission or still loading (must be AFTER all hooks)
+  if (isLoadingAccess || !canAccessChatWidget) {
     return null;
   }
 
