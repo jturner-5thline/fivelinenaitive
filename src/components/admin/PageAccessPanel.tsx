@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import {
   useFeatureFlags,
   useUpdateFeatureFlag,
+  useCreateFeatureFlag,
   FeatureStatus,
 } from "@/hooks/useFeatureFlags";
 import {
@@ -131,6 +132,7 @@ const statusConfig: Record<
 export function PageAccessPanel() {
   const { data: flags, isLoading } = useFeatureFlags();
   const updateFlag = useUpdateFeatureFlag();
+  const createFlag = useCreateFeatureFlag();
 
   const getPageFlag = (featureKey: string) => {
     return flags?.find(f => f.name === featureKey);
@@ -138,9 +140,20 @@ export function PageAccessPanel() {
 
   const handleStatusChange = async (featureKey: string, status: FeatureStatus) => {
     const flag = getPageFlag(featureKey);
-    if (!flag) return;
-
+    
     try {
+      if (!flag) {
+        // Create the flag if it doesn't exist
+        await createFlag.mutateAsync({ 
+          name: featureKey, 
+          description: `Access control for ${featureKey.replace(/_/g, ' ')}`,
+          status 
+        });
+        const statusLabel = status === 'staging' ? '5thLine only' : status === 'deployed' ? 'all users' : 'disabled';
+        toast.success(`${featureKey.replace('page_', '').replace(/_/g, ' ')} access set to ${statusLabel}`);
+        return;
+      }
+
       await updateFlag.mutateAsync({ id: flag.id, status });
       const statusLabel = status === 'staging' ? '5thLine only' : status === 'deployed' ? 'all users' : 'disabled';
       toast.success(`${featureKey.replace('page_', '').replace(/_/g, ' ')} access set to ${statusLabel}`);
@@ -210,7 +223,7 @@ export function PageAccessPanel() {
                 <Select
                   value={status}
                   onValueChange={(value: FeatureStatus) => handleStatusChange(config.featureKey, value)}
-                  disabled={updateFlag.isPending}
+                  disabled={updateFlag.isPending || createFlag.isPending}
                 >
                   <SelectTrigger className="w-[180px]">
                     <div className="flex items-center gap-2">
