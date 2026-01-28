@@ -5,7 +5,6 @@ export type NotificationSectionId =
   | 'flex'
   | 'tasks'
   | 'suggestions'
-  | 'milestones'
   | 'activity';
 
 export interface NotificationSection {
@@ -18,7 +17,6 @@ const DEFAULT_SECTION_ORDER: NotificationSectionId[] = [
   'flex',
   'tasks',
   'suggestions',
-  'milestones',
   'activity',
 ];
 
