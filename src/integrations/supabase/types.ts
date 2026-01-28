@@ -1591,6 +1591,59 @@ export type Database = {
           },
         ]
       }
+      deal_space_financials: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          deal_id: string
+          file_path: string
+          fiscal_period: string | null
+          fiscal_year: number | null
+          id: string
+          name: string
+          notes: string | null
+          size_bytes: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          deal_id: string
+          file_path: string
+          fiscal_period?: string | null
+          fiscal_year?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          size_bytes?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          deal_id?: string
+          file_path?: string
+          fiscal_period?: string | null
+          fiscal_year?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          size_bytes?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_space_financials_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_space_messages: {
         Row: {
           content: string
