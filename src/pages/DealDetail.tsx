@@ -2410,10 +2410,7 @@ export default function DealDetail() {
                           return (
                             <Card key={id}>
                               <CardHeader className="flex flex-row items-center justify-between py-4">
-                                <div className="flex items-center gap-2">
-                                  <DealMemoDialog dealId={deal.id} companyName={deal.company} />
-                                  <CardTitle className="text-lg">Deal Information</CardTitle>
-                                </div>
+                                <CardTitle className="text-lg">Deal Information</CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-4">
                                 <div className="space-y-1.5">
