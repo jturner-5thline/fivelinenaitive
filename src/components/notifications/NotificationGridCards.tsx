@@ -104,7 +104,7 @@ export function NotificationGridCards({
   onClose,
 }: NotificationGridCardsProps) {
   return (
-    <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-max">
+    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max">
       {/* Alerts Card */}
       {alerts.length > 0 && (
         <Card className="flex flex-col max-h-[400px]">
