@@ -77,12 +77,12 @@ export function AuditTrailPanel({ dealId, className }: AuditTrailPanelProps) {
         if (userIds.length > 0) {
           const { data: profilesData } = await supabase
             .from('profiles')
-            .select('user_id, display_name, avatar_url, email')
-            .in('user_id', userIds);
+            .select('id, display_name, avatar_url, email')
+            .in('id', userIds);
 
           if (profilesData) {
             const profileMap = new Map(
-              profilesData.map(p => [p.user_id, { 
+              profilesData.map(p => [p.id, { 
                 display_name: p.display_name, 
                 avatar_url: p.avatar_url,
                 email: p.email 
