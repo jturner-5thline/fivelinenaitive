@@ -449,7 +449,6 @@ export function NotificationGridCards({
     flex: renderFlexCard,
     tasks: renderTasksCard,
     suggestions: renderSuggestionsCard,
-    milestones: renderMilestonesCard,
     activity: renderActivityCard,
   };
 
