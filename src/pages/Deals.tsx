@@ -9,7 +9,7 @@ import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
-import { MilestonesWidget } from '@/components/deals/MilestonesWidget';
+
 
 
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
@@ -43,7 +43,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
-import { useWidgets } from '@/contexts/WidgetsContext';
+
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
@@ -51,20 +51,13 @@ export default function Dashboard() {
     const stored = localStorage.getItem('deals-view-mode');
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline') ? stored : 'grid';
   });
-  const [specialWidgetsSectionExpanded, setSpecialWidgetsSectionExpanded] = useState(() => {
-    const stored = localStorage.getItem('special-widgets-section-expanded');
-    return stored !== null ? stored === 'true' : true;
-  });
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
-  const { specialWidgets } = useWidgets();
+  
   const { preferences } = usePreferences();
   
-  useEffect(() => {
-    localStorage.setItem('special-widgets-section-expanded', String(specialWidgetsSectionExpanded));
-  }, [specialWidgetsSectionExpanded]);
 
   useEffect(() => {
     localStorage.setItem('deals-view-mode', viewMode);
@@ -195,30 +188,6 @@ export default function Dashboard() {
                   style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
                 >
                   <WidgetsSection deals={allDeals} />
-                  {specialWidgets['milestones'] && (
-                    <div className="mt-4">
-                      <button
-                        onClick={() => setSpecialWidgetsSectionExpanded(!specialWidgetsSectionExpanded)}
-                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
-                      >
-                        <ChevronRight 
-                          className={`h-4 w-4 transition-transform duration-200 ${specialWidgetsSectionExpanded ? 'rotate-90' : ''}`} 
-                        />
-                        <span className="font-medium">Milestones</span>
-                      </button>
-                      {specialWidgetsSectionExpanded ? (
-                        <div className="max-w-md">
-                          <MilestonesWidget />
-                        </div>
-                      ) : (
-                        <div className="max-w-md">
-                          <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                            <h3 className="text-sm font-semibold">Milestones</h3>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
