@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2, Sparkles, TrendingUp, LayoutGrid, List } from 'lucide-react';
+import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2, Sparkles, TrendingUp, LayoutGrid, List, GalleryHorizontalEnd } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +27,9 @@ import { differenceInDays, formatDistanceToNow, format, isBefore, addDays } from
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { NotificationGridCards } from './NotificationGridCards';
+import { NotificationCarouselView } from './NotificationCarouselView';
 
-type ViewMode = 'list' | 'grid';
+type ViewMode = 'list' | 'grid' | 'carousel';
 
 const suggestionTypeConfig = {
   warning: { icon: Zap, label: 'Follow Up', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10' },
@@ -295,6 +296,9 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                 <ToggleGroupItem value="grid" aria-label="Grid view">
                   <LayoutGrid className="h-4 w-4" />
                 </ToggleGroupItem>
+                <ToggleGroupItem value="carousel" aria-label="Carousel view">
+                  <GalleryHorizontalEnd className="h-4 w-4" />
+                </ToggleGroupItem>
               </ToggleGroup>
               {unreadCount > 0 && (
                 <Button 
@@ -322,22 +326,37 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
           </div>
         </DialogHeader>
         
-        <ScrollArea className="flex-1">
-          {viewMode === 'grid' ? (
-            <NotificationGridCards
-              alerts={alerts}
-              flexNotifications={filteredFlexNotifications}
-              activities={filteredActivities}
-              tasks={pendingTasks}
-              suggestions={topSuggestions}
-              overdueMilestones={overdueMilestones}
-              upcomingMilestones={upcomingMilestones}
-              isRead={isRead}
-              markAsRead={markAsRead}
-              markFlexAsRead={markFlexAsRead}
-              onClose={() => onOpenChange(false)}
-            />
-          ) : (
+        {viewMode === 'carousel' ? (
+          <NotificationCarouselView
+            alerts={alerts}
+            flexNotifications={filteredFlexNotifications}
+            activities={filteredActivities}
+            tasks={pendingTasks}
+            suggestions={topSuggestions}
+            overdueMilestones={overdueMilestones}
+            upcomingMilestones={upcomingMilestones}
+            isRead={isRead}
+            markAsRead={markAsRead}
+            markFlexAsRead={markFlexAsRead}
+            onClose={() => onOpenChange(false)}
+          />
+        ) : (
+          <ScrollArea className="flex-1">
+            {viewMode === 'grid' ? (
+              <NotificationGridCards
+                alerts={alerts}
+                flexNotifications={filteredFlexNotifications}
+                activities={filteredActivities}
+                tasks={pendingTasks}
+                suggestions={topSuggestions}
+                overdueMilestones={overdueMilestones}
+                upcomingMilestones={upcomingMilestones}
+                isRead={isRead}
+                markAsRead={markAsRead}
+                markFlexAsRead={markFlexAsRead}
+                onClose={() => onOpenChange(false)}
+              />
+            ) : (
             <div className="divide-y">
               {/* Alerts Section (Stale Deals + Stale Lenders) */}
               {alerts.length > 0 && (
@@ -677,8 +696,9 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                 </div>
               )}
             </div>
-          )}
-        </ScrollArea>
+            )}
+          </ScrollArea>
+        )}
       </DialogContent>
     </Dialog>
   );
