@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAISearch, AISearchResult } from '@/hooks/useAISearch';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { cn } from '@/lib/utils';
 import { MorphingBlob } from './MorphingBlob';
 
@@ -21,8 +22,14 @@ export function AISearchWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const { search, result, isSearching, clear, getNavigationPath } = useAISearch();
+  const { canAccessChatWidget } = useUserPermissions();
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Don't render if user doesn't have permission
+  if (!canAccessChatWidget) {
+    return null;
+  }
 
   // Focus input when opened
   useEffect(() => {

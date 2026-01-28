@@ -41,7 +41,8 @@ import {
   Lock,
   Check,
   X,
-  LucideIcon
+  LucideIcon,
+  MessageCircle
 } from 'lucide-react';
 
 interface UserProfile {
@@ -75,6 +76,7 @@ interface UserPermissionState {
   canDelete: boolean;
   canViewFinancials: boolean;
   canViewSensitive: boolean;
+  chatWidget: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissionState = {
@@ -99,6 +101,7 @@ const DEFAULT_PERMISSIONS: UserPermissionState = {
   canDelete: true,
   canViewFinancials: true,
   canViewSensitive: true,
+  chatWidget: true,
 };
 
 interface SectionConfig {
@@ -133,6 +136,7 @@ const CAPABILITY_SECTIONS: SectionConfig[] = [
   { key: 'canDelete', label: 'Delete Records', icon: Trash2, description: 'Permanently delete data' },
   { key: 'canViewFinancials', label: 'View Financials', icon: DollarSign, description: 'Access financial data' },
   { key: 'canViewSensitive', label: 'View Sensitive Info', icon: Eye, description: 'Access sensitive information' },
+  { key: 'chatWidget', label: 'AI Chat Widget', icon: MessageCircle, description: 'Access AI search and chat assistant' },
 ];
 
 const getStoredPermissions = (): Record<string, UserPermissionState> => {
