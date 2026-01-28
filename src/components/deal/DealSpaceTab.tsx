@@ -23,6 +23,7 @@ import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { useDealSpaceConversations, DealSpaceMessage } from '@/hooks/useDealSpaceConversations';
 import { DealSpaceDocumentPreview } from './DealSpaceDocumentPreview';
 import { DealSpaceConversationHistory } from './DealSpaceConversationHistory';
+import { DealSpaceFinancialsCard } from './DealSpaceFinancialsCard';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -225,8 +226,9 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Documents Panel */}
+    <div className="space-y-6">
+      {/* Top Row: Documents + AI Chat */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="flex flex-col">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -594,7 +596,13 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
             </Button>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
+
+      {/* Bottom Row: Financials Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DealSpaceFinancialsCard dealId={dealId} />
+      </div>
 
       {/* Document Preview Modal */}
       <DealSpaceDocumentPreview
