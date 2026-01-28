@@ -113,12 +113,11 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="icon" 
-                className="h-7 w-7 text-muted-foreground hover:text-foreground relative"
+                className="h-9 w-9 text-muted-foreground hover:text-foreground"
               >
                 <FileText className="h-4 w-4" />
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-primary rounded-sm" />
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
