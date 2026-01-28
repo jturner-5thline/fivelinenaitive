@@ -15,17 +15,12 @@ interface DealMemoDialogProps {
 }
 
 interface MemoSection {
-  key: 'hurdles' | 'lender_notes' | 'analyst_notes' | 'other_notes';
+  key: 'lender_notes' | 'analyst_notes' | 'other_notes';
   label: string;
   placeholder: string;
 }
 
 const MEMO_SECTIONS: MemoSection[] = [
-  {
-    key: 'hurdles',
-    label: 'Deal Hurdles & Remedies',
-    placeholder: 'Identify potential challenges and proposed solutions...',
-  },
   {
     key: 'lender_notes',
     label: 'Lender Notes',
@@ -56,17 +51,19 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
   });
   const [highlightsList, setHighlightsList] = useState<string[]>([]);
   const [newHighlight, setNewHighlight] = useState('');
+  const [hurdlesList, setHurdlesList] = useState<string[]>([]);
+  const [newHurdle, setNewHurdle] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Helper to convert highlights string to array
-  const parseHighlights = (highlightsStr: string | null): string[] => {
-    if (!highlightsStr) return [];
-    return highlightsStr.split('\n').filter(h => h.trim() !== '');
+  // Helper to convert list string to array
+  const parseList = (str: string | null): string[] => {
+    if (!str) return [];
+    return str.split('\n').filter(h => h.trim() !== '');
   };
 
-  // Helper to convert highlights array to string
-  const stringifyHighlights = (highlights: string[]): string => {
-    return highlights.join('\n');
+  // Helper to convert list array to string
+  const stringifyList = (items: string[]): string => {
+    return items.join('\n');
   };
 
   // Sync local values with memo data when dialog opens or memo changes
@@ -80,7 +77,8 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
         analyst_notes: memo.analyst_notes || '',
         other_notes: memo.other_notes || '',
       });
-      setHighlightsList(parseHighlights(memo.highlights));
+      setHighlightsList(parseList(memo.highlights));
+      setHurdlesList(parseList(memo.hurdles));
     } else {
       setLocalValues({
         narrative: '',
@@ -91,8 +89,10 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
         other_notes: '',
       });
       setHighlightsList([]);
+      setHurdlesList([]);
     }
     setNewHighlight('');
+    setNewHurdle('');
     setHasChanges(false);
   }, [memo, isOpen]);
 
@@ -105,7 +105,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
     if (newHighlight.trim()) {
       const updated = [...highlightsList, newHighlight.trim()];
       setHighlightsList(updated);
-      setLocalValues(prev => ({ ...prev, highlights: stringifyHighlights(updated) }));
+      setLocalValues(prev => ({ ...prev, highlights: stringifyList(updated) }));
       setNewHighlight('');
       setHasChanges(true);
     }
@@ -114,14 +114,38 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
   const handleRemoveHighlight = (index: number) => {
     const updated = highlightsList.filter((_, i) => i !== index);
     setHighlightsList(updated);
-    setLocalValues(prev => ({ ...prev, highlights: stringifyHighlights(updated) }));
+    setLocalValues(prev => ({ ...prev, highlights: stringifyList(updated) }));
     setHasChanges(true);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleAddHurdle = () => {
+    if (newHurdle.trim()) {
+      const updated = [...hurdlesList, newHurdle.trim()];
+      setHurdlesList(updated);
+      setLocalValues(prev => ({ ...prev, hurdles: stringifyList(updated) }));
+      setNewHurdle('');
+      setHasChanges(true);
+    }
+  };
+
+  const handleRemoveHurdle = (index: number) => {
+    const updated = hurdlesList.filter((_, i) => i !== index);
+    setHurdlesList(updated);
+    setLocalValues(prev => ({ ...prev, hurdles: stringifyList(updated) }));
+    setHasChanges(true);
+  };
+
+  const handleHighlightKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleAddHighlight();
+    }
+  };
+
+  const handleHurdleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddHurdle();
     }
   };
 
@@ -221,7 +245,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                   <Input
                     value={newHighlight}
                     onChange={(e) => setNewHighlight(e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={handleHighlightKeyDown}
                     placeholder="Add a highlight..."
                     className="flex-1"
                   />
@@ -252,6 +276,60 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
                     No highlights added yet
+                  </p>
+                )}
+                <Separator className="mt-6" />
+              </div>
+
+              {/* Deal Hurdles Section - List based */}
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-2">
+                  Deal Hurdles & Remedies
+                </label>
+                <div className="flex gap-2 mb-3">
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    size="icon"
+                    onClick={handleAddHurdle}
+                    disabled={!newHurdle.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Input
+                    value={newHurdle}
+                    onChange={(e) => setNewHurdle(e.target.value)}
+                    onKeyDown={handleHurdleKeyDown}
+                    placeholder="Add a hurdle..."
+                    className="flex-1"
+                  />
+                </div>
+                {hurdlesList.length > 0 ? (
+                  <ol className="space-y-2">
+                    {hurdlesList.map((hurdle, index) => (
+                      <li 
+                        key={index}
+                        className="flex items-start gap-2 p-2 bg-muted/50 rounded-md group"
+                      >
+                        <span className="text-sm font-medium text-muted-foreground min-w-[20px]">
+                          {index + 1}.
+                        </span>
+                        <span className="flex-1 text-sm">{hurdle}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          onClick={() => handleRemoveHurdle(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No hurdles added yet
                   </p>
                 )}
                 <Separator className="mt-6" />
