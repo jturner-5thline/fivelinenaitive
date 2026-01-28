@@ -335,40 +335,28 @@ export function NotificationListView({
               return (
                 <div
                   key={suggestion.id}
-                  className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
+                  className="flex items-start gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
                 >
-                  <Link 
-                    to={`/deal/${suggestion.dealId}`}
-                    onClick={onClose}
-                    className="flex items-center gap-4 flex-1 min-w-0"
-                  >
-                    <div className={cn("flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
-                      <Icon className={cn("h-5 w-5", config.color)} />
-                    </div>
-                    <div className="flex-1 min-w-0">
+                  <div className={cn("flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0 mt-0.5", config.bg)}>
+                    <Icon className={cn("h-5 w-5", config.color)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Link 
+                      to={`/deal/${suggestion.dealId}`}
+                      onClick={onClose}
+                      className="hover:underline"
+                    >
                       <p className="text-sm font-medium">{suggestion.title}</p>
-                      <p className="text-sm text-muted-foreground line-clamp-1">{suggestion.description}</p>
-                    </div>
-                  </Link>
-                  <Badge 
-                    variant="outline" 
-                    className={cn(
-                      "flex-shrink-0",
-                      suggestion.priority === 'high' && 'border-destructive/50 text-destructive',
-                      suggestion.priority === 'medium' && 'border-warning/50 text-warning',
-                      suggestion.priority === 'low' && 'border-muted-foreground/50 text-muted-foreground'
-                    )}
-                  >
-                    {suggestion.priority}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 flex-shrink-0"
-                    onClick={(e) => handleEditSuggestion(e, suggestion)}
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
+                    </Link>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{suggestion.description}</p>
+                    <button
+                      onClick={(e) => handleEditSuggestion(e, suggestion)}
+                      className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      Update Status
+                    </button>
+                  </div>
                 </div>
               );
             })}

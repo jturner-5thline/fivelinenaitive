@@ -289,39 +289,28 @@ export function NotificationGridCards({
                 return (
                   <div
                     key={suggestion.id}
-                    className="flex items-center gap-3 py-3 hover:bg-muted/50 transition-colors rounded-md px-2 -mx-2"
+                    className="flex items-start gap-3 py-3 hover:bg-muted/50 transition-colors rounded-md px-2 -mx-2"
                   >
-                    <Link
-                      to={`/deal/${suggestion.dealId}`}
-                      onClick={onClose}
-                      className="flex items-center gap-3 flex-1 min-w-0"
-                    >
-                      <div className={cn("flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
-                        <Icon className={cn("h-4 w-4", config.color)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
+                    <div className={cn("flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0 mt-0.5", config.bg)}>
+                      <Icon className={cn("h-4 w-4", config.color)} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        to={`/deal/${suggestion.dealId}`}
+                        onClick={onClose}
+                        className="hover:underline"
+                      >
                         <p className="text-sm font-medium truncate">{suggestion.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{suggestion.description}</p>
-                      </div>
-                    </Link>
-                    <Badge 
-                      variant="outline" 
-                      className={cn(
-                        "flex-shrink-0 text-xs",
-                        suggestion.priority === 'high' && 'border-destructive/50 text-destructive',
-                        suggestion.priority === 'medium' && 'border-warning/50 text-warning'
-                      )}
-                    >
-                      {suggestion.priority}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 flex-shrink-0"
-                      onClick={(e) => handleEditSuggestion(e, suggestion)}
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                    </Button>
+                      </Link>
+                      <p className="text-xs text-muted-foreground truncate">{suggestion.description}</p>
+                      <button
+                        onClick={(e) => handleEditSuggestion(e, suggestion)}
+                        className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+                      >
+                        <Edit3 className="h-3 w-3" />
+                        Update Status
+                      </button>
+                    </div>
                   </div>
                 );
               })}
