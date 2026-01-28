@@ -3927,16 +3927,18 @@ export default function DealDetail() {
       </div>
 
       {/* Floating Latest Updates Widget */}
-      <div className="fixed bottom-6 left-6 z-50">
+      <div className="fixed bottom-6 left-6 z-50 group">
         <Popover open={isUpdatesWidgetOpen} onOpenChange={setIsUpdatesWidgetOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="default"
               size="sm"
-              className="rounded-full h-12 px-4 shadow-lg gap-2 animate-fade-in"
+              className="rounded-full h-12 w-12 group-hover:w-auto group-hover:px-4 px-0 shadow-lg gap-2 animate-fade-in transition-all duration-300 overflow-hidden"
             >
-              <Clock className="h-4 w-4" />
-              <span className="hidden sm:inline">Latest Updates</span>
+              <Clock className="h-4 w-4 shrink-0" />
+              <span className="max-w-0 group-hover:max-w-32 overflow-hidden whitespace-nowrap transition-all duration-300">
+                Latest Updates
+              </span>
               {(() => {
                 const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
                 const updateCount = activities.filter(a => 
@@ -3944,7 +3946,7 @@ export default function DealDetail() {
                   a.description.toLowerCase().includes('milestone changed')
                 ).length;
                 return updateCount > 0 ? (
-                  <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-xs bg-background/20 text-primary-foreground">
+                  <Badge variant="secondary" className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs bg-destructive text-destructive-foreground border-2 border-background">
                     {updateCount > 99 ? '99+' : updateCount}
                   </Badge>
                 ) : null;
