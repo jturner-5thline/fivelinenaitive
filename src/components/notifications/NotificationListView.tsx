@@ -501,6 +501,7 @@ export function NotificationListView({
     alerts: renderAlertsSection,
     flex: renderFlexSection,
     tasks: renderTasksSection,
+    milestones: renderMilestonesSection,
     suggestions: renderSuggestionsSection,
     activity: renderActivitySection,
   };
