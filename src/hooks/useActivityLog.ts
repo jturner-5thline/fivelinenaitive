@@ -6,6 +6,7 @@ export interface ActivityLog {
   id: string;
   deal_id: string;
   user_id: string | null;
+  user_display_name: string | null;
   activity_type: string;
   description: string;
   metadata: Json;
@@ -49,11 +50,19 @@ export function useActivityLog(dealId: string | undefined) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Fetch user's display name from profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .single();
+
         const { error } = await supabase
           .from('activity_logs')
           .insert({
             deal_id: dealId,
             user_id: user.id,
+            user_display_name: profile?.display_name || user.email || 'Unknown User',
             activity_type: activityType,
             description,
             metadata,
