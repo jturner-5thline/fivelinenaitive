@@ -214,13 +214,6 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                   Deal Highlights: Why We Can Get Them an Offer
                 </label>
                 <div className="flex gap-2 mb-3">
-                  <Input
-                    value={newHighlight}
-                    onChange={(e) => setNewHighlight(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Add a highlight..."
-                    className="flex-1"
-                  />
                   <Button 
                     type="button"
                     variant="outline" 
@@ -230,6 +223,13 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
+                  <Input
+                    value={newHighlight}
+                    onChange={(e) => setNewHighlight(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Add a highlight..."
+                    className="flex-1"
+                  />
                 </div>
                 {highlightsList.length > 0 ? (
                   <ul className="space-y-2">
