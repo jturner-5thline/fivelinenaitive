@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, X } from 'lucide-react';
+import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,11 +22,22 @@ import { differenceInDays, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-interface StaleDeal {
+interface StaleLenderAlert {
   dealId: string;
   companyName: string;
   lenderCount: number;
   maxDaysSinceUpdate: number;
+}
+
+interface AlertItem {
+  id: string;
+  type: 'stale-deal' | 'stale-lender';
+  dealId: string;
+  company: string;
+  description: string;
+  daysSinceUpdate: number;
+  severity: 'warning' | 'destructive';
+  lenderCount?: number;
 }
 
 interface NotificationsFullDialogProps {
@@ -34,9 +45,9 @@ interface NotificationsFullDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[] {
+function getStaleLenderAlerts(deals: Deal[], yellowThreshold: number): StaleLenderAlert[] {
   const now = new Date();
-  const staleDeals: StaleDeal[] = [];
+  const staleDeals: StaleLenderAlert[] = [];
   
   deals.forEach(deal => {
     let maxDays = 0;
@@ -63,6 +74,61 @@ function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[]
   });
   
   return staleDeals;
+}
+
+function getAlerts(deals: Deal[], staleDealDays: number, staleLenderDays: number): AlertItem[] {
+  const now = new Date();
+  const alertItems: AlertItem[] = [];
+
+  deals.forEach((deal) => {
+    if (deal.status === 'archived') return;
+
+    // Check for stale deal
+    const dealUpdatedAt = new Date(deal.updatedAt);
+    const dealDaysSinceUpdate = differenceInDays(now, dealUpdatedAt);
+    
+    if (dealDaysSinceUpdate >= staleDealDays) {
+      alertItems.push({
+        id: `deal-${deal.id}`,
+        type: 'stale-deal',
+        dealId: deal.id,
+        company: deal.company,
+        description: `Deal not updated in ${dealDaysSinceUpdate} days`,
+        daysSinceUpdate: dealDaysSinceUpdate,
+        severity: dealDaysSinceUpdate >= 30 ? 'destructive' : 'warning',
+      });
+    }
+
+    // Check for stale lenders
+    let maxLenderDays = 0;
+    let staleLenderCount = 0;
+    
+    deal.lenders?.forEach(lender => {
+      if (lender.trackingStatus === 'active' && lender.updatedAt) {
+        const lenderDaysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
+        if (lenderDaysSinceUpdate >= staleLenderDays) {
+          staleLenderCount++;
+          maxLenderDays = Math.max(maxLenderDays, lenderDaysSinceUpdate);
+        }
+      }
+    });
+
+    if (staleLenderCount > 0) {
+      alertItems.push({
+        id: `lender-${deal.id}`,
+        type: 'stale-lender',
+        dealId: deal.id,
+        company: deal.company,
+        description: `${staleLenderCount} lender${staleLenderCount !== 1 ? 's' : ''} need update`,
+        daysSinceUpdate: maxLenderDays,
+        severity: maxLenderDays >= 30 ? 'destructive' : 'warning',
+        lenderCount: staleLenderCount,
+      });
+    }
+  });
+
+  // Sort by days since update (most stale first)
+  return alertItems.sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate);
 }
 
 function getActivityIcon(activityType: string) {
@@ -101,16 +167,16 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
   } = useFlexNotifications(50);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   
-  // Get all stale alerts
-  const allStaleAlerts = useMemo(() => 
-    getStaleDealAlerts(deals, appPreferences.lenderUpdateYellowDays),
-    [deals, appPreferences.lenderUpdateYellowDays]
+  // Get all alerts (stale deals + stale lenders)
+  const allAlerts = useMemo(() => 
+    getAlerts(deals, appPreferences.staleDealsDays, appPreferences.lenderUpdateYellowDays),
+    [deals, appPreferences.staleDealsDays, appPreferences.lenderUpdateYellowDays]
   );
   
   // Filter based on preferences
-  const staleAlerts = useMemo(() => 
-    shouldShowStaleAlerts ? allStaleAlerts : [],
-    [shouldShowStaleAlerts, allStaleAlerts]
+  const alerts = useMemo(() => 
+    shouldShowStaleAlerts ? allAlerts : [],
+    [shouldShowStaleAlerts, allAlerts]
   );
   
   const filteredActivities = useMemo(() => 
@@ -125,17 +191,17 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
   );
   
   // Count unread notifications
-  const unreadAlerts = staleAlerts.filter(a => !isRead('stale_alert', a.dealId));
+  const unreadAlerts = alerts.filter(a => !isRead('stale_alert', a.dealId));
   const unreadActivities = filteredActivities.filter(a => !isRead('activity', a.id));
   const unreadFlexCount = filteredFlexNotifications.filter(n => !n.read_at).length;
   const unreadCount = unreadAlerts.length + unreadActivities.length + unreadFlexCount;
-  const totalNotifications = staleAlerts.length + filteredActivities.length + filteredFlexNotifications.length;
+  const totalNotifications = alerts.length + filteredActivities.length + filteredFlexNotifications.length;
   
   const handleMarkAllAsRead = async () => {
     setIsMarkingRead(true);
     
     const allNotifications = [
-      ...staleAlerts.map(a => ({ notification_type: 'stale_alert', notification_id: a.dealId })),
+      ...alerts.map(a => ({ notification_type: 'stale_alert', notification_id: a.dealId })),
       ...filteredActivities.map(a => ({ notification_type: 'activity', notification_id: a.id })),
     ];
     
@@ -190,22 +256,22 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
         
         <ScrollArea className="flex-1">
           <div className="divide-y">
-            {/* Stale Lender Alerts Section */}
-            {staleAlerts.length > 0 && (
+            {/* Alerts Section (Stale Deals + Stale Lenders) */}
+            {alerts.length > 0 && (
               <div>
-                <div className="px-6 py-3 bg-destructive/5 sticky top-0 z-10">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    Lenders Need Update ({staleAlerts.length})
+                <div className="px-6 py-3 bg-warning/10 sticky top-0 z-10">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-warning">
+                    <AlertTriangle className="h-4 w-4" />
+                    Alerts ({alerts.length})
                   </div>
                 </div>
                 <div className="divide-y">
-                  {staleAlerts.map((alert) => {
+                  {alerts.map((alert) => {
                     const read = isRead('stale_alert', alert.dealId);
                     return (
                       <Link
-                        key={alert.dealId}
-                        to={`/deal/${alert.dealId}?highlight=stale`}
+                        key={alert.id}
+                        to={`/deal/${alert.dealId}${alert.type === 'stale-lender' ? '?highlight=stale' : ''}`}
                         onClick={() => {
                           if (!read) {
                             markAsRead([{ notification_type: 'stale_alert', notification_id: alert.dealId }]);
@@ -217,22 +283,32 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                           read && "opacity-60"
                         )}
                       >
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 flex-shrink-0">
-                          <AlertCircle className="h-5 w-5 text-destructive" />
+                        <div className={cn(
+                          "flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0",
+                          alert.severity === 'destructive' ? 'bg-destructive/10' : 'bg-warning/10'
+                        )}>
+                          {alert.type === 'stale-deal' ? (
+                            <Building2 className={cn("h-5 w-5", alert.severity === 'destructive' ? 'text-destructive' : 'text-warning')} />
+                          ) : (
+                            <Users className={cn("h-5 w-5", alert.severity === 'destructive' ? 'text-destructive' : 'text-warning')} />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={cn(
                             "text-sm",
                             !read && "font-medium"
                           )}>
-                            {alert.companyName}
+                            {alert.company}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {alert.lenderCount} lender{alert.lenderCount !== 1 ? 's' : ''} need an update • Last updated {alert.maxDaysSinceUpdate} days ago
+                            {alert.description} • {alert.daysSinceUpdate} days ago
                           </p>
                         </div>
                         {!read && (
-                          <div className="h-2.5 w-2.5 rounded-full bg-destructive flex-shrink-0" />
+                          <div className={cn(
+                            "h-2.5 w-2.5 rounded-full flex-shrink-0",
+                            alert.severity === 'destructive' ? 'bg-destructive' : 'bg-warning'
+                          )} />
                         )}
                         <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                       </Link>

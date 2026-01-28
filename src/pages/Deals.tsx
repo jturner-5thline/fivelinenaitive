@@ -9,7 +9,6 @@ import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
-import { AlertsWidget } from '@/components/deals/AlertsWidget';
 import { MilestonesWidget } from '@/components/deals/MilestonesWidget';
 
 
@@ -196,37 +195,30 @@ export default function Dashboard() {
                   style={{ animation: 'fadeInUp 0.4s ease-out 0.1s forwards' }}
                 >
                   <WidgetsSection deals={allDeals} />
-                  <div className="mt-4">
-                    <button
-                      onClick={() => setSpecialWidgetsSectionExpanded(!specialWidgetsSectionExpanded)}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
-                    >
-                      <ChevronRight 
-                        className={`h-4 w-4 transition-transform duration-200 ${specialWidgetsSectionExpanded ? 'rotate-90' : ''}`} 
-                      />
-                      <span className="font-medium">Insights & Alerts</span>
-                    </button>
-                    {specialWidgetsSectionExpanded ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                        {specialWidgets['stale-deals'] && <AlertsWidget deals={allDeals} />}
-                        {specialWidgets['milestones'] && <MilestonesWidget />}
-                        
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                        {specialWidgets['stale-deals'] && (
-                          <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
-                            <h3 className="text-sm font-semibold">Alerts</h3>
-                          </div>
-                        )}
-                        {specialWidgets['milestones'] && (
+                  {specialWidgets['milestones'] && (
+                    <div className="mt-4">
+                      <button
+                        onClick={() => setSpecialWidgetsSectionExpanded(!specialWidgetsSectionExpanded)}
+                        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+                      >
+                        <ChevronRight 
+                          className={`h-4 w-4 transition-transform duration-200 ${specialWidgetsSectionExpanded ? 'rotate-90' : ''}`} 
+                        />
+                        <span className="font-medium">Milestones</span>
+                      </button>
+                      {specialWidgetsSectionExpanded ? (
+                        <div className="max-w-md">
+                          <MilestonesWidget />
+                        </div>
+                      ) : (
+                        <div className="max-w-md">
                           <div className="rounded-lg border bg-card p-4 h-[88px] flex items-center">
                             <h3 className="text-sm font-semibold">Milestones</h3>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
