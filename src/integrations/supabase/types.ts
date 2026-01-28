@@ -1313,6 +1313,35 @@ export type Database = {
           },
         ]
       }
+      deal_memo_views: {
+        Row: {
+          deal_id: string
+          id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          deal_id: string
+          id?: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          deal_id?: string
+          id?: string
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_memo_views_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_memos: {
         Row: {
           analyst_notes: string | null
