@@ -70,6 +70,12 @@ import {
   WeeklyCashflowDashboard,
   HarvestMonthlyTrackingDashboard,
   SalesCommissionBoardDashboard,
+  ChandlerSalesCommissionDashboard,
+  ConsolidatedDebtPipelineDashboard,
+  ControllerDashboard,
+  DealStageTimelineDashboard,
+  ExecutiveDashboard,
+  FinServFinancialMetricsDashboard,
 } from "@/components/metrics/dashboards";
 
 // Dashboard options
@@ -85,6 +91,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false },
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false },
   { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false },
+  { id: 'deal-stage-timeline', name: 'Deal Stage Timeline', isFavorite: false },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false },
   { id: 'weekly-cashflow', name: 'Weekly Cashflow', isFavorite: false },
   { id: 'harvest-monthly-tracking', name: 'Harvest Monthly Tracking', isFavorite: false },
@@ -92,6 +99,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'james-sales-commission', name: 'James Sales Commission Board', isFavorite: false },
   { id: 'niki-sales-commission', name: 'Niki Sales Commission Board', isFavorite: false },
   { id: 'paz-sales-commission', name: 'Paz Sales Commission Board', isFavorite: false },
+  { id: 'chandler-sales-commission', name: 'Chandler Sales Commission Board', isFavorite: false },
 ];
 
 // Generate rolling 12 months labels
@@ -689,9 +697,15 @@ export default function Metrics() {
           {selectedDashboard === 'james-sales-commission' && <SalesCommissionBoardDashboard ownerName="James Turner" />}
           {selectedDashboard === 'niki-sales-commission' && <SalesCommissionBoardDashboard ownerName="Niki Heikali" />}
           {selectedDashboard === 'paz-sales-commission' && <SalesCommissionBoardDashboard ownerName="Paz" />}
+          {selectedDashboard === 'chandler-sales-commission' && <ChandlerSalesCommissionDashboard />}
+          {selectedDashboard === 'consolidated-debt-pipeline' && <ConsolidatedDebtPipelineDashboard />}
+          {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
+          {selectedDashboard === 'deal-stage-timeline' && <DealStageTimelineDashboard />}
+          {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
+          {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
 
           {/* Default Widgets Grid for other dashboards */}
-          {!['management-snapshot', 'income-board', 'sales-bd-roi', 'sales-team-board', 'weekly-cashflow', 'harvest-monthly-tracking', 'flor-sales-commission', 'james-sales-commission', 'niki-sales-commission', 'paz-sales-commission'].includes(selectedDashboard) && (
+          {!['management-snapshot', 'income-board', 'sales-bd-roi', 'sales-team-board', 'weekly-cashflow', 'harvest-monthly-tracking', 'flor-sales-commission', 'james-sales-commission', 'niki-sales-commission', 'paz-sales-commission', 'chandler-sales-commission', 'consolidated-debt-pipeline', 'controller-dashboard', 'deal-stage-timeline', 'executive-dashboard', 'finserv-financial-metrics'].includes(selectedDashboard) && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
                 {/* Stat Widgets Row */}
