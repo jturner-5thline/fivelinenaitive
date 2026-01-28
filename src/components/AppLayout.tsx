@@ -2,6 +2,7 @@ import * as React from "react";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { AISearchWidget } from "@/components/AISearchWidget";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
@@ -70,6 +71,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
+      <AISearchWidget />
       <FeedbackWidget />
     </SidebarProvider>
   );
