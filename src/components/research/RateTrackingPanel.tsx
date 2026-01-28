@@ -29,9 +29,9 @@ export function RateTrackingPanel() {
 
   const handleSearch = async () => {
     const data = await getRateTracking({
-      loanType: formData.loanType || undefined,
-      dealSize: formData.dealSize || undefined,
-      creditQuality: formData.creditQuality || undefined,
+      loanType: formData.loanType && formData.loanType !== 'all' ? formData.loanType : undefined,
+      dealSize: formData.dealSize && formData.dealSize !== 'all' ? formData.dealSize : undefined,
+      creditQuality: formData.creditQuality && formData.creditQuality !== 'all' ? formData.creditQuality : undefined,
     });
     
     if (data) {
@@ -68,7 +68,7 @@ export function RateTrackingPanel() {
                     <SelectValue placeholder="All types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="Senior secured">Senior Secured</SelectItem>
                     <SelectItem value="Revolver">Revolving Credit</SelectItem>
                     <SelectItem value="ABL">Asset-Based Lending</SelectItem>
@@ -89,7 +89,7 @@ export function RateTrackingPanel() {
                     <SelectValue placeholder="All sizes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Sizes</SelectItem>
+                    <SelectItem value="all">All Sizes</SelectItem>
                     <SelectItem value="$1-10M">$1M - $10M</SelectItem>
                     <SelectItem value="$10-25M">$10M - $25M</SelectItem>
                     <SelectItem value="$25-50M">$25M - $50M</SelectItem>
@@ -109,7 +109,7 @@ export function RateTrackingPanel() {
                     <SelectValue placeholder="All ratings" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Ratings</SelectItem>
+                    <SelectItem value="all">All Ratings</SelectItem>
                     <SelectItem value="Investment grade">Investment Grade</SelectItem>
                     <SelectItem value="Sub-investment grade">Sub-Investment Grade</SelectItem>
                     <SelectItem value="Middle market">Middle Market</SelectItem>
