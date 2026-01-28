@@ -4,7 +4,6 @@ import {
   CompetitiveIntelPanel, 
   MarketSizingPanel, 
   TermSheetBenchmarkPanel, 
-  SecFilingsPanel, 
   RateTrackingPanel 
 } from '@/components/research';
 import { Sparkles } from 'lucide-react';
@@ -27,7 +26,6 @@ export default function Research() {
           <RateTrackingPanel />
           <CompetitiveIntelPanel />
           <MarketSizingPanel />
-          <SecFilingsPanel />
         </div>
       </div>
     </AppLayout>
