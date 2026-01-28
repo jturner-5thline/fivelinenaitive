@@ -64,6 +64,7 @@ import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog
 import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
+import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
@@ -408,7 +409,7 @@ export default function DealDetail() {
     [deal?.lenders]
   );
   
-  const [isStatusHistoryExpanded, setIsStatusHistoryExpanded] = useState(false);
+  
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
@@ -2086,6 +2087,10 @@ export default function DealDetail() {
                     ))}
                   </SelectContent>
                 </Select>
+                <StatusHistoryPopover 
+                  statusNotes={statusNotes} 
+                  onDeleteNote={deleteStatusNote} 
+                />
                 {deal.status === 'archived' && (
                   <Button
                     variant="outline"
@@ -2743,53 +2748,6 @@ export default function DealDetail() {
                     ];
                   }, [])}
 
-                  {/* Status History - Always shown after panels if present */}
-                  {statusNotes.length > 0 && (
-                    <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <FileText className="h-5 w-5" />
-                          Status History
-                        </CardTitle>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-xs gap-1"
-                          onClick={() => setIsStatusHistoryExpanded(!isStatusHistoryExpanded)}
-                        >
-                          {isStatusHistoryExpanded ? (
-                            <>
-                              <ChevronUp className="h-4 w-4" />
-                              Hide
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="h-4 w-4" />
-                              Show ({statusNotes.length})
-                            </>
-                          )}
-                        </Button>
-                      </CardHeader>
-                      {isStatusHistoryExpanded && (
-                        <CardContent className="space-y-3 pt-0">
-                          {statusNotes.map((item) => (
-                            <div key={item.id} className="text-sm p-3 bg-muted/50 rounded-lg group relative">
-                              <p className="text-muted-foreground pr-6 break-words whitespace-pre-wrap overflow-hidden">{item.note.replace(/<[^>]*>/g, '')}</p>
-                              <p className="text-xs text-muted-foreground/70 mt-1">
-                                {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
-                              </p>
-                              <button
-                                onClick={() => deleteStatusNote(item.id)}
-                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </CardContent>
-                      )}
-                    </Card>
-                  )}
                 </TabsContent>
 
                 <TabsContent value="lenders" className={cn("mt-6 space-y-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
