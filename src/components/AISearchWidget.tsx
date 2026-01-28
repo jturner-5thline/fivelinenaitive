@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles, Loader2, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase, X } from 'lucide-react';
+import { Search, Sparkles, Loader2, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAISearch, AISearchResult } from '@/hooks/useAISearch';
 import { cn } from '@/lib/utils';
+import { MorphingBlob } from './MorphingBlob';
 
 const aiSuggestions = [
   "Show me deals closing this month",
@@ -118,22 +119,11 @@ export function AISearchWidget() {
 
   return (
     <div className="fixed bottom-4 left-4 z-50">
-      {/* Floating Button */}
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        size="icon"
-        className={cn(
-          "h-12 w-12 rounded-full shadow-lg transition-all duration-200",
-          "bg-primary hover:bg-primary/90 hover:scale-105",
-          isOpen && "scale-95"
-        )}
-      >
-        {isOpen ? (
-          <X className="h-5 w-5" />
-        ) : (
-          <Search className="h-5 w-5" />
-        )}
-      </Button>
+      {/* Morphing Blob Button */}
+      <MorphingBlob 
+        isActive={isOpen} 
+        onClick={() => setIsOpen(!isOpen)} 
+      />
 
       {/* Search Panel */}
       {isOpen && (
