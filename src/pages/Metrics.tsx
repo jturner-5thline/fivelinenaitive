@@ -62,6 +62,15 @@ import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/c
 import { MetricWidgetEditor } from "@/components/metrics/MetricWidgetEditor";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  ManagementSnapshotDashboard,
+  IncomeBoardDashboard,
+  SalesBDROIDashboard,
+  SalesTeamBoardDashboard,
+  WeeklyCashflowDashboard,
+  HarvestMonthlyTrackingDashboard,
+  SalesCommissionBoardDashboard,
+} from "@/components/metrics/dashboards";
 
 // Dashboard options
 const DASHBOARD_OPTIONS = [
@@ -77,8 +86,12 @@ const DASHBOARD_OPTIONS = [
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false },
   { id: 'executive-dashboard', name: 'Executive Dashboard', isFavorite: false },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false },
-  { id: 'niki-bonus-board', name: 'Copy of Niki Bonus Board', isFavorite: false },
-  { id: 'paz-sales-pipeline', name: 'Paz Sales Pipeline Board', isFavorite: false },
+  { id: 'weekly-cashflow', name: 'Weekly Cashflow', isFavorite: false },
+  { id: 'harvest-monthly-tracking', name: 'Harvest Monthly Tracking', isFavorite: false },
+  { id: 'flor-sales-commission', name: 'Flor Sales Commission Board', isFavorite: false },
+  { id: 'james-sales-commission', name: 'James Sales Commission Board', isFavorite: false },
+  { id: 'niki-sales-commission', name: 'Niki Sales Commission Board', isFavorite: false },
+  { id: 'paz-sales-commission', name: 'Paz Sales Commission Board', isFavorite: false },
 ];
 
 // Generate rolling 12 months labels
@@ -665,50 +678,64 @@ export default function Metrics() {
             </div>
           </div>
 
-          {/* Widgets Grid */}
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
-              {/* Stat Widgets Row */}
-              {statWidgets.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {statWidgets.map((widget) => (
-                    <SortableMetricWidget
-                      key={widget.id}
-                      widget={widget}
-                      isEditMode={isEditMode}
-                      onEdit={() => handleEdit(widget)}
-                      onDelete={() => {
-                        setWidgetToDelete(widget.id);
-                        setDeleteConfirmOpen(true);
-                      }}
-                    >
-                      {renderStatContent(widget, metrics)}
-                    </SortableMetricWidget>
-                  ))}
-                </div>
-              )}
+          {/* Dashboard Content */}
+          {selectedDashboard === 'management-snapshot' && <ManagementSnapshotDashboard />}
+          {selectedDashboard === 'income-board' && <IncomeBoardDashboard />}
+          {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
+          {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
+          {selectedDashboard === 'weekly-cashflow' && <WeeklyCashflowDashboard />}
+          {selectedDashboard === 'harvest-monthly-tracking' && <HarvestMonthlyTrackingDashboard />}
+          {selectedDashboard === 'flor-sales-commission' && <SalesCommissionBoardDashboard ownerName="Flor" />}
+          {selectedDashboard === 'james-sales-commission' && <SalesCommissionBoardDashboard ownerName="James Turner" />}
+          {selectedDashboard === 'niki-sales-commission' && <SalesCommissionBoardDashboard ownerName="Niki Heikali" />}
+          {selectedDashboard === 'paz-sales-commission' && <SalesCommissionBoardDashboard ownerName="Paz" />}
 
-              {/* Chart Widgets Grid */}
-              {chartWidgets.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {chartWidgets.map((widget) => (
-                    <SortableMetricWidget
-                      key={widget.id}
-                      widget={widget}
-                      isEditMode={isEditMode}
-                      onEdit={() => handleEdit(widget)}
-                      onDelete={() => {
-                        setWidgetToDelete(widget.id);
-                        setDeleteConfirmOpen(true);
-                      }}
-                    >
-                      {renderChartContent(widget, metrics)}
-                    </SortableMetricWidget>
-                  ))}
-                </div>
-              )}
-            </SortableContext>
-          </DndContext>
+          {/* Default Widgets Grid for other dashboards */}
+          {!['management-snapshot', 'income-board', 'sales-bd-roi', 'sales-team-board', 'weekly-cashflow', 'harvest-monthly-tracking', 'flor-sales-commission', 'james-sales-commission', 'niki-sales-commission', 'paz-sales-commission'].includes(selectedDashboard) && (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
+                {/* Stat Widgets Row */}
+                {statWidgets.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {statWidgets.map((widget) => (
+                      <SortableMetricWidget
+                        key={widget.id}
+                        widget={widget}
+                        isEditMode={isEditMode}
+                        onEdit={() => handleEdit(widget)}
+                        onDelete={() => {
+                          setWidgetToDelete(widget.id);
+                          setDeleteConfirmOpen(true);
+                        }}
+                      >
+                        {renderStatContent(widget, metrics)}
+                      </SortableMetricWidget>
+                    ))}
+                  </div>
+                )}
+
+                {/* Chart Widgets Grid */}
+                {chartWidgets.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                    {chartWidgets.map((widget) => (
+                      <SortableMetricWidget
+                        key={widget.id}
+                        widget={widget}
+                        isEditMode={isEditMode}
+                        onEdit={() => handleEdit(widget)}
+                        onDelete={() => {
+                          setWidgetToDelete(widget.id);
+                          setDeleteConfirmOpen(true);
+                        }}
+                      >
+                        {renderChartContent(widget, metrics)}
+                      </SortableMetricWidget>
+                    ))}
+                  </div>
+                )}
+              </SortableContext>
+            </DndContext>
+          )}
         </div>
       </div>
 
