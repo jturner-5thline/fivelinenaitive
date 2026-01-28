@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface UserPermissionState {
@@ -50,24 +51,58 @@ const DEFAULT_PERMISSIONS: UserPermissionState = {
   chatWidget: true,
 };
 
+// Custom event name for permission updates
+export const PERMISSIONS_UPDATED_EVENT = 'user_permissions_updated';
+
 export function useUserPermissions() {
   const { user } = useAuth();
+  const [permissions, setPermissions] = useState<UserPermissionState>(DEFAULT_PERMISSIONS);
 
-  const getUserPermissions = (): UserPermissionState => {
-    if (!user?.id) return DEFAULT_PERMISSIONS;
+  const loadPermissions = useCallback(() => {
+    if (!user?.id) {
+      setPermissions(DEFAULT_PERMISSIONS);
+      return;
+    }
     
     try {
       const stored = localStorage.getItem('user_page_permissions');
-      if (!stored) return DEFAULT_PERMISSIONS;
+      if (!stored) {
+        setPermissions(DEFAULT_PERMISSIONS);
+        return;
+      }
       
       const allPermissions = JSON.parse(stored) as Record<string, UserPermissionState>;
-      return allPermissions[user.id] || DEFAULT_PERMISSIONS;
+      setPermissions(allPermissions[user.id] || DEFAULT_PERMISSIONS);
     } catch {
-      return DEFAULT_PERMISSIONS;
+      setPermissions(DEFAULT_PERMISSIONS);
     }
-  };
+  }, [user?.id]);
 
-  const permissions = getUserPermissions();
+  // Load permissions on mount and when user changes
+  useEffect(() => {
+    loadPermissions();
+  }, [loadPermissions]);
+
+  // Listen for permission updates (from admin panel or other tabs)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user_page_permissions') {
+        loadPermissions();
+      }
+    };
+
+    const handleCustomEvent = () => {
+      loadPermissions();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener(PERMISSIONS_UPDATED_EVENT, handleCustomEvent);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener(PERMISSIONS_UPDATED_EVENT, handleCustomEvent);
+    };
+  }, [loadPermissions]);
 
   return {
     permissions,

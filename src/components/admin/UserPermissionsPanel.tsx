@@ -139,6 +139,8 @@ const CAPABILITY_SECTIONS: SectionConfig[] = [
   { key: 'chatWidget', label: 'AI Chat Widget', icon: MessageCircle, description: 'Access AI search and chat assistant' },
 ];
 
+const PERMISSIONS_UPDATED_EVENT = 'user_permissions_updated';
+
 const getStoredPermissions = (): Record<string, UserPermissionState> => {
   const stored = localStorage.getItem('user_page_permissions');
   return stored ? JSON.parse(stored) : {};
@@ -146,6 +148,8 @@ const getStoredPermissions = (): Record<string, UserPermissionState> => {
 
 const saveStoredPermissions = (permissions: Record<string, UserPermissionState>) => {
   localStorage.setItem('user_page_permissions', JSON.stringify(permissions));
+  // Dispatch custom event to notify other components (like AISearchWidget)
+  window.dispatchEvent(new CustomEvent(PERMISSIONS_UPDATED_EVENT));
 };
 
 export function UserPermissionsPanel() {
