@@ -41,7 +41,6 @@ const SECTION_CONFIG: Record<NotificationSectionId, { label: string; icon: React
   'alerts': { label: 'Alerts', icon: AlertTriangle },
   'flex': { label: 'FLEx Engagement', icon: Zap },
   'tasks': { label: 'Tasks & Reminders', icon: ListTodo },
-  'milestones': { label: 'Milestones', icon: Target },
   'suggestions': { label: 'Recommended Actions', icon: Lightbulb },
   'activity': { label: 'Recent Activity', icon: Activity },
 };

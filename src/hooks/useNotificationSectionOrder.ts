@@ -4,7 +4,6 @@ export type NotificationSectionId =
   | 'alerts'
   | 'flex'
   | 'tasks'
-  | 'milestones'
   | 'suggestions'
   | 'activity';
 
@@ -17,7 +16,6 @@ const DEFAULT_SECTION_ORDER: NotificationSectionId[] = [
   'alerts',
   'flex',
   'tasks',
-  'milestones',
   'suggestions',
   'activity',
 ];
