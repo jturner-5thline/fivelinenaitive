@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2 } from 'lucide-react';
+import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2, Sparkles, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,12 +18,19 @@ import { useNotificationReads } from '@/hooks/useNotificationReads';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useFlexNotifications } from '@/hooks/useFlexNotifications';
 import { useScheduledActions } from '@/hooks/useScheduledActions';
-import { useAgentSuggestions } from '@/hooks/useAgentSuggestions';
+import { useAllDealsSuggestions, DealSuggestion } from '@/hooks/useAllDealsSuggestions';
 import { useAllMilestones } from '@/hooks/useAllMilestones';
 import { Deal } from '@/types/deal';
 import { differenceInDays, formatDistanceToNow, format, isBefore, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+const suggestionTypeConfig = {
+  warning: { icon: Zap, label: 'Follow Up', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10' },
+  action: { icon: TrendingUp, label: 'Take Action', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10' },
+  opportunity: { icon: Sparkles, label: 'Opportunity', color: 'text-primary', bg: 'bg-primary/10' },
+  reminder: { icon: Clock, label: 'Due Soon', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10' },
+};
 
 interface StaleLenderAlert {
   dealId: string;
@@ -169,8 +176,8 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
     markAllAsRead: markAllFlexAsRead
   } = useFlexNotifications(50);
   const { scheduledActions, isLoading: tasksLoading, pendingCount } = useScheduledActions();
-  const { data: suggestions = [], isLoading: suggestionsLoading } = useAgentSuggestions();
-  const { milestones, isLoading: milestonesLoading } = useAllMilestones();
+  const { milestones, milestonesMap, isLoading: milestonesLoading } = useAllMilestones();
+  const { suggestions: dealSuggestions, counts: suggestionCounts } = useAllDealsSuggestions(deals, milestonesMap);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   
   // Get all alerts (stale deals + stale lenders)
@@ -220,10 +227,10 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
     return { overdueMilestones: overdue, upcomingMilestones: upcoming };
   }, [milestones]);
   
-  // Get top suggestions
+  // Get top recommended actions (limit to 10)
   const topSuggestions = useMemo(() => 
-    suggestions.filter(s => !s.is_dismissed && !s.is_applied).slice(0, 5),
-    [suggestions]
+    dealSuggestions.slice(0, 10),
+    [dealSuggestions]
   );
   
   // Count unread notifications
@@ -248,7 +255,7 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
     setIsMarkingRead(false);
   };
   
-  const isLoading = activitiesLoading || readsLoading || prefsLoading || flexLoading || tasksLoading || suggestionsLoading || milestonesLoading;
+  const isLoading = activitiesLoading || readsLoading || prefsLoading || flexLoading || tasksLoading || milestonesLoading;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -504,46 +511,50 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
               </div>
             )}
             
-            {/* Suggestions Section */}
+            {/* Recommended Actions Section */}
             {topSuggestions.length > 0 && (
               <div>
-                <div className="px-6 py-3 bg-green-500/10 sticky top-0 z-10">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-green-600 dark:text-green-400">
-                    <Lightbulb className="h-4 w-4" />
-                    Suggestions ({topSuggestions.length})
+                <div className="px-6 py-3 bg-primary/10 sticky top-0 z-10">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                    <Sparkles className="h-4 w-4" />
+                    Recommended Actions ({topSuggestions.length})
                   </div>
                 </div>
                 <div className="divide-y">
-                  {topSuggestions.map((suggestion) => (
-                    <Link
-                      key={suggestion.id}
-                      to="/agents"
-                      onClick={() => onOpenChange(false)}
-                      className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-500/10 flex-shrink-0">
-                        <Lightbulb className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{suggestion.name}</p>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {suggestion.description}
-                        </p>
-                      </div>
-                      <Badge 
-                        variant="outline" 
-                        className={cn(
-                          "flex-shrink-0",
-                          suggestion.priority === 'high' && 'border-destructive/50 text-destructive',
-                          suggestion.priority === 'medium' && 'border-warning/50 text-warning',
-                          suggestion.priority === 'low' && 'border-muted-foreground/50 text-muted-foreground'
-                        )}
+                  {topSuggestions.map((suggestion) => {
+                    const config = suggestionTypeConfig[suggestion.type];
+                    const Icon = config.icon;
+                    return (
+                      <Link
+                        key={suggestion.id}
+                        to={`/deal/${suggestion.dealId}`}
+                        onClick={() => onOpenChange(false)}
+                        className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
                       >
-                        {suggestion.priority}
-                      </Badge>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                    </Link>
-                  ))}
+                        <div className={cn("flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
+                          <Icon className={cn("h-5 w-5", config.color)} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{suggestion.title}</p>
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {suggestion.description}
+                          </p>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "flex-shrink-0",
+                            suggestion.priority === 'high' && 'border-destructive/50 text-destructive',
+                            suggestion.priority === 'medium' && 'border-warning/50 text-warning',
+                            suggestion.priority === 'low' && 'border-muted-foreground/50 text-muted-foreground'
+                          )}
+                        >
+                          {suggestion.priority}
+                        </Badge>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
