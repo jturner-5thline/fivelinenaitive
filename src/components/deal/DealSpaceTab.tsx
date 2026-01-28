@@ -11,7 +11,7 @@ interface DealSpaceTabProps {
 export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
   return (
     <Tabs defaultValue="ask-ai" className="w-full">
-      <TabsList className="mb-4">
+      <TabsList className="mb-2">
         <TabsTrigger value="ask-ai" className="flex items-center gap-2">
           <Sparkles className="h-4 w-4" />
           Ask AI
