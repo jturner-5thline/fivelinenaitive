@@ -15,17 +15,12 @@ interface DealMemoDialogProps {
 }
 
 interface MemoSection {
-  key: 'narrative' | 'hurdles' | 'lender_notes' | 'analyst_notes' | 'other_notes';
+  key: 'hurdles' | 'lender_notes' | 'analyst_notes' | 'other_notes';
   label: string;
   placeholder: string;
 }
 
 const MEMO_SECTIONS: MemoSection[] = [
-  {
-    key: 'narrative',
-    label: 'Narrative',
-    placeholder: 'Describe the company, what they are looking for, and the proposed solution...',
-  },
   {
     key: 'hurdles',
     label: 'Deal Hurdles & Remedies',
