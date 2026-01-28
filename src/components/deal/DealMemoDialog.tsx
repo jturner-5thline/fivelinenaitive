@@ -127,7 +127,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
         </Tooltip>
       </TooltipProvider>
       
-      <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
