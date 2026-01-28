@@ -17,6 +17,7 @@ import { useAllActivities } from '@/hooks/useAllActivities';
 import { useNotificationReads } from '@/hooks/useNotificationReads';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useFlexNotifications } from '@/hooks/useFlexNotifications';
+import { NotificationsFullDialog } from './NotificationsFullDialog';
 import { Deal } from '@/types/deal';
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -84,6 +85,7 @@ function getActivityIcon(activityType: string) {
 
 export function NotificationsDropdown() {
   const [open, setOpen] = useState(false);
+  const [fullDialogOpen, setFullDialogOpen] = useState(false);
   const { deals } = useDealsContext();
   const { preferences: appPreferences } = usePreferences();
   const { activities, isLoading: activitiesLoading } = useAllActivities(15);
@@ -397,16 +399,21 @@ export function NotificationsDropdown() {
             variant="ghost" 
             size="sm" 
             className="w-full justify-center text-muted-foreground hover:text-foreground"
-            asChild
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              setFullDialogOpen(true);
+            }}
           >
-            <Link to="/notifications">
-              View all notifications
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Link>
+            View all notifications
+            <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
       </PopoverContent>
+      
+      <NotificationsFullDialog 
+        open={fullDialogOpen} 
+        onOpenChange={setFullDialogOpen} 
+      />
     </Popover>
   );
 }
