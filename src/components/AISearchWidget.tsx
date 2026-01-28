@@ -26,11 +26,6 @@ export function AISearchWidget() {
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Don't render if user doesn't have permission
-  if (!canAccessChatWidget) {
-    return null;
-  }
-
   // Focus input when opened
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -75,6 +70,11 @@ export function AISearchWidget() {
       clear();
     }
   }, [inputValue, search, clear]);
+
+  // Don't render if user doesn't have permission (must be AFTER all hooks)
+  if (!canAccessChatWidget) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
