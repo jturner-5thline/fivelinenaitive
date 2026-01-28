@@ -99,6 +99,12 @@ const pageConfigs: PageConfig[] = [
     description: "AI-powered automation agents and assistants",
     icon: <Bot className="h-5 w-5" />
   },
+  { 
+    featureKey: "chat_widget", 
+    label: "AI Chat Widget", 
+    description: "AI search and chat assistant widget",
+    icon: <Bot className="h-5 w-5" />
+  },
 ];
 
 const statusConfig: Record<
