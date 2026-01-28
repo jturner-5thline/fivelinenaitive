@@ -165,7 +165,7 @@ export function activityLogToItem(log: ActivityLog): ActivityItem {
     id: log.id,
     type: log.activity_type as ActivityItem['type'],
     description: log.description,
-    user: metadata.user_name || 'You',
+    user: log.user_display_name || metadata.user_name || 'Unknown User',
     timestamp: log.created_at,
     metadata: {
       from: metadata.from,
