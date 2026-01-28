@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users } from 'lucide-react';
+import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,8 +17,11 @@ import { useAllActivities } from '@/hooks/useAllActivities';
 import { useNotificationReads } from '@/hooks/useNotificationReads';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useFlexNotifications } from '@/hooks/useFlexNotifications';
+import { useScheduledActions } from '@/hooks/useScheduledActions';
+import { useAgentSuggestions } from '@/hooks/useAgentSuggestions';
+import { useAllMilestones } from '@/hooks/useAllMilestones';
 import { Deal } from '@/types/deal';
-import { differenceInDays, formatDistanceToNow } from 'date-fns';
+import { differenceInDays, formatDistanceToNow, format, isBefore, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -165,6 +168,9 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
     markAsRead: markFlexAsRead,
     markAllAsRead: markAllFlexAsRead
   } = useFlexNotifications(50);
+  const { scheduledActions, isLoading: tasksLoading, pendingCount } = useScheduledActions();
+  const { data: suggestions = [], isLoading: suggestionsLoading } = useAgentSuggestions();
+  const { milestones, isLoading: milestonesLoading } = useAllMilestones();
   const [isMarkingRead, setIsMarkingRead] = useState(false);
   
   // Get all alerts (stale deals + stale lenders)
@@ -190,12 +196,43 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
     [(notifPrefs as any).notify_flex_alerts, flexNotifications]
   );
   
+  // Get pending scheduled actions (tasks & reminders)
+  const pendingTasks = useMemo(() => 
+    scheduledActions.filter(a => a.status === 'pending').slice(0, 10),
+    [scheduledActions]
+  );
+  
+  // Get milestones (overdue + upcoming)
+  const { overdueMilestones, upcomingMilestones } = useMemo(() => {
+    const now = new Date();
+    const weekFromNow = addDays(now, 7);
+    
+    const overdue = milestones.filter(m => 
+      !m.completed && m.due_date && isBefore(new Date(m.due_date), now)
+    ).slice(0, 5);
+    
+    const upcoming = milestones.filter(m => 
+      !m.completed && m.due_date && 
+      !isBefore(new Date(m.due_date), now) && 
+      isBefore(new Date(m.due_date), weekFromNow)
+    ).slice(0, 5);
+    
+    return { overdueMilestones: overdue, upcomingMilestones: upcoming };
+  }, [milestones]);
+  
+  // Get top suggestions
+  const topSuggestions = useMemo(() => 
+    suggestions.filter(s => !s.is_dismissed && !s.is_applied).slice(0, 5),
+    [suggestions]
+  );
+  
   // Count unread notifications
   const unreadAlerts = alerts.filter(a => !isRead('stale_alert', a.dealId));
   const unreadActivities = filteredActivities.filter(a => !isRead('activity', a.id));
   const unreadFlexCount = filteredFlexNotifications.filter(n => !n.read_at).length;
   const unreadCount = unreadAlerts.length + unreadActivities.length + unreadFlexCount;
-  const totalNotifications = alerts.length + filteredActivities.length + filteredFlexNotifications.length;
+  const totalNotifications = alerts.length + filteredActivities.length + filteredFlexNotifications.length + 
+    pendingTasks.length + topSuggestions.length + overdueMilestones.length + upcomingMilestones.length;
   
   const handleMarkAllAsRead = async () => {
     setIsMarkingRead(true);
@@ -211,7 +248,7 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
     setIsMarkingRead(false);
   };
   
-  const isLoading = activitiesLoading || readsLoading || prefsLoading || flexLoading;
+  const isLoading = activitiesLoading || readsLoading || prefsLoading || flexLoading || tasksLoading || suggestionsLoading || milestonesLoading;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -423,6 +460,147 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                         {!read && (
                           <div className="h-2.5 w-2.5 rounded-full bg-primary flex-shrink-0" />
                         )}
+                        <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Tasks & Reminders Section */}
+            {pendingTasks.length > 0 && (
+              <div>
+                <div className="px-6 py-3 bg-primary/10 sticky top-0 z-10">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                    <CalendarClock className="h-4 w-4" />
+                    Tasks & Reminders ({pendingTasks.length})
+                  </div>
+                </div>
+                <div className="divide-y">
+                  {pendingTasks.map((task) => (
+                    <Link
+                      key={task.id}
+                      to={task.workflow_id ? `/workflows/${task.workflow_id}` : '/scheduled-actions'}
+                      onClick={() => onOpenChange(false)}
+                      className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
+                        <CalendarClock className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">
+                          {task.action_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Scheduled for {format(new Date(task.scheduled_for), 'MMM d, h:mm a')}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="flex-shrink-0">Pending</Badge>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Suggestions Section */}
+            {topSuggestions.length > 0 && (
+              <div>
+                <div className="px-6 py-3 bg-green-500/10 sticky top-0 z-10">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-green-600 dark:text-green-400">
+                    <Lightbulb className="h-4 w-4" />
+                    Suggestions ({topSuggestions.length})
+                  </div>
+                </div>
+                <div className="divide-y">
+                  {topSuggestions.map((suggestion) => (
+                    <Link
+                      key={suggestion.id}
+                      to="/agents"
+                      onClick={() => onOpenChange(false)}
+                      className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-500/10 flex-shrink-0">
+                        <Lightbulb className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{suggestion.name}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-1">
+                          {suggestion.description}
+                        </p>
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "flex-shrink-0",
+                          suggestion.priority === 'high' && 'border-destructive/50 text-destructive',
+                          suggestion.priority === 'medium' && 'border-warning/50 text-warning',
+                          suggestion.priority === 'low' && 'border-muted-foreground/50 text-muted-foreground'
+                        )}
+                      >
+                        {suggestion.priority}
+                      </Badge>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Milestones Section */}
+            {(overdueMilestones.length > 0 || upcomingMilestones.length > 0) && (
+              <div>
+                <div className="px-6 py-3 bg-purple-500/10 sticky top-0 z-10">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-purple-600 dark:text-purple-400">
+                    <Target className="h-4 w-4" />
+                    Milestones ({overdueMilestones.length + upcomingMilestones.length})
+                  </div>
+                </div>
+                <div className="divide-y">
+                  {overdueMilestones.map((milestone) => {
+                    const dueDate = milestone.due_date ? new Date(milestone.due_date) : null;
+                    const daysOverdue = dueDate ? differenceInDays(new Date(), dueDate) : 0;
+                    return (
+                      <Link
+                        key={milestone.id}
+                        to={`/deal/${milestone.deal_id}`}
+                        onClick={() => onOpenChange(false)}
+                        className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 flex-shrink-0">
+                          <AlertTriangle className="h-5 w-5 text-destructive" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{milestone.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {milestone.deal_company} • <span className="text-destructive">{daysOverdue} days overdue</span>
+                          </p>
+                        </div>
+                        <Badge variant="destructive" className="flex-shrink-0">Overdue</Badge>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                      </Link>
+                    );
+                  })}
+                  {upcomingMilestones.map((milestone) => {
+                    const dueDate = milestone.due_date ? new Date(milestone.due_date) : null;
+                    return (
+                      <Link
+                        key={milestone.id}
+                        to={`/deal/${milestone.deal_id}`}
+                        onClick={() => onOpenChange(false)}
+                        className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-warning/10 flex-shrink-0">
+                          <Clock className="h-5 w-5 text-warning" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{milestone.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {milestone.deal_company} • Due {dueDate ? format(dueDate, 'MMM d') : 'soon'}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="border-warning/50 text-warning flex-shrink-0">Upcoming</Badge>
                         <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                       </Link>
                     );
