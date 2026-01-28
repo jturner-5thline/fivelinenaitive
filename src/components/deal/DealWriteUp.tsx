@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, GalleryHorizontal, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, Sparkles } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import useEmblaCarousel from 'embla-carousel-react';
 import { FlexSyncStatusBadge, FlexSyncHistory } from '@/components/deal/FlexSyncHistory';
 import { useLatestFlexSync } from '@/hooks/useFlexSyncHistory';
 import { useDealOwnership } from '@/hooks/useDealOwnership';
@@ -235,15 +234,7 @@ const STATUS_OPTIONS = [
 
 const WRITEUP_VIEW_MODE_KEY = 'deal-writeup-view-mode';
 
-type ViewMode = 'tabs' | 'long' | 'carousel';
-
-const CAROUSEL_SECTIONS = [
-  { id: 'company-overview', title: 'Company Overview' },
-  { id: 'financial', title: 'Financial' },
-  { id: 'highlights', title: 'Company Highlights' },
-  { id: 'key-items', title: 'Key Items' },
-  { id: 'ownership', title: 'Ownership' },
-];
+type ViewMode = 'tabs' | 'long';
 
 export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle' }: DealWriteUpProps) => {
   const queryClient = useQueryClient();
@@ -270,7 +261,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
       const saved = localStorage.getItem(WRITEUP_VIEW_MODE_KEY) as ViewMode | null;
-      if (saved === 'long' || saved === 'carousel') return saved;
+      if (saved === 'long') return saved;
       return 'tabs';
     } catch {
       return 'tabs';
@@ -286,33 +277,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     }
   }, [viewMode]);
 
-  // Carousel state
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false, skipSnaps: false });
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [canScrollPrev, setCanScrollPrev] = useState(false);
-  const [canScrollNext, setCanScrollNext] = useState(false);
-
-  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
-  const scrollTo = useCallback((index: number) => emblaApi?.scrollTo(index), [emblaApi]);
-
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap());
-    setCanScrollPrev(emblaApi.canScrollPrev());
-    setCanScrollNext(emblaApi.canScrollNext());
-  }, [emblaApi]);
-
-  useEffect(() => {
-    if (!emblaApi) return;
-    onSelect();
-    emblaApi.on('select', onSelect);
-    emblaApi.on('reInit', onSelect);
-    return () => {
-      emblaApi.off('select', onSelect);
-      emblaApi.off('reInit', onSelect);
-    };
-  }, [emblaApi, onSelect]);
   
   // Check if currently published on FLEx
   const isPublishedOnFlex = latestSync?.status === 'success';
@@ -928,14 +892,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <ToggleGroupItem value="carousel" aria-label="Carousel view" size="sm">
-                      <GalleryHorizontal className="h-4 w-4" />
-                    </ToggleGroupItem>
-                  </TooltipTrigger>
-                  <TooltipContent>Carousel view</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
                     <ToggleGroupItem value="long" aria-label="Long form view" size="sm">
                       <LayoutList className="h-4 w-4" />
                     </ToggleGroupItem>
@@ -976,103 +932,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <WriteUpOwnershipTab dealId={dealId} />
               </TabsContent>
             </Tabs>
-          )}
-
-          {viewMode === 'carousel' && (
-            <div className="space-y-4">
-              {/* Carousel Navigation Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  {CAROUSEL_SECTIONS.map((section, index) => (
-                    <button
-                      key={section.id}
-                      onClick={() => scrollTo(index)}
-                      className={cn(
-                        "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                        selectedIndex === index
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                    >
-                      {section.title}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={scrollPrev}
-                    disabled={!canScrollPrev}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={scrollNext}
-                    disabled={!canScrollNext}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Carousel Container */}
-              <div className="overflow-hidden" ref={emblaRef}>
-                <div className="flex">
-                  <div className="flex-[0_0_100%] min-w-0 px-1">
-                    <div className="border rounded-lg p-6 bg-muted/20">
-                      <h4 className="text-base font-semibold text-foreground mb-4 border-b pb-2">Company Overview</h4>
-                      <WriteUpCompanyOverviewTab data={data} updateField={updateField} />
-                    </div>
-                  </div>
-                  <div className="flex-[0_0_100%] min-w-0 px-1">
-                    <div className="border rounded-lg p-6 bg-muted/20">
-                      <h4 className="text-base font-semibold text-foreground mb-4 border-b pb-2">Financial</h4>
-                      <WriteUpFinancialTab data={data} updateField={updateField} />
-                    </div>
-                  </div>
-                  <div className="flex-[0_0_100%] min-w-0 px-1">
-                    <div className="border rounded-lg p-6 bg-muted/20">
-                      <h4 className="text-base font-semibold text-foreground mb-4 border-b pb-2">Company Highlights</h4>
-                      <WriteUpCompanyHighlightsTab data={data} updateField={updateField} />
-                    </div>
-                  </div>
-                  <div className="flex-[0_0_100%] min-w-0 px-1">
-                    <div className="border rounded-lg p-6 bg-muted/20">
-                      <h4 className="text-base font-semibold text-foreground mb-4 border-b pb-2">Key Items</h4>
-                      <WriteUpKeyItemsTab data={data} updateField={updateField} />
-                    </div>
-                  </div>
-                  <div className="flex-[0_0_100%] min-w-0 px-1">
-                    <div className="border rounded-lg p-6 bg-muted/20">
-                      <h4 className="text-base font-semibold text-foreground mb-4 border-b pb-2">Ownership</h4>
-                      <WriteUpOwnershipTab dealId={dealId} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dot indicators */}
-              <div className="flex justify-center gap-2">
-                {CAROUSEL_SECTIONS.map((section, index) => (
-                  <button
-                    key={section.id}
-                    onClick={() => scrollTo(index)}
-                    className={cn(
-                      "h-2 rounded-full transition-all duration-200",
-                      selectedIndex === index
-                        ? "w-6 bg-primary"
-                        : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                    )}
-                    aria-label={`Go to ${section.title}`}
-                  />
-                ))}
-              </div>
-            </div>
           )}
 
           {viewMode === 'long' && (
