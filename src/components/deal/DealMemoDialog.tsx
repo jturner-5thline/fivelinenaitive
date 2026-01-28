@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDealMemo } from '@/hooks/useDealMemo';
+import { useDealMemoNotification } from '@/hooks/useDealMemoNotification';
 
 interface DealMemoDialogProps {
   dealId: string;
@@ -40,6 +41,7 @@ const MEMO_SECTIONS: MemoSection[] = [
 
 export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
   const { memo, isLoading, isSaving, saveMemo } = useDealMemo(dealId);
+  const { hasUnreadUpdates, markAsViewed } = useDealMemoNotification(dealId);
   const [isOpen, setIsOpen] = useState(false);
   const [localValues, setLocalValues] = useState<Record<string, string>>({
     narrative: '',
@@ -161,8 +163,15 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
     setHasChanges(false);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && hasUnreadUpdates) {
+      markAsViewed();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -170,14 +179,17 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
               <Button 
                 variant="outline" 
                 size="icon" 
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                className={`h-9 w-9 relative ${hasUnreadUpdates ? 'text-primary border-primary' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <FileText className="h-4 w-4" />
+                {hasUnreadUpdates && (
+                  <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-destructive border-2 border-background" />
+                )}
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent side="top">
-            <p>View Deal Memo</p>
+            <p>{hasUnreadUpdates ? 'Deal Memo (new updates)' : 'View Deal Memo'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
