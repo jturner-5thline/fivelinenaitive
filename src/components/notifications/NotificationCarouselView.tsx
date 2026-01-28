@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, Sparkles, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, Sparkles, TrendingUp, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
 import { DealSuggestion } from '@/hooks/useAllDealsSuggestions';
+import { SuggestionActionDialog } from '@/components/deals/SuggestionActionDialog';
 
 interface AlertItem {
   id: string;
@@ -99,6 +100,7 @@ interface NotificationCarouselViewProps {
   markAsRead: (items: { notification_type: string; notification_id: string }[]) => void;
   markFlexAsRead: (ids: string[]) => void;
   onClose: () => void;
+  onSuggestionsRefresh?: () => void;
 }
 
 export function NotificationCarouselView({
@@ -113,7 +115,21 @@ export function NotificationCarouselView({
   markAsRead,
   markFlexAsRead,
   onClose,
+  onSuggestionsRefresh,
 }: NotificationCarouselViewProps) {
+  const [selectedSuggestion, setSelectedSuggestion] = useState<DealSuggestion | null>(null);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+
+  const handleEditSuggestion = (e: React.MouseEvent, suggestion: DealSuggestion) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedSuggestion(suggestion);
+    setActionDialogOpen(true);
+  };
+
+  const handleActionComplete = () => {
+    onSuggestionsRefresh?.();
+  };
   // Build sections array dynamically based on available data
   const sections = useMemo(() => {
     const sectionList: SectionConfig[] = [];
@@ -339,19 +355,23 @@ export function NotificationCarouselView({
               const config = suggestionTypeConfig[suggestion.type];
               const Icon = config.icon;
               return (
-                <Link
+                <div
                   key={suggestion.id}
-                  to={`/deal/${suggestion.dealId}`}
-                  onClick={onClose}
                   className="flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors rounded-lg"
                 >
-                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
-                    <Icon className={cn("h-5 w-5", config.color)} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{suggestion.title}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{suggestion.description}</p>
-                  </div>
+                  <Link
+                    to={`/deal/${suggestion.dealId}`}
+                    onClick={onClose}
+                    className="flex items-center gap-4 flex-1 min-w-0"
+                  >
+                    <div className={cn("flex h-10 w-10 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
+                      <Icon className={cn("h-5 w-5", config.color)} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{suggestion.title}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-1">{suggestion.description}</p>
+                    </div>
+                  </Link>
                   <Badge 
                     variant="outline" 
                     className={cn(
@@ -361,7 +381,15 @@ export function NotificationCarouselView({
                   >
                     {suggestion.priority}
                   </Badge>
-                </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 flex-shrink-0"
+                    onClick={(e) => handleEditSuggestion(e, suggestion)}
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </Button>
+                </div>
               );
             })}
           </div>
@@ -544,6 +572,13 @@ export function NotificationCarouselView({
           })}
         </div>
       </div>
+
+      <SuggestionActionDialog
+        suggestion={selectedSuggestion}
+        open={actionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        onComplete={handleActionComplete}
+      />
     </div>
   );
 }

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, Sparkles, TrendingUp, ChevronRight, ChevronDown, Bell } from 'lucide-react';
+import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, Sparkles, TrendingUp, ChevronRight, ChevronDown, Bell, Edit3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
 import { DealSuggestion } from '@/hooks/useAllDealsSuggestions';
+import { SuggestionActionDialog } from '@/components/deals/SuggestionActionDialog';
 
 interface AlertItem {
   id: string;
@@ -90,6 +92,7 @@ interface NotificationListViewProps {
   onClose: () => void;
   totalNotifications: number;
   isLoading: boolean;
+  onSuggestionsRefresh?: () => void;
 }
 
 export function NotificationListView({
@@ -106,6 +109,7 @@ export function NotificationListView({
   onClose,
   totalNotifications,
   isLoading,
+  onSuggestionsRefresh,
 }: NotificationListViewProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     alerts: true,
@@ -115,9 +119,22 @@ export function NotificationListView({
     milestones: true,
     activity: true,
   });
+  const [selectedSuggestion, setSelectedSuggestion] = useState<DealSuggestion | null>(null);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
 
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const handleEditSuggestion = (e: React.MouseEvent, suggestion: DealSuggestion) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedSuggestion(suggestion);
+    setActionDialogOpen(true);
+  };
+
+  const handleActionComplete = () => {
+    onSuggestionsRefresh?.();
   };
 
   return (
@@ -307,19 +324,23 @@ export function NotificationListView({
                 const config = suggestionTypeConfig[suggestion.type];
                 const Icon = config.icon;
                 return (
-                  <Link
+                  <div
                     key={suggestion.id}
-                    to={`/deal/${suggestion.dealId}`}
-                    onClick={onClose}
                     className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
                   >
-                    <div className={cn("flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
-                      <Icon className={cn("h-5 w-5", config.color)} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{suggestion.title}</p>
-                      <p className="text-sm text-muted-foreground line-clamp-1">{suggestion.description}</p>
-                    </div>
+                    <Link 
+                      to={`/deal/${suggestion.dealId}`}
+                      onClick={onClose}
+                      className="flex items-center gap-4 flex-1 min-w-0"
+                    >
+                      <div className={cn("flex h-11 w-11 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
+                        <Icon className={cn("h-5 w-5", config.color)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{suggestion.title}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-1">{suggestion.description}</p>
+                      </div>
+                    </Link>
                     <Badge 
                       variant="outline" 
                       className={cn(
@@ -331,8 +352,15 @@ export function NotificationListView({
                     >
                       {suggestion.priority}
                     </Badge>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                  </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 flex-shrink-0"
+                      onClick={(e) => handleEditSuggestion(e, suggestion)}
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 );
               })}
             </div>
@@ -481,6 +509,13 @@ export function NotificationListView({
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       )}
+
+      <SuggestionActionDialog
+        suggestion={selectedSuggestion}
+        open={actionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        onComplete={handleActionComplete}
+      />
     </div>
   );
 }
