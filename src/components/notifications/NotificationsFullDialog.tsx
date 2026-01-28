@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2, Sparkles, TrendingUp, LayoutGrid, List, GalleryHorizontalEnd } from 'lucide-react';
+import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Zap, AlertTriangle, Building2, Users, Target, Clock, Lightbulb, CalendarClock, CheckCircle2, Sparkles, TrendingUp, LayoutGrid, List, GalleryHorizontalEnd, SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,7 @@ import { useFlexNotifications } from '@/hooks/useFlexNotifications';
 import { useScheduledActions } from '@/hooks/useScheduledActions';
 import { useAllDealsSuggestions, DealSuggestion } from '@/hooks/useAllDealsSuggestions';
 import { useAllMilestones } from '@/hooks/useAllMilestones';
+import { useNotificationSectionOrder } from '@/hooks/useNotificationSectionOrder';
 import { Deal } from '@/types/deal';
 import { differenceInDays, formatDistanceToNow, format, isBefore, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ import { toast } from 'sonner';
 import { NotificationGridCards } from './NotificationGridCards';
 import { NotificationCarouselView } from './NotificationCarouselView';
 import { NotificationListView } from './NotificationListView';
+import { NotificationSectionReorderDialog } from './NotificationSectionReorderDialog';
 
 type ViewMode = 'list' | 'grid' | 'carousel';
 
@@ -186,6 +188,8 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
   const { milestones, milestonesMap, isLoading: milestonesLoading } = useAllMilestones();
   const { suggestions: dealSuggestions, counts: suggestionCounts } = useAllDealsSuggestions(deals, milestonesMap);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
+  const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
+  const { sectionOrder, setSectionOrderDirect, resetToDefault } = useNotificationSectionOrder();
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('notifications-view-mode');
     return (saved as ViewMode) || 'list';
@@ -301,6 +305,13 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                   <GalleryHorizontalEnd className="h-4 w-4" />
                 </ToggleGroupItem>
               </ToggleGroup>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setReorderDialogOpen(true)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
               {unreadCount > 0 && (
                 <Button 
                   variant="outline" 
@@ -326,6 +337,14 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
             </div>
           </div>
         </DialogHeader>
+
+        <NotificationSectionReorderDialog
+          open={reorderDialogOpen}
+          onOpenChange={setReorderDialogOpen}
+          sectionOrder={sectionOrder}
+          onSave={setSectionOrderDirect}
+          onReset={resetToDefault}
+        />
         
         {viewMode === 'carousel' ? (
           <NotificationCarouselView
@@ -341,6 +360,7 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
             markFlexAsRead={markFlexAsRead}
             onClose={() => onOpenChange(false)}
             onSuggestionsRefresh={refreshDeals}
+            sectionOrder={sectionOrder}
           />
         ) : (
           <ScrollArea className="flex-1">
@@ -358,6 +378,7 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                 markFlexAsRead={markFlexAsRead}
                 onClose={() => onOpenChange(false)}
                 onSuggestionsRefresh={refreshDeals}
+                sectionOrder={sectionOrder}
               />
             ) : (
               <NotificationListView
@@ -375,6 +396,7 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                 totalNotifications={totalNotifications}
                 isLoading={isLoading}
                 onSuggestionsRefresh={refreshDeals}
+                sectionOrder={sectionOrder}
               />
             )}
           </ScrollArea>
