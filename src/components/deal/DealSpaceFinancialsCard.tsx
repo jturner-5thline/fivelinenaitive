@@ -217,180 +217,15 @@ export function DealSpaceFinancialsCard({ dealId }: DealSpaceFinancialsCardProps
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col space-y-4 overflow-hidden">
-        {/* Upload Area */}
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={cn(
-            "border-2 border-dashed rounded-lg p-4 text-center transition-colors",
-            isDragging ? "border-green-500 bg-green-500/5" : "border-muted-foreground/25 hover:border-green-500/50",
-            isUploading && "opacity-50 pointer-events-none"
-          )}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(e) => handleFileUpload(e.target.files)}
-            accept=".pdf,.xlsx,.xls,.csv,.doc,.docx"
-          />
-          {isUploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-6 w-6 animate-spin text-green-500" />
-              <p className="text-xs text-muted-foreground">Uploading...</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-1">
-              <Upload className="h-6 w-6 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">
-                Drop financials here or{' '}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-green-500 hover:underline"
-                >
-                  browse
-                </button>
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Documents List - Collapsible */}
-        {financials.length > 0 && (
-          <Collapsible open={isDocListOpen} onOpenChange={setIsDocListOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary">
-              <span className="flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4" />
-                Uploaded Files
-              </span>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", isDocListOpen && "rotate-180")} />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <ScrollArea className="h-[150px] mt-2">
-                <div className="space-y-2 pr-2">
-                  {financials.map((financial) => (
-                    <div
-                      key={financial.id}
-                      className="flex items-start gap-2 p-2 bg-muted/50 rounded-lg group hover:bg-muted/80 transition-colors"
-                    >
-                      <FileSpreadsheet className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{financial.name}</p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{formatFileSize(financial.size_bytes)}</span>
-                          {financial.fiscal_year && financial.fiscal_period && (
-                            <>
-                              <span>•</span>
-                              <span>{financial.fiscal_period} {financial.fiscal_year}</span>
-                            </>
-                          )}
-                        </div>
-                        {editingId === financial.id ? (
-                          <div className="mt-2 space-y-2">
-                            <div className="flex gap-2">
-                              <Select value={editYear} onValueChange={setEditYear}>
-                                <SelectTrigger className="h-7 text-xs w-20">
-                                  <SelectValue placeholder="Year" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {yearOptions.map(y => (
-                                    <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Select value={editPeriod} onValueChange={setEditPeriod}>
-                                <SelectTrigger className="h-7 text-xs w-16">
-                                  <SelectValue placeholder="Period" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {periodOptions.map(p => (
-                                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Textarea
-                              value={editNotes}
-                              onChange={(e) => setEditNotes(e.target.value)}
-                              placeholder="Add notes..."
-                              className="h-16 text-xs resize-none"
-                            />
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={saveEditing}>
-                                <Check className="h-3 w-3 mr-1" />
-                                Save
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingId(null)}>
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        ) : financial.notes ? (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{financial.notes}</p>
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => startEditing(financial)}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleDownload(financial)}
-                        >
-                          <Download className="h-3 w-3" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete financial?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete "{financial.name}".
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteFinancial(financial)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* AI Chat Section */}
-        <div className="flex-1 flex flex-col min-h-0 border-t pt-4">
+      <CardContent className="flex-1 flex gap-4 overflow-hidden">
+        {/* Left Side - AI Chat */}
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Ask AI about Financials</span>
           </div>
 
-          <ScrollArea className="flex-1 min-h-[150px] max-h-[200px] mb-3">
+          <ScrollArea className="flex-1 min-h-[200px] mb-3">
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-4">
                 <Bot className="h-8 w-8 text-muted-foreground/50 mb-2" />
@@ -489,6 +324,174 @@ export function DealSpaceFinancialsCard({ dealId }: DealSpaceFinancialsCardProps
               )}
             </Button>
           </div>
+        </div>
+
+        {/* Right Side - Upload & Documents */}
+        <div className="flex-1 flex flex-col space-y-4 min-w-0">
+          {/* Upload Area */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            className={cn(
+              "border-2 border-dashed rounded-lg p-4 text-center transition-colors",
+              isDragging ? "border-green-500 bg-green-500/5" : "border-muted-foreground/25 hover:border-green-500/50",
+              isUploading && "opacity-50 pointer-events-none"
+            )}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFileUpload(e.target.files)}
+              accept=".pdf,.xlsx,.xls,.csv,.doc,.docx"
+            />
+            {isUploading ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-6 w-6 animate-spin text-green-500" />
+                <p className="text-xs text-muted-foreground">Uploading...</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  Drop financials here or{' '}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-green-500 hover:underline"
+                  >
+                    browse
+                  </button>
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Documents List - Collapsible */}
+          {financials.length > 0 && (
+            <Collapsible open={isDocListOpen} onOpenChange={setIsDocListOpen} className="flex-1 min-h-0">
+              <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary">
+                <span className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Uploaded Files
+                </span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", isDocListOpen && "rotate-180")} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="flex-1">
+                <ScrollArea className="h-[200px] mt-2">
+                  <div className="space-y-2 pr-2">
+                    {financials.map((financial) => (
+                      <div
+                        key={financial.id}
+                        className="flex items-start gap-2 p-2 bg-muted/50 rounded-lg group hover:bg-muted/80 transition-colors"
+                      >
+                        <FileSpreadsheet className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{financial.name}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{formatFileSize(financial.size_bytes)}</span>
+                            {financial.fiscal_year && financial.fiscal_period && (
+                              <>
+                                <span>•</span>
+                                <span>{financial.fiscal_period} {financial.fiscal_year}</span>
+                              </>
+                            )}
+                          </div>
+                          {editingId === financial.id ? (
+                            <div className="mt-2 space-y-2">
+                              <div className="flex gap-2">
+                                <Select value={editYear} onValueChange={setEditYear}>
+                                  <SelectTrigger className="h-7 text-xs w-20">
+                                    <SelectValue placeholder="Year" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {yearOptions.map(y => (
+                                      <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Select value={editPeriod} onValueChange={setEditPeriod}>
+                                  <SelectTrigger className="h-7 text-xs w-16">
+                                    <SelectValue placeholder="Period" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {periodOptions.map(p => (
+                                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Textarea
+                                value={editNotes}
+                                onChange={(e) => setEditNotes(e.target.value)}
+                                placeholder="Add notes..."
+                                className="h-16 text-xs resize-none"
+                              />
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={saveEditing}>
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Save
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingId(null)}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : financial.notes ? (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{financial.notes}</p>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => startEditing(financial)}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleDownload(financial)}
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete financial?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete "{financial.name}".
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteFinancial(financial)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       </CardContent>
     </Card>
