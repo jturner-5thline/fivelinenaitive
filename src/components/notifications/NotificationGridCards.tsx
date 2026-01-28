@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, Sparkles, TrendingUp, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, Sparkles, TrendingUp, Edit3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
 import { DealSuggestion } from '@/hooks/useAllDealsSuggestions';
+import { SuggestionActionDialog } from '@/components/deals/SuggestionActionDialog';
 
 interface AlertItem {
   id: string;
@@ -88,6 +91,7 @@ interface NotificationGridCardsProps {
   markAsRead: (items: { notification_type: string; notification_id: string }[]) => void;
   markFlexAsRead: (ids: string[]) => void;
   onClose: () => void;
+  onSuggestionsRefresh?: () => void;
 }
 
 export function NotificationGridCards({
@@ -102,7 +106,22 @@ export function NotificationGridCards({
   markAsRead,
   markFlexAsRead,
   onClose,
+  onSuggestionsRefresh,
 }: NotificationGridCardsProps) {
+  const [selectedSuggestion, setSelectedSuggestion] = useState<DealSuggestion | null>(null);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+
+  const handleEditSuggestion = (e: React.MouseEvent, suggestion: DealSuggestion) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedSuggestion(suggestion);
+    setActionDialogOpen(true);
+  };
+
+  const handleActionComplete = () => {
+    onSuggestionsRefresh?.();
+  };
+
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max">
       {/* Alerts Card */}
@@ -261,19 +280,23 @@ export function NotificationGridCards({
                   const config = suggestionTypeConfig[suggestion.type];
                   const Icon = config.icon;
                   return (
-                    <Link
+                    <div
                       key={suggestion.id}
-                      to={`/deal/${suggestion.dealId}`}
-                      onClick={onClose}
                       className="flex items-center gap-3 py-3 hover:bg-muted/50 transition-colors rounded-md px-2 -mx-2"
                     >
-                      <div className={cn("flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
-                        <Icon className={cn("h-4 w-4", config.color)} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{suggestion.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{suggestion.description}</p>
-                      </div>
+                      <Link
+                        to={`/deal/${suggestion.dealId}`}
+                        onClick={onClose}
+                        className="flex items-center gap-3 flex-1 min-w-0"
+                      >
+                        <div className={cn("flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0", config.bg)}>
+                          <Icon className={cn("h-4 w-4", config.color)} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{suggestion.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{suggestion.description}</p>
+                        </div>
+                      </Link>
                       <Badge 
                         variant="outline" 
                         className={cn(
@@ -284,7 +307,15 @@ export function NotificationGridCards({
                       >
                         {suggestion.priority}
                       </Badge>
-                    </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 flex-shrink-0"
+                        onClick={(e) => handleEditSuggestion(e, suggestion)}
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   );
                 })}
               </div>
@@ -401,6 +432,13 @@ export function NotificationGridCards({
           </CardContent>
         </Card>
       )}
+
+      <SuggestionActionDialog
+        suggestion={selectedSuggestion}
+        open={actionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        onComplete={handleActionComplete}
+      />
     </div>
   );
 }

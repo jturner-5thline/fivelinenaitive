@@ -171,7 +171,7 @@ function getActivityIcon(activityType: string) {
 }
 
 export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFullDialogProps) {
-  const { deals } = useDealsContext();
+  const { deals, refreshDeals } = useDealsContext();
   const { preferences: appPreferences } = usePreferences();
   const { activities, isLoading: activitiesLoading } = useAllActivities(50);
   const { isRead, markAsRead, markAllAsRead, isLoading: readsLoading } = useNotificationReads();
@@ -340,6 +340,7 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
             markAsRead={markAsRead}
             markFlexAsRead={markFlexAsRead}
             onClose={() => onOpenChange(false)}
+            onSuggestionsRefresh={refreshDeals}
           />
         ) : (
           <ScrollArea className="flex-1">
@@ -356,6 +357,7 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                 markAsRead={markAsRead}
                 markFlexAsRead={markFlexAsRead}
                 onClose={() => onOpenChange(false)}
+                onSuggestionsRefresh={refreshDeals}
               />
             ) : (
               <NotificationListView
@@ -372,6 +374,7 @@ export function NotificationsFullDialog({ open, onOpenChange }: NotificationsFul
                 onClose={() => onOpenChange(false)}
                 totalNotifications={totalNotifications}
                 isLoading={isLoading}
+                onSuggestionsRefresh={refreshDeals}
               />
             )}
           </ScrollArea>
