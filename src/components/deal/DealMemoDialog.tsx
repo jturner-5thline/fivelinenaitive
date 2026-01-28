@@ -232,12 +232,15 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                   />
                 </div>
                 {highlightsList.length > 0 ? (
-                  <ul className="space-y-2">
+                  <ol className="space-y-2">
                     {highlightsList.map((highlight, index) => (
                       <li 
                         key={index}
                         className="flex items-start gap-2 p-2 bg-muted/50 rounded-md group"
                       >
+                        <span className="text-sm font-medium text-muted-foreground min-w-[20px]">
+                          {index + 1}.
+                        </span>
                         <span className="flex-1 text-sm">{highlight}</span>
                         <Button
                           type="button"
@@ -250,7 +253,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                         </Button>
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
                     No highlights added yet
