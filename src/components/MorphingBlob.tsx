@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -7,19 +7,18 @@ interface EnergySphereProps {
 }
 
 function EnergySphere({ isActive }: EnergySphereProps) {
-  const meshRef = useRef<THREE.Points>(null);
+  const pointsRef = useRef<THREE.Points>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
-  const { positions, randoms } = useMemo(() => {
-    const count = 3000;
+  const geometry = useMemo(() => {
+    const count = 2500;
     const positions = new Float32Array(count * 3);
     const randoms = new Float32Array(count);
     
     for (let i = 0; i < count; i++) {
-      // Distribute points on a sphere surface with some variance
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
-      const radius = 0.8 + Math.random() * 0.4;
+      const radius = 0.6 + Math.random() * 0.5;
       
       positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
       positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
@@ -27,17 +26,16 @@ function EnergySphere({ isActive }: EnergySphereProps) {
       randoms[i] = Math.random();
     }
     
-    return { positions, randoms };
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1));
+    return geo;
   }, []);
 
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
       uActive: { value: isActive ? 1.0 : 0.0 },
-      uColor1: { value: new THREE.Color('#ff00ff') }, // Bright magenta
-      uColor2: { value: new THREE.Color('#8b5cf6') }, // Purple
-      uColor3: { value: new THREE.Color('#3b82f6') }, // Blue
-      uCoreColor: { value: new THREE.Color('#ffffff') }, // White core glow
     }),
     []
   );
@@ -59,9 +57,8 @@ function EnergySphere({ isActive }: EnergySphereProps) {
     attribute float aRandom;
     varying float vAlpha;
     varying float vDistance;
-    varying float vRandom;
+    varying vec3 vColor;
     
-    // Simplex noise functions
     vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
     vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
 
@@ -109,84 +106,65 @@ function EnergySphere({ isActive }: EnergySphereProps) {
     }
     
     void main() {
-      vRandom = aRandom;
       vec3 pos = position;
       
-      float speed = 0.6 + uActive * 0.4;
+      float speed = 0.5 + uActive * 0.3;
       float time = uTime * speed;
       
-      // Create flowing wave motion
-      float noise1 = snoise(pos * 1.5 + time * 0.5);
-      float noise2 = snoise(pos * 3.0 + time * 0.3 + 100.0);
-      float noise3 = snoise(pos * 0.8 + time * 0.7 + 200.0);
+      float noise1 = snoise(pos * 1.8 + time * 0.4);
+      float noise2 = snoise(pos * 3.0 + time * 0.25 + 50.0);
       
-      // Displacement creates flowing tendrils
-      float displacement = noise1 * 0.3 + noise2 * 0.15 + noise3 * 0.2;
-      displacement *= (0.8 + uActive * 0.4);
+      float displacement = noise1 * 0.25 + noise2 * 0.12;
+      displacement *= (0.7 + uActive * 0.4);
       
-      // Apply displacement along the radius
       vec3 direction = normalize(pos);
       float currentRadius = length(pos);
-      float newRadius = currentRadius + displacement * (0.5 + aRandom * 0.5);
+      float newRadius = currentRadius + displacement * (0.4 + aRandom * 0.4);
       
-      // Add swirling motion
-      float angle = time * 0.5 + aRandom * 6.28;
-      float swirl = sin(angle + pos.y * 2.0) * 0.1 * (1.0 + uActive * 0.5);
+      float angle = time * 0.4 + aRandom * 6.28;
+      float swirl = sin(angle + pos.y * 2.5) * 0.08;
       
       pos = direction * newRadius;
-      pos.x += sin(time + aRandom * 6.28) * swirl;
-      pos.z += cos(time + aRandom * 6.28) * swirl;
+      pos.x += sin(time * 0.8 + aRandom * 6.28) * swirl;
+      pos.z += cos(time * 0.8 + aRandom * 6.28) * swirl;
       
       vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
       gl_Position = projectionMatrix * mvPosition;
       
-      // Particle size varies with distance from center and activity
-      float size = (3.0 + aRandom * 4.0) * (0.8 + uActive * 0.4);
-      size *= (1.0 + displacement * 0.5);
-      gl_PointSize = size * (300.0 / -mvPosition.z);
+      float size = (2.5 + aRandom * 3.5) * (0.8 + uActive * 0.3);
+      gl_PointSize = size * (250.0 / -mvPosition.z);
       
-      // Alpha based on noise and position
-      vAlpha = 0.4 + noise1 * 0.3 + uActive * 0.2;
-      vAlpha *= (0.7 + aRandom * 0.3);
+      vAlpha = 0.5 + noise1 * 0.25 + uActive * 0.15;
       vDistance = length(pos);
+      
+      // Color gradient: magenta -> purple -> blue
+      float colorMix = sin(time * 0.6 + aRandom * 6.28 + noise1 * 2.0) * 0.5 + 0.5;
+      vec3 magenta = vec3(1.0, 0.0, 0.8);
+      vec3 purple = vec3(0.55, 0.2, 0.9);
+      vec3 blue = vec3(0.3, 0.5, 1.0);
+      vColor = mix(mix(magenta, purple, colorMix), blue, aRandom * 0.4);
     }
   `;
 
   const fragmentShader = `
-    uniform float uTime;
-    uniform float uActive;
-    uniform vec3 uColor1;
-    uniform vec3 uColor2;
-    uniform vec3 uColor3;
-    uniform vec3 uCoreColor;
     varying float vAlpha;
     varying float vDistance;
-    varying float vRandom;
+    varying vec3 vColor;
     
     void main() {
-      // Soft circular particle
       vec2 center = gl_PointCoord - vec2(0.5);
       float dist = length(center);
       if (dist > 0.5) discard;
       
-      float softEdge = 1.0 - smoothstep(0.0, 0.5, dist);
-      softEdge = pow(softEdge, 1.5);
+      float softEdge = 1.0 - smoothstep(0.1, 0.5, dist);
+      softEdge = pow(softEdge, 1.2);
       
-      // Color gradient based on distance from center and time
-      float colorMix1 = sin(uTime * 0.5 + vRandom * 6.28) * 0.5 + 0.5;
-      float colorMix2 = cos(uTime * 0.3 + vDistance * 2.0) * 0.5 + 0.5;
+      // Add glow near center
+      float coreGlow = 1.0 - smoothstep(0.2, 1.0, vDistance);
+      vec3 color = vColor * (1.0 + coreGlow * 0.5);
       
-      vec3 color = mix(uColor1, uColor2, colorMix1);
-      color = mix(color, uColor3, colorMix2 * 0.5);
-      
-      // Add bright core glow for particles near center
-      float coreGlow = 1.0 - smoothstep(0.3, 1.2, vDistance);
-      coreGlow = pow(coreGlow, 2.0);
-      color = mix(color, uCoreColor, coreGlow * 0.6);
-      
-      // Enhance brightness
-      float brightness = 1.2 + uActive * 0.3 + coreGlow * 0.5;
-      color *= brightness;
+      // Add white core brightness
+      color = mix(color, vec3(1.0, 0.9, 1.0), coreGlow * 0.3);
       
       float alpha = vAlpha * softEdge;
       
@@ -195,21 +173,7 @@ function EnergySphere({ isActive }: EnergySphereProps) {
   `;
 
   return (
-    <points ref={meshRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={positions.length / 3}
-          array={positions}
-          itemSize={3}
-        />
-        <bufferAttribute
-          attach="attributes-aRandom"
-          count={randoms.length}
-          array={randoms}
-          itemSize={1}
-        />
-      </bufferGeometry>
+    <points ref={pointsRef} geometry={geometry}>
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
@@ -223,9 +187,7 @@ function EnergySphere({ isActive }: EnergySphereProps) {
   );
 }
 
-// Inner glowing core
 function GlowingCore({ isActive }: { isActive: boolean }) {
-  const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
   const uniforms = useMemo(
@@ -264,28 +226,25 @@ function GlowingCore({ isActive }: { isActive: boolean }) {
       vec2 center = vUv - 0.5;
       float dist = length(center);
       
-      // Radial gradient for core glow
       float glow = 1.0 - smoothstep(0.0, 0.5, dist);
-      glow = pow(glow, 2.0);
+      glow = pow(glow, 2.5);
       
-      // Pulsing effect
-      float pulse = sin(uTime * 2.0) * 0.1 + 0.9;
-      pulse += uActive * 0.2;
+      float pulse = sin(uTime * 1.5) * 0.08 + 0.92;
+      pulse += uActive * 0.15;
       
-      // Core colors
-      vec3 coreColor = vec3(1.0, 0.8, 1.0); // Slight pink-white
-      vec3 edgeColor = vec3(0.8, 0.4, 1.0); // Purple edge
+      vec3 coreColor = vec3(1.0, 0.85, 1.0);
+      vec3 edgeColor = vec3(0.7, 0.3, 0.9);
       
       vec3 color = mix(edgeColor, coreColor, glow);
-      float alpha = glow * pulse * (0.6 + uActive * 0.3);
+      float alpha = glow * pulse * (0.5 + uActive * 0.3);
       
       gl_FragColor = vec4(color, alpha);
     }
   `;
 
   return (
-    <mesh ref={meshRef}>
-      <sphereGeometry args={[0.35, 32, 32]} />
+    <mesh>
+      <sphereGeometry args={[0.25, 32, 32]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
@@ -311,7 +270,7 @@ export function MorphingBlob({ isActive, onClick }: MorphingBlobProps) {
       onClick={onClick}
     >
       <Canvas
-        camera={{ position: [0, 0, 3], fov: 50 }}
+        camera={{ position: [0, 0, 2.8], fov: 50 }}
         style={{ background: 'transparent' }}
         gl={{ alpha: true, antialias: true }}
       >
