@@ -1,14 +1,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useFinancialModel } from '@/hooks/useFinancialModel';
-import { AssumptionsSheet } from './AssumptionsSheet';
 import { RevenueBuildSheet } from './RevenueBuildSheet';
 import { OperatingExpensesSheet } from './OperatingExpensesSheet';
 import { FinancialStatementsSheet } from './FinancialStatementsSheet';
 import { DashboardSheet } from './DashboardSheet';
 import { cn } from '@/lib/utils';
 import { 
-  Settings, TrendingUp, DollarSign, FileText, BarChart3,
+  TrendingUp, DollarSign, FileText, BarChart3,
   Undo2, Redo2, RotateCcw, Download
 } from 'lucide-react';
 import {
@@ -22,10 +21,9 @@ interface FinancialModelViewerProps {
   dealId: string;
 }
 
-type SheetTab = 'assumptions' | 'revenue' | 'expenses' | 'statements' | 'dashboard';
+type SheetTab = 'revenue' | 'expenses' | 'statements' | 'dashboard';
 
 const tabs: { id: SheetTab; label: string; icon: React.ElementType }[] = [
-  { id: 'assumptions', label: 'Assumptions', icon: Settings },
   { id: 'revenue', label: 'Revenue Build', icon: TrendingUp },
   { id: 'expenses', label: 'Operating Expenses', icon: DollarSign },
   { id: 'statements', label: 'Financial Statements', icon: FileText },
@@ -33,7 +31,7 @@ const tabs: { id: SheetTab; label: string; icon: React.ElementType }[] = [
 ];
 
 export function FinancialModelViewer({ dealId }: FinancialModelViewerProps) {
-  const [activeTab, setActiveTab] = useState<SheetTab>('assumptions');
+  const [activeTab, setActiveTab] = useState<SheetTab>('dashboard');
   const {
     assumptions,
     updateAssumption,
@@ -155,9 +153,6 @@ export function FinancialModelViewer({ dealId }: FinancialModelViewerProps) {
 
       {/* Content Area */}
       <div className="flex-1 min-h-0 overflow-auto">
-        {activeTab === 'assumptions' && (
-          <AssumptionsSheet assumptions={assumptions} onUpdate={updateAssumption} />
-        )}
         {activeTab === 'revenue' && (
           <RevenueBuildSheet monthlyData={monthlyData} />
         )}
