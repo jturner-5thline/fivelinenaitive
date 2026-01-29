@@ -1,38 +1,82 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { Bell, AlertCircle, Calendar, FileText, Users, ChevronLeft, ChevronRight, Clock, Expand } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { formatDistanceToNow, differenceInDays } from 'date-fns';
+import { Bell, AlertCircle, Calendar, FileText, Users, ChevronLeft, ChevronRight, Clock, Expand, Activity, Zap, Sparkles, Bot, X } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useAllActivities } from '@/hooks/useAllActivities';
+import { useNotificationReads } from '@/hooks/useNotificationReads';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { useFlexNotifications } from '@/hooks/useFlexNotifications';
+import { useWorkflowSuggestions, useDismissSuggestion } from '@/hooks/useBehaviorInsights';
+import { useAgentSuggestions, useDismissAgentSuggestion } from '@/hooks/useAgentSuggestions';
+import { Deal } from '@/types/deal';
+import { cn } from '@/lib/utils';
 
 interface Notification {
   id: string;
-  type: 'reminder' | 'deal' | 'alert' | 'lender' | 'milestone';
+  type: 'stale_alert' | 'flex' | 'activity';
   title: string;
   description: string;
   dealId?: string;
   dealName?: string;
   timestamp: Date;
   priority?: 'low' | 'medium' | 'high';
+  isRead: boolean;
+  metadata?: Record<string, any>;
 }
 
-// Real notifications would come from a hook or props
-const realNotifications: Notification[] = [];
+interface StaleDeal {
+  dealId: string;
+  companyName: string;
+  lenderCount: number;
+  maxDaysSinceUpdate: number;
+}
+
+function getStaleDealAlerts(deals: Deal[], yellowThreshold: number): StaleDeal[] {
+  const now = new Date();
+  const staleDeals: StaleDeal[] = [];
+  
+  deals.forEach(deal => {
+    let maxDays = 0;
+    let staleLenderCount = 0;
+    
+    deal.lenders?.forEach(lender => {
+      if (lender.trackingStatus === 'active' && lender.updatedAt) {
+        const daysSinceUpdate = differenceInDays(now, new Date(lender.updatedAt));
+        if (daysSinceUpdate >= yellowThreshold) {
+          staleLenderCount++;
+          maxDays = Math.max(maxDays, daysSinceUpdate);
+        }
+      }
+    });
+    
+    if (staleLenderCount > 0) {
+      staleDeals.push({
+        dealId: deal.id,
+        companyName: deal.company,
+        lenderCount: staleLenderCount,
+        maxDaysSinceUpdate: maxDays,
+      });
+    }
+  });
+  
+  return staleDeals;
+}
 
 const getNotificationIcon = (type: Notification['type']) => {
   switch (type) {
-    case 'reminder':
-      return Calendar;
-    case 'deal':
-      return FileText;
-    case 'lender':
-      return Users;
-    case 'alert':
+    case 'stale_alert':
       return AlertCircle;
-    case 'milestone':
-      return Clock;
+    case 'flex':
+      return Zap;
+    case 'activity':
+      return Activity;
     default:
       return Bell;
   }
@@ -40,16 +84,12 @@ const getNotificationIcon = (type: Notification['type']) => {
 
 const getNotificationColor = (type: Notification['type']) => {
   switch (type) {
-    case 'reminder':
-      return 'bg-primary/10 text-primary';
-    case 'deal':
-      return 'bg-success/20 text-success';
-    case 'lender':
-      return 'bg-accent/50 text-accent-foreground';
-    case 'alert':
+    case 'stale_alert':
       return 'bg-destructive/10 text-destructive';
-    case 'milestone':
-      return 'bg-warning/20 text-warning';
+    case 'flex':
+      return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    case 'activity':
+      return 'bg-primary/10 text-primary';
     default:
       return 'bg-muted text-muted-foreground';
   }
@@ -70,12 +110,13 @@ const getPriorityBadge = (priority?: Notification['priority']) => {
 
 interface CarouselContentProps {
   notifications: Notification[];
-  onNavigate: (dealId: string) => void;
+  onNavigate: (dealId: string, type: string) => void;
   onClose?: () => void;
   initialIndex?: number;
+  onMarkAsRead?: (notification: Notification) => void;
 }
 
-function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }: CarouselContentProps) {
+function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0, onMarkAsRead }: CarouselContentProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -87,7 +128,6 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
     const target = cards[index] as HTMLElement | undefined;
     if (!target) return;
 
-    // Use viewport-relative math to reliably center inside the visible container
     const containerRect = container.getBoundingClientRect();
     const targetRect = target.getBoundingClientRect();
 
@@ -175,7 +215,6 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
   useEffect(() => {
     setActiveIndex(initialIndex);
 
-    // Wait for the dialog + layout to paint, then center the selected card.
     let raf1 = 0;
     let raf2 = 0;
 
@@ -264,13 +303,12 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
                 }`}
                 onClick={() => {
                   if (!isActive) {
-                    // Center the clicked card
                     setActiveIndex(index);
                     scrollToIndex(index);
                   } else if (notification.dealId) {
-                    // Navigate only when clicking the already-active card
+                    onMarkAsRead?.(notification);
                     onClose?.();
-                    onNavigate(notification.dealId);
+                    onNavigate(notification.dealId, notification.type);
                   }
                 }}
               >
@@ -280,7 +318,12 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
                     <div className={`p-3 rounded-xl ${colorClass}`}>
                       <IconComponent className={isActive ? 'h-6 w-6' : 'h-5 w-5'} />
                     </div>
-                    {getPriorityBadge(notification.priority)}
+                    <div className="flex items-center gap-2">
+                      {!notification.isRead && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                      {getPriorityBadge(notification.priority)}
+                    </div>
                   </div>
 
                   {/* Content */}
@@ -337,14 +380,286 @@ function CarouselInner({ notifications, onNavigate, onClose, initialIndex = 0 }:
   );
 }
 
+const PRIORITY_COLORS: Record<string, string> = {
+  high: 'bg-red-500/10 text-red-600',
+  medium: 'bg-amber-500/10 text-amber-600',
+  low: 'bg-blue-500/10 text-blue-600',
+};
+
+function SuggestionsEmptyState() {
+  const navigate = useNavigate();
+  const { data: workflowSuggestions = [], isLoading: workflowLoading } = useWorkflowSuggestions();
+  const { data: agentSuggestions = [], isLoading: agentLoading } = useAgentSuggestions();
+  const dismissWorkflow = useDismissSuggestion();
+  const dismissAgent = useDismissAgentSuggestion();
+
+  const topWorkflows = workflowSuggestions
+    .filter((s) => s.priority === 'high' || s.priority === 'medium')
+    .slice(0, 3);
+
+  const topAgents = agentSuggestions
+    .filter((s) => s.priority === 'high' || s.priority === 'medium')
+    .slice(0, 3);
+
+  const isLoading = workflowLoading || agentLoading;
+  const hasSuggestions = topWorkflows.length > 0 || topAgents.length > 0;
+
+  if (isLoading) {
+    return (
+      <Card className="p-6">
+        <div className="space-y-4">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      </Card>
+    );
+  }
+
+  if (!hasSuggestions) {
+    return (
+      <Card className="p-6">
+        <div className="flex flex-col items-center justify-center text-center space-y-2">
+          <Bell className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No notifications at this time</p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Workflow Suggestions */}
+      {topWorkflows.length > 0 && (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Suggested Automations
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs gap-1"
+                onClick={() => navigate('/workflows')}
+              >
+                View all
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {topWorkflows.map((suggestion) => (
+              <div
+                key={suggestion.id}
+                className="flex items-center justify-between p-2 rounded-lg bg-background/50 border group"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Zap className="h-4 w-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{suggestion.name}</p>
+                    <Badge variant="outline" className={`text-xs mt-0.5 ${PRIORITY_COLORS[suggestion.priority]}`}>
+                      {suggestion.priority} priority
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => dismissWorkflow.mutate(suggestion.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    onClick={() => navigate('/workflows')}
+                  >
+                    Set up
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Agent Suggestions */}
+      {topAgents.length > 0 && (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Recommended Agents
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs gap-1"
+                onClick={() => navigate('/agents')}
+              >
+                View all
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {topAgents.map((suggestion) => (
+              <div
+                key={suggestion.id}
+                className="flex items-center justify-between p-2 rounded-lg bg-background/50 border group"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Bot className="h-4 w-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{suggestion.name}</p>
+                    <Badge variant="outline" className={`text-xs mt-0.5 ${PRIORITY_COLORS[suggestion.priority]}`}>
+                      {suggestion.priority} priority
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => dismissAgent.mutate(suggestion)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    onClick={() => navigate('/agents')}
+                  >
+                    Create
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export function NotificationCarousel() {
   const navigate = useNavigate();
-  const notifications = realNotifications;
   const [isCarouselOpen, setIsCarouselOpen] = useState(false);
   const [initialCarouselIndex, setInitialCarouselIndex] = useState(0);
 
-  const handleNavigate = (dealId: string) => {
-    navigate(`/deal/${dealId}`);
+  // Data hooks
+  const { deals } = useDealsContext();
+  const { preferences: appPreferences } = usePreferences();
+  const { activities, isLoading: activitiesLoading } = useAllActivities(15);
+  const { isRead, markAsRead } = useNotificationReads();
+  const { shouldShowStaleAlerts, shouldShowActivity, preferences: notifPrefs } = useNotificationPreferences();
+  const { notifications: flexNotifications, isLoading: flexLoading, markAsRead: markFlexAsRead } = useFlexNotifications(10);
+
+  // Calculate stale alerts
+  const allStaleAlerts = useMemo(() => 
+    getStaleDealAlerts(deals, appPreferences.lenderUpdateYellowDays),
+    [deals, appPreferences.lenderUpdateYellowDays]
+  );
+
+  const staleAlerts = useMemo(() => 
+    shouldShowStaleAlerts ? allStaleAlerts : [],
+    [shouldShowStaleAlerts, allStaleAlerts]
+  );
+
+  const filteredActivities = useMemo(() => 
+    activities.filter(a => shouldShowActivity(a.activity_type)),
+    [activities, shouldShowActivity]
+  );
+
+  const filteredFlexNotifications = useMemo(() => 
+    (notifPrefs as any).notify_flex_alerts ? flexNotifications : [],
+    [(notifPrefs as any).notify_flex_alerts, flexNotifications]
+  );
+
+  // Convert to unified notification format
+  const notifications: Notification[] = useMemo(() => {
+    const items: Notification[] = [];
+
+    // Stale alerts
+    staleAlerts.forEach(alert => {
+      items.push({
+        id: `stale-${alert.dealId}`,
+        type: 'stale_alert',
+        title: `${alert.lenderCount} lender${alert.lenderCount > 1 ? 's' : ''} need update`,
+        description: `${alert.companyName} has lenders that haven't been updated in ${alert.maxDaysSinceUpdate} days.`,
+        dealId: alert.dealId,
+        dealName: alert.companyName,
+        timestamp: new Date(),
+        priority: alert.maxDaysSinceUpdate > 14 ? 'high' : 'medium',
+        isRead: isRead('stale_alert', alert.dealId),
+      });
+    });
+
+    // FLEx notifications
+    filteredFlexNotifications.forEach(notification => {
+      items.push({
+        id: `flex-${notification.id}`,
+        type: 'flex',
+        title: notification.title,
+        description: notification.message,
+        dealId: notification.deal_id,
+        dealName: notification.deal_name,
+        timestamp: new Date(notification.created_at),
+        priority: 'medium',
+        isRead: !!notification.read_at,
+        metadata: { flexId: notification.id },
+      });
+    });
+
+    // Activity notifications
+    filteredActivities.forEach(activity => {
+      items.push({
+        id: `activity-${activity.id}`,
+        type: 'activity',
+        title: getActivityTitle(activity.activity_type),
+        description: activity.description,
+        dealId: activity.deal_id,
+        dealName: activity.deal_name,
+        timestamp: new Date(activity.created_at),
+        priority: 'low',
+        isRead: isRead('activity', activity.id),
+      });
+    });
+
+    // Sort by timestamp (newest first)
+    return items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }, [staleAlerts, filteredFlexNotifications, filteredActivities, isRead]);
+
+  const isLoading = activitiesLoading || flexLoading;
+
+  const handleNavigate = (dealId: string, type: string) => {
+    if (type === 'stale_alert') {
+      navigate(`/deal/${dealId}?highlight=stale`);
+    } else if (type === 'flex') {
+      navigate(`/deal/${dealId}?tab=deal-management#flex-engagement-section`);
+    } else {
+      navigate(`/deal/${dealId}`);
+    }
+  };
+
+  const handleMarkAsRead = (notification: Notification) => {
+    if (notification.isRead) return;
+    
+    if (notification.type === 'stale_alert') {
+      markAsRead([{ notification_type: 'stale_alert', notification_id: notification.dealId! }]);
+    } else if (notification.type === 'flex' && notification.metadata?.flexId) {
+      markFlexAsRead([notification.metadata.flexId]);
+    } else if (notification.type === 'activity') {
+      markAsRead([{ notification_type: 'activity', notification_id: notification.id.replace('activity-', '') }]);
+    }
   };
 
   const openCarouselAtIndex = (index: number) => {
@@ -352,12 +667,17 @@ export function NotificationCarousel() {
     setIsCarouselOpen(true);
   };
 
-  if (notifications.length === 0) {
+  // Show suggestions if no notifications
+  if (!isLoading && notifications.length === 0) {
+    return <SuggestionsEmptyState />;
+  }
+
+  // Loading state
+  if (isLoading && notifications.length === 0) {
     return (
       <Card className="p-6">
-        <div className="flex flex-col items-center justify-center text-center space-y-2">
-          <Bell className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No notifications at this time</p>
+        <div className="flex items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       </Card>
     );
@@ -417,8 +737,8 @@ export function NotificationCarousel() {
                     <div className={`p-2 rounded-lg ${colorClass}`}>
                       <IconComponent className="h-4 w-4" />
                     </div>
-                    {notification.priority === 'high' && (
-                      <span className="h-2 w-2 rounded-full bg-destructive" />
+                    {!notification.isRead && (
+                      <span className="h-2 w-2 rounded-full bg-primary" />
                     )}
                   </div>
 
@@ -453,9 +773,32 @@ export function NotificationCarousel() {
             onNavigate={handleNavigate}
             onClose={() => setIsCarouselOpen(false)}
             initialIndex={initialCarouselIndex}
+            onMarkAsRead={handleMarkAsRead}
           />
         </DialogContent>
       </Dialog>
     </>
   );
+}
+
+function getActivityTitle(activityType: string): string {
+  switch (activityType) {
+    case 'lender_added':
+      return 'New lender added';
+    case 'lender_updated':
+    case 'lender_stage_changed':
+      return 'Lender updated';
+    case 'stage_changed':
+      return 'Deal stage changed';
+    case 'status_changed':
+      return 'Deal status changed';
+    case 'milestone_added':
+      return 'Milestone added';
+    case 'milestone_completed':
+      return 'Milestone completed';
+    case 'milestone_missed':
+      return 'Milestone missed';
+    default:
+      return 'Activity';
+  }
 }
