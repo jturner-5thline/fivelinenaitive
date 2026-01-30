@@ -208,14 +208,14 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
             <div className="space-y-2">
               <Label>Exclusivity</Label>
               <Select
-                value={formData.exclusivity}
-                onValueChange={(value) => setFormData({ ...formData, exclusivity: value })}
+                value={formData.exclusivity || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, exclusivity: value === 'none' ? '' : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select exclusivity" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {Object.entries(EXCLUSIVITY_CONFIG).map(([key, { label }]) => (
                     <SelectItem key={key} value={key}>
                       {label}
