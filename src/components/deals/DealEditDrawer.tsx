@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Archive, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Deal, DealStatus, DealStage, EngagementType, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, ExclusivityType } from '@/types/deal';
+import { Deal, DealStatus, DealStage, EngagementType, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, ExclusivityType } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,18 +97,18 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
 
   if (!isOpen) return null;
 
-  return (
+  const drawerContent = (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-[60]"
+        className="fixed inset-0 bg-black/50 z-[9998]"
         onClick={onClose}
       />
       
       {/* Drawer */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 w-[400px] max-w-[90vw] bg-background border-l border-border shadow-xl z-[70]",
+          "fixed inset-y-0 right-0 w-[400px] max-w-[90vw] bg-background border-l border-border shadow-xl z-[9999]",
           "transform transition-transform duration-300 ease-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
@@ -300,4 +301,6 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
       </div>
     </>
   );
+
+  return createPortal(drawerContent, document.body);
 }
