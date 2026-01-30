@@ -12,6 +12,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface DealEditDrawerProps {
@@ -28,6 +29,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
   const { isAdmin } = useAdminRole();
+  const { toast } = useToast();
   const dynamicStageConfig = getStageConfig();
 
   const [formData, setFormData] = useState({
@@ -83,9 +85,18 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
       
       // Update deal without modifying referredBy (handled separately if needed)
       await updateDeal(deal.id, updates);
+      toast({
+        title: "Deal updated",
+        description: "Your changes have been saved successfully.",
+      });
       onClose();
     } catch (error) {
       console.error('Failed to update deal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
