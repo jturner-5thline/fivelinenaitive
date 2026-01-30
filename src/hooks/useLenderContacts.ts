@@ -12,6 +12,7 @@ export interface LenderContact {
   phone: string | null;
   is_primary: boolean | null;
   notes: string | null;
+  geography: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +24,7 @@ export interface LenderContactInsert {
   phone?: string | null;
   is_primary?: boolean;
   notes?: string | null;
+  geography?: string | null;
 }
 
 export function useLenderContacts(lenderId: string | null) {
