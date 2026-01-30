@@ -108,7 +108,11 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/50 z-[9998]"
-        onClick={onClose}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
       />
       
       {/* Drawer */}
