@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { LenderContactInsert } from '@/hooks/useLenderContacts';
 import { LOCATION_OPTIONS } from '@/constants/locations';
@@ -158,31 +157,29 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
                     className="h-8"
                   />
                 </div>
-                <ScrollArea className="h-[200px]">
-                  <div className="p-1">
-                    {filteredLocations.length === 0 ? (
-                      <div className="py-2 px-3 text-sm text-muted-foreground">No locations found</div>
-                    ) : (
-                      filteredLocations.map(option => (
-                        <div
-                          key={option}
-                          className={cn(
-                            "flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-sm hover:bg-accent",
-                            form.geography === option && "bg-accent"
-                          )}
-                          onClick={() => {
-                            setForm({ ...form, geography: option });
-                            setGeographyOpen(false);
-                            setGeographySearch('');
-                          }}
-                        >
-                          <Check className={cn("h-4 w-4", form.geography === option ? "opacity-100" : "opacity-0")} />
-                          {option}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
+                <div className="max-h-[200px] overflow-y-auto p-1">
+                  {filteredLocations.length === 0 ? (
+                    <div className="py-2 px-3 text-sm text-muted-foreground">No locations found</div>
+                  ) : (
+                    filteredLocations.map(option => (
+                      <div
+                        key={option}
+                        className={cn(
+                          "flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-sm hover:bg-accent",
+                          form.geography === option && "bg-accent"
+                        )}
+                        onClick={() => {
+                          setForm({ ...form, geography: option });
+                          setGeographyOpen(false);
+                          setGeographySearch('');
+                        }}
+                      >
+                        <Check className={cn("h-4 w-4", form.geography === option ? "opacity-100" : "opacity-0")} />
+                        {option}
+                      </div>
+                    ))
+                  )}
+                </div>
               </PopoverContent>
             </Popover>
           </div>
