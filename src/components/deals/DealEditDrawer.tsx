@@ -32,6 +32,27 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { toast } = useToast();
   const dynamicStageConfig = getStageConfig();
 
+  // Animation states - keep mounted during exit animation
+  const [isVisible, setIsVisible] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      // Small delay to ensure the element is mounted before animating
+      requestAnimationFrame(() => {
+        setIsAnimating(true);
+      });
+    } else {
+      setIsAnimating(false);
+      // Wait for exit animation to complete before unmounting
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   const [formData, setFormData] = useState({
     company: deal.company,
     value: deal.value,
@@ -112,13 +133,16 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isVisible) return null;
 
   const drawerContent = (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-[9998]"
+        className={cn(
+          "fixed inset-0 bg-black/50 z-[9998] transition-opacity duration-300",
+          isAnimating ? "opacity-100" : "opacity-0"
+        )}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -131,7 +155,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         className={cn(
           "fixed inset-y-0 right-0 w-[400px] max-w-[90vw] bg-background border-l border-border shadow-xl z-[9999]",
           "transform transition-transform duration-300 ease-out",
-          isOpen ? "translate-x-0" : "translate-x-full"
+          isAnimating ? "translate-x-0" : "translate-x-full"
         )}
         onClick={(e) => e.stopPropagation()}
       >
