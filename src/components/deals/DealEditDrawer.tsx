@@ -40,6 +40,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     manager: deal.manager || '',
     dealOwner: deal.dealOwner || '',
     referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
+    preSigningHours: deal.preSigningHours || 0,
+    postSigningHours: deal.postSigningHours || 0,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -56,6 +58,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         manager: deal.manager || '',
         dealOwner: deal.dealOwner || '',
         referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
+        preSigningHours: deal.preSigningHours || 0,
+        postSigningHours: deal.postSigningHours || 0,
       });
     }
   }, [deal, isOpen]);
@@ -73,6 +77,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         exclusivity: formData.exclusivity as ExclusivityType || undefined,
         manager: formData.manager || undefined,
         dealOwner: formData.dealOwner || undefined,
+        preSigningHours: formData.preSigningHours,
+        postSigningHours: formData.postSigningHours,
       };
       
       // Update deal without modifying referredBy (handled separately if needed)
@@ -259,6 +265,35 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 onChange={(e) => setFormData({ ...formData, dealOwner: e.target.value })}
                 placeholder="Assign a deal owner"
               />
+            </div>
+
+            {/* Hours Section */}
+            <div className="space-y-2">
+              <Label>Hours</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="preSigningHours" className="text-xs text-muted-foreground">Pre-Signing</Label>
+                  <Input
+                    id="preSigningHours"
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={formData.preSigningHours}
+                    onChange={(e) => setFormData({ ...formData, preSigningHours: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="postSigningHours" className="text-xs text-muted-foreground">Post-Signing</Label>
+                  <Input
+                    id="postSigningHours"
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={formData.postSigningHours}
+                    onChange={(e) => setFormData({ ...formData, postSigningHours: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Referred By - Display only since it's a complex object */}
