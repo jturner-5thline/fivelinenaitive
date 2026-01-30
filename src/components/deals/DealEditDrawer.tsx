@@ -107,7 +107,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
       {/* Drawer */}
       <div
         className={cn(
-          "fixed right-2 top-0 bottom-0 w-[400px] max-w-[90vw] bg-background border-l border-border shadow-xl z-40",
+          "fixed right-0 top-0 bottom-0 w-[400px] max-w-[90vw] bg-background border-l border-border shadow-xl z-50",
           "transform transition-transform duration-300 ease-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
