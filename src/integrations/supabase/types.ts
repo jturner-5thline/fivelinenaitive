@@ -3033,6 +3033,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          geography: string | null
           id: string
           is_primary: boolean | null
           lender_id: string
@@ -3045,6 +3046,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
+          geography?: string | null
           id?: string
           is_primary?: boolean | null
           lender_id: string
@@ -3057,6 +3059,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
+          geography?: string | null
           id?: string
           is_primary?: boolean | null
           lender_id?: string
