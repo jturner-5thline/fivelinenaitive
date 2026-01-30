@@ -140,7 +140,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
       {/* Backdrop */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/50 z-[9998] transition-opacity duration-300",
+          "fixed inset-0 bg-black/50 z-[9998] transition-opacity duration-200 ease-out",
           isAnimating ? "opacity-100" : "opacity-0"
         )}
         onClick={(e) => {
@@ -154,7 +154,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
       <div
         className={cn(
           "fixed inset-y-0 right-0 w-[400px] max-w-[90vw] bg-background border-l border-border shadow-xl z-[9999]",
-          "transform transition-transform duration-300 ease-out",
+          "transition-transform duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]",
           isAnimating ? "translate-x-0" : "translate-x-full"
         )}
         onClick={(e) => e.stopPropagation()}
