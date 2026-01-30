@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Flame, Thermometer, Snowflake } from 'lucide-react';
+import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake } from 'lucide-react';
 import DOMPurify from 'dompurify';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -10,17 +10,9 @@ import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
-import { useAdminRole } from '@/hooks/useAdminRole';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { FlagNoteDialog } from './FlagNoteDialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DealEditDrawer } from './DealEditDrawer';
 import {
   Tooltip,
   TooltipContent,
@@ -44,11 +36,10 @@ interface DealCardProps {
 
 export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, compact = false }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
-  const navigate = useNavigate();
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
-  const { isAdmin } = useAdminRole();
   const dynamicStageConfig = getStageConfig();
   
   const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
@@ -195,60 +186,33 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 />
               </>
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Change Status</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {Object.entries(STATUS_CONFIG).map(([key, { label, dotColor }]) => (
-                  <DropdownMenuItem
-                    key={key}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onStatusChange(deal.id, key as DealStatus);
-                    }}
-                    className={`flex items-center gap-2 ${deal.status === key ? 'bg-muted' : ''}`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${dotColor}`} />
-                    {label}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                {deal.status !== 'archived' && (
-                  <DropdownMenuItem
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      onStatusChange(deal.id, 'archived');
+                      setIsEditDrawerOpen(true);
                     }}
                   >
-                    <Archive className="h-4 w-4 mr-2" />
-                    Archive
-                  </DropdownMenuItem>
-                )}
-                {isAdmin && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      navigate(`/deal/${deal.id}?action=delete`);
-                    }}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit deal</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <DealEditDrawer
+              deal={deal}
+              isOpen={isEditDrawerOpen}
+              onClose={() => setIsEditDrawerOpen(false)}
+              onStatusChange={onStatusChange}
+            />
           </div>
         </div>
         <div className={`flex items-center gap-2 ${compact ? 'mt-2' : 'mt-4'} flex-wrap`}>
