@@ -112,6 +112,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
           "transform transition-transform duration-300 ease-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
