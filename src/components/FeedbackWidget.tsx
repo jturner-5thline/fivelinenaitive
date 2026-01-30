@@ -126,6 +126,19 @@ export function FeedbackWidget() {
 
       if (error) throw error;
 
+      // Send email notification (fire and forget - don't block on this)
+      supabase.functions.invoke('notify-feedback-submitted', {
+        body: {
+          title: title.trim(),
+          message: message.trim(),
+          type,
+          page_url: window.location.pathname,
+          user_email: user.email,
+          user_name: user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0],
+          screenshot_url: screenshotUrl,
+        },
+      }).catch(err => console.error('Failed to send feedback notification:', err));
+
       toast({
         title: 'Feedback submitted',
         description: 'Thank you for your feedback!',
