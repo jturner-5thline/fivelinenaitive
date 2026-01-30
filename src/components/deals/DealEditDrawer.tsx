@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Archive, Trash2 } from 'lucide-react';
+import { X, Archive, Trash2, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Deal, DealStatus, DealStage, EngagementType, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, ExclusivityType } from '@/types/deal';
 import { Button } from '@/components/ui/button';
@@ -117,7 +117,19 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
-            <h2 className="text-lg font-semibold">Edit Deal</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold">Edit Deal</h2>
+              <button
+                onClick={() => {
+                  onClose();
+                  navigate(`/deal/${deal.id}`);
+                }}
+                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
+                Go to Deal
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            </div>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
