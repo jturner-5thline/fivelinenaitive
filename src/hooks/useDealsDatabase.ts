@@ -220,7 +220,81 @@ export function useDealsDatabase() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch all deals from database
+  // Helper to map database deal to Deal type
+  const mapDbDealToDeal = useCallback((
+    dbDeal: DbDeal,
+    dbLenders: DbDealLender[] = [],
+    notesHistoryMap: Record<string, LenderNoteHistory[]> = {}
+  ): Deal => {
+    const dealLenders = dbLenders
+      .filter((l: DbDealLender) => l.deal_id === dbDeal.id)
+      .map((l: DbDealLender) => ({
+        id: l.id,
+        name: l.name,
+        status: 'in-review' as const,
+        stage: l.stage,
+        substage: l.substage || undefined,
+        trackingStatus: (l.tracking_status || 'active') as 'active' | 'on-hold' | 'on-deck' | 'passed',
+        notes: l.notes || undefined,
+        passReason: l.pass_reason || undefined,
+        updatedAt: l.updated_at,
+        notesHistory: notesHistoryMap[l.id] || [],
+      }));
+
+    const toReferrer = (name: string | null): Referrer | undefined => {
+      if (!name) return undefined;
+      return {
+        id: `ref-${name.toLowerCase().replace(/\s+/g, '-')}`,
+        name,
+      };
+    };
+
+    // Parse deal_type from JSON string or single value to array
+    const parseDealTypes = (dealType: string | null): string[] | undefined => {
+      if (!dealType) return undefined;
+      try {
+        const parsed = JSON.parse(dealType);
+        if (Array.isArray(parsed)) return parsed;
+        return [parsed];
+      } catch {
+        return [dealType];
+      }
+    };
+
+    return {
+      id: dbDeal.id,
+      name: dbDeal.company,
+      company: dbDeal.company,
+      stage: dbDeal.stage as DealStage,
+      status: dbDeal.status as DealStatus,
+      engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
+      exclusivity: (dbDeal.exclusivity || undefined) as ExclusivityType | undefined,
+      dealTypes: parseDealTypes(dbDeal.deal_type),
+      manager: dbDeal.manager || '',
+      dealOwner: dbDeal.deal_owner || undefined,
+      isFlagged: dbDeal.is_flagged || false,
+      flagNotes: dbDeal.flag_notes || undefined,
+      referredBy: toReferrer(dbDeal.referred_by),
+      lender: dealLenders[0]?.name || '',
+      value: Number(dbDeal.value),
+      totalFee: Number(dbDeal.total_fee || 0),
+      retainerFee: Number(dbDeal.retainer_fee || 0),
+      milestoneFee: Number(dbDeal.milestone_fee || 0),
+      successFeePercent: Number(dbDeal.success_fee_percent || 0),
+      preSigningHours: Number(dbDeal.pre_signing_hours || 0),
+      postSigningHours: Number(dbDeal.post_signing_hours || 0),
+      notes: dbDeal.notes || undefined,
+      notesUpdatedAt: dbDeal.notes_updated_at || undefined,
+      narrative: dbDeal.narrative || undefined,
+      contact: '',
+      createdAt: dbDeal.created_at,
+      updatedAt: dbDeal.updated_at,
+      lenders: dealLenders,
+      migratedFromPersonal: dbDeal.migrated_from_personal || false,
+    };
+  }, []);
+
+  // Fetch all deals from database - OPTIMIZED with parallel queries
   const fetchDeals = useCallback(async () => {
     if (!userId) {
       setDeals([]);
@@ -230,12 +304,23 @@ export function useDealsDatabase() {
 
     try {
       setIsLoading(true);
-      const { data: dbDeals, error: dealsError } = await supabase
-        .from('deals')
-        .select('*')
-        .order('updated_at', { ascending: false });
+      
+      // Fetch deals and lenders in parallel for faster loading
+      const [dealsResult, lendersResult] = await Promise.all([
+        supabase
+          .from('deals')
+          .select('*')
+          .order('updated_at', { ascending: false }),
+        supabase
+          .from('deal_lenders')
+          .select('*')
+      ]);
 
-      if (dealsError) throw dealsError;
+      if (dealsResult.error) throw dealsResult.error;
+      if (lendersResult.error) throw lendersResult.error;
+
+      const dbDeals = dealsResult.data;
+      const dbLenders = lendersResult.data || [];
 
       if (!dbDeals || dbDeals.length === 0) {
         setDeals([]);
@@ -243,110 +328,52 @@ export function useDealsDatabase() {
         return;
       }
 
-      // Fetch lenders for all deals
-      const { data: dbLenders, error: lendersError } = await supabase
-        .from('deal_lenders')
-        .select('*');
-
-      if (lendersError) throw lendersError;
-
-      // Fetch notes history for all lenders
-      const lenderIds = (dbLenders || []).map((l: DbDealLender) => l.id);
+      // Fetch notes history in parallel (non-blocking for initial render)
+      const lenderIds = dbLenders.map((l: DbDealLender) => l.id);
       let notesHistoryMap: Record<string, LenderNoteHistory[]> = {};
       
       if (lenderIds.length > 0) {
-        const { data: notesHistory } = await supabase
+        // Start notes history fetch but don't block initial render
+        const notesPromise = supabase
           .from('lender_notes_history')
           .select('*')
           .in('deal_lender_id', lenderIds)
           .order('created_at', { ascending: false });
         
-        // Group by lender id
-        (notesHistory || []).forEach((nh: any) => {
-          if (!notesHistoryMap[nh.deal_lender_id]) {
-            notesHistoryMap[nh.deal_lender_id] = [];
-          }
-          notesHistoryMap[nh.deal_lender_id].push({
-            id: nh.id,
-            text: nh.text,
-            updatedAt: nh.created_at,
+        // Map deals immediately for faster initial render
+        const initialMappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) => 
+          mapDbDealToDeal(dbDeal, dbLenders, {})
+        );
+        setDeals(initialMappedDeals);
+        setIsLoading(false);
+        
+        // Then update with notes history when available
+        const { data: notesHistory } = await notesPromise;
+        if (notesHistory && notesHistory.length > 0) {
+          notesHistory.forEach((nh: any) => {
+            if (!notesHistoryMap[nh.deal_lender_id]) {
+              notesHistoryMap[nh.deal_lender_id] = [];
+            }
+            notesHistoryMap[nh.deal_lender_id].push({
+              id: nh.id,
+              text: nh.text,
+              updatedAt: nh.created_at,
+            });
           });
-        });
+          
+          // Update with complete data including notes history
+          const fullMappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) => 
+            mapDbDealToDeal(dbDeal, dbLenders, notesHistoryMap)
+          );
+          setDeals(fullMappedDeals);
+        }
+        return;
       }
 
-      // Map database deals to Deal type
-      const mappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) => {
-        const dealLenders = (dbLenders || [])
-          .filter((l: DbDealLender) => l.deal_id === dbDeal.id)
-          .map((l: DbDealLender) => ({
-            id: l.id,
-            name: l.name,
-            status: 'in-review' as const,
-            stage: l.stage,
-            substage: l.substage || undefined,
-            trackingStatus: (l.tracking_status || 'active') as 'active' | 'on-hold' | 'on-deck' | 'passed',
-            notes: l.notes || undefined,
-            passReason: l.pass_reason || undefined,
-            updatedAt: l.updated_at,
-            notesHistory: notesHistoryMap[l.id] || [],
-          }));
-
-        const toReferrer = (name: string | null): Referrer | undefined => {
-          if (!name) return undefined;
-          return {
-            id: `ref-${name.toLowerCase().replace(/\s+/g, '-')}`,
-            name,
-          };
-        };
-
-        // Parse deal_type from JSON string or single value to array
-        const parseDealTypes = (dealType: string | null): string[] | undefined => {
-          if (!dealType) return undefined;
-          try {
-            // Try to parse as JSON array
-            const parsed = JSON.parse(dealType);
-            if (Array.isArray(parsed)) return parsed;
-            // If it's a string after parsing, wrap in array
-            return [parsed];
-          } catch {
-            // If not valid JSON, treat as single value
-            return [dealType];
-          }
-        };
-
-        return {
-          id: dbDeal.id,
-          name: dbDeal.company,
-          company: dbDeal.company,
-          stage: dbDeal.stage as DealStage,
-          status: dbDeal.status as DealStatus,
-          engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
-          exclusivity: (dbDeal.exclusivity || undefined) as ExclusivityType | undefined,
-          dealTypes: parseDealTypes(dbDeal.deal_type),
-          manager: dbDeal.manager || '',
-          dealOwner: dbDeal.deal_owner || undefined,
-          isFlagged: dbDeal.is_flagged || false,
-          flagNotes: dbDeal.flag_notes || undefined,
-          referredBy: toReferrer(dbDeal.referred_by),
-          lender: dealLenders[0]?.name || '',
-          value: Number(dbDeal.value),
-          totalFee: Number(dbDeal.total_fee || 0),
-          retainerFee: Number(dbDeal.retainer_fee || 0),
-          milestoneFee: Number(dbDeal.milestone_fee || 0),
-          successFeePercent: Number(dbDeal.success_fee_percent || 0),
-          preSigningHours: Number(dbDeal.pre_signing_hours || 0),
-          postSigningHours: Number(dbDeal.post_signing_hours || 0),
-          notes: dbDeal.notes || undefined,
-          notesUpdatedAt: dbDeal.notes_updated_at || undefined,
-          narrative: dbDeal.narrative || undefined,
-          contact: '',
-          createdAt: dbDeal.created_at,
-          updatedAt: dbDeal.updated_at,
-          lenders: dealLenders,
-          migratedFromPersonal: dbDeal.migrated_from_personal || false,
-        };
-      });
-
+      // No lenders - just map deals
+      const mappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) => 
+        mapDbDealToDeal(dbDeal, dbLenders, notesHistoryMap)
+      );
       setDeals(mappedDeals);
     } catch (err) {
       console.error('Error fetching deals:', err);
@@ -355,7 +382,7 @@ export function useDealsDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, mapDbDealToDeal]);
 
   // Create a new deal
   const createDeal = useCallback(async (dealData: Partial<Deal>): Promise<Deal | null> => {
