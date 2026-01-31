@@ -314,7 +314,7 @@ export default function DealDetail() {
   const { flagNotes, addFlagNote, deleteFlagNote } = useFlagNotes(id || null);
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
   const { user } = useAuth();
-  const { members } = useCompany();
+  const { company, members } = useCompany();
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();
@@ -2728,6 +2728,7 @@ export default function DealDetail() {
                               <OutstandingItems
                                 items={outstandingItems}
                                 lenderNames={deal.lenders?.map(l => l.name) || []}
+                                companyName={company?.name}
                                 onAdd={addOutstandingItem}
                                 onUpdate={updateOutstandingItem}
                                 onDelete={deleteOutstandingItem}

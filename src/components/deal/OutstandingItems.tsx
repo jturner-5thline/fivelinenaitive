@@ -45,6 +45,7 @@ const KANBAN_STAGES: { key: KanbanStage; label: string; color: string }[] = [
 interface OutstandingItemsProps {
   items: OutstandingItem[];
   lenderNames: string[];
+  companyName?: string;
   onAdd: (text: string, requestedBy: string[]) => void;
   onUpdate: (id: string, updates: Partial<OutstandingItem>) => void;
   onDelete: (id: string) => void;
@@ -243,7 +244,7 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
+export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
   const [newItemText, setNewItemText] = useState('');
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -301,7 +302,11 @@ export function OutstandingItems({ items, lenderNames, onAdd, onUpdate, onDelete
     clearSelection();
   };
 
-  const requestedByOptions = ['5th Line', ...lenderNames];
+  // Build requester options: company name (if available) + lenders on the deal
+  const requestedByOptions = [
+    ...(companyName ? [companyName] : []),
+    ...lenderNames,
+  ];
 
   const toggleFilterLender = (option: string) => {
     setFilterByLender(prev => 
