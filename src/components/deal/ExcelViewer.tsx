@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { parseExcelFromUrl, ParsedSheet, createWorkbookFromSheets, workbookToBlob } from '@/lib/excelUtils';
 
 interface ExcelViewerProps {
   fileUrl: string;
   fileName: string;
-  onSave?: (workbook: XLSX.WorkBook) => Promise<void>;
+  onSave?: (workbook: ExcelJS.Workbook) => Promise<void>;
   onDownload?: () => void;
   readOnly?: boolean;
 }
@@ -22,12 +23,6 @@ interface CellEdit {
   newValue: string;
 }
 
-interface SheetData {
-  name: string;
-  data: (string | number | null)[][];
-  colWidths: number[];
-}
-
 export function ExcelViewer({ 
   fileUrl, 
   fileName, 
@@ -35,8 +30,8 @@ export function ExcelViewer({
   onDownload,
   readOnly = false 
 }: ExcelViewerProps) {
-  const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
-  const [sheets, setSheets] = useState<SheetData[]>([]);
+  const [workbook, setWorkbook] = useState<ExcelJS.Workbook | null>(null);
+  const [sheets, setSheets] = useState<ParsedSheet[]>([]);
   const [activeSheet, setActiveSheet] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -53,42 +48,11 @@ export function ExcelViewer({
     const loadExcel = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(fileUrl);
-        const arrayBuffer = await response.arrayBuffer();
-        const wb = XLSX.read(arrayBuffer, { type: 'array' });
+        const { sheets: parsedSheets, workbook: wb } = await parseExcelFromUrl(fileUrl);
         
         setWorkbook(wb);
-        
-        // Parse all sheets
-        const parsedSheets: SheetData[] = wb.SheetNames.map(name => {
-          const sheet = wb.Sheets[name];
-          const jsonData = XLSX.utils.sheet_to_json<(string | number | null)[]>(sheet, { 
-            header: 1,
-            defval: null,
-            raw: false
-          });
-          
-          // Calculate column widths based on content
-          const maxCols = Math.max(...jsonData.map(row => row.length), 1);
-          const colWidths = Array(maxCols).fill(100);
-          
-          jsonData.forEach(row => {
-            row.forEach((cell, colIndex) => {
-              if (cell !== null) {
-                const cellLength = String(cell).length;
-                colWidths[colIndex] = Math.max(colWidths[colIndex], Math.min(cellLength * 8 + 20, 300));
-              }
-            });
-          });
-          
-          return {
-            name,
-            data: jsonData,
-            colWidths,
-          };
-        });
-        
         setSheets(parsedSheets);
+        
         if (parsedSheets.length > 0) {
           setActiveSheet(parsedSheets[0].name);
         }
@@ -223,17 +187,14 @@ export function ExcelViewer({
   }, [editHistory]);
 
   const handleSave = useCallback(async () => {
-    if (!workbook || !onSave) return;
+    if (!onSave) return;
 
     setIsSaving(true);
     try {
-      // Update workbook with current sheet data
-      sheets.forEach(sheet => {
-        const ws = XLSX.utils.aoa_to_sheet(sheet.data);
-        workbook.Sheets[sheet.name] = ws;
-      });
+      // Create workbook from current sheet data
+      const updatedWorkbook = createWorkbookFromSheets(sheets);
 
-      await onSave(workbook);
+      await onSave(updatedWorkbook);
       setHasUnsavedChanges(false);
       setEditHistory([]);
       toast({ title: 'Saved', description: 'Changes saved successfully' });
@@ -247,7 +208,7 @@ export function ExcelViewer({
     } finally {
       setIsSaving(false);
     }
-  }, [workbook, sheets, onSave]);
+  }, [sheets, onSave]);
 
   const getColumnLabel = (index: number): string => {
     let label = '';

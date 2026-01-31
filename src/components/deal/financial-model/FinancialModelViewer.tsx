@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import * as XLSX from 'xlsx';
+import { workbookToBlob } from '@/lib/excelUtils';
 
 interface FinancialModelViewerProps {
   dealId: string;
@@ -21,17 +21,20 @@ interface FinancialModelViewerProps {
 export function FinancialModelViewer({ dealId, parsedModel, onClose }: FinancialModelViewerProps) {
   const [activeSheetIndex, setActiveSheetIndex] = useState(0);
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (!parsedModel?.rawWorkbook) return;
     
-    const wbout = XLSX.write(parsedModel.rawWorkbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = parsedModel.fileName;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = await workbookToBlob(parsedModel.rawWorkbook);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = parsedModel.fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting Excel file:', error);
+    }
   }, [parsedModel]);
 
   if (!parsedModel) {
