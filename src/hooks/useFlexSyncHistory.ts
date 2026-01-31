@@ -41,14 +41,18 @@ export function useFlexSyncHistory(dealId: string | undefined) {
       // Get unique user IDs
       const userIds = [...new Set(syncData.map(s => s.synced_by))];
 
-      // Fetch profiles for those users
-      const { data: profiles } = await supabase
-        .from("profiles")
+      // Fetch profiles for those users using the secure profiles_public view
+      // This view only exposes non-sensitive display information
+      const { data: profilesRaw } = await supabase
+        .from("profiles_public" as any)
         .select("user_id, display_name, avatar_url")
         .in("user_id", userIds);
 
+      // Type the response since profiles_public is a view not in generated types
+      const profiles = (profilesRaw || []) as unknown as { user_id: string; display_name: string | null; avatar_url: string | null }[];
+      
       const profileMap = new Map(
-        (profiles || []).map(p => [p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url }])
+        profiles.map(p => [p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url }])
       );
 
       // Combine data

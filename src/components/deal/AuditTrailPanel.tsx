@@ -75,17 +75,21 @@ export function AuditTrailPanel({ dealId, className }: AuditTrailPanelProps) {
         // Fetch user profiles for all unique user_ids
         const userIds = [...new Set((data || []).map(l => l.user_id).filter(Boolean))] as string[];
         if (userIds.length > 0) {
-          const { data: profilesData } = await supabase
-            .from('profiles')
-            .select('id, display_name, avatar_url, email')
-            .in('id', userIds);
+          // Use profiles_public view for team member display info (secure, no sensitive data)
+          const { data: profilesRaw } = await supabase
+            .from('profiles_public' as any)
+            .select('user_id, display_name, avatar_url')
+            .in('user_id', userIds);
 
-          if (profilesData) {
+          // Type the response since profiles_public is a view not in generated types
+          const profilesData = (profilesRaw || []) as unknown as { user_id: string; display_name: string | null; avatar_url: string | null }[];
+          
+          if (profilesData.length > 0) {
             const profileMap = new Map(
-              profilesData.map(p => [p.id, { 
+              profilesData.map(p => [p.user_id, { 
                 display_name: p.display_name, 
                 avatar_url: p.avatar_url,
-                email: p.email 
+                email: null // Email not exposed for privacy
               }])
             );
             setProfiles(profileMap);
