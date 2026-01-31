@@ -304,7 +304,7 @@ export default function DealDetail() {
   const { stages: dealStages, getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
   const { formatCurrencyValue, preferences } = usePreferences();
-  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals } = useDealsContext();
+  const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
   const { activities: activityLogs, logActivity } = useActivityLog(id);
   
   // Real-time FLEx activity notifications
@@ -1547,6 +1547,18 @@ export default function DealDetail() {
       setIsDealNotificationDismissed(true);
     } catch {}
   }, [deal?.id]);
+
+  // Show loading state while deals are being fetched
+  if (isDealsLoading) {
+    return (
+      <div className="bg-background min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading deal...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!deal) {
     return (
