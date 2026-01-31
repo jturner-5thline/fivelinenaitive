@@ -85,16 +85,13 @@ function DraggableKanbanItem({ item }: { item: OutstandingItem }) {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
   } : undefined;
 
-  const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
-
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-50 shadow-lg",
-        hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border"
+        "bg-card border border-border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50 shadow-lg"
       )}
       {...listeners}
       {...attributes}
@@ -103,10 +100,10 @@ function DraggableKanbanItem({ item }: { item: OutstandingItem }) {
         <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium mb-2">{item.text}</p>
-          <div className={cn("text-xs", hasNoRequester ? "text-destructive" : "text-muted-foreground")}>
+          <div className="text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <User className="h-3 w-3" />
-              {hasNoRequester
+              {(!item.requestedBy || item.requestedBy.length === 0)
                 ? 'No requester'
                 : Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
             </span>
@@ -215,30 +212,24 @@ function KanbanBoard({
         ))}
       </div>
       <DragOverlay>
-        {activeItem ? (() => {
-          const hasNoRequester = !activeItem.requestedBy || activeItem.requestedBy.length === 0;
-          return (
-            <div className={cn(
-              "bg-card border rounded-lg p-3 shadow-xl rotate-3",
-              hasNoRequester ? "border-destructive/50" : "border-primary"
-            )}>
-              <div className="flex items-start gap-2">
-                <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium mb-2">{activeItem.text}</p>
-                  <div className={cn("text-xs", hasNoRequester ? "text-destructive" : "text-muted-foreground")}>
-                    <span className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {hasNoRequester
-                        ? 'No requester'
-                        : Array.isArray(activeItem.requestedBy) ? activeItem.requestedBy.join(', ') : activeItem.requestedBy}
-                    </span>
-                  </div>
+        {activeItem ? (
+          <div className="bg-card border border-primary rounded-lg p-3 shadow-xl rotate-3">
+            <div className="flex items-start gap-2">
+              <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium mb-2">{activeItem.text}</p>
+                <div className="text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {(!activeItem.requestedBy || activeItem.requestedBy.length === 0)
+                      ? 'No requester'
+                      : Array.isArray(activeItem.requestedBy) ? activeItem.requestedBy.join(', ') : activeItem.requestedBy}
+                  </span>
                 </div>
               </div>
             </div>
-          );
-        })() : null}
+          </div>
+        ) : null}
       </DragOverlay>
     </DndContext>
   );
