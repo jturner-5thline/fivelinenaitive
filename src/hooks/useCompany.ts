@@ -89,29 +89,29 @@ export function useCompany() {
       if (membersError) throw membersError;
 
       // Fetch profile data for each member using the profiles_public view
-      // This view only exposes non-sensitive fields (excludes phone, emails, etc.)
+      // This view only exposes non-sensitive fields (excludes phone, backup_email, etc.)
       if (membersData && membersData.length > 0) {
         const userIds = membersData.map(m => m.user_id);
         
-        // Query the profiles_public view - cast as any since view isn't in generated types
-        // Query profiles table directly since we need email for team members
+        // Query the profiles_public view for team member display info
+        // This is a secure view that only exposes: display_name, first_name, last_name, avatar_url, company_name, company_role
+        // Email is fetched separately only for the current user
         const { data: rawProfilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, first_name, last_name, avatar_url, email')
+          .from('profiles_public' as any)
+          .select('user_id, display_name, first_name, last_name, avatar_url')
           .in('user_id', userIds);
 
         if (profilesError) {
           console.error('Error fetching profiles:', profilesError);
         }
 
-        // Type the profiles data
+        // Type the profiles data (profiles_public view excludes sensitive fields like email, phone)
         interface PublicProfile {
           user_id: string;
           display_name: string | null;
           first_name: string | null;
           last_name: string | null;
           avatar_url: string | null;
-          email: string | null;
         }
         
         const profilesData = (rawProfilesData || []) as unknown as PublicProfile[];
@@ -134,6 +134,8 @@ export function useCompany() {
         );
 
         // Merge profile data with members
+        // Note: Email is only provided for the current user (from auth context)
+        // Other team members' emails are not exposed for privacy/security
         const membersWithProfiles = membersData.map(member => {
           const profile = profilesWithSignedUrls?.find(p => p.user_id === member.user_id);
           // Build display name from first+last if display_name is missing
@@ -145,7 +147,8 @@ export function useCompany() {
             ...member,
             display_name: displayName,
             avatar_url: profile?.avatar_url || null,
-            email: profile?.email || (member.user_id === user.id ? user.email : null)
+            // Only expose email for the current authenticated user
+            email: member.user_id === user.id ? user.email : null
           };
         });
 
