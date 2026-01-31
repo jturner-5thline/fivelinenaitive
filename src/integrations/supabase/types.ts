@@ -1840,6 +1840,8 @@ export type Database = {
         Row: {
           company: string
           company_id: string | null
+          contact: string | null
+          contact_info: string | null
           created_at: string
           deal_owner: string | null
           deal_type: string | null
@@ -1869,6 +1871,8 @@ export type Database = {
         Insert: {
           company: string
           company_id?: string | null
+          contact?: string | null
+          contact_info?: string | null
           created_at?: string
           deal_owner?: string | null
           deal_type?: string | null
@@ -1898,6 +1902,8 @@ export type Database = {
         Update: {
           company?: string
           company_id?: string | null
+          contact?: string | null
+          contact_info?: string | null
           created_at?: string
           deal_owner?: string | null
           deal_type?: string | null
