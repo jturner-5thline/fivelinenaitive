@@ -120,6 +120,8 @@ interface DbDeal {
   notes: string | null;
   notes_updated_at: string | null;
   narrative?: string | null;
+  contact: string | null;
+  contact_info: string | null;
   created_at: string;
   updated_at: string;
   user_id: string | null;
@@ -286,7 +288,8 @@ export function useDealsDatabase() {
       notes: dbDeal.notes || undefined,
       notesUpdatedAt: dbDeal.notes_updated_at || undefined,
       narrative: dbDeal.narrative || undefined,
-      contact: '',
+      contact: dbDeal.contact || '',
+      contactInfo: dbDeal.contact_info || undefined,
       createdAt: dbDeal.created_at,
       updatedAt: dbDeal.updated_at,
       lenders: dealLenders,
@@ -416,6 +419,8 @@ export function useDealsDatabase() {
           referred_by: dealData.referredBy?.name || null,
           notes: dealData.notes || null,
           notes_updated_at: dealData.notes ? new Date().toISOString() : null,
+          contact: dealData.contact || null,
+          contact_info: dealData.contactInfo || null,
           user_id: userId,
           company_id: memberData?.company_id || null,
         })
@@ -452,7 +457,8 @@ export function useDealsDatabase() {
         postSigningHours: Number(data.post_signing_hours || 0),
         notes: data.notes || undefined,
         notesUpdatedAt: data.notes_updated_at || undefined,
-        contact: '',
+        contact: data.contact || '',
+        contactInfo: data.contact_info || undefined,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         lenders: [],
