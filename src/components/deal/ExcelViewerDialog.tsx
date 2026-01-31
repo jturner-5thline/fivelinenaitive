@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, ExternalLink, X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { ExcelViewer } from './ExcelViewer';
 import { supabase } from '@/integrations/supabase/client';
 import { DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
 import { toast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { workbookToBlob } from '@/lib/excelUtils';
 
 interface ExcelViewerDialogProps {
   document: DealSpaceDocument | null;
@@ -54,13 +55,12 @@ export function ExcelViewerDialog({
     getSignedUrl();
   }, [document, isOpen]);
 
-  const handleSave = useCallback(async (workbook: XLSX.WorkBook) => {
+  const handleSave = useCallback(async (workbook: ExcelJS.Workbook) => {
     if (!document) return;
 
     try {
-      // Convert workbook to array buffer
-      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      // Convert workbook to blob
+      const blob = await workbookToBlob(workbook);
 
       // Upload to storage (overwrite existing file)
       const { error } = await supabase.storage

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import { parseExcelFromFile, ParsedSheet } from "@/lib/excelUtils";
 
 // Type for undo history
 interface UndoEntry {
@@ -426,10 +426,14 @@ export function FinancialStatementTableRange({
     setIsUploading(true);
 
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<string[]>(firstSheet, { header: 1 });
+      const { sheets } = await parseExcelFromFile(file);
+      if (sheets.length === 0) {
+        toast.error('Excel file has no sheets');
+        return;
+      }
+      
+      const firstSheet = sheets[0];
+      const jsonData = firstSheet.data;
 
       if (jsonData.length < 2) {
         toast.error('Excel file must have at least a header row and one data row');
