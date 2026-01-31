@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 export interface OutstandingItem {
@@ -59,6 +60,7 @@ function buildStatus(item: Partial<OutstandingItem>): string {
 }
 
 export function useOutstandingItems(dealId: string | undefined) {
+  const { user } = useAuth();
   const [items, setItems] = useState<OutstandingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -111,7 +113,7 @@ export function useOutstandingItems(dealId: string | undefined) {
 
   // Add a new outstanding item
   const addItem = useCallback(async (text: string, requestedBy: string[]): Promise<OutstandingItem | null> => {
-    if (!dealId) return null;
+    if (!dealId || !user) return null;
 
     try {
       const status = buildStatus({ received: false, approved: false, deliveredToLenders: [], requestedBy });
@@ -122,6 +124,7 @@ export function useOutstandingItems(dealId: string | undefined) {
           deal_id: dealId,
           description: text,
           status,
+          user_id: user.id,
         })
         .select()
         .single();
@@ -150,7 +153,7 @@ export function useOutstandingItems(dealId: string | undefined) {
       });
       return null;
     }
-  }, [dealId]);
+  }, [dealId, user]);
 
   // Update an outstanding item
   const updateItem = useCallback(async (id: string, updates: Partial<OutstandingItem>) => {
