@@ -3990,10 +3990,7 @@ export default function DealDetail() {
                         <div key={activity.id} className="flex items-start gap-3 text-sm">
                           <div className="mt-0.5">{getIcon()}</div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-foreground truncate">{activity.description}</span>
-                              {getLabel()}
-                            </div>
+                              <span className="text-foreground">{activity.description}</span>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
                             </p>
