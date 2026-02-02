@@ -83,24 +83,38 @@ export function LenderSearchInput({
     return matches.slice(0, limit).map(m => m.name);
   }, [lenderNames, existingLenderNamesSet, searchQuery]);
 
+  // Check if a name already exists (case-insensitive)
+  const isLenderAlreadyAdded = useCallback((name: string) => {
+    const nameLower = name.toLowerCase().trim();
+    return Array.from(existingLenderNamesSet).some(
+      existing => existing.toLowerCase() === nameLower
+    );
+  }, [existingLenderNamesSet]);
+
   const handleAddLender = useCallback((name: string) => {
+    if (isLenderAlreadyAdded(name)) return; // Prevent duplicates
     onAddLender(name);
     setSearchQuery('');
     setIsOpen(false);
-  }, [onAddLender]);
+  }, [onAddLender, isLenderAlreadyAdded]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       if (filteredLenderNames.length > 0) {
         handleAddLender(filteredLenderNames[0]);
-      } else {
+      } else if (!isLenderAlreadyAdded(searchQuery.trim())) {
         handleAddLender(searchQuery.trim());
       }
     }
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
-  }, [searchQuery, filteredLenderNames, handleAddLender]);
+  }, [searchQuery, filteredLenderNames, handleAddLender, isLenderAlreadyAdded]);
+
+  // Check if current search query matches an existing lender
+  const isDuplicateQuery = useMemo(() => {
+    return searchQuery.trim() && isLenderAlreadyAdded(searchQuery.trim());
+  }, [searchQuery, isLenderAlreadyAdded]);
 
   // Highlight matching text in lender name
   const highlightMatch = useCallback((name: string) => {
@@ -161,7 +175,7 @@ export function LenderSearchInput({
             {highlightMatch(lenderName)}
           </button>
         ))}
-        {searchQuery.trim() && (
+        {searchQuery.trim() && !isDuplicateQuery && (
           <button
             className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-2 border-t border-border bg-muted/50"
             onClick={() => handleAddLender(searchQuery.trim())}
@@ -171,6 +185,11 @@ export function LenderSearchInput({
               Add <span className="font-medium text-primary">"{searchQuery.trim()}"</span> as new lender
             </span>
           </button>
+        )}
+        {isDuplicateQuery && (
+          <div className="w-full px-3 py-2 text-sm text-muted-foreground border-t border-border bg-muted/50 italic">
+            "{searchQuery.trim()}" is already added to this deal
+          </div>
         )}
       </PopoverContent>
     </Popover>
