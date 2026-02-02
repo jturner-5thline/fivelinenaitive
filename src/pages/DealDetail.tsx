@@ -3939,6 +3939,7 @@ export default function DealDetail() {
             sideOffset={8}
           >
             <div className="p-4 border-b">
+              <p className="text-sm text-muted-foreground mb-1">{deal?.company}</p>
               <h3 className="font-semibold flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Latest Updates
