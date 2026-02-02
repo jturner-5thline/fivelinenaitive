@@ -70,6 +70,7 @@ import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
+import { useSidebar } from '@/components/ui/sidebar';
 import {
   Select,
   SelectContent,
@@ -294,6 +295,7 @@ export default function DealDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { state: sidebarState } = useSidebar();
   const highlightStale = searchParams.get('highlight') === 'stale';
   const deleteAction = searchParams.get('action') === 'delete';
   const initialTab = searchParams.get('tab') as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails' | null;
@@ -3898,7 +3900,7 @@ export default function DealDetail() {
       </div>
 
       {/* Floating Latest Updates Widget */}
-      <div className="fixed bottom-6 left-20 z-50 group">
+      <div className={`fixed bottom-6 z-50 group transition-all duration-300 ${sidebarState === 'expanded' ? 'left-72' : 'left-20'}`}>
         <Popover open={isUpdatesWidgetOpen} onOpenChange={setIsUpdatesWidgetOpen}>
           <PopoverTrigger asChild>
             {(() => {
