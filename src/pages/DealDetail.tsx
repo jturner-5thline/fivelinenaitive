@@ -3904,12 +3904,14 @@ export default function DealDetail() {
             <Button
               variant="gradient"
               size="sm"
-              className="rounded-full h-12 w-12 group-hover:w-auto group-hover:px-4 px-0 shadow-lg gap-2 animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center"
+              className="rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center relative"
             >
-              <Clock className="h-4 w-4 shrink-0" />
-              <span className="max-w-0 group-hover:max-w-32 overflow-hidden whitespace-nowrap transition-all duration-300">
-                Latest Updates
-              </span>
+              <div className="flex items-center justify-center">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span className="max-w-0 group-hover:max-w-32 group-hover:ml-2 overflow-hidden whitespace-nowrap transition-all duration-300">
+                  Latest Updates
+                </span>
+              </div>
               {(() => {
                 const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
                 const updateCount = activities.filter(a => 
