@@ -19,6 +19,7 @@ import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
 import { SmartSuggestionsDropdown } from '@/components/deals/SmartSuggestionsDropdown';
 import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
+import { LatestUpdatesWidget } from '@/components/deals/LatestUpdatesWidget';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -415,6 +416,9 @@ export default function Dashboard() {
             updateFilters({ flaggedOnly: false });
           }}
         />
+
+        {/* Latest Updates Widget */}
+        <LatestUpdatesWidget />
       </div>
     </>
   );
