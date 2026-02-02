@@ -10,10 +10,12 @@ import {
 } from '@/components/ui/popover';
 import { useAllActivities } from '@/hooks/useAllActivities';
 import { Link } from 'react-router-dom';
+import { useSidebar } from '@/components/ui/sidebar';
 
 export function LatestUpdatesWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const { activities, isLoading } = useAllActivities({ limit: 50 });
+  const { state: sidebarState } = useSidebar();
 
   // Filter to only show lender updates and milestone changes
   const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
@@ -34,7 +36,7 @@ export function LatestUpdatesWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 left-20 z-50 group">
+    <div className={`fixed bottom-6 z-50 group transition-all duration-300 ${sidebarState === 'expanded' ? 'left-72' : 'left-20'}`}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="relative">
