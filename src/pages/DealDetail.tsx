@@ -3898,7 +3898,7 @@ export default function DealDetail() {
       </div>
 
       {/* Floating Latest Updates Widget */}
-      <div className="fixed bottom-6 left-72 z-50 group">
+      <div className="fixed bottom-6 left-20 z-50 group">
         <Popover open={isUpdatesWidgetOpen} onOpenChange={setIsUpdatesWidgetOpen}>
           <PopoverTrigger asChild>
             {(() => {
