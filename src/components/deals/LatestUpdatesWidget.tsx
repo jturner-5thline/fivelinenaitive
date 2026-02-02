@@ -15,7 +15,10 @@ import { useSidebar } from '@/components/ui/sidebar';
 export function LatestUpdatesWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const { activities, isLoading } = useAllActivities({ limit: 50 });
-  const { state: sidebarState } = useSidebar();
+  const { state: sidebarState, isHovering } = useSidebar();
+
+  // Sidebar appears expanded when actually expanded OR when hovering over collapsed sidebar
+  const isEffectivelyExpanded = sidebarState === 'expanded' || isHovering;
 
   // Filter to only show lender updates and milestone changes
   const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
@@ -36,7 +39,7 @@ export function LatestUpdatesWidget() {
   };
 
   return (
-    <div className={`fixed bottom-6 z-50 group transition-all duration-300 ${sidebarState === 'expanded' ? 'left-72' : 'left-20'}`}>
+    <div className={`fixed bottom-6 z-50 group transition-all duration-300 ${isEffectivelyExpanded ? 'left-72' : 'left-20'}`}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="relative">
