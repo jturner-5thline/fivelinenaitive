@@ -1,72 +1,59 @@
 
-# Replace Dashboard "No Notifications" with Notification Content
 
-## Overview
-When the Dashboard Notification widget has no notifications to display, instead of showing a generic "No notifications at this time" message, it should display the same content that appears in the notifications dropdown on the Deals page. This includes real-time alerts, engagement data, and AI suggestions.
+## Fix Clock Icon Centering in Latest Updates Widget
 
-## Current Behavior
-- The `NotificationCarousel` component displays static empty data
-- When empty, it shows: "No notifications at this time" with a bell icon
-- The `WorkflowSuggestionsWidget` and `AgentSuggestionsWidget` are shown in a separate section below
+### Problem
+The clock icon isn't perfectly centered in the circular widget button because:
+- The `gap-2` class creates spacing between all flex children
+- The hidden span (`max-w-0`) still participates in the flex layout
+- The layout algorithm offsets the icon even when other elements are visually hidden
 
-## Proposed Changes
+### Solution
+Restructure the button content so that:
+1. The icon is wrapped in a container that is always centered
+2. The expanding text label is positioned in a way that doesn't affect the icon's centering when collapsed
+3. Remove `gap-2` from the button and handle spacing differently
 
-### 1. Update NotificationCarousel Component
-Modify `src/components/dashboard/NotificationCarousel.tsx` to:
-- Replace static empty data with real data from hooks
-- Add the same data sources used by NotificationsDropdown:
-  - `useDealsContext` for stale deal alerts
-  - `useFlexNotifications` for FLEx engagement alerts  
-  - `useAllActivities` for recent activity
-  - `useNotificationPreferences` for filtering preferences
-  - `useNotificationReads` for read/unread tracking
-- When notifications exist, display them in the carousel format
-- When no real notifications exist, show the AI suggestion widgets instead
+### Implementation
 
-### 2. Empty State Behavior
-When there are no stale alerts, FLEx notifications, or activities:
-- Display `WorkflowSuggestionsWidget` content (Suggested Automations)
-- Display `AgentSuggestionsWidget` content (Recommended Agents)
-- Keep the same card styling for consistency
+**File: `src/pages/DealDetail.tsx`**
 
-## Technical Details
-
-### Data Hooks to Add
-```text
-- useDealsContext (for stale alerts)
-- usePreferences (for staleness thresholds)
-- useFlexNotifications (for FLEx alerts)
-- useAllActivities (for activity feed) 
-- useNotificationPreferences (for filtering)
-- useNotificationReads (for read state)
+Change from:
+```tsx
+<Button
+  variant="gradient"
+  size="sm"
+  className="rounded-full h-12 w-12 group-hover:w-auto group-hover:px-4 px-0 shadow-lg gap-2 animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center"
+>
+  <Clock className="h-4 w-4 shrink-0" />
+  <span className="max-w-0 group-hover:max-w-32 overflow-hidden whitespace-nowrap transition-all duration-300">
+    Latest Updates
+  </span>
+  ...
+</Button>
 ```
 
-### Stale Alert Calculation
-Reuse the same logic from NotificationsDropdown:
-- Check lenders with tracking status "active"
-- Compare days since update against yellow threshold
-- Group by deal for display
-
-### Empty State Layout
-```text
-+----------------------------------------+
-|  Card with gradient background         |
-|  ┌──────────────────────────────────┐  |
-|  │ ⚡ Suggested Automations          │  |
-|  │ [Workflow suggestion items...]    │  |
-|  └──────────────────────────────────┘  |
-|  ┌──────────────────────────────────┐  |
-|  │ 🤖 Recommended Agents             │  |
-|  │ [Agent suggestion items...]       │  |
-|  └──────────────────────────────────┘  |
-+----------------------------------------+
+To:
+```tsx
+<Button
+  variant="gradient"
+  size="sm"
+  className="rounded-full h-12 min-w-12 group-hover:pl-4 group-hover:pr-4 shadow-lg animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center relative"
+>
+  <div className="flex items-center justify-center">
+    <Clock className="h-4 w-4 shrink-0" />
+    <span className="max-w-0 group-hover:max-w-32 group-hover:ml-2 overflow-hidden whitespace-nowrap transition-all duration-300">
+      Latest Updates
+    </span>
+  </div>
+  ...badge (positioned absolutely)...
+</Button>
 ```
 
-## Files to Modify
-1. `src/components/dashboard/NotificationCarousel.tsx` - Main changes to integrate real data and add empty state content
+Key changes:
+- Remove `gap-2` so spacing doesn't affect collapsed state
+- Use `group-hover:ml-2` on the span to add spacing only when expanded
+- Keep icon and text in a flex container for proper alignment
+- Use `min-w-12` instead of `w-12` for collapsed width to prevent shrinking issues
+- Remove fixed `w-12` and let the button size naturally when expanded
 
-## Considerations
-- The carousel will need to handle different notification types (stale alerts, FLEx, activity)
-- Read/unread state will be managed via the notification reads system
-- Preferences filtering ensures users only see notification types they've enabled
-- If both real notifications AND suggestions exist, show notifications (suggestions become the fallback)
