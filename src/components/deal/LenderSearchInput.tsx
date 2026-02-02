@@ -83,12 +83,9 @@ export function LenderSearchInput({
     return matches.slice(0, limit).map(m => m.name);
   }, [lenderNames, existingLenderNamesSet, searchQuery]);
 
-  // Check if a name already exists (case-insensitive)
+  // Check if a name already exists (exact match)
   const isLenderAlreadyAdded = useCallback((name: string) => {
-    const nameLower = name.toLowerCase().trim();
-    return Array.from(existingLenderNamesSet).some(
-      existing => existing.toLowerCase() === nameLower
-    );
+    return existingLenderNamesSet.has(name.trim());
   }, [existingLenderNamesSet]);
 
   const handleAddLender = useCallback((name: string) => {
