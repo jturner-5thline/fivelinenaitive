@@ -3902,9 +3902,9 @@ export default function DealDetail() {
         <Popover open={isUpdatesWidgetOpen} onOpenChange={setIsUpdatesWidgetOpen}>
           <PopoverTrigger asChild>
             <Button
-              variant="default"
+              variant="gradient"
               size="sm"
-              className="rounded-full h-12 w-12 group-hover:w-auto group-hover:px-4 px-0 shadow-lg gap-2 animate-fade-in transition-all duration-300 overflow-hidden"
+              className="rounded-full h-12 w-12 group-hover:w-auto group-hover:px-4 px-0 shadow-lg gap-2 animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center"
             >
               <Clock className="h-4 w-4 shrink-0" />
               <span className="max-w-0 group-hover:max-w-32 overflow-hidden whitespace-nowrap transition-all duration-300">
