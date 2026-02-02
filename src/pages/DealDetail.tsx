@@ -3914,7 +3914,7 @@ export default function DealDetail() {
                   <Button
                     variant="gradient"
                     size="sm"
-                    className={`rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center ${hasUpdates ? 'animate-[pulse_4s_ease-in-out_infinite]' : ''}`}
+                    className={`rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center ${hasUpdates ? 'animate-[pulse_2s_ease-in-out_infinite]' : ''}`}
                   >
                     <div className="flex items-center justify-center">
                       <Clock className="h-4 w-4 shrink-0" />
