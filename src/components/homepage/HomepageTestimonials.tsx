@@ -41,7 +41,7 @@ export const HomepageTestimonials = () => {
                 <p className="font-medium text-white">{testimonial.author}</p>
               </div>
               <p className="text-white/80 leading-relaxed">
-                "{testimonial.quote}"
+                {testimonial.quote}
               </p>
             </div>
           ))}
