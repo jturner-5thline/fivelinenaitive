@@ -7,7 +7,7 @@ const testimonials = [
   },
   {
     quote: "Firms evaluating, structuring, and advancing deals across multiple stakeholders — where visibility, coordination, and execution discipline are critical to moving capital efficiently.",
-    author: "Deal Teams & Committees",
+    author: "Credit & Investment Teams",
   },
   {
     quote: "Internal teams responsible for acquisitions, financings, and strategic transactions — coordinating diligence, documentation, and approvals across legal, finance, and external partners.",
