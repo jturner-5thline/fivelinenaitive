@@ -450,13 +450,35 @@ export default function Lenders() {
           )
         );
         
-        results.forEach(result => {
+        const notRegisteredLenders: string[] = [];
+        
+        results.forEach((result, idx) => {
           if (result.status === 'fulfilled' && !result.value.error) {
             successCount++;
           } else {
             errorCount++;
+            // Check if it's a "not registered" error
+            if (result.status === 'fulfilled' && result.value.error) {
+              try {
+                const errorData = JSON.parse(result.value.error.message || '{}');
+                if (errorData.code === 'LENDER_NOT_REGISTERED' && errorData.lender_name) {
+                  notRegisteredLenders.push(errorData.lender_name);
+                }
+              } catch {
+                // Error parsing, ignore
+              }
+            }
           }
         });
+        
+        // Show specific message for not registered lenders
+        if (notRegisteredLenders.length > 0) {
+          toast({
+            title: 'Some lenders not registered in FLEx',
+            description: `${notRegisteredLenders.slice(0, 3).join(', ')}${notRegisteredLenders.length > 3 ? ` and ${notRegisteredLenders.length - 3} more` : ''} need to register in FLEx first.`,
+            variant: 'destructive',
+          });
+        }
       }
 
       if (errorCount === 0) {
@@ -464,7 +486,7 @@ export default function Lenders() {
           title: 'Push to FLEx complete',
           description: `Successfully pushed ${successCount} lender${successCount !== 1 ? 's' : ''} to FLEx.`,
         });
-      } else {
+      } else if (successCount > 0) {
         toast({
           title: 'Push to FLEx completed with errors',
           description: `Pushed ${successCount} lender${successCount !== 1 ? 's' : ''}, ${errorCount} failed.`,
