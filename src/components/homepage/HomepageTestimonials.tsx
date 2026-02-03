@@ -4,17 +4,14 @@ const testimonials = [
   {
     quote: "naitive has transformed how our team manages deal flow. The AI-powered insights help us identify opportunities faster than ever before.",
     author: "Managing Director",
-    company: "Leading Transaction Advisory Firm",
   },
   {
     quote: "The platform's ability to integrate all our deal data in one place has dramatically improved our team's productivity and collaboration.",
     author: "Senior Vice President",
-    company: "Private Credit Fund",
   },
   {
     quote: "Finally, a tool built by people who understand the nuances of lower-middle-market transactions. The workflow automation alone has saved us countless hours.",
     author: "Partner",
-    company: "Growth Equity Fund",
   },
 ];
 
@@ -45,7 +42,6 @@ export const HomepageTestimonials = () => {
               </p>
               <div>
                 <p className="font-medium text-white">{testimonial.author}</p>
-                <p className="text-sm text-white/50">{testimonial.company}</p>
               </div>
             </div>
           ))}
