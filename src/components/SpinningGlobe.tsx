@@ -370,9 +370,18 @@ function CityLights() {
       <points geometry={pointsGeometry}>
         <pointsMaterial
           size={0.008}
-          color="#fbbf24"
+          color="#7dd3fc"
           transparent
           opacity={0.7}
+          sizeAttenuation
+        />
+      </points>
+      <points geometry={pointsGeometry}>
+        <pointsMaterial
+          size={0.006}
+          color="#a855f7"
+          transparent
+          opacity={0.5}
           sizeAttenuation
         />
       </points>
