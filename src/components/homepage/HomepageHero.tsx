@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
+import { Logo } from "@/components/Logo";
 
 export const HomepageHero = () => {
   return (
@@ -10,7 +11,8 @@ export const HomepageHero = () => {
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a12]" />
 
       {/* Content */}
-13:       <div className="relative z-10 container mx-auto px-6 text-center pt-20">
+      <div className="relative z-10 container mx-auto px-6 text-center pt-20">
+        <Logo className="h-20 md:h-28 lg:h-32 mx-auto mb-8" />
 
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 max-w-4xl mx-auto leading-[1.1]">
           The AI Platform{" "}
