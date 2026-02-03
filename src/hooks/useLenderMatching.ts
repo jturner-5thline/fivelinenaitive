@@ -528,8 +528,42 @@ export function useLenderMatching(
       return !isAvoided;
     });
     
+    // Pre-filter: Exclude lenders that require sponsorship when deal has no sponsorship
+    const sponsorshipFilteredLenders = industryFilteredLenders.filter(lender => {
+      // If no sponsorship info on the deal, include all lenders
+      if (!criteria.sponsorship) return true;
+      
+      // If lender has no sponsorship requirement defined, include them
+      if (!lender.sponsorship) return true;
+      
+      const normalizedDealSponsorship = normalizeString(criteria.sponsorship);
+      const normalizedLenderSponsorship = normalizeString(lender.sponsorship);
+      
+      // Check if deal is non-sponsored
+      const dealIsNonSponsored = normalizedDealSponsorship.includes('non-sponsor') || 
+                                  normalizedDealSponsorship.includes('non sponsor') || 
+                                  normalizedDealSponsorship === 'non-sponsored' ||
+                                  normalizedDealSponsorship === 'no';
+      
+      // Check if lender requires sponsorship (only accepts sponsored deals)
+      const lenderRequiresSponsorship = normalizedLenderSponsorship === 'yes' ||
+                                         normalizedLenderSponsorship === 'required' ||
+                                         normalizedLenderSponsorship === 'sponsored only' ||
+                                         (normalizedLenderSponsorship.includes('sponsor') && 
+                                          !normalizedLenderSponsorship.includes('non') &&
+                                          !normalizedLenderSponsorship.includes('both') &&
+                                          !normalizedLenderSponsorship.includes('either'));
+      
+      // Exclude if deal is non-sponsored but lender requires sponsorship
+      if (dealIsNonSponsored && lenderRequiresSponsorship) {
+        return false;
+      }
+      
+      return true;
+    });
+    
     // Calculate match scores with learning data
-    const scoredLenders = industryFilteredLenders.map(lender => 
+    const scoredLenders = sponsorshipFilteredLenders.map(lender => 
       calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined)
     );
     
