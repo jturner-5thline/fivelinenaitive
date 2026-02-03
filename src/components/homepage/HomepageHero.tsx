@@ -34,15 +34,6 @@ export const HomepageHero = () => {
           <Link to="/waitlist">Request a Demo</Link>
         </Button>
       </div>
-
-      {/* Trusted by section */}
-      <div className="absolute bottom-16 left-0 right-0 z-10">
-        <div className="container mx-auto px-6">
-          <p className="text-center text-white/40 text-sm mb-6">
-            Trusted by leading financial institutions
-          </p>
-        </div>
-      </div>
     </section>
   );
 };
