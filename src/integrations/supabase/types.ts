@@ -1838,8 +1838,10 @@ export type Database = {
       }
       deals: {
         Row: {
+          business_model: string | null
           company: string
           company_id: string | null
+          company_url: string | null
           contact: string | null
           contact_info: string | null
           created_at: string
@@ -1869,8 +1871,10 @@ export type Database = {
           value: number
         }
         Insert: {
+          business_model?: string | null
           company: string
           company_id?: string | null
+          company_url?: string | null
           contact?: string | null
           contact_info?: string | null
           created_at?: string
@@ -1900,8 +1904,10 @@ export type Database = {
           value?: number
         }
         Update: {
+          business_model?: string | null
           company?: string
           company_id?: string | null
+          company_url?: string | null
           contact?: string | null
           contact_info?: string | null
           created_at?: string
