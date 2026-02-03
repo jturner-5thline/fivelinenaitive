@@ -280,22 +280,6 @@ const Auth = () => {
               className="w-[50vw] max-w-[600px] animate-fade-in opacity-20"
             />
           </div>
-          <style>{`
-            @keyframes shimmer {
-              0%, 100% { background-position: 100% 100%; }
-              50% { background-position: 0% 0%; }
-            }
-            @keyframes fadeInTagline {
-              from {
-                opacity: 0;
-                transform: translateY(10px);
-              }
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-          `}</style>
           
           <div className="w-full max-w-md">
             <form onSubmit={mode === "mfa" ? handleMFAVerify : mode === "gate" ? handleGateSubmit : handleSubmit} className="space-y-6">
