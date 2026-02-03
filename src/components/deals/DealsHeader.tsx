@@ -52,7 +52,7 @@ export function DealsHeader() {
                 </AvatarFallback>
               </Avatar>
             )}
-            <Logo className="h-8" />
+            <Logo className="h-10" />
           </Link>
           <DemoModeBadge />
           <nav className="hidden items-center gap-1 md:flex">
