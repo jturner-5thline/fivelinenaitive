@@ -56,10 +56,7 @@ export function DebouncedInput({
     }, debounceMs);
   };
 
-  const handleBlur = () => {
-    isFocusedRef.current = false;
-    
-    // Save immediately on blur if there are pending changes
+  const saveNow = () => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -71,6 +68,19 @@ export function DebouncedInput({
         : localValue;
       onChange(finalValue);
       hasPendingChangesRef.current = false;
+    }
+  };
+
+  const handleBlur = () => {
+    isFocusedRef.current = false;
+    saveNow();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveNow();
+      (e.target as HTMLInputElement).blur();
     }
   };
 
@@ -91,6 +101,7 @@ export function DebouncedInput({
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
       className={cn(className)}
     />
   );
