@@ -11,7 +11,7 @@ const testimonials = [
   },
   {
     quote: "Internal teams responsible for acquisitions, financings, and strategic transactions — coordinating diligence, documentation, and approvals across legal, finance, and external partners.",
-    author: "Corporate & Strategic Deal Teams",
+    author: "Corporate Deal Teams",
   },
 ];
 
