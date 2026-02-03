@@ -273,7 +273,7 @@ const Auth = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
-          <div className="absolute top-[22%] left-1/2 -translate-x-1/2 pointer-events-none select-none flex flex-col items-center">
+          <div className="absolute top-[18%] left-1/2 -translate-x-1/2 pointer-events-none select-none flex flex-col items-center">
             <img 
               src={naitiveLogoFull} 
               alt="naitive" 
