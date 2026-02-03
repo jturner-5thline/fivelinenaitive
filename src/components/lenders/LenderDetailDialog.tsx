@@ -381,9 +381,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     if (!lender) return { active: [], sent: [], passReasons: [] };
 
     const active: { dealId: string; dealName: string; company: string; stage: string; status: string; value: number; manager: string }[] = [];
-    const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string; value: number; manager: string }[] = [];
+    const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string; value: number; manager: string; passed?: boolean; passReason?: string }[] = [];
     const passReasons: { dealId: string; dealName: string; company: string; reason: string }[] = [];
-    const activeAndPassedDealIds = new Set<string>();
+    const activeDealIds = new Set<string>();
 
     deals.forEach(deal => {
       const dealLender = deal.lenders?.find(l => l.name === lender.name);
@@ -396,7 +396,18 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             company: deal.company,
             reason: dealLender.passReason,
           });
-          activeAndPassedDealIds.add(deal.id);
+          // Also add to sent with passed flag
+          sent.push({
+            dealId: deal.id,
+            dealName: deal.name,
+            company: deal.company,
+            stage: dealLender.stage,
+            dateSent: dealLender.updatedAt || deal.createdAt,
+            value: deal.value,
+            manager: deal.manager,
+            passed: true,
+            passReason: dealLender.passReason,
+          });
         } else if (dealLender.trackingStatus === 'active' && dealLender.stage?.toLowerCase() !== 'passed') {
           // Only add to active if stage is NOT "Passed" (case-insensitive)
           active.push({
@@ -408,15 +419,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             value: deal.value,
             manager: deal.manager,
           });
-          activeAndPassedDealIds.add(deal.id);
+          activeDealIds.add(deal.id);
         }
       }
     });
 
-    // Second pass: add to "sent" only if not already in active or passReasons
+    // Second pass: add to "sent" only if not already in active (passed deals are already added above)
     deals.forEach(deal => {
       const dealLender = deal.lenders?.find(l => l.name === lender.name);
-      if (dealLender && !activeAndPassedDealIds.has(deal.id)) {
+      if (dealLender && !activeDealIds.has(deal.id) && dealLender.trackingStatus !== 'passed') {
         sent.push({
           dealId: deal.id,
           dealName: deal.name,
@@ -425,6 +436,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
           dateSent: dealLender.updatedAt || deal.createdAt,
           value: deal.value,
           manager: deal.manager,
+          passed: false,
         });
       }
     });
@@ -1279,18 +1291,28 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   <Tooltip key={deal.dealId}>
                                     <TooltipTrigger asChild>
                                       <div 
-                                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
+                                        className={cn(
+                                          "flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative",
+                                          deal.passed && "border-l-2 border-l-destructive"
+                                        )}
                                         onClick={() => handleNavigateToDeal(deal.dealId)}
                                       >
+                                        {deal.passed && (
+                                          <div className="absolute top-2 left-2">
+                                            <ThumbsDown className="h-3 w-3 text-destructive" />
+                                          </div>
+                                        )}
                                         <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
+                                        <p className={cn("font-medium text-sm truncate mb-1 pr-4", deal.passed && "pl-4")}>{deal.company}</p>
                                         <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
                                         <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent side="bottom" className="max-w-[200px]">
                                       <p className="font-medium">{deal.company}</p>
+                                      {deal.passed && <p className="text-xs text-destructive font-medium">Passed</p>}
                                       <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+                                      {deal.passReason && <p className="text-xs text-muted-foreground">Reason: {deal.passReason}</p>}
                                       {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
                                     </TooltipContent>
                                   </Tooltip>
