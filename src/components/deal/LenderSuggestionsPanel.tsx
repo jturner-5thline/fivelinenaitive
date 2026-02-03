@@ -16,19 +16,27 @@ import { DealCriteria } from '@/hooks/useLenderMatching';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
 import { useLenderMatching } from '@/hooks/useLenderMatching';
 
-// Helper to determine which filtering criteria are missing
+// Helper to determine which filtering criteria are missing (in priority order)
 function getMissingCriteria(criteria: DealCriteria): string[] {
   const missing: string[] = [];
   
+  // Priority 1: Deal Size
   if (!criteria.dealValue && !criteria.capitalAsk) {
     missing.push('Deal Size');
   }
+  // Priority 2: Deal Type
   if (!criteria.dealTypes || criteria.dealTypes.length === 0) {
     missing.push('Deal Type');
   }
+  // Priority 3: Cash-burn OK
+  if (criteria.cashBurnOk === undefined) {
+    missing.push('Cash-burn OK');
+  }
+  // Priority 4: Industry
   if (!criteria.industry) {
     missing.push('Industry');
   }
+  // Priority 5: Sponsorship
   if (!criteria.sponsorship) {
     missing.push('Sponsorship');
   }
