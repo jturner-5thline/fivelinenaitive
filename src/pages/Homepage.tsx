@@ -52,7 +52,7 @@ export default function Homepage() {
         />
         
         <HomepageFeatureSection
-          title="Leverage Your Firm's Workflows"
+          title="Execution-Ready Data Rooms"
           description="Use tools designed to create work outputs exactly as you would — organized data rooms, milestone tracking, and automated document management."
           image={<PlatformPreviewDataRoom />}
         />
