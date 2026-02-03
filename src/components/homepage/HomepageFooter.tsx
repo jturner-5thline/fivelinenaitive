@@ -108,7 +108,7 @@ export const HomepageFooter = () => {
         <div className="pt-8 border-t border-white/10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-white/40">
-              © {new Date().getFullYear()} nAItive. All rights reserved.
+              © {new Date().getFullYear()} naitive. All rights reserved.
             </p>
             <p className="text-sm text-white/40">
               SOC 2 Type II Certified • GDPR Compliant

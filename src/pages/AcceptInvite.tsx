@@ -195,7 +195,7 @@ export default function AcceptInvite() {
   return (
     <>
       <Helmet>
-        <title>Accept Invitation - nAItive</title>
+        <title>Accept Invitation - naitive</title>
       </Helmet>
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">

@@ -1716,7 +1716,7 @@ export default function DealDetail() {
   return (
     <>
       <Helmet>
-        <title>{deal.name} - nAItive</title>
+        <title>{deal.name} - naitive</title>
         <meta name="description" content={`Deal details for ${deal.name} with ${deal.company}`} />
       </Helmet>
 

@@ -20,7 +20,7 @@ const Index = () => {
     <RateLimitGuard path="/home">
       <>
       <Helmet>
-        <title>nAItive | Deal Analysis Platform</title>
+        <title>naitive | Deal Analysis Platform</title>
         <meta 
           name="description" 
           content="AI-powered deal analysis platform for growth investors." 

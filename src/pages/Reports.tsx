@@ -221,7 +221,7 @@ export default function Reports() {
   return (
     <>
       <Helmet>
-        <title>Reports - nAItive</title>
+        <title>Reports - naitive</title>
         <meta name="description" content="Generate and download pipeline, lender, and financial reports" />
       </Helmet>
 

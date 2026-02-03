@@ -42,7 +42,7 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
           animation: 'welcomeFadeIn 1.5s ease-out forwards',
         }}
       >
-        Welcome to NAITIVE
+        Welcome to naitive
       </h1>
       <style>{`
         @keyframes welcomeFadeIn {

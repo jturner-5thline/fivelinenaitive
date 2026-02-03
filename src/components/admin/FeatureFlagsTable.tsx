@@ -126,7 +126,7 @@ export const FeatureFlagsTable = () => {
             <strong>Staging:</strong> Only 5thLine admins can test
           </p>
           <p className="text-sm text-muted-foreground">
-            <strong>Deployed:</strong> Available to all nAItive users
+            <strong>Deployed:</strong> Available to all naitive users
           </p>
         </div>
 

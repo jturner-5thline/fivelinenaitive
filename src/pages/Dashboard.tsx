@@ -155,7 +155,7 @@ export default function Dashboard() {
   return (
     <>
       <Helmet>
-        <title>Dashboard - nAItive</title>
+        <title>Dashboard - naitive</title>
         <meta name="description" content="Your personal dashboard for managing deals and workflows." />
       </Helmet>
 

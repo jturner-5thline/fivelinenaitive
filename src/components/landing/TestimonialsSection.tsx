@@ -2,7 +2,7 @@ import { Star, Quote } from "lucide-react";
 
 const testimonials = [
   {
-    quote: "nAItive cut our due diligence time in half. The automated financial modeling alone has been a game-changer for our team.",
+    quote: "naitive cut our due diligence time in half. The automated financial modeling alone has been a game-changer for our team.",
     author: "Sarah Chen",
     role: "Managing Partner",
     company: "Elevate Capital Partners",
@@ -16,7 +16,7 @@ const testimonials = [
     avatar: "MT",
   },
   {
-    quote: "The collaboration features keep our entire team aligned. We've closed 40% more deals since implementing nAItive.",
+    quote: "The collaboration features keep our entire team aligned. We've closed 40% more deals since implementing naitive.",
     author: "Jennifer Walsh",
     role: "VP of Investments",
     company: "Summit Point Capital",

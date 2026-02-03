@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
           results.push({ 
             success: false, 
             company_name: companyName, 
-            error: "No matching deal found. Create deal in nAItive first." 
+            error: "No matching deal found. Create deal in naitive first." 
           });
           continue;
         }

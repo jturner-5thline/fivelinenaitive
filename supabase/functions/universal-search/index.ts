@@ -12,7 +12,7 @@ interface SearchRequest {
 // Platform knowledge base for FAQs and how-to questions
 const platformKnowledge = `
 ## Platform Overview
-nAItive is a commercial lending deal management platform by 5th Line Capital. It helps teams manage deals, lenders, analytics, and reporting.
+naitive is a commercial lending deal management platform by 5th Line Capital. It helps teams manage deals, lenders, analytics, and reporting.
 
 ## Navigation & Pages
 - **Dashboard**: Overview of your pipeline, flagged deals, notifications, and key metrics. Access via sidebar or /dashboard.

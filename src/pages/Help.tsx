@@ -68,7 +68,7 @@ export default function Help() {
   return (
     <>
       <Helmet>
-        <title>Help & Tips - nAItive</title>
+        <title>Help & Tips - naitive</title>
         <meta name="description" content="Learn how to use the app effectively with tips and FAQs" />
       </Helmet>
 

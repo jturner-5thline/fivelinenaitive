@@ -17,7 +17,7 @@ export default function Company() {
     return (
       <>
         <Helmet>
-          <title>Company - nAItive</title>
+          <title>Company - naitive</title>
         </Helmet>
         <div className="bg-background">
           <DealsHeader />
@@ -35,7 +35,7 @@ export default function Company() {
     return (
       <>
         <Helmet>
-          <title>Company - nAItive</title>
+          <title>Company - naitive</title>
         </Helmet>
         <div className="bg-background">
           <DealsHeader />

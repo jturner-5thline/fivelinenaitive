@@ -135,7 +135,7 @@ export default function Preferences() {
   return (
     <>
       <Helmet>
-        <title>Preferences - nAItive</title>
+        <title>Preferences - naitive</title>
         <meta name="description" content="Manage your personal preferences" />
       </Helmet>
 

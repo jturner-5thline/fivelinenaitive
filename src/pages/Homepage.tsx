@@ -19,7 +19,7 @@ export default function Homepage() {
   return (
     <>
       <Helmet>
-        <title>nAItive | Intelligence, by Design</title>
+        <title>naitive | Intelligence, by Design</title>
         <meta 
           name="description" 
           content="AI-powered deal management platform for transaction-advisory professionals and lenders. Streamline workflows, manage deals, and close faster." 
@@ -46,7 +46,7 @@ export default function Homepage() {
         
         <HomepageFeatureSection
           title="Accurate, Organized Lender Tracking"
-          description="nAItive seamlessly integrates your lender relationships with deal flow, maintaining visibility, organization, and real-time status across your entire process."
+          description="naitive seamlessly integrates your lender relationships with deal flow, maintaining visibility, organization, and real-time status across your entire process."
           image={<PlatformPreviewLenderKanban />}
           reverse
         />

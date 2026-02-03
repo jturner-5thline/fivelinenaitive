@@ -228,7 +228,7 @@ async function sendEmail(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'nAItive <notifications@resend.dev>',
+          from: 'naitive <notifications@resend.dev>',
           to: [toEmail],
           subject: subject,
           html: `<p>${body}</p><p style="color: #888; font-size: 12px; margin-top: 20px;">This is a delayed automated email from your workflow.</p>`,
