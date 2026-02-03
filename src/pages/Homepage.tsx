@@ -45,7 +45,7 @@ export default function Homepage() {
         <HomepageScrollingTags />
         
         <HomepageFeatureSection
-          title="Accurate, Organized Lender Tracking"
+          title="Centralized Lender Management, Without the Noise"
           description="Track lender outreach, review, and term sheets directly within the deal — without spreadsheets, side channels, or manual handoffs. As lenders move through each stage, activity is captured in context, giving teams a clear, real-time view of where the deal stands and what needs attention next."
           image={<PlatformPreviewLenderKanban />}
           reverse
