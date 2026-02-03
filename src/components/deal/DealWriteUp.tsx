@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, Sparkles, AlertTriangle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -245,6 +245,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const [publishCountdown, setPublishCountdown] = useState(0);
   const [showFlexConfirmDialog, setShowFlexConfirmDialog] = useState(false);
   const [showUnpublishDialog, setShowUnpublishDialog] = useState(false);
+  const [showEmptyFieldsWarning, setShowEmptyFieldsWarning] = useState(false);
   const publishTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingPublishToastIdRef = useRef<string | number | null>(null);
@@ -282,6 +283,66 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const isPublishedOnFlex = latestSync?.status === 'success';
   // Check if deal was unpublished (can be re-published)
   const isUnpublishedFromFlex = latestSync?.status === 'unpublished';
+
+  // Detect empty fields across all tabs for FLEx warning
+  const emptyFields = useMemo(() => {
+    const fields: { section: string; field: string }[] = [];
+    
+    // Company Overview section
+    if (!data.companyName?.trim()) fields.push({ section: 'Company Overview', field: 'Company Name' });
+    if (!data.companyUrl?.trim()) fields.push({ section: 'Company Overview', field: 'Company Website' });
+    if (!data.industries || data.industries.length === 0) fields.push({ section: 'Company Overview', field: 'Industry' });
+    if (!data.location?.trim()) fields.push({ section: 'Company Overview', field: 'Location' });
+    if (!data.yearFounded?.trim()) fields.push({ section: 'Company Overview', field: 'Year Founded' });
+    if (!data.headcount?.trim()) fields.push({ section: 'Company Overview', field: 'Headcount' });
+    if (!data.dealTypes || data.dealTypes.length === 0) fields.push({ section: 'Company Overview', field: 'Deal Type' });
+    if (!data.capitalAsk?.trim()) fields.push({ section: 'Company Overview', field: 'Capital Ask' });
+    if (!data.description?.trim()) fields.push({ section: 'Company Overview', field: 'Description' });
+    if (!data.useOfFunds?.trim()) fields.push({ section: 'Company Overview', field: 'Use of Funds' });
+    
+    // Financial section
+    if (!data.billingModels || data.billingModels.length === 0) fields.push({ section: 'Financial', field: 'Billing Model' });
+    if (!data.profitability?.trim()) fields.push({ section: 'Financial', field: 'Profitability' });
+    if (!data.grossMargins?.trim()) fields.push({ section: 'Financial', field: 'Gross Margins' });
+    if (!data.financialDataAsOf) fields.push({ section: 'Financial', field: 'Financial Data As Of' });
+    if (!data.accountingSystem?.trim()) fields.push({ section: 'Financial', field: 'Accounting System' });
+    if (!data.financialYears || data.financialYears.length === 0) fields.push({ section: 'Financial', field: 'Financial Years Data' });
+    
+    // Company Highlights section
+    if (!data.companyHighlights || data.companyHighlights.length === 0) fields.push({ section: 'Company Highlights', field: 'Company Highlights' });
+    
+    // Key Items section
+    if (!data.keyItems || data.keyItems.length === 0) fields.push({ section: 'Key Items', field: 'Key Items' });
+    
+    // Ownership section (check via owners from hook)
+    if (!owners || owners.length === 0) fields.push({ section: 'Ownership', field: 'Ownership / Cap Table' });
+    if (!totalEquityRaised?.trim()) fields.push({ section: 'Ownership', field: 'Total Equity Raised' });
+    
+    return fields;
+  }, [data, owners, totalEquityRaised]);
+
+  // Group empty fields by section for display
+  const emptyFieldsBySection = useMemo(() => {
+    const grouped: Record<string, string[]> = {};
+    for (const { section, field } of emptyFields) {
+      if (!grouped[section]) grouped[section] = [];
+      grouped[section].push(field);
+    }
+    return grouped;
+  }, [emptyFields]);
+
+  const handleFlexButtonClick = () => {
+    if (emptyFields.length > 0) {
+      setShowEmptyFieldsWarning(true);
+    } else {
+      setShowFlexConfirmDialog(true);
+    }
+  };
+
+  const handleProceedWithEmptyFields = () => {
+    setShowEmptyFieldsWarning(false);
+    setShowFlexConfirmDialog(true);
+  };
 
   const updateField = <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => {
     onChange({ ...data, [field]: value });
@@ -1018,7 +1079,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <>
                   <Button 
                     variant="default"
-                    onClick={() => setShowFlexConfirmDialog(true)}
+                    onClick={handleFlexButtonClick}
                     disabled={isPushingToFlex || isUnpublishing}
                   >
                     {isPushingToFlex ? (
@@ -1055,7 +1116,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               ) : isUnpublishedFromFlex ? (
                 <Button 
                   variant="default"
-                  onClick={handleRepublishToFlex}
+                  onClick={handleFlexButtonClick}
                   disabled={isRepublishing}
                 >
                   {isRepublishing ? (
@@ -1073,7 +1134,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               ) : (
                 <Button 
                   variant="default"
-                  onClick={() => setShowFlexConfirmDialog(true)}
+                  onClick={handleFlexButtonClick}
                   disabled={isPushingToFlex}
                 >
                   {isPushingToFlex ? (
@@ -1262,6 +1323,49 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         onApply={handleApplyAutoFill}
         documentCount={autoFillDocumentCount}
       />
+
+      {/* Empty Fields Warning Dialog */}
+      <AlertDialog open={showEmptyFieldsWarning} onOpenChange={setShowEmptyFieldsWarning}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Incomplete Write-Up
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Some fields in your deal write-up are empty. Are you sure you want to proceed with publishing?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <ScrollArea className="max-h-[40vh] pr-4">
+            <div className="space-y-3">
+              {Object.entries(emptyFieldsBySection).map(([section, fields]) => (
+                <div key={section} className="rounded-lg border bg-muted/30 p-3">
+                  <h4 className="font-semibold text-sm mb-2 text-foreground">{section}</h4>
+                  <ul className="space-y-1">
+                    {fields.map((field) => (
+                      <li key={field} className="text-sm text-muted-foreground flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        {field}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back to Edit</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleProceedWithEmptyFields}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Proceed Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </Card>
   );
