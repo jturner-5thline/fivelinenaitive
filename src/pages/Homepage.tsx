@@ -53,7 +53,7 @@ export default function Homepage() {
         
         <HomepageFeatureSection
           title="Execution-Ready Data Rooms"
-          description="Use tools designed to create work outputs exactly as you would — organized data rooms, milestone tracking, and automated document management."
+          description="Organize diligence materials directly within the deal — with progress, ownership, and status tracked as execution unfolds. Checklists, documents, and milestones stay connected to the transaction, giving teams a clear view of what's complete, what's pending, and what needs attention next."
           image={<PlatformPreviewDataRoom />}
         />
         
