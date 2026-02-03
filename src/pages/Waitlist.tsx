@@ -130,7 +130,7 @@ const Waitlist = () => {
             <img 
               src={naitiveLogoFull} 
               alt="naitive" 
-              className="w-[94vw] max-w-[1125px] animate-fade-in"
+              className="w-[94vw] max-w-[1125px] animate-fade-in opacity-75"
             />
           </div>
 
