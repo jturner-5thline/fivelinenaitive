@@ -4,10 +4,9 @@ export const HomepageValueProp = () => {
       <div className="container mx-auto px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-xl md:text-2xl lg:text-3xl font-medium text-white/90 leading-relaxed">
-            Our platform helps advisors and lenders manage deals more efficiently by using{" "}
-            <span className="text-[hsl(292,46%,72%)]">AI to identify bottlenecks</span> in the review and approval process.{" "}
-            naitive supports workflow features that shorten review time and increase the likelihood of successful closings,{" "}
-            <span className="text-white">and we do not sell your data.</span>
+            We centralize deal execution into a single operating layer — bringing work, decisions, and data together as deals move through review, diligence, and approval.{" "}
+            <span className="text-[hsl(292,46%,72%)]">Intelligence is embedded directly into execution</span>, surfacing bottlenecks, highlighting risk, and keeping work moving without adding more tools or manual oversight.{" "}
+            <span className="text-white">Your data remains yours. naitive does not sell or monetize customer data.</span>
           </h2>
         </div>
       </div>
