@@ -56,10 +56,6 @@ const Index = () => {
             </p>
           </div>
           <style>{`
-            @keyframes shimmer {
-              0%, 100% { background-position: 100% 100%; }
-              50% { background-position: 0% 0%; }
-            }
             @keyframes fadeInTagline {
               from {
                 opacity: 0;
