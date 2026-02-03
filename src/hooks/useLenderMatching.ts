@@ -13,6 +13,7 @@ export interface DealCriteria {
   b2bB2c?: string; // "B2B", "B2C", "Both", etc.
   companyRequirements?: string;
   revenue?: number;
+  sponsorship?: string; // "Sponsored", "Non-Sponsored", "Both", etc.
 }
 
 export interface LenderMatch {
@@ -103,6 +104,47 @@ function matchesCashBurn(dealCashBurnOk: boolean | undefined, lenderCashBurn: st
   return { matches: false, warning: false };
 }
 
+// Check sponsorship match
+function matchesSponsorship(dealSponsorship: string | undefined, lenderSponsorship: string | null): { matches: boolean; warning: boolean } {
+  if (!dealSponsorship || !lenderSponsorship) return { matches: false, warning: false };
+  
+  const normalizedDeal = normalizeString(dealSponsorship);
+  const normalizedLender = normalizeString(lenderSponsorship);
+  
+  // Lender accepts both
+  if (normalizedLender.includes('both') || normalizedLender.includes('either') || normalizedLender.includes('agnostic')) {
+    return { matches: true, warning: false };
+  }
+  
+  // Check for sponsored deal
+  const dealIsSponsored = normalizedDeal.includes('sponsor') && !normalizedDeal.includes('non');
+  const dealIsNonSponsored = normalizedDeal.includes('non-sponsor') || normalizedDeal.includes('non sponsor') || normalizedDeal === 'non-sponsored';
+  
+  // Check lender preferences
+  const lenderWantsSponsored = normalizedLender.includes('sponsor') && !normalizedLender.includes('non');
+  const lenderWantsNonSponsored = normalizedLender.includes('non-sponsor') || normalizedLender.includes('non sponsor');
+  const lenderPrefersBoth = normalizedLender.includes('both') || normalizedLender.includes('either');
+  
+  if (lenderPrefersBoth) {
+    return { matches: true, warning: false };
+  }
+  
+  if (dealIsSponsored && lenderWantsSponsored) {
+    return { matches: true, warning: false };
+  }
+  
+  if (dealIsNonSponsored && lenderWantsNonSponsored) {
+    return { matches: true, warning: false };
+  }
+  
+  // Mismatch case
+  if ((dealIsSponsored && lenderWantsNonSponsored) || (dealIsNonSponsored && lenderWantsSponsored)) {
+    return { matches: false, warning: true };
+  }
+  
+  return { matches: false, warning: false };
+}
+
 // Check geography match
 function matchesGeography(dealGeo: string | undefined, lenderGeo: string | null): boolean {
   if (!dealGeo || !lenderGeo) return false;
@@ -159,24 +201,27 @@ function parseCapitalAsk(capitalAsk: string | undefined): number | null {
   return isNaN(num) ? null : num;
 }
 
-// Scoring weights based on priority order
+// Scoring weights based on priority order (user-specified priority)
+// 1. Deal Size, 2. Deal Type, 3. Cash-burn OK, 4. Industry, 5. Sponsorship
 const WEIGHTS = {
-  DEAL_SIZE: 30,        // Priority 1: Deal size range
-  CASH_BURN: 25,        // Priority 2: Cash-burn OK
-  LOAN_TYPE: 20,        // Priority 3: Loan Type
-  GEOGRAPHY: 15,        // Priority 4: Geography
-  INDUSTRY: 12,         // Priority 5: Industry
-  B2B_B2C: 10,          // Priority 6: B2B vs B2C
-  COMPANY_REQ: 8,       // Priority 7: Company requirements
+  DEAL_SIZE: 50,        // Priority 1: Deal size range (highest)
+  LOAN_TYPE: 40,        // Priority 2: Deal Type (Growth Capital vs ABL)
+  CASH_BURN: 30,        // Priority 3: Cash-burn OK
+  INDUSTRY: 25,         // Priority 4: Industry
+  SPONSORSHIP: 20,      // Priority 5: Sponsorship
+  GEOGRAPHY: 10,        // Secondary: Geography
+  B2B_B2C: 8,           // Secondary: B2B vs B2C
+  COMPANY_REQ: 5,       // Secondary: Company requirements
   CONTACT_INFO: 3,      // Bonus: Contact info
   ONE_PAGER: 2,         // Bonus: One-pager available
 };
 
 const PENALTIES = {
-  INDUSTRY_AVOIDED: -40,
-  BELOW_MIN_DEAL: -20,
-  ABOVE_MAX_DEAL: -20,
-  CASH_BURN_MISMATCH: -15,
+  INDUSTRY_AVOIDED: -50,
+  BELOW_MIN_DEAL: -30,
+  ABOVE_MAX_DEAL: -30,
+  CASH_BURN_MISMATCH: -25,
+  SPONSORSHIP_MISMATCH: -20,
 };
 
 export function calculateLenderMatch(
@@ -215,19 +260,7 @@ export function calculateLenderMatch(
     score += 5;
   }
   
-  // PRIORITY 2: Cash-burn OK
-  if (criteria.cashBurnOk !== undefined) {
-    const cashBurnResult = matchesCashBurn(criteria.cashBurnOk, lender.cash_burn);
-    if (cashBurnResult.matches) {
-      matchReasons.push('Cash burn OK');
-      score += WEIGHTS.CASH_BURN;
-    } else if (criteria.cashBurnOk && cashBurnResult.warning) {
-      warnings.push('May not accept cash burn');
-      score += PENALTIES.CASH_BURN_MISMATCH;
-    }
-  }
-  
-  // PRIORITY 3: Loan type match
+  // PRIORITY 2: Deal Type (Growth Capital vs ABL)
   if (criteria.dealTypes && criteria.dealTypes.length > 0) {
     // Exclude ABL lenders for Growth Capital deals
     const isGrowthCapital = criteria.dealTypes.some(dt => 
@@ -242,7 +275,7 @@ export function calculateLenderMatch(
     
     if (isGrowthCapital && isAblLender) {
       warnings.push('ABL lender - not suitable for Growth Capital');
-      score += -50; // Heavy penalty to effectively exclude
+      score += -60; // Heavy penalty to effectively exclude
     } else if (matchesLoanType(criteria.dealTypes, lender.loan_types)) {
       matchReasons.push('Matching loan types');
       score += WEIGHTS.LOAN_TYPE;
@@ -251,15 +284,19 @@ export function calculateLenderMatch(
     score += 3;
   }
   
-  // PRIORITY 4: Geography match
-  if (criteria.geo) {
-    if (matchesGeography(criteria.geo, lender.geo)) {
-      matchReasons.push('Geographic coverage');
-      score += WEIGHTS.GEOGRAPHY;
+  // PRIORITY 3: Cash-burn OK
+  if (criteria.cashBurnOk !== undefined) {
+    const cashBurnResult = matchesCashBurn(criteria.cashBurnOk, lender.cash_burn);
+    if (cashBurnResult.matches) {
+      matchReasons.push('Cash burn OK');
+      score += WEIGHTS.CASH_BURN;
+    } else if (criteria.cashBurnOk && cashBurnResult.warning) {
+      warnings.push('May not accept cash burn');
+      score += PENALTIES.CASH_BURN_MISMATCH;
     }
   }
   
-  // PRIORITY 5: Industry match
+  // PRIORITY 4: Industry match
   if (criteria.industry) {
     if (isIndustriesAvoided(criteria.industry, lender.industries_to_avoid)) {
       warnings.push(`Avoids ${criteria.industry}`);
@@ -273,7 +310,27 @@ export function calculateLenderMatch(
     }
   }
   
-  // PRIORITY 6: B2B vs B2C match
+  // PRIORITY 5: Sponsorship match
+  if (criteria.sponsorship) {
+    const sponsorshipResult = matchesSponsorship(criteria.sponsorship, lender.sponsorship);
+    if (sponsorshipResult.matches) {
+      matchReasons.push(`${criteria.sponsorship} deals`);
+      score += WEIGHTS.SPONSORSHIP;
+    } else if (sponsorshipResult.warning) {
+      warnings.push(`Sponsorship mismatch`);
+      score += PENALTIES.SPONSORSHIP_MISMATCH;
+    }
+  }
+  
+  // SECONDARY: Geography match
+  if (criteria.geo) {
+    if (matchesGeography(criteria.geo, lender.geo)) {
+      matchReasons.push('Geographic coverage');
+      score += WEIGHTS.GEOGRAPHY;
+    }
+  }
+  
+  // SECONDARY: B2B vs B2C match
   if (criteria.b2bB2c) {
     const b2bResult = matchesB2bB2c(criteria.b2bB2c, lender.b2b_b2c);
     if (b2bResult.matches) {
