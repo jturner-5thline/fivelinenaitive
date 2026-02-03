@@ -4040,6 +4040,8 @@ export default function DealDetail() {
             <DialogTitle>{selectedLenderName}</DialogTitle>
           </DialogHeader>
           {selectedLenderName && (() => {
+            // Look up lender from the master lenders directory (database)
+            const masterLender = masterLenders.find(ml => ml.name === selectedLenderName);
             const lenderDetails = getLenderDetails(selectedLenderName);
             const lenderOutstandingItems = outstandingItems.filter(
               item => !item.deliveredToLenders.includes(selectedLenderName) && (Array.isArray(item.requestedBy) 
@@ -4106,14 +4108,13 @@ export default function DealDetail() {
                 </TabsContent>
                 
                 <TabsContent value="about" className="space-y-6 mt-4">
-                  {/* Contact Information */}
+                  {/* Contact Information - from lender directory */}
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
-                    {lenderDetails?.contact.name ? (
+                    {masterLender?.contact_name ? (
                       <div className="space-y-1 text-sm">
-                        <p><span className="text-muted-foreground">Name:</span> {lenderDetails.contact.name}</p>
-                        <p><span className="text-muted-foreground">Email:</span> {lenderDetails.contact.email}</p>
-                        <p><span className="text-muted-foreground">Phone:</span> {lenderDetails.contact.phone}</p>
+                        <p><span className="text-muted-foreground">Name:</span> {masterLender.contact_name}{masterLender.contact_title ? `, ${masterLender.contact_title}` : ''}</p>
+                        {masterLender.email && <p><span className="text-muted-foreground">Email:</span> {masterLender.email}</p>}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">No contact information available</p>
