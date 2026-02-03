@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Flag, Calendar } from 'lucide-react';
+import { Plus, Flag, Calendar, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,12 +31,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useProfile } from '@/hooks/useProfile';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDefaultMilestones } from '@/contexts/DefaultMilestonesContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
@@ -54,6 +58,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
   const { members } = useCompany();
   const { profile } = useProfile();
   const { stages: dealStages, defaultStageId } = useDealStages();
+  const { dealTypes: availableDealTypes } = useDealTypes();
   const { defaultMilestones } = useDefaultMilestones();
   
   const [internalOpen, setInternalOpen] = useState(false);
@@ -61,6 +66,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
   const [blankFields, setBlankFields] = useState<string[]>([]);
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
+  const [selectedDealTypes, setSelectedDealTypes] = useState<string[]>([]);
   const [dealStage, setDealStage] = useState(defaultStageId || '');
   const [dealManager, setDealManager] = useState('');
   const [dealOwner, setDealOwner] = useState('');
@@ -161,6 +167,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
         notes: dealStatusNote.trim(),
         status: 'on-track',
         stage: dealStage,
+        dealTypes: selectedDealTypes.length > 0 ? selectedDealTypes : undefined,
         engagementType: 'guided',
         referredBy: referralName.trim() ? {
           id: '',
@@ -186,6 +193,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
   const resetForm = () => {
     setDealName('');
     setDealAmount('');
+    setSelectedDealTypes([]);
     setDealStage(defaultStageId || '');
     setDealManager('');
     setDealOwner('');
@@ -242,6 +250,54 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
                     className="pl-7"
                   />
                 </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Deal Type</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {selectedDealTypes.length > 0 ? (
+                        <span className="flex flex-wrap gap-1">
+                          {selectedDealTypes.map(typeId => {
+                            const typeConfig = availableDealTypes.find(t => t.id === typeId);
+                            return typeConfig ? (
+                              <Badge key={typeId} variant="secondary" className="text-xs">
+                                {typeConfig.label}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Select types</span>
+                      )}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-2" align="start">
+                    <div className="space-y-1">
+                      {availableDealTypes.map((type) => {
+                        const isSelected = selectedDealTypes.includes(type.id);
+                        return (
+                          <button
+                            key={type.id}
+                            type="button"
+                            className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
+                            onClick={() => {
+                              setSelectedDealTypes(prev => 
+                                isSelected
+                                  ? prev.filter(t => t !== type.id)
+                                  : [...prev, type.id]
+                              );
+                            }}
+                          >
+                            <Checkbox checked={isSelected} className="pointer-events-none" />
+                            {type.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="dealStage">Deal Stage <span className="text-destructive">*</span></Label>
