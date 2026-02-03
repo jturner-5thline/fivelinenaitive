@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Check, Flame, Users, DollarSign, Building2, ArrowRight, RotateCcw, Loader2 } from 'lucide-react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Check, Flame, Building2, ArrowRight, RotateCcw, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { DealCriteria } from '@/hooks/useLenderMatching';
 import { useDealMatchingCriteria, DealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
+import { useMasterLenders } from '@/hooks/useMasterLenders';
 import {
   Carousel,
   CarouselContent,
@@ -13,6 +14,14 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from '@/components/ui/carousel';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface LenderCriteriaSurveyProps {
   dealId?: string;
@@ -32,7 +41,8 @@ interface SurveyQuestion {
   title: string;
   subtitle: string;
   icon: React.ReactNode;
-  options: SurveyOption[];
+  options?: SurveyOption[];
+  type?: 'options' | 'dropdown';
 }
 
 const SURVEY_QUESTIONS: SurveyQuestion[] = [
@@ -41,63 +51,54 @@ const SURVEY_QUESTIONS: SurveyQuestion[] = [
     title: 'Cash Burn Status',
     subtitle: 'Is the company currently burning cash?',
     icon: <Flame className="h-6 w-6" />,
+    type: 'options',
     options: [
       { value: 'true', label: 'Yes, burning cash', description: 'Pre-profit or high-growth phase' },
       { value: 'false', label: 'No, cash flow positive', description: 'Profitable or break-even' },
-      { value: 'breakeven', label: 'Near break-even', description: 'Close to profitability' },
     ],
   },
   {
-    id: 'b2bB2c',
-    title: 'Business Model',
-    subtitle: 'What type of customers does the company serve?',
-    icon: <Users className="h-6 w-6" />,
-    options: [
-      { value: 'B2B', label: 'B2B', description: 'Sells to businesses' },
-      { value: 'B2C', label: 'B2C', description: 'Sells to consumers' },
-      { value: 'Both', label: 'Both B2B & B2C', description: 'Mixed customer base' },
-    ],
-  },
-  {
-    id: 'revenueType',
-    title: 'Revenue Type',
-    subtitle: 'What type of revenue does the company have?',
-    icon: <DollarSign className="h-6 w-6" />,
-    options: [
-      { value: 'recurring', label: 'Recurring / Subscription', description: 'SaaS, memberships, etc.' },
-      { value: 'transactional', label: 'Transactional', description: 'One-time purchases' },
-      { value: 'contractual', label: 'Contractual', description: 'Long-term contracts' },
-      { value: 'mixed', label: 'Mixed', description: 'Combination of models' },
-    ],
-  },
-  {
-    id: 'collateralAvailable',
-    title: 'Collateral',
-    subtitle: 'Does the company have hard assets for collateral?',
+    id: 'industry',
+    title: 'Industry',
+    subtitle: 'What industry is the company in?',
     icon: <Building2 className="h-6 w-6" />,
+    type: 'dropdown',
+  },
+  {
+    id: 'sponsorship',
+    title: 'Sponsor-backed',
+    subtitle: 'Is the company backed by a private equity or venture capital sponsor?',
+    icon: <Users className="h-6 w-6" />,
+    type: 'options',
     options: [
-      { value: 'yes', label: 'Yes, significant assets', description: 'Real estate, equipment, inventory' },
-      { value: 'ar', label: 'Accounts receivable only', description: 'AR as primary collateral' },
-      { value: 'minimal', label: 'Minimal hard assets', description: 'Mostly software/IP' },
-      { value: 'none', label: 'No collateral available', description: 'Cash flow based only' },
+      { value: 'Yes', label: 'Yes, sponsor-backed', description: 'PE or VC backed company' },
+      { value: 'No', label: 'No, not sponsor-backed', description: 'Founder-owned or independent' },
     ],
   },
 ];
 
 export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSkip }: LenderCriteriaSurveyProps) {
   const { criteria: savedCriteria, isLoading: isLoadingCriteria, isSaving, saveCriteria } = useDealMatchingCriteria(dealId);
+  const { lenders: masterLenders } = useMasterLenders();
   const [api, setApi] = useState<CarouselApi>();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
+
+  // Get unique industries from master lenders
+  const industryOptions = useMemo(() => {
+    const industries = Array.from(
+      new Set(masterLenders.flatMap(l => l.industries || []).filter(Boolean))
+    ).sort();
+    return industries;
+  }, [masterLenders]);
 
   // Initialize answers from saved criteria when loaded
   useEffect(() => {
     if (!isLoadingCriteria && savedCriteria) {
       const initial: Record<string, string | boolean> = {};
       if (savedCriteria.cashBurnOk !== undefined) initial.cashBurnOk = savedCriteria.cashBurnOk;
-      if (savedCriteria.b2bB2c) initial.b2bB2c = savedCriteria.b2bB2c;
-      if (savedCriteria.revenueType) initial.revenueType = savedCriteria.revenueType;
-      if (savedCriteria.collateralAvailable) initial.collateralAvailable = savedCriteria.collateralAvailable;
+      if (savedCriteria.industry) initial.industry = savedCriteria.industry;
+      if (savedCriteria.sponsorship) initial.sponsorship = savedCriteria.sponsorship;
       setAnswers(initial);
     }
   }, [savedCriteria, isLoadingCriteria]);
@@ -150,13 +151,10 @@ export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSk
     
     if (typeof answers.cashBurnOk === 'boolean') {
       matchingCriteria.cashBurnOk = answers.cashBurnOk;
-    } else if (answers.cashBurnOk === 'breakeven') {
-      matchingCriteria.cashBurnOk = false;
     }
     
-    if (answers.b2bB2c) matchingCriteria.b2bB2c = answers.b2bB2c as string;
-    if (answers.revenueType) matchingCriteria.revenueType = answers.revenueType as string;
-    if (answers.collateralAvailable) matchingCriteria.collateralAvailable = answers.collateralAvailable as string;
+    if (answers.industry) matchingCriteria.industry = answers.industry as string;
+    if (answers.sponsorship) matchingCriteria.sponsorship = answers.sponsorship as string;
 
     // Save to database if we have a dealId
     if (dealId) {
@@ -169,17 +167,11 @@ export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSk
     if (matchingCriteria.cashBurnOk !== undefined) {
       criteria.cashBurnOk = matchingCriteria.cashBurnOk;
     }
-    if (matchingCriteria.b2bB2c) criteria.b2bB2c = matchingCriteria.b2bB2c;
-
-    const additionalContext: string[] = [];
-    if (matchingCriteria.revenueType) additionalContext.push(`Revenue: ${matchingCriteria.revenueType}`);
-    if (matchingCriteria.collateralAvailable) additionalContext.push(`Collateral: ${matchingCriteria.collateralAvailable}`);
-
-    if (additionalContext.length > 0) {
-      criteria.companyRequirements = [
-        initialCriteria?.companyRequirements,
-        ...additionalContext
-      ].filter(Boolean).join('; ');
+    if (matchingCriteria.industry) {
+      criteria.industry = matchingCriteria.industry;
+    }
+    if (matchingCriteria.sponsorship) {
+      criteria.sponsorship = matchingCriteria.sponsorship;
     }
 
     onComplete(criteria);
@@ -236,38 +228,69 @@ export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSk
                   <h3 className="text-xl font-semibold mb-1">{question.title}</h3>
                   <p className="text-sm text-muted-foreground mb-6">{question.subtitle}</p>
 
-                  {/* Stacked options */}
-                  <div className="w-full max-w-sm space-y-3">
-                    {question.options.map((option) => {
-                      const selected = isOptionSelected(question.id, option.value);
-                      return (
-                        <button
-                          key={option.value}
-                          onClick={() => handleSelectOption(question.id, option.value)}
-                          className={cn(
-                            "w-full relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 text-left",
-                            "hover:border-primary/50 hover:bg-primary/5",
-                            selected
-                              ? "border-primary bg-primary/10 ring-2 ring-primary/20"
-                              : "border-border bg-card"
-                          )}
-                        >
-                          <div className={cn(
-                            "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
-                            selected ? "border-primary bg-primary" : "border-muted-foreground/40"
-                          )}>
-                            {selected && <Check className="h-3 w-3 text-primary-foreground" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="font-medium text-sm block">{option.label}</span>
-                            {option.description && (
-                              <span className="text-xs text-muted-foreground">{option.description}</span>
+                  {/* Dropdown for industry */}
+                  {question.type === 'dropdown' && question.id === 'industry' && (
+                    <div className="w-full max-w-sm">
+                      <Select
+                        value={answers.industry as string || ''}
+                        onValueChange={(value) => handleSelectOption('industry', value)}
+                      >
+                        <SelectTrigger className="w-full h-12 text-left">
+                          <SelectValue placeholder="Select an industry..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border z-50">
+                          <ScrollArea className="h-[300px]">
+                            {industryOptions.map((industry) => (
+                              <SelectItem key={industry} value={industry}>
+                                {industry}
+                              </SelectItem>
+                            ))}
+                          </ScrollArea>
+                        </SelectContent>
+                      </Select>
+                      {answers.industry && (
+                        <p className="text-sm text-primary mt-3 flex items-center justify-center gap-2">
+                          <Check className="h-4 w-4" />
+                          Selected: {answers.industry as string}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Stacked options for regular questions */}
+                  {question.type === 'options' && question.options && (
+                    <div className="w-full max-w-sm space-y-3">
+                      {question.options.map((option) => {
+                        const selected = isOptionSelected(question.id, option.value);
+                        return (
+                          <button
+                            key={option.value}
+                            onClick={() => handleSelectOption(question.id, option.value)}
+                            className={cn(
+                              "w-full relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 text-left",
+                              "hover:border-primary/50 hover:bg-primary/5",
+                              selected
+                                ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                                : "border-border bg-card"
                             )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          >
+                            <div className={cn(
+                              "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                              selected ? "border-primary bg-primary" : "border-muted-foreground/40"
+                            )}>
+                              {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium text-sm block">{option.label}</span>
+                              {option.description && (
+                                <span className="text-xs text-muted-foreground">{option.description}</span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </CarouselItem>
             ))}
