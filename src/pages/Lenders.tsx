@@ -618,10 +618,10 @@ export default function Lenders() {
       max_deal: data.maxDeal ? parseFloat(data.maxDeal) : null,
       industries: data.industries.split(',').map(p => p.trim()).filter(p => p) || null,
       geo: data.geo.trim() || null,
+      company_requirements: data.companyRequirements?.trim() || data.description?.trim() || null,
       deal_structure_notes: data.lenderNotes?.trim() || null,
       min_revenue: data.minRevenue ? parseFloat(data.minRevenue) : null,
       ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
-      company_requirements: data.companyRequirements.trim() || null,
       tier: data.tier ? `T${data.tier}` : null,
     };
 
