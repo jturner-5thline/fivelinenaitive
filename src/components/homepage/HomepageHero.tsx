@@ -14,7 +14,7 @@ export const HomepageHero = () => {
       <div className="relative z-10 container mx-auto px-6 text-center pt-20">
         <Logo className="h-20 md:h-28 lg:h-32 mx-auto mb-8" />
 
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 max-w-4xl mx-auto leading-[1.1]">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-light text-white mb-6 max-w-4xl mx-auto leading-[1.1]">
           Welcome to the Operating Layer{" "}
           <br className="hidden md:block" />
           <span className="bg-gradient-to-r from-white via-[hsl(292,46%,72%)] to-white bg-clip-text text-transparent">
