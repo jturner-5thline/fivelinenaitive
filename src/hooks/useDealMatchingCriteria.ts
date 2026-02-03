@@ -8,6 +8,8 @@ export interface DealMatchingCriteria {
   b2bB2c?: string;
   revenueType?: string;
   collateralAvailable?: string;
+  industry?: string;
+  sponsorship?: string;
 }
 
 interface MatchingCriteriaRow {
@@ -15,6 +17,8 @@ interface MatchingCriteriaRow {
   b2b_b2c: string | null;
   revenue_type: string | null;
   collateral_available: string | null;
+  industry: string | null;
+  sponsorship: string | null;
 }
 
 export function useDealMatchingCriteria(dealId: string | undefined) {
@@ -32,7 +36,7 @@ export function useDealMatchingCriteria(dealId: string | undefined) {
     try {
       const { data, error } = await supabase
         .from('deal_writeups')
-        .select('cash_burn_ok, b2b_b2c, revenue_type, collateral_available')
+        .select('cash_burn_ok, b2b_b2c, revenue_type, collateral_available, industry, sponsorship')
         .eq('deal_id', dealId)
         .maybeSingle();
 
@@ -44,6 +48,8 @@ export function useDealMatchingCriteria(dealId: string | undefined) {
           b2bB2c: data.b2b_b2c ?? undefined,
           revenueType: data.revenue_type ?? undefined,
           collateralAvailable: data.collateral_available ?? undefined,
+          industry: data.industry ?? undefined,
+          sponsorship: data.sponsorship ?? undefined,
         });
       }
     } catch (error) {
@@ -74,6 +80,8 @@ export function useDealMatchingCriteria(dealId: string | undefined) {
         b2b_b2c: newCriteria.b2bB2c ?? null,
         revenue_type: newCriteria.revenueType ?? null,
         collateral_available: newCriteria.collateralAvailable ?? null,
+        industry: newCriteria.industry ?? null,
+        sponsorship: newCriteria.sponsorship ?? null,
       };
 
       if (existing) {

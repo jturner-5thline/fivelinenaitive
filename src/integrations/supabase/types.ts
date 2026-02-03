@@ -1742,6 +1742,7 @@ export type Database = {
           profitability: string | null
           publish_as_anonymous: boolean | null
           revenue_type: string | null
+          sponsorship: string | null
           status: string | null
           this_year_revenue: string | null
           total_equity_raised: string | null
@@ -1780,6 +1781,7 @@ export type Database = {
           profitability?: string | null
           publish_as_anonymous?: boolean | null
           revenue_type?: string | null
+          sponsorship?: string | null
           status?: string | null
           this_year_revenue?: string | null
           total_equity_raised?: string | null
@@ -1818,6 +1820,7 @@ export type Database = {
           profitability?: string | null
           publish_as_anonymous?: boolean | null
           revenue_type?: string | null
+          sponsorship?: string | null
           status?: string | null
           this_year_revenue?: string | null
           total_equity_raised?: string | null

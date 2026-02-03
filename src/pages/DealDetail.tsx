@@ -2867,13 +2867,13 @@ export default function DealDetail() {
                           <LenderSuggestionsPanel
                             dealId={id}
                             criteria={{
-                              industry: dealWriteUpData.industries?.join(', ') || undefined,
+                              industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
                               dealValue: deal.value || undefined,
                               capitalAsk: dealWriteUpData.capitalAsk || undefined,
                               dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
                               geo: dealWriteUpData.location || undefined,
                               cashBurnOk: savedMatchingCriteria.cashBurnOk,
-                              b2bB2c: savedMatchingCriteria.b2bB2c,
+                              sponsorship: savedMatchingCriteria.sponsorship,
                             }}
                             existingLenderNames={deal.lenders?.map(l => l.name) || []}
                             onAddLender={addLender}
@@ -3605,13 +3605,13 @@ export default function DealDetail() {
                       <LenderSuggestionsPanel
                         dealId={id}
                         criteria={{
-                          industry: dealWriteUpData.industries?.join(', ') || undefined,
+                          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
                           dealValue: deal.value || undefined,
                           capitalAsk: dealWriteUpData.capitalAsk || undefined,
                           dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
                           geo: dealWriteUpData.location || undefined,
                           cashBurnOk: savedMatchingCriteria.cashBurnOk,
-                          b2bB2c: savedMatchingCriteria.b2bB2c,
+                          sponsorship: savedMatchingCriteria.sponsorship,
                         }}
                         existingLenderNames={deal.lenders?.map(l => l.name) || []}
                         onAddLender={addLender}
