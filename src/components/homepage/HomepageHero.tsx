@@ -23,8 +23,7 @@ export const HomepageHero = () => {
         </h1>
 
         <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
-          Purpose-built AI that helps advisors and lenders work smarter, 
-          move faster, and close more deals
+          Built for teams running complex deals end-to-end
         </p>
 
         <Button 
