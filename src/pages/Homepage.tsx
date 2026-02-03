@@ -37,7 +37,7 @@ export default function Homepage() {
         
         {/* Feature Sections with Platform Previews */}
         <HomepageFeatureSection
-          title="Powered by AI-Driven Deal Intelligence"
+          title="The Operating Layer for Transaction Management"
           description="AI agents designed for transaction professionals. Analyze opportunities, track pipeline metrics, and surface insights automatically — so you can focus on closing deals."
           image={<PlatformPreviewDealPipeline />}
         />
