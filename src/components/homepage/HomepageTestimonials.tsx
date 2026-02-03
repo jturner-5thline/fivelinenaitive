@@ -3,7 +3,7 @@ import { Quote } from "lucide-react";
 const testimonials = [
   {
     quote: "naitive has transformed how our team manages deal flow. The AI-powered insights help us identify opportunities faster than ever before.",
-    author: "Managing Director",
+    author: "Advisors & Brokers",
   },
   {
     quote: "The platform's ability to integrate all our deal data in one place has dramatically improved our team's productivity and collaboration.",
