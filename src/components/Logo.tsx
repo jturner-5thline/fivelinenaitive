@@ -4,7 +4,7 @@ interface LogoProps {
   className?: string;
 }
 
-export const Logo = ({ className = "h-6" }: LogoProps) => {
+export const Logo = ({ className = "h-3" }: LogoProps) => {
   return (
     <img 
       src={naitiveLogo} 
