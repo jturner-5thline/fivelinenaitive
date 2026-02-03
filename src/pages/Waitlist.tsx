@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import naitiveLogoFull from "@/assets/naitive-logo-dark-mode.png";
+import naitiveLogoFull from "@/assets/naitive-logo-dark-mode-no-circle.png";
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,7 +130,7 @@ const Waitlist = () => {
             <img 
               src={naitiveLogoFull} 
               alt="naitive" 
-              className="w-[94vw] max-w-[1125px] animate-fade-in opacity-60"
+              className="w-[70vw] max-w-[844px] animate-fade-in opacity-60"
             />
           </div>
 
