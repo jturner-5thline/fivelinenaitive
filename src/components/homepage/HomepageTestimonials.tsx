@@ -7,7 +7,7 @@ const testimonials = [
   },
   {
     quote: "The platform's ability to integrate all our deal data in one place has dramatically improved our team's productivity and collaboration.",
-    author: "Senior Vice President",
+    author: "Deal Teams & Committees",
   },
   {
     quote: "Finally, a tool built by people who understand the nuances of lower-middle-market transactions. The workflow automation alone has saved us countless hours.",
