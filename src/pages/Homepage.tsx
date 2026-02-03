@@ -46,7 +46,7 @@ export default function Homepage() {
         
         <HomepageFeatureSection
           title="Accurate, Organized Lender Tracking"
-          description="naitive seamlessly integrates your lender relationships with deal flow, maintaining visibility, organization, and real-time status across your entire process."
+          description="Track lender outreach, review, and term sheets directly within the deal — without spreadsheets, side channels, or manual handoffs. As lenders move through each stage, activity is captured in context, giving teams a clear, real-time view of where the deal stands and what needs attention next."
           image={<PlatformPreviewLenderKanban />}
           reverse
         />
