@@ -277,7 +277,7 @@ const Auth = () => {
             <img 
               src={naitiveLogoFull} 
               alt="naitive" 
-              className="w-[100vw] max-w-[1200px] animate-fade-in"
+              className="w-[75vw] max-w-[900px] animate-fade-in"
             />
           </div>
           
