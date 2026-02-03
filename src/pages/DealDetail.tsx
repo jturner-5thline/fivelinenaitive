@@ -1552,8 +1552,9 @@ export default function DealDetail() {
     } catch {}
   }, [deal?.id]);
 
-  // Show loading state while deals are being fetched
-  if (isDealsLoading) {
+  // Show loading state only for the initial load.
+  // During background refetches (e.g., realtime events), keep the page rendered to avoid a full-page "refresh".
+  if (isDealsLoading && !deal) {
     return (
       <div className="bg-background min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
