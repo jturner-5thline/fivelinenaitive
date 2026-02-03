@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 interface DebouncedInputProps extends Omit<React.ComponentProps<typeof Input>, 'onChange'> {
   value: string | number;
   onChange: (value: string | number) => void;
+  onSave?: () => void;
   debounceMs?: number;
   type?: string;
 }
@@ -16,6 +17,7 @@ interface DebouncedInputProps extends Omit<React.ComponentProps<typeof Input>, '
 export function DebouncedInput({
   value,
   onChange,
+  onSave,
   debounceMs = 800,
   type = 'text',
   className,
@@ -81,6 +83,7 @@ export function DebouncedInput({
       e.preventDefault();
       saveNow();
       (e.target as HTMLInputElement).blur();
+      onSave?.();
     }
   };
 
