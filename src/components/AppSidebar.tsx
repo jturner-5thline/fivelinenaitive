@@ -1,5 +1,7 @@
 import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles, Workflow, Bot, DollarSign } from "lucide-react";
-import naitiveIcon from "@/assets/naitive-icon.png";
+import { useTheme } from "next-themes";
+import naitiveIconLight from "@/assets/naitive-icon-light.png";
+import naitiveIconDark from "@/assets/naitive-icon-dark.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -52,6 +54,7 @@ const footerItems = [
 
 export function AppSidebar() {
   const { state, isHovering, toggleSidebar } = useSidebar();
+  const { resolvedTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -60,6 +63,7 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
+  const iconSrc = resolvedTheme === "dark" ? naitiveIconDark : naitiveIconLight;
   
   // Filter menu items based on feature access
   const visibleMenuItems = menuItems.filter(item => 
@@ -92,7 +96,7 @@ export function AppSidebar() {
             onClick={toggleSidebar} 
             className="h-9 w-9 rounded-md overflow-hidden flex-shrink-0"
           >
-            <img src={naitiveIcon} alt="naitive" className="h-full w-full object-cover" />
+            <img src={iconSrc} alt="naitive" className="h-full w-full object-cover" />
           </button>
           {showExpanded && <span className="font-semibold text-sidebar-foreground">5thLine</span>}
         </div>
