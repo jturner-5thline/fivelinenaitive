@@ -498,6 +498,9 @@ export function useDealsDatabase() {
     const previousDeals = deals;
     const previousDeal = deals.find(d => d.id === dealId);
     
+    // Mark as pending to prevent realtime refetch from overwriting optimistic update
+    pendingOptimisticUpdatesRef.current.add(`deal-${dealId}`);
+    
     // Optimistically update UI immediately
     setDeals(prev =>
       prev.map(deal =>
@@ -590,6 +593,11 @@ export function useDealsDatabase() {
         description: "Failed to update deal",
         variant: "destructive",
       });
+    } finally {
+      // Clear pending flag after a delay to allow realtime to settle
+      setTimeout(() => {
+        pendingOptimisticUpdatesRef.current.delete(`deal-${dealId}`);
+      }, 2000);
     }
   }, [deals]);
 
