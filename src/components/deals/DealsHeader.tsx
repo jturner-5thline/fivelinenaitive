@@ -44,14 +44,6 @@ export function DealsHeader() {
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            {company?.logo_url && (
-              <Avatar className="h-9 w-9">
-                <AvatarImage src={company.logo_url} alt={company.name} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {company.name?.charAt(0) || 'C'}
-                </AvatarFallback>
-              </Avatar>
-            )}
             <Logo className="h-10" />
           </Link>
           <DemoModeBadge />
