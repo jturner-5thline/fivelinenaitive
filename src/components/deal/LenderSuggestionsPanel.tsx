@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Sparkles, ClipboardList, ArrowLeft } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Sparkles, ClipboardList, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -15,6 +15,26 @@ import { LenderCriteriaSurvey } from './LenderCriteriaSurvey';
 import { DealCriteria } from '@/hooks/useLenderMatching';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
 import { useLenderMatching } from '@/hooks/useLenderMatching';
+
+// Helper to determine which filtering criteria are missing
+function getMissingCriteria(criteria: DealCriteria): string[] {
+  const missing: string[] = [];
+  
+  if (!criteria.dealValue && !criteria.capitalAsk) {
+    missing.push('Deal Size');
+  }
+  if (!criteria.dealTypes || criteria.dealTypes.length === 0) {
+    missing.push('Deal Type');
+  }
+  if (!criteria.industry) {
+    missing.push('Industry');
+  }
+  if (!criteria.sponsorship) {
+    missing.push('Sponsorship');
+  }
+  
+  return missing;
+}
 
 interface LenderSuggestionsPanelProps {
   dealId?: string;
@@ -52,6 +72,10 @@ export function LenderSuggestionsPanel({
   const excellentCount = matches.filter(m => m.score >= 50).length;
   const goodCount = matches.filter(m => m.score >= 25 && m.score < 50).length;
   const totalMatches = matches.filter(m => m.score >= 0).length;
+  
+  // Check for missing criteria that affect filtering
+  const missingCriteria = useMemo(() => getMissingCriteria(enhancedCriteria), [enhancedCriteria]);
+  const hasMissingCriteria = missingCriteria.length > 0;
   
   const handleAddLender = (name: string) => {
     onAddLender(name);
@@ -132,15 +156,41 @@ export function LenderSuggestionsPanel({
               )}
             </div>
             {!showSurvey && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleOpenSurvey}
-                className="gap-1.5 bg-primary/90 hover:bg-primary"
-              >
-                <ClipboardList className="h-3.5 w-3.5" />
-                Refine Criteria
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={hasMissingCriteria ? "destructive" : "default"}
+                      size="sm"
+                      onClick={handleOpenSurvey}
+                      className={hasMissingCriteria 
+                        ? "gap-1.5 animate-pulse" 
+                        : "gap-1.5 bg-primary/90 hover:bg-primary"
+                      }
+                    >
+                      {hasMissingCriteria ? (
+                        <AlertCircle className="h-3.5 w-3.5" />
+                      ) : (
+                        <ClipboardList className="h-3.5 w-3.5" />
+                      )}
+                      {hasMissingCriteria 
+                        ? `Complete Criteria (${missingCriteria.length} missing)` 
+                        : 'Refine Criteria'
+                      }
+                    </Button>
+                  </TooltipTrigger>
+                  {hasMissingCriteria && (
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="font-medium">Missing criteria for accurate matching:</p>
+                      <ul className="text-xs mt-1 space-y-0.5">
+                        {missingCriteria.map(c => (
+                          <li key={c}>• {c}</li>
+                        ))}
+                      </ul>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             )}
           </DialogTitle>
         </DialogHeader>
@@ -195,6 +245,10 @@ export function LenderSuggestionsFAB({
   });
   
   const matchCount = matches.length;
+  
+  // Check for missing criteria that affect filtering
+  const missingCriteriaFAB = useMemo(() => getMissingCriteria(enhancedCriteria), [enhancedCriteria]);
+  const hasMissingCriteriaFAB = missingCriteriaFAB.length > 0;
 
   if (matchCount === 0) return null;
 
@@ -252,15 +306,41 @@ export function LenderSuggestionsFAB({
               )}
             </div>
             {!showSurvey && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setShowSurvey(true)}
-                className="gap-1.5 bg-primary/90 hover:bg-primary"
-              >
-                <ClipboardList className="h-3.5 w-3.5" />
-                Refine Criteria
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={hasMissingCriteriaFAB ? "destructive" : "default"}
+                      size="sm"
+                      onClick={() => setShowSurvey(true)}
+                      className={hasMissingCriteriaFAB 
+                        ? "gap-1.5 animate-pulse" 
+                        : "gap-1.5 bg-primary/90 hover:bg-primary"
+                      }
+                    >
+                      {hasMissingCriteriaFAB ? (
+                        <AlertCircle className="h-3.5 w-3.5" />
+                      ) : (
+                        <ClipboardList className="h-3.5 w-3.5" />
+                      )}
+                      {hasMissingCriteriaFAB 
+                        ? `Complete Criteria (${missingCriteriaFAB.length} missing)` 
+                        : 'Refine Criteria'
+                      }
+                    </Button>
+                  </TooltipTrigger>
+                  {hasMissingCriteriaFAB && (
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="font-medium">Missing criteria for accurate matching:</p>
+                      <ul className="text-xs mt-1 space-y-0.5">
+                        {missingCriteriaFAB.map(c => (
+                          <li key={c}>• {c}</li>
+                        ))}
+                      </ul>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             )}
           </DialogTitle>
         </DialogHeader>
