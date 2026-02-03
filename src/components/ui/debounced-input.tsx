@@ -23,19 +23,25 @@ export function DebouncedInput({
 }: DebouncedInputProps) {
   const [localValue, setLocalValue] = React.useState(value);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const lastSyncedRef = React.useRef(value);
+  const isFocusedRef = React.useRef(false);
+  const hasPendingChangesRef = React.useRef(false);
 
-  // Sync from parent when value changes externally
+  // Sync from parent when value changes externally, but only if not focused
   React.useEffect(() => {
-    if (value !== lastSyncedRef.current) {
+    // Don't override local value while user is actively editing
+    if (!isFocusedRef.current && !hasPendingChangesRef.current) {
       setLocalValue(value);
-      lastSyncedRef.current = value;
     }
   }, [value]);
 
+  const handleFocus = () => {
+    isFocusedRef.current = true;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = type === 'number' ? e.target.value : e.target.value;
+    const newValue = e.target.value;
     setLocalValue(newValue);
+    hasPendingChangesRef.current = true;
 
     // Clear existing timeout
     if (timeoutRef.current) {
@@ -46,22 +52,25 @@ export function DebouncedInput({
     timeoutRef.current = setTimeout(() => {
       const finalValue = type === 'number' ? (newValue === '' ? 0 : Number(newValue)) : newValue;
       onChange(finalValue);
-      lastSyncedRef.current = finalValue;
+      hasPendingChangesRef.current = false;
     }, debounceMs);
   };
 
   const handleBlur = () => {
-    // Save immediately on blur
+    isFocusedRef.current = false;
+    
+    // Save immediately on blur if there are pending changes
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-    const finalValue = type === 'number' 
-      ? (localValue === '' ? 0 : Number(localValue)) 
-      : localValue;
-    if (finalValue !== lastSyncedRef.current) {
+    
+    if (hasPendingChangesRef.current) {
+      const finalValue = type === 'number' 
+        ? (localValue === '' ? 0 : Number(localValue)) 
+        : localValue;
       onChange(finalValue);
-      lastSyncedRef.current = finalValue;
+      hasPendingChangesRef.current = false;
     }
   };
 
@@ -80,6 +89,7 @@ export function DebouncedInput({
       type={type}
       value={localValue}
       onChange={handleChange}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       className={cn(className)}
     />
