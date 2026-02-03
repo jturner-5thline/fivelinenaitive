@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
 
 export interface MasterLender {
   id: string;
@@ -318,18 +319,21 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         body: { lender_id: lenderId },
       });
       if (error) {
-        console.error('Failed to sync lender to Flex:', error);
-        // Check if it's a "not registered" error and show a helpful toast
-        try {
-          const errorData = JSON.parse(error.message || '{}');
-          if (errorData.code === 'LENDER_NOT_REGISTERED') {
-            toast.warning(`${errorData.lender_name || 'This lender'} is not registered in FLEx`, {
-              description: 'They need to create an account in FLEx before syncing.',
-            });
-          }
-        } catch {
-          // Error parsing, ignore - just log to console
+        const payload = extractFlexSyncErrorPayload({ data, error });
+        if (payload?.code === 'LENDER_NOT_REGISTERED') {
+          // Expected business case: don't surface as a runtime error.
+          toast.warning(`${payload.lender_name || 'This lender'} is not registered in FLEx`, {
+            description: payload.message || 'They need to create an account in FLEx before syncing.',
+          });
+          console.info('Skipped FLEx sync (lender not registered):', {
+            lenderId,
+            lenderName: payload.lender_name,
+            lenderEmail: payload.lender_email,
+          });
+          return;
         }
+
+        console.error('Failed to sync lender to Flex:', error);
       } else {
         console.log(`Lender ${lenderId} synced to Flex`);
       }

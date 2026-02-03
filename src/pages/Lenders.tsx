@@ -66,6 +66,7 @@ import { LenderGridCard } from '@/components/lenders/LenderGridCard';
 import { LenderListCard } from '@/components/lenders/LenderListCard';
 import { LenderSpreadsheetView } from '@/components/lenders/LenderSpreadsheetView';
 import { exportLendersToCsv, parseCsvToLenders, downloadCsv } from '@/utils/lenderCsv';
+import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
 import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
 import { useLenderSyncRequests } from '@/hooks/useLenderSyncRequests';
@@ -452,20 +453,19 @@ export default function Lenders() {
         
         const notRegisteredLenders: string[] = [];
         
-        results.forEach((result, idx) => {
+        results.forEach((result) => {
           if (result.status === 'fulfilled' && !result.value.error) {
             successCount++;
           } else {
             errorCount++;
             // Check if it's a "not registered" error
             if (result.status === 'fulfilled' && result.value.error) {
-              try {
-                const errorData = JSON.parse(result.value.error.message || '{}');
-                if (errorData.code === 'LENDER_NOT_REGISTERED' && errorData.lender_name) {
-                  notRegisteredLenders.push(errorData.lender_name);
-                }
-              } catch {
-                // Error parsing, ignore
+              const payload = extractFlexSyncErrorPayload({
+                data: result.value.data,
+                error: result.value.error,
+              });
+              if (payload?.code === 'LENDER_NOT_REGISTERED' && payload.lender_name) {
+                notRegisteredLenders.push(payload.lender_name);
               }
             }
           }
