@@ -21,10 +21,10 @@ export const HomepageTestimonials = () => {
       <div className="container mx-auto px-6">
         {/* Section header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+          <h2 className="text-4xl md:text-6xl font-bold text-white mb-4">
             Who naitive is{" "}
             <span className="bg-gradient-to-r from-[hsl(292,46%,72%)] to-white bg-clip-text text-transparent">
-              Built For
+              built for
             </span>
           </h2>
         </div>
