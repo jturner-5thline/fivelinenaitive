@@ -2479,6 +2479,24 @@ export default function DealDetail() {
                                       </Select>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground text-sm w-28">Deal Type</span>
+                                      <Select
+                                        value={deal.dealTypes?.[0] || ''}
+                                        onValueChange={(value) => updateDeal('dealTypes', value ? [value] : [])}
+                                      >
+                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                          <SelectValue placeholder="Select type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {availableDealTypes.map((type) => (
+                                            <SelectItem key={type.id} value={type.id}>
+                                              {type.label}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="flex items-center gap-2">
                                       <span className="text-muted-foreground text-sm w-28">Engagement</span>
                                       <Select
                                         value={deal.engagementType}
