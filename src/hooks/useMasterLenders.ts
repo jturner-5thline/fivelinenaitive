@@ -314,12 +314,22 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
   const syncLenderToFlex = async (lenderId: string): Promise<void> => {
     try {
-      const { error } = await supabase.functions.invoke('sync-lender-to-flex', {
+      const { data, error } = await supabase.functions.invoke('sync-lender-to-flex', {
         body: { lender_id: lenderId },
       });
       if (error) {
         console.error('Failed to sync lender to Flex:', error);
-        // Don't show error toast - this is a background sync
+        // Check if it's a "not registered" error and show a helpful toast
+        try {
+          const errorData = JSON.parse(error.message || '{}');
+          if (errorData.code === 'LENDER_NOT_REGISTERED') {
+            toast.warning(`${errorData.lender_name || 'This lender'} is not registered in FLEx`, {
+              description: 'They need to create an account in FLEx before syncing.',
+            });
+          }
+        } catch {
+          // Error parsing, ignore - just log to console
+        }
       } else {
         console.log(`Lender ${lenderId} synced to Flex`);
       }
