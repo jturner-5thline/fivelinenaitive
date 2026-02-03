@@ -508,8 +508,28 @@ export function useLenderMatching(
       return hasMatchingLoanType;
     });
     
+    // Pre-filter: Exclude lenders that have the deal's industry in their "Industries to Avoid"
+    const industryFilteredLenders = loanTypeFilteredLenders.filter(lender => {
+      // If no deal industry specified, include all lenders
+      if (!criteria.industry) return true;
+      
+      // If lender has no industries to avoid, include them
+      if (!lender.industries_to_avoid || lender.industries_to_avoid.length === 0) return true;
+      
+      // Check if deal industry is in lender's avoid list
+      const normalizedDealIndustry = normalizeString(criteria.industry);
+      const isAvoided = lender.industries_to_avoid.some(avoidIndustry => {
+        const normalized = normalizeString(avoidIndustry);
+        return normalized.includes(normalizedDealIndustry) || 
+               normalizedDealIndustry.includes(normalized) ||
+               normalized === normalizedDealIndustry;
+      });
+      
+      return !isAvoided;
+    });
+    
     // Calculate match scores with learning data
-    const scoredLenders = loanTypeFilteredLenders.map(lender => 
+    const scoredLenders = industryFilteredLenders.map(lender => 
       calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined)
     );
     
