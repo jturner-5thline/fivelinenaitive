@@ -197,19 +197,24 @@ serve(async (req) => {
         flexError = { message: responseText };
       }
       
-      // Handle specific error cases with user-friendly messages
-      if (flexResponse.status === 404 && flexError?.message?.includes("not found in Flex")) {
-        return new Response(
-          JSON.stringify({ 
-            error: "Lender not registered in FLEx", 
-            message: "This lender needs to register in FLEx before their profile can be synced. Please ask them to create an account in FLEx first.",
-            lender_email: l.email,
-            lender_name: l.name,
-            code: "LENDER_NOT_REGISTERED"
-          }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+       // Handle specific error cases with user-friendly messages.
+       // IMPORTANT: Return 200 for expected business cases so clients don't treat this as a runtime failure.
+       if (flexResponse.status === 404 && flexError?.message?.includes("not found in Flex")) {
+         return new Response(
+           JSON.stringify({
+             success: false,
+             skipped: true,
+             code: "LENDER_NOT_REGISTERED",
+             error: "Lender not registered in FLEx",
+             message:
+               "This lender needs to register in FLEx before their profile can be synced. Please ask them to create an account in FLEx first.",
+             lender_email: l.email,
+             lender_name: l.name,
+             lender_id: l.id,
+           }),
+           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+         );
+       }
       
       return new Response(
         JSON.stringify({ 

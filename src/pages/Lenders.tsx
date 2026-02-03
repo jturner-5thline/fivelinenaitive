@@ -454,20 +454,27 @@ export default function Lenders() {
         const notRegisteredLenders: string[] = [];
         
         results.forEach((result) => {
-          if (result.status === 'fulfilled' && !result.value.error) {
+          if (result.status !== 'fulfilled') {
+            errorCount++;
+            return;
+          }
+
+          const { data, error } = result.value;
+          const payload = extractFlexSyncErrorPayload({ data, error });
+
+          if (payload?.code === 'LENDER_NOT_REGISTERED' && payload.lender_name) {
+            notRegisteredLenders.push(payload.lender_name);
+          }
+
+          // The backend may return 200 even for expected business cases (e.g., not registered),
+          // so use the response body when available.
+          const successFlag = (data as any)?.success;
+          const isSuccess = !error && (typeof successFlag === 'boolean' ? successFlag : true);
+
+          if (isSuccess) {
             successCount++;
           } else {
             errorCount++;
-            // Check if it's a "not registered" error
-            if (result.status === 'fulfilled' && result.value.error) {
-              const payload = extractFlexSyncErrorPayload({
-                data: result.value.data,
-                error: result.value.error,
-              });
-              if (payload?.code === 'LENDER_NOT_REGISTERED' && payload.lender_name) {
-                notRegisteredLenders.push(payload.lender_name);
-              }
-            }
           }
         });
         
