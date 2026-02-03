@@ -63,12 +63,23 @@ const suggestionTypeConfig = {
   reminder: { icon: Clock, label: 'Due Soon', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10' },
 };
 
+// Activity types that represent "view" events - exclude from activity feeds
+const VIEW_ACTIVITY_TYPES = [
+  'deal_viewed',
+  'writeup_viewed',
+  'flex_deal_viewed',
+  'flex_deal_view',
+];
+
 const getActivityIcon = (type: string) => {
   const icons: Record<string, string> = {
     deal_created: '🆕',
     stage_changed: '📊',
     lender_added: '🏦',
     lender_updated: '✏️',
+    lender_stage_change: '📊',
+    lender_substage_change: '🎯',
+    lender_notes_updated: '📝',
     note_added: '📝',
     document_uploaded: '📄',
     milestone_completed: '✅',
@@ -76,6 +87,12 @@ const getActivityIcon = (type: string) => {
     email_linked: '📧',
     quote_received: '💰',
     status_changed: '🔄',
+    deal_updated: '✏️',
+    status_change: '🔄',
+    value_updated: '💰',
+    flex_push: '🚀',
+    requested_item_added: '📋',
+    requested_item_updated: '📋',
   };
   return icons[type] || '📌';
 };
@@ -385,19 +402,24 @@ export function NotificationGridCards({
   };
 
   const renderActivityCard = () => {
-    if (activities.length === 0) return null;
+    // Filter out view-only activities - only show actual changes
+    const filteredActivities = activities.filter(
+      activity => !VIEW_ACTIVITY_TYPES.includes(activity.activity_type)
+    );
+    
+    if (filteredActivities.length === 0) return null;
     return (
       <Card key="activity" className="flex flex-col max-h-[400px]">
         <CardHeader className="pb-2 flex-shrink-0">
           <CardTitle className="flex items-center gap-2 text-base text-muted-foreground">
             <Activity className="h-4 w-4" />
-            Recent Activity ({activities.length})
+            Recent Activity ({filteredActivities.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full max-h-[320px]">
             <div className="divide-y px-4 pb-4">
-              {activities.slice(0, 8).map((activity) => {
+              {filteredActivities.slice(0, 8).map((activity) => {
                 const read = isRead('activity', activity.id);
                 return (
                   <Link

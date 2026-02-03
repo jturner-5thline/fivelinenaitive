@@ -46,7 +46,19 @@ const ACTIVITY_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   status_note_added: { label: 'Status Note', color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400' },
   requested_item_added: { label: 'Item Added', color: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400' },
   requested_item_updated: { label: 'Item Updated', color: 'bg-sky-500/10 text-sky-700 dark:text-sky-400' },
+  stage_change: { label: 'Stage Change', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-400' },
+  status_change: { label: 'Status Change', color: 'bg-orange-500/10 text-orange-700 dark:text-orange-400' },
+  value_updated: { label: 'Value Updated', color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
+  flex_push: { label: 'Pushed to FLEx', color: 'bg-violet-500/10 text-violet-700 dark:text-violet-400' },
 };
+
+// Activity types that represent "view" events - exclude from audit trail
+const VIEW_ACTIVITY_TYPES = [
+  'deal_viewed',
+  'writeup_viewed',
+  'flex_deal_viewed',
+  'flex_deal_view',
+];
 
 export function AuditTrailPanel({ dealId, className }: AuditTrailPanelProps) {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -66,11 +78,16 @@ export function AuditTrailPanel({ dealId, className }: AuditTrailPanelProps) {
           .select('*')
           .eq('deal_id', dealId)
           .order('created_at', { ascending: false })
-          .limit(100);
+          .limit(200);
 
         if (error) throw error;
         
-        setLogs(data || []);
+        // Filter out view-only activities - only show actual changes
+        const filteredData = (data || []).filter(
+          log => !VIEW_ACTIVITY_TYPES.includes(log.activity_type)
+        );
+        
+        setLogs(filteredData);
 
         // Fetch user profiles for all unique user_ids
         const userIds = [...new Set((data || []).map(l => l.user_id).filter(Boolean))] as string[];
@@ -116,7 +133,11 @@ export function AuditTrailPanel({ dealId, className }: AuditTrailPanelProps) {
           filter: `deal_id=eq.${dealId}`,
         },
         (payload) => {
-          setLogs(prev => [payload.new as AuditLogEntry, ...prev]);
+          const newLog = payload.new as AuditLogEntry;
+          // Only add if it's not a view activity
+          if (!VIEW_ACTIVITY_TYPES.includes(newLog.activity_type)) {
+            setLogs(prev => [newLog, ...prev]);
+          }
         }
       )
       .subscribe();

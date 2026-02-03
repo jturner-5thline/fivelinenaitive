@@ -13,6 +13,14 @@ export interface ActivityLog {
   created_at: string;
 }
 
+// Activity types that represent "view" events - exclude from activity feeds
+const VIEW_ACTIVITY_TYPES = [
+  'deal_viewed',
+  'writeup_viewed',
+  'flex_deal_viewed',
+  'flex_deal_view',
+];
+
 export function useActivityLog(dealId: string | undefined) {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,12 +34,16 @@ export function useActivityLog(dealId: string | undefined) {
       .select('*')
       .eq('deal_id', dealId)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (error) {
       console.error('Error fetching activities:', error);
     } else {
-      setActivities(data || []);
+      // Filter out view-only activities - only show actual changes
+      const filteredData = (data || []).filter(
+        log => !VIEW_ACTIVITY_TYPES.includes(log.activity_type)
+      );
+      setActivities(filteredData);
     }
     setIsLoading(false);
   }, [dealId]);
@@ -96,7 +108,11 @@ export function useActivityLog(dealId: string | undefined) {
           filter: `deal_id=eq.${dealId}`,
         },
         (payload) => {
-          setActivities((prev) => [payload.new as ActivityLog, ...prev]);
+          const newLog = payload.new as ActivityLog;
+          // Only add if it's not a view activity
+          if (!VIEW_ACTIVITY_TYPES.includes(newLog.activity_type)) {
+            setActivities((prev) => [newLog, ...prev]);
+          }
         }
       )
       .subscribe();

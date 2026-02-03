@@ -677,19 +677,7 @@ export default function DealDetail() {
     }
   }, [deleteAction, searchParams, setSearchParams]);
 
-  // Track deal view - fires once per page visit
-  const viewTrackedRef = useRef<string | null>(null);
-  useEffect(() => {
-    // Only log view if we have a deal and haven't already tracked this visit
-    if (deal && id && viewTrackedRef.current !== id) {
-      viewTrackedRef.current = id;
-      logActivity('deal_viewed', `${deal.company} deal viewed`, {
-        deal_company: deal.company,
-        deal_stage: deal.stage,
-        deal_status: deal.status,
-      });
-    }
-  }, [deal, id, logActivity]);
+  // NOTE: View tracking removed - only log actual changes (updates, additions, deletions)
 
   const handleDeleteDeal = async () => {
     if (!deal) return;
