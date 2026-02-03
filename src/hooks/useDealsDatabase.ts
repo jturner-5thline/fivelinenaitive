@@ -290,6 +290,8 @@ export function useDealsDatabase() {
       narrative: dbDeal.narrative || undefined,
       contact: dbDeal.contact || '',
       contactInfo: dbDeal.contact_info || undefined,
+      companyUrl: (dbDeal as any).company_url || undefined,
+      businessModel: (dbDeal as any).business_model || undefined,
       createdAt: dbDeal.created_at,
       updatedAt: dbDeal.updated_at,
       lenders: dealLenders,
@@ -537,6 +539,10 @@ export function useDealsDatabase() {
       if (updates.narrative !== undefined) {
         dbUpdates.narrative = updates.narrative;
       }
+      if (updates.contact !== undefined) dbUpdates.contact = updates.contact;
+      if (updates.contactInfo !== undefined) dbUpdates.contact_info = updates.contactInfo;
+      if (updates.companyUrl !== undefined) dbUpdates.company_url = updates.companyUrl;
+      if (updates.businessModel !== undefined) dbUpdates.business_model = updates.businessModel;
 
       const { error } = await supabase
         .from('deals')
