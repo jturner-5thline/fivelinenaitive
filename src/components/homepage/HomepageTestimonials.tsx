@@ -2,7 +2,7 @@ import { Quote } from "lucide-react";
 
 const testimonials = [
   {
-    quote: "naitive has transformed how our team manages deal flow. The AI-powered insights help us identify opportunities faster than ever before.",
+    quote: "Teams managing complex, multi-party deal processes — from origination through diligence and close — who need execution to stay organized, transparent, and repeatable as deal volume scales.",
     author: "Advisors & Brokers",
   },
   {
