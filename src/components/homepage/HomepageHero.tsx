@@ -15,10 +15,10 @@ export const HomepageHero = () => {
         <Logo className="h-20 md:h-28 lg:h-32 mx-auto mb-8" />
 
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 max-w-4xl mx-auto leading-[1.1]">
-          The AI Platform{" "}
+          Welcome to the Operating Layer{" "}
           <br className="hidden md:block" />
           <span className="bg-gradient-to-r from-white via-[hsl(292,46%,72%)] to-white bg-clip-text text-transparent">
-            for Deal Professionals.
+            for Deal Management.
           </span>
         </h1>
 
