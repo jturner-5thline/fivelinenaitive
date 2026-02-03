@@ -318,25 +318,28 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       const { data, error } = await supabase.functions.invoke('sync-lender-to-flex', {
         body: { lender_id: lenderId },
       });
-      if (error) {
-        const payload = extractFlexSyncErrorPayload({ data, error });
-        if (payload?.code === 'LENDER_NOT_REGISTERED') {
-          // Expected business case: don't surface as a runtime error.
-          toast.warning(`${payload.lender_name || 'This lender'} is not registered in FLEx`, {
-            description: payload.message || 'They need to create an account in FLEx before syncing.',
-          });
-          console.info('Skipped FLEx sync (lender not registered):', {
-            lenderId,
-            lenderName: payload.lender_name,
-            lenderEmail: payload.lender_email,
-          });
-          return;
-        }
 
-        console.error('Failed to sync lender to Flex:', error);
-      } else {
-        console.log(`Lender ${lenderId} synced to Flex`);
+      // Normalize payload regardless of HTTP status (some expected business cases now return 200).
+      const payload = extractFlexSyncErrorPayload({ data, error });
+      if (payload?.code === 'LENDER_NOT_REGISTERED') {
+        // Expected business case: don't surface as a runtime error.
+        toast.warning(`${payload.lender_name || 'This lender'} is not registered in FLEx`, {
+          description: payload.message || 'They need to create an account in FLEx before syncing.',
+        });
+        console.info('Skipped FLEx sync (lender not registered):', {
+          lenderId,
+          lenderName: payload.lender_name,
+          lenderEmail: payload.lender_email,
+        });
+        return;
       }
+
+      if (error) {
+        console.error('Failed to sync lender to Flex:', error);
+        return;
+      }
+
+      console.log(`Lender ${lenderId} synced to Flex`);
     } catch (err) {
       console.error('Error syncing lender to Flex:', err);
     }
