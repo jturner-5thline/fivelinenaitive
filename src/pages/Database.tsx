@@ -9,7 +9,7 @@ export default function Database() {
   return (
     <>
       <Helmet>
-        <title>Database - nAItive</title>
+        <title>Database - naitive</title>
         <meta name="description" content="Manage your database and directories" />
       </Helmet>
 

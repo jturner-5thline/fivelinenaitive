@@ -46,7 +46,7 @@ export default function PendingApproval() {
   return (
     <>
       <Helmet>
-        <title>Pending Approval | nAItive</title>
+        <title>Pending Approval | naitive</title>
       </Helmet>
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">

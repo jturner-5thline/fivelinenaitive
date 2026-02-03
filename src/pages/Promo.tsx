@@ -6,7 +6,7 @@ const Promo = () => {
   return (
     <>
       <Helmet>
-        <title>nAItive | Intelligence, by Design</title>
+        <title>naitive | Intelligence, by Design</title>
       </Helmet>
       
       <div className="min-h-screen bg-[#010114] relative overflow-hidden">

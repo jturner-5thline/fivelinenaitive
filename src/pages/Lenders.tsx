@@ -841,7 +841,7 @@ export default function Lenders() {
   return (
     <>
       <Helmet>
-        <title>Lenders - nAItive</title>
+        <title>Lenders - naitive</title>
         <meta name="description" content="Manage your lender directory" />
       </Helmet>
 

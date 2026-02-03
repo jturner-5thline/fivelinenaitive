@@ -2,7 +2,7 @@ import { Quote } from "lucide-react";
 
 const testimonials = [
   {
-    quote: "nAItive has transformed how our team manages deal flow. The AI-powered insights help us identify opportunities faster than ever before.",
+    quote: "naitive has transformed how our team manages deal flow. The AI-powered insights help us identify opportunities faster than ever before.",
     author: "Managing Director",
     company: "Leading Transaction Advisory Firm",
   },
@@ -27,7 +27,7 @@ export const HomepageTestimonials = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             What Customers Say{" "}
             <span className="bg-gradient-to-r from-[hsl(292,46%,72%)] to-white bg-clip-text text-transparent">
-              About nAItive
+              About naitive
             </span>
           </h2>
         </div>

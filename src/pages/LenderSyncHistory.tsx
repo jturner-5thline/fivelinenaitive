@@ -243,7 +243,7 @@ export default function LenderSyncHistory() {
   return (
     <>
       <Helmet>
-        <title>Lender Sync History - nAItive</title>
+        <title>Lender Sync History - naitive</title>
         <meta name="description" content="Track all lender changes synced from Flex" />
       </Helmet>
 

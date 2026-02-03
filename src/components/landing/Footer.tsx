@@ -135,7 +135,7 @@ export const Footer = () => {
         <div className="pt-8 border-t border-primary-foreground/10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-primary-foreground/60">
-              © 2024 nAItive. All rights reserved.
+              © 2024 naitive. All rights reserved.
             </p>
             <p className="text-sm text-primary-foreground/60">
               SOC 2 Type II Certified • GDPR Compliant

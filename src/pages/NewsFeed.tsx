@@ -6,7 +6,7 @@ export default function NewsFeed() {
   return (
     <>
       <Helmet>
-        <title>News Feed - nAItive</title>
+        <title>News Feed - naitive</title>
         <meta name="description" content="Stay updated with the latest news from the lending and finance industry." />
       </Helmet>
 

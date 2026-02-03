@@ -103,7 +103,7 @@ export default function Settings() {
   return (
     <>
       <Helmet>
-        <title>Settings - nAItive</title>
+        <title>Settings - naitive</title>
         <meta name="description" content="Manage application settings" />
       </Helmet>
 

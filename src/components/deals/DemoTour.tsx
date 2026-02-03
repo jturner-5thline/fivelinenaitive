@@ -48,7 +48,7 @@ const demoTourSteps: TourStep[] = [
 
 const newUserTourSteps: TourStep[] = [
   {
-    title: 'Welcome to nAItive!',
+    title: 'Welcome to naitive!',
     description: "You're all set up! Let's take a quick tour of the key features to help you get started with managing your deals.",
     icon: <Sparkles className="h-8 w-8 text-primary" />,
   },

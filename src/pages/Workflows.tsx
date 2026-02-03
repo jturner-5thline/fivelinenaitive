@@ -391,7 +391,7 @@ export default function Workflows() {
   return (
     <>
       <Helmet>
-        <title>Workflows - nAItive</title>
+        <title>Workflows - naitive</title>
         <meta name="description" content="Manage your automated workflows" />
       </Helmet>
 

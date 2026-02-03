@@ -102,7 +102,7 @@ async function executeWebhookAction(config: Record<string, any>, triggerData: Re
       body: JSON.stringify({
         timestamp: new Date().toISOString(),
         trigger_data: triggerData,
-        source: "nAItive Workflow",
+        source: "naitive Workflow",
       }),
       signal: controller.signal,
     });
@@ -159,7 +159,7 @@ async function executeEmailAction(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "nAItive Workflows <onboarding@resend.dev>",
+        from: "naitive Workflows <onboarding@resend.dev>",
         to: [userEmail],
         subject: subject,
         html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">

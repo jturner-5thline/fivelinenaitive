@@ -97,7 +97,7 @@ export default function WaitlistAdmin() {
   return (
     <>
       <Helmet>
-        <title>Waitlist Admin - nAItive</title>
+        <title>Waitlist Admin - naitive</title>
       </Helmet>
 
       <div className="bg-background">

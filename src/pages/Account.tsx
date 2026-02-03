@@ -12,7 +12,7 @@ export default function Account() {
   return (
     <>
       <Helmet>
-        <title>Account - nAItive</title>
+        <title>Account - naitive</title>
         <meta name="description" content="Manage your account settings" />
       </Helmet>
 
