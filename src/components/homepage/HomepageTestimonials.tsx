@@ -11,7 +11,7 @@ const testimonials = [
   },
   {
     quote: "Finally, a tool built by people who understand the nuances of lower-middle-market transactions. The workflow automation alone has saved us countless hours.",
-    author: "Partner",
+    author: "Corporate & Strategic Deal Teams",
   },
 ];
 
