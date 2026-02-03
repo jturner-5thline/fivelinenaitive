@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import naitiveLogoFull from "@/assets/naitive-logo-full.png";
+import naitiveLogoFull from "@/assets/naitive-logo-no-tag.png";
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
