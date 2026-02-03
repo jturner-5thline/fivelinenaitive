@@ -466,8 +466,26 @@ export function useLenderMatching(
       lender => !normalizedExcludeNames.includes(lender.name.toLowerCase().trim())
     );
     
+    // Pre-filter: Exclude lenders where deal falls outside their deal size range
+    const capitalValue = parseCapitalAsk(criteria.capitalAsk) || criteria.dealValue;
+    const sizeFilteredLenders = eligibleLenders.filter(lender => {
+      if (!capitalValue) return true; // If no deal value, include all
+      
+      // If lender has a min_deal and deal is below it, exclude
+      if (lender.min_deal !== null && capitalValue < lender.min_deal) {
+        return false;
+      }
+      
+      // If lender has a max_deal and deal is above it, exclude
+      if (lender.max_deal !== null && capitalValue > lender.max_deal) {
+        return false;
+      }
+      
+      return true;
+    });
+    
     // Calculate match scores with learning data
-    const scoredLenders = eligibleLenders.map(lender => 
+    const scoredLenders = sizeFilteredLenders.map(lender => 
       calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined)
     );
     
