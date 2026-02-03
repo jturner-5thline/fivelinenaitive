@@ -6,7 +6,7 @@ const testimonials = [
     author: "Advisors & Brokers",
   },
   {
-    quote: "The platform's ability to integrate all our deal data in one place has dramatically improved our team's productivity and collaboration.",
+    quote: "Firms evaluating, structuring, and advancing deals across multiple stakeholders — where visibility, coordination, and execution discipline are critical to moving capital efficiently.",
     author: "Deal Teams & Committees",
   },
   {
