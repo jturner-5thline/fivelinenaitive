@@ -440,6 +440,7 @@ export default function DealDetail() {
   }, []);
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
+  const [contactPopoverOpen, setContactPopoverOpen] = useState(false);
   
   // AI panel collapsed states with localStorage persistence
   const [isResearchPanelOpen, setIsResearchPanelOpen] = useState(() => {
@@ -2551,7 +2552,7 @@ export default function DealDetail() {
                                       <span className="text-muted-foreground text-sm w-28">Client Contact</span>
                                       <TooltipProvider>
                                         <Tooltip>
-                                          <Popover>
+                                          <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
                                             <TooltipTrigger asChild>
                                               <PopoverTrigger asChild>
                                                 <Button
@@ -2578,6 +2579,7 @@ export default function DealDetail() {
                                                   <DebouncedInput
                                                     value={deal.contact || ''}
                                                     onChange={(value) => updateDeal('contact', String(value))}
+                                                    onSave={() => setContactPopoverOpen(false)}
                                                     placeholder="Enter contact name"
                                                   />
                                                 </div>
@@ -2586,6 +2588,7 @@ export default function DealDetail() {
                                                   <DebouncedInput
                                                     value={deal.contactInfo || ''}
                                                     onChange={(value) => updateDeal('contactInfo', String(value))}
+                                                    onSave={() => setContactPopoverOpen(false)}
                                                     placeholder="Email or phone number"
                                                   />
                                                 </div>
