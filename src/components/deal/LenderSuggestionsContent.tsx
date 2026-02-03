@@ -167,8 +167,59 @@ export function LenderSuggestionsContent({
     );
   }
   
+  // Format deal size for display (abbreviated: $10MM)
+  const formatDealSize = (value: number | undefined, capitalAsk: string | undefined): string | null => {
+    if (capitalAsk) return capitalAsk;
+    if (!value) return null;
+    if (value >= 1000000) {
+      const millions = value / 1000000;
+      return `$${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}MM`;
+    }
+    if (value >= 1000) {
+      return `$${(value / 1000).toFixed(0)}K`;
+    }
+    return `$${value}`;
+  };
+
+  const dealSizeDisplay = formatDealSize(criteria.dealValue, criteria.capitalAsk);
+
   return (
     <div className="flex flex-col h-full py-4">
+      {/* Criteria Summary */}
+      <div className="mb-4">
+        <p className="text-xs text-muted-foreground mb-2">Matching criteria (priority order):</p>
+        <div className="flex flex-wrap gap-1.5">
+          {dealSizeDisplay && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              <DollarSign className="h-3 w-3 mr-1" />
+              Deal Size: {dealSizeDisplay}
+            </Badge>
+          )}
+          {criteria.dealTypes && criteria.dealTypes.length > 0 && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              Loan: {criteria.dealTypes.slice(0, 2).join(', ')}
+              {criteria.dealTypes.length > 2 && ` +${criteria.dealTypes.length - 2}`}
+            </Badge>
+          )}
+          {criteria.cashBurnOk !== undefined && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              Cash Burn: {criteria.cashBurnOk ? 'OK' : 'No'}
+            </Badge>
+          )}
+          {criteria.industry && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              <Building2 className="h-3 w-3 mr-1" />
+              {criteria.industry}
+            </Badge>
+          )}
+          {criteria.sponsorship && (
+            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+              Sponsorship: {criteria.sponsorship}
+            </Badge>
+          )}
+        </div>
+      </div>
+
       {/* Search and Filters */}
       <div className="flex flex-col gap-2 mb-4">
         <div className="relative">
