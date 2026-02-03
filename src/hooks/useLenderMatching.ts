@@ -484,8 +484,32 @@ export function useLenderMatching(
       return true;
     });
     
+    // Pre-filter: Exclude lenders that don't offer the required loan types
+    const loanTypeFilteredLenders = sizeFilteredLenders.filter(lender => {
+      // If no deal types specified, include all lenders
+      if (!criteria.dealTypes || criteria.dealTypes.length === 0) return true;
+      
+      // If lender has no loan types defined, exclude them (we can't verify they offer what's needed)
+      if (!lender.loan_types || lender.loan_types.length === 0) return false;
+      
+      const normalizedLenderTypes = lender.loan_types.map(lt => normalizeString(lt));
+      
+      // Check if lender offers at least one of the required deal types
+      const hasMatchingLoanType = criteria.dealTypes.some(dealType => {
+        const normalizedDealType = normalizeString(dealType);
+        
+        return normalizedLenderTypes.some(lenderType => 
+          lenderType.includes(normalizedDealType) || 
+          normalizedDealType.includes(lenderType) ||
+          lenderType === normalizedDealType
+        );
+      });
+      
+      return hasMatchingLoanType;
+    });
+    
     // Calculate match scores with learning data
-    const scoredLenders = sizeFilteredLenders.map(lender => 
+    const scoredLenders = loanTypeFilteredLenders.map(lender => 
       calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined)
     );
     
