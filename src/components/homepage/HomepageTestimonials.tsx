@@ -10,7 +10,7 @@ const testimonials = [
     author: "Deal Teams & Committees",
   },
   {
-    quote: "Finally, a tool built by people who understand the nuances of lower-middle-market transactions. The workflow automation alone has saved us countless hours.",
+    quote: "Internal teams responsible for acquisitions, financings, and strategic transactions — coordinating diligence, documentation, and approvals across legal, finance, and external partners.",
     author: "Corporate & Strategic Deal Teams",
   },
 ];
