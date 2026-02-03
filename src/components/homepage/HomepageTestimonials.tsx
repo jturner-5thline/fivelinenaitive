@@ -37,12 +37,12 @@ export const HomepageTestimonials = () => {
               className="relative p-8 rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-white/20 transition-colors"
             >
               <Quote className="absolute top-6 right-6 w-8 h-8 text-white/10" />
-              <p className="text-white/80 leading-relaxed mb-6">
-                "{testimonial.quote}"
-              </p>
-              <div>
+              <div className="mb-4">
                 <p className="font-medium text-white">{testimonial.author}</p>
               </div>
+              <p className="text-white/80 leading-relaxed">
+                "{testimonial.quote}"
+              </p>
             </div>
           ))}
         </div>
