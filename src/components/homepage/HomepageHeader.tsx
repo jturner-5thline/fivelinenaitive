@@ -1,16 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Logo } from "@/components/Logo";
 
 export const HomepageHeader = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
-      <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/homepage" className="group">
-          <Logo className="text-xl text-white" />
-        </Link>
-
+      <div className="container mx-auto px-6 h-16 flex items-center justify-end">
         {/* CTA */}
         <div className="flex items-center gap-3">
           <Button 
