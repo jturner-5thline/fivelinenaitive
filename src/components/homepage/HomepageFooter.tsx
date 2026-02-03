@@ -106,12 +106,9 @@ export const HomepageFooter = () => {
 
         {/* Bottom bar */}
         <div className="pt-8 border-t border-white/10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
             <p className="text-sm text-white/40">
               © {new Date().getFullYear()} naitive. All rights reserved.
-            </p>
-            <p className="text-sm text-white/40">
-              SOC 2 Type II Certified • GDPR Compliant
             </p>
           </div>
         </div>
