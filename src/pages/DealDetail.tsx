@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DebouncedTextarea } from '@/components/ui/debounced-textarea';
+import { DebouncedInput } from '@/components/ui/debounced-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -2529,18 +2530,18 @@ export default function DealDetail() {
                                   <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                       <span className="text-muted-foreground text-sm w-28">Company URL</span>
-                                      <Input
+                                      <DebouncedInput
                                         value={deal.companyUrl || ''}
-                                        onChange={(e) => updateDeal('companyUrl', e.target.value)}
+                                        onChange={(value) => updateDeal('companyUrl', String(value))}
                                         placeholder="https://example.com"
                                         className="flex-1 h-8 text-sm"
                                       />
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <span className="text-muted-foreground text-sm w-28">Business Model</span>
-                                      <Input
+                                      <DebouncedInput
                                         value={deal.businessModel || ''}
-                                        onChange={(e) => updateDeal('businessModel', e.target.value)}
+                                        onChange={(value) => updateDeal('businessModel', String(value))}
                                         placeholder="Enter business model..."
                                         className="flex-1 h-8 text-sm"
                                       />
@@ -2573,17 +2574,17 @@ export default function DealDetail() {
                                               <div className="space-y-4">
                                                 <div className="space-y-2">
                                                   <label className="text-sm font-medium">Contact Name</label>
-                                                  <Input
+                                                  <DebouncedInput
                                                     value={deal.contact || ''}
-                                                    onChange={(e) => updateDeal('contact', e.target.value)}
+                                                    onChange={(value) => updateDeal('contact', String(value))}
                                                     placeholder="Enter contact name"
                                                   />
                                                 </div>
                                                 <div className="space-y-2">
                                                   <label className="text-sm font-medium">Contact Info</label>
-                                                  <Input
+                                                  <DebouncedInput
                                                     value={deal.contactInfo || ''}
-                                                    onChange={(e) => updateDeal('contactInfo', e.target.value)}
+                                                    onChange={(value) => updateDeal('contactInfo', String(value))}
                                                     placeholder="Email or phone number"
                                                   />
                                                 </div>
@@ -2618,11 +2619,11 @@ export default function DealDetail() {
                                     <div className="space-y-3">
                                       <div className="flex items-center gap-2">
                                         <span className="text-muted-foreground text-sm w-32">Pre-Signing Hours</span>
-                                        <Input
+                                        <DebouncedInput
                                           type="number"
                                           step="0.25"
                                           value={deal.preSigningHours ?? ''}
-                                          onChange={(e) => updateDeal('preSigningHours', e.target.value ? Number(e.target.value) : 0)}
+                                          onChange={(value) => updateDeal('preSigningHours', Number(value) || 0)}
                                           placeholder="0"
                                           className="w-24 h-8 text-sm"
                                           min={0}
@@ -2630,11 +2631,11 @@ export default function DealDetail() {
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <span className="text-muted-foreground text-sm w-32">Post-Signing Hours</span>
-                                        <Input
+                                        <DebouncedInput
                                           type="number"
                                           step="0.25"
                                           value={deal.postSigningHours ?? ''}
-                                          onChange={(e) => updateDeal('postSigningHours', e.target.value ? Number(e.target.value) : 0)}
+                                          onChange={(value) => updateDeal('postSigningHours', Number(value) || 0)}
                                           placeholder="0"
                                           className="w-24 h-8 text-sm"
                                           min={0}
