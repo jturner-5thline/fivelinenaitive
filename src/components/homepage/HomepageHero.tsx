@@ -10,27 +10,7 @@ export const HomepageHero = () => {
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a12]" />
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-6 text-center pt-20">
-        {/* nAItive Brand */}
-        <h2 className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter mb-8">
-          <span className="text-white/20">n</span>
-          <span 
-            className="bg-clip-text text-transparent"
-            style={{ 
-              backgroundImage: 'linear-gradient(45deg, rgba(100,116,139,0.3) 0%, rgba(139,92,246,0.45) 50%, rgba(148,163,184,0.3) 100%)',
-              backgroundSize: '300% 300%',
-              animation: 'shimmer 8s ease-in-out infinite',
-            }}
-          >AI</span>
-          <span className="text-white/20">tive</span>
-        </h2>
-        
-        <style>{`
-          @keyframes shimmer {
-            0%, 100% { background-position: 100% 100%; }
-            50% { background-position: 0% 0%; }
-          }
-        `}</style>
+13:       <div className="relative z-10 container mx-auto px-6 text-center pt-20">
 
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 max-w-4xl mx-auto leading-[1.1]">
           The AI Platform{" "}
