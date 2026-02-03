@@ -12,7 +12,7 @@ export const HomepageHero = () => {
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-6 text-center pt-20">
-        <Logo className="h-20 md:h-28 lg:h-32 mx-auto mb-8" />
+        <Logo className="h-32 md:h-44 lg:h-48 mx-auto mb-8" />
 
         <h1 className="text-2xl md:text-3xl lg:text-4xl font-light text-white mb-6 max-w-4xl mx-auto leading-[1.1]">
           Welcome to the Operating Layer{" "}
