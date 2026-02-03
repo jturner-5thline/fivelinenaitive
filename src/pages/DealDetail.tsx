@@ -2480,21 +2480,50 @@ export default function DealDetail() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <span className="text-muted-foreground text-sm w-28">Deal Type</span>
-                                      <Select
-                                        value={deal.dealTypes?.[0] || ''}
-                                        onValueChange={(value) => updateDeal('dealTypes', value ? [value] : [])}
-                                      >
-                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
-                                          <SelectValue placeholder="Select type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {availableDealTypes.map((type) => (
-                                            <SelectItem key={type.id} value={type.id}>
-                                              {type.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <button className="flex items-center gap-1 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm min-h-[24px]">
+                                            {deal.dealTypes && deal.dealTypes.length > 0 ? (
+                                              <span className="flex flex-wrap gap-1">
+                                                {deal.dealTypes.map(typeId => {
+                                                  const typeConfig = availableDealTypes.find(t => t.id === typeId);
+                                                  return typeConfig ? (
+                                                    <Badge key={typeId} variant="secondary" className="text-xs">
+                                                      {typeConfig.label}
+                                                    </Badge>
+                                                  ) : null;
+                                                })}
+                                              </span>
+                                            ) : (
+                                              <span className="text-muted-foreground">Select types</span>
+                                            )}
+                                            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-56 p-2" align="start">
+                                          <div className="space-y-1">
+                                            {availableDealTypes.map((type) => {
+                                              const isSelected = deal.dealTypes?.includes(type.id) || false;
+                                              return (
+                                                <button
+                                                  key={type.id}
+                                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
+                                                  onClick={() => {
+                                                    const currentTypes = deal.dealTypes || [];
+                                                    const newTypes = isSelected
+                                                      ? currentTypes.filter(t => t !== type.id)
+                                                      : [...currentTypes, type.id];
+                                                    updateDeal('dealTypes', newTypes);
+                                                  }}
+                                                >
+                                                  <Checkbox checked={isSelected} className="pointer-events-none" />
+                                                  {type.label}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <span className="text-muted-foreground text-sm w-28">Engagement</span>
