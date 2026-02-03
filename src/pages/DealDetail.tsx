@@ -55,6 +55,7 @@ import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
 import { FileDropzoneOverlay } from '@/components/deal/FileDropzoneOverlay';
 import { DataRoomBulkActions } from '@/components/deal/DataRoomBulkActions';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
+import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
 import { DealResearchPanel } from '@/components/deal/DealResearchPanel';
 import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
@@ -439,6 +440,7 @@ export default function DealDetail() {
     setDealInfoTab(newTab);
   }, []);
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
+  const { criteria: savedMatchingCriteria } = useDealMatchingCriteria(id);
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
   const [contactPopoverOpen, setContactPopoverOpen] = useState(false);
   
@@ -2870,6 +2872,8 @@ export default function DealDetail() {
                               capitalAsk: dealWriteUpData.capitalAsk || undefined,
                               dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
                               geo: dealWriteUpData.location || undefined,
+                              cashBurnOk: savedMatchingCriteria.cashBurnOk,
+                              b2bB2c: savedMatchingCriteria.b2bB2c,
                             }}
                             existingLenderNames={deal.lenders?.map(l => l.name) || []}
                             onAddLender={addLender}
@@ -3606,6 +3610,8 @@ export default function DealDetail() {
                           capitalAsk: dealWriteUpData.capitalAsk || undefined,
                           dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
                           geo: dealWriteUpData.location || undefined,
+                          cashBurnOk: savedMatchingCriteria.cashBurnOk,
+                          b2bB2c: savedMatchingCriteria.b2bB2c,
                         }}
                         existingLenderNames={deal.lenders?.map(l => l.name) || []}
                         onAddLender={addLender}
