@@ -38,7 +38,7 @@ export default function Homepage() {
         {/* Feature Sections with Platform Previews */}
         <HomepageFeatureSection
           title="The Operating Layer for Transaction Management"
-          description="AI agents designed for transaction professionals. Analyze opportunities, track pipeline metrics, and surface insights automatically — so you can focus on closing deals."
+          description="naitive is designed for teams responsible for running complex deals end-to-end — coordinating stakeholders, managing review and diligence, and moving work forward across fragmented systems."
           image={<PlatformPreviewDealPipeline />}
         />
         
