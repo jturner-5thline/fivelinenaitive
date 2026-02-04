@@ -637,17 +637,12 @@ export function DataRoomChecklistPanel({
                       const isUploading = uploadingItems.has(item.id);
 
                       return (
-                        <ChecklistItemDropzone
+                        <div
                           key={item.id}
-                          onFileDrop={(files) => handleFileDrop(item.id, files)}
-                          disabled={bulkMode || isUploading}
-                          className="rounded-lg"
-                        >
-                          <div
-                            className={cn(
-                              "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-                              isComplete 
-                                ? "bg-green-500/5 border-green-500/20" 
+                          className={cn(
+                            "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                            isComplete 
+                              ? "bg-green-500/5 border-green-500/20" 
                                 : "bg-card hover:bg-muted/30",
                               bulkMode && isSelected && "ring-2 ring-primary",
                               isUploading && "opacity-70"
@@ -760,7 +755,7 @@ export function DataRoomChecklistPanel({
                               )}
                             </div>
                           </div>
-                        </ChecklistItemDropzone>
+                        </div>
                       );
                     })}
                   </CollapsibleContent>

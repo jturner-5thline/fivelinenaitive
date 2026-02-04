@@ -121,14 +121,10 @@ export function DataRoomGridView({
                     const isUploading = uploadingItems.has(item.id);
 
                     return (
-                      <ChecklistItemDropzone
+                      <div
                         key={item.id}
-                        onFileDrop={(files) => onFileDrop?.(item.id, files)}
-                        disabled={bulkMode || isUploading || !onFileDrop}
-                        className="rounded-md"
-                      >
-                        <div
-                          className={cn(
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-md transition-colors text-sm",
                             "flex items-center gap-2 p-2 rounded-md transition-colors text-sm",
                             isComplete 
                               ? "bg-green-500/5" 
@@ -231,7 +227,7 @@ export function DataRoomGridView({
                             )}
                           </div>
                         </div>
-                      </ChecklistItemDropzone>
+                      </div>
                     );
                   })}
                 </div>
