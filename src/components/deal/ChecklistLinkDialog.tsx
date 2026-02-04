@@ -90,11 +90,22 @@ export function ChecklistLinkDialog({
             <FileText className="h-5 w-5 text-primary" />
             Link to Checklist Item
           </DialogTitle>
-          <DialogDescription>
-            You're uploading <span className="font-medium">{files.length} file{files.length > 1 ? 's' : ''}</span> to{' '}
-            <span className="font-medium">{categoryLabel}</span>.
-            <br />
-            Select which checklist item this supports, or choose N/A if none apply.
+          <DialogDescription className="space-y-2">
+            <div>
+              You're uploading to <span className="font-medium">{categoryLabel}</span>.
+              Select which checklist item this supports, or choose N/A if none apply.
+            </div>
+            <div className="bg-muted/50 rounded-md p-2 text-xs">
+              <div className="font-medium text-foreground mb-1">{files.length} file{files.length > 1 ? 's' : ''}:</div>
+              <ul className="space-y-0.5 text-muted-foreground">
+                {files.slice(0, 3).map((file, i) => (
+                  <li key={i} className="truncate">{file.name}</li>
+                ))}
+                {files.length > 3 && (
+                  <li className="text-muted-foreground/70">+{files.length - 3} more...</li>
+                )}
+              </ul>
+            </div>
           </DialogDescription>
         </DialogHeader>
 
