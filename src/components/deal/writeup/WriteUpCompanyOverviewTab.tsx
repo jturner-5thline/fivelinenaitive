@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDealTypes } from '@/contexts/DealTypesContext';
+import { AutoFillReviewDialog, ExtractedField } from './AutoFillReviewDialog';
 
 const INDUSTRY_OPTIONS = [
   'Technology',
@@ -126,6 +127,9 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
   const [locationSearch, setLocationSearch] = useState('');
   const [locationOpen, setLocationOpen] = useState(false);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
+  const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
 
   // Get display labels for selected deal types (which are stored as IDs)
   const getSelectedDealTypeLabels = () => {
@@ -162,55 +166,138 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
       }
 
       const companyInfo = result.data;
-      let fieldsUpdated = 0;
+      const fields: ExtractedField[] = [];
 
-      // Only update fields that are currently empty
-      if (companyInfo.companyName && !data.companyName) {
-        updateField('companyName', companyInfo.companyName);
-        fieldsUpdated++;
+      // Build list of extracted fields
+      if (companyInfo.companyName) {
+        fields.push({
+          key: 'companyName',
+          label: 'Company Name',
+          value: companyInfo.companyName,
+          currentValue: data.companyName,
+          hasExisting: !!data.companyName,
+        });
       }
-      if (companyInfo.description && !data.description) {
-        updateField('description', companyInfo.description);
-        fieldsUpdated++;
+
+      if (companyInfo.description) {
+        fields.push({
+          key: 'description',
+          label: 'Company Overview',
+          value: companyInfo.description,
+          currentValue: data.description,
+          hasExisting: !!data.description,
+        });
       }
-      if (companyInfo.industries?.length > 0 && data.industries.length === 0) {
-        updateField('industries', companyInfo.industries);
-        fieldsUpdated++;
+
+      if (companyInfo.industries?.length > 0) {
+        fields.push({
+          key: 'industries',
+          label: 'Industry',
+          value: companyInfo.industries,
+          currentValue: data.industries,
+          hasExisting: data.industries.length > 0,
+        });
       }
-      if (companyInfo.location && !data.location) {
+
+      if (companyInfo.location) {
         // Try to match with our location options
         const scrapedLoc = companyInfo.location.toLowerCase();
         const matchedLocation = LOCATION_OPTIONS.find(loc => {
           const optLower = loc.toLowerCase();
           return scrapedLoc.includes(optLower) || optLower.includes(scrapedLoc);
+        }) || 'Other';
+        
+        fields.push({
+          key: 'location',
+          label: 'Location',
+          value: matchedLocation,
+          currentValue: data.location,
+          hasExisting: !!data.location,
         });
-        // If no match found, default to "Other" and still count as updated
-        updateField('location', matchedLocation || 'Other');
-        fieldsUpdated++;
-      }
-      if (companyInfo.yearFounded && !data.yearFounded) {
-        updateField('yearFounded', companyInfo.yearFounded);
-        fieldsUpdated++;
-      }
-      if (companyInfo.headcount && !data.headcount) {
-        updateField('headcount', companyInfo.headcount);
-        fieldsUpdated++;
-      }
-      if (companyInfo.linkedinUrl && !data.linkedinUrl) {
-        updateField('linkedinUrl', companyInfo.linkedinUrl);
-        fieldsUpdated++;
       }
 
-      if (fieldsUpdated > 0) {
-        toast.success(`Auto-filled ${fieldsUpdated} field${fieldsUpdated !== 1 ? 's' : ''} from company website`);
-      } else {
-        toast.info('No new information found to fill in (existing fields were not overwritten)');
+      if (companyInfo.yearFounded) {
+        fields.push({
+          key: 'yearFounded',
+          label: 'Year Founded',
+          value: companyInfo.yearFounded,
+          currentValue: data.yearFounded,
+          hasExisting: !!data.yearFounded,
+        });
       }
+
+      if (companyInfo.headcount) {
+        fields.push({
+          key: 'headcount',
+          label: 'Headcount',
+          value: companyInfo.headcount,
+          currentValue: data.headcount,
+          hasExisting: !!data.headcount,
+        });
+      }
+
+      if (companyInfo.linkedinUrl) {
+        fields.push({
+          key: 'linkedinUrl',
+          label: 'LinkedIn URL',
+          value: companyInfo.linkedinUrl,
+          currentValue: data.linkedinUrl,
+          hasExisting: !!data.linkedinUrl,
+        });
+      }
+
+      if (fields.length === 0) {
+        toast.info('No information could be extracted from the website');
+        return;
+      }
+
+      setExtractedFields(fields);
+      setExtractedCompanyName(companyInfo.companyName);
+      setReviewDialogOpen(true);
     } catch (err) {
       console.error('Auto-fill error:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to auto-fill company information');
     } finally {
       setIsAutoFilling(false);
+    }
+  };
+
+  const handleApplyFields = (selectedKeys: string[]) => {
+    let fieldsApplied = 0;
+
+    for (const field of extractedFields) {
+      if (selectedKeys.includes(field.key)) {
+        const value = field.value;
+        
+        switch (field.key) {
+          case 'companyName':
+            updateField('companyName', value as string);
+            break;
+          case 'description':
+            updateField('description', value as string);
+            break;
+          case 'industries':
+            updateField('industries', value as string[]);
+            break;
+          case 'location':
+            updateField('location', value as string);
+            break;
+          case 'yearFounded':
+            updateField('yearFounded', value as string);
+            break;
+          case 'headcount':
+            updateField('headcount', value as string);
+            break;
+          case 'linkedinUrl':
+            updateField('linkedinUrl', value as string);
+            break;
+        }
+        fieldsApplied++;
+      }
+    }
+
+    if (fieldsApplied > 0) {
+      toast.success(`Applied ${fieldsApplied} field${fieldsApplied !== 1 ? 's' : ''}`);
     }
   };
 
@@ -525,6 +612,15 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
           </Select>
         </div>
       </div>
+
+      {/* Auto-fill Review Dialog */}
+      <AutoFillReviewDialog
+        open={reviewDialogOpen}
+        onOpenChange={setReviewDialogOpen}
+        fields={extractedFields}
+        onApply={handleApplyFields}
+        companyName={extractedCompanyName}
+      />
     </div>
   );
 }
