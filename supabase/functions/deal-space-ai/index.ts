@@ -333,21 +333,21 @@ serve(async (req) => {
       dataRoomDocsResult,
     ] = await Promise.all([
       // Deal information
-      supabase.from("deals").select("*").eq("id", dealId).single(),
-      // Deal write-up
-      supabase.from("deal_writeups").select("*").eq("deal_id", dealId).single(),
-      // Lenders
-      supabase.from("deal_lenders").select("*").eq("deal_id", dealId).order("created_at", { ascending: false }),
+      supabase.from("deals").select("company, value, stage, status, deal_type, business_model, contact, contact_info, company_url, deal_owner, manager, referred_by, engagement_type, exclusivity, created_at, updated_at, is_flagged, flag_notes, notes, pre_signing_hours, post_signing_hours, retainer_fee, milestone_fee, success_fee_percent, total_fee").eq("id", dealId).single(),
+      // Deal write-up - only essential fields
+      supabase.from("deal_writeups").select("company_name, description, industry, location, year_founded, headcount, capital_ask, use_of_funds, deal_type, b2b_b2c, revenue_type, billing_model, gross_margins, profitability, last_year_revenue, this_year_revenue, total_equity_raised, sponsorship, collateral_available, existing_debt_details, accounting_system, company_url, linkedin_url, data_room_url, company_highlights, key_items, financial_years, financial_comments").eq("deal_id", dealId).single(),
+      // Lenders - only essential fields
+      supabase.from("deal_lenders").select("name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
       // Milestones
-      supabase.from("deal_milestones").select("*").eq("deal_id", dealId).order("position"),
-      // Recent activity (last 50)
-      supabase.from("activity_logs").select("*").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(50),
-      // Deal memo
-      supabase.from("deal_memos").select("*").eq("deal_id", dealId).single(),
-      // Deal space documents
-      supabase.from("deal_space_documents").select("id, name, file_path, content_type").eq("deal_id", dealId),
-      // Data room documents
-      supabase.from("deal_attachments").select("id, name, file_path, content_type, category").eq("deal_id", dealId),
+      supabase.from("deal_milestones").select("title, completed, due_date, completed_at").eq("deal_id", dealId).order("position").limit(20),
+      // Recent activity (limit to 20)
+      supabase.from("activity_logs").select("activity_type, description, user_display_name, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(20),
+      // Deal memo - only essential fields
+      supabase.from("deal_memos").select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes").eq("deal_id", dealId).single(),
+      // Deal space documents - only metadata
+      supabase.from("deal_space_documents").select("id, name, content_type, size_bytes, created_at").eq("deal_id", dealId),
+      // Data room documents - only metadata
+      supabase.from("deal_attachments").select("id, name, content_type, category, size_bytes, created_at").eq("deal_id", dealId),
     ]);
 
     const deal = dealResult.data;
@@ -356,111 +356,36 @@ serve(async (req) => {
     const milestones = milestonesResult.data || [];
     const activities = activityResult.data || [];
     const memo = memoResult.data;
-    const dealSpaceDocs = dealSpaceDocsResult.data;
-    const dataRoomDocs = dataRoomDocsResult.data;
+    const dealSpaceDocs = dealSpaceDocsResult.data || [];
+    const dataRoomDocs = dataRoomDocsResult.data || [];
 
-    if (dealSpaceDocsResult.error) {
-      console.error("Error fetching deal space documents:", dealSpaceDocsResult.error);
-    }
-
-    if (dataRoomDocsResult.error) {
-      console.error("Error fetching data room documents:", dataRoomDocsResult.error);
-    }
-
-    // Combine documents with their source bucket info
-    interface CombinedDoc {
-      id: string;
-      name: string;
-      file_path: string;
-      content_type: string | null;
-      source: 'deal_space' | 'data_room';
-      bucket: string;
-      category?: string;
-    }
-    
-    const allDocuments: CombinedDoc[] = [
-      ...(dealSpaceDocs || []).map(doc => ({ ...doc, source: 'deal_space' as const, bucket: 'deal-space' })),
-      ...(dataRoomDocs || []).map(doc => ({ ...doc, source: 'data_room' as const, bucket: 'deal-attachments' })),
-    ];
-
-    // Fetch document contents from storage and extract text
-    const documentContents: { 
-      name: string; 
-      content: string; 
-      hasPages: boolean;
-      hasSheets: boolean;
-      hasSlides: boolean;
-      source: string;
-      category?: string;
-    }[] = [];
-    
-    for (const doc of allDocuments) {
-      try {
-        console.log(`Processing document: ${doc.name} from ${doc.source}`);
-        
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from(doc.bucket)
-          .download(doc.file_path);
-
-        if (downloadError) {
-          console.error(`Error downloading ${doc.name}:`, downloadError);
-          continue;
-        }
-
-        const extracted = await extractContent(fileData, doc.name);
-        
-        if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
-          // Truncate very large documents to prevent context overflow
-          const maxChars = 50000;
-          const sourceLabel = doc.source === 'data_room' ? `[Data Room${doc.category ? ` - ${doc.category}` : ''}]` : '[Deal Space]';
-          const enhancedContent = `${sourceLabel}\n${buildEnhancedContext(doc.name, extracted)}`;
-          const truncatedContent = enhancedContent.length > maxChars 
-            ? enhancedContent.substring(0, maxChars) + "\n...[Content truncated due to length]"
-            : enhancedContent;
-          
-          documentContents.push({ 
-            name: doc.name, 
-            content: truncatedContent,
-            hasPages: !!extracted.pages,
-            hasSheets: !!extracted.sheets,
-            hasSlides: !!extracted.slides,
-            source: doc.source,
-            category: doc.category,
-          });
-          console.log(`Successfully extracted ${truncatedContent.length} chars from ${doc.name}`);
-        }
-      } catch (err) {
-        console.error(`Error processing ${doc.name}:`, err);
-      }
-    }
-
-    // Build document inventory for the AI
-    const dealSpaceFiles = documentContents.filter(d => d.source === 'deal_space');
-    const dataRoomFiles = documentContents.filter(d => d.source === 'data_room');
-    
+    // Build document inventory (metadata only - no content extraction)
     let documentInventory = '';
-    if (dealSpaceFiles.length > 0) {
-      documentInventory += `**Deal Space Documents (${dealSpaceFiles.length}):**\n${dealSpaceFiles.map(d => `- ${d.name}`).join('\n')}\n\n`;
+    
+    if (dealSpaceDocs.length > 0) {
+      documentInventory += `**Deal Space Documents (${dealSpaceDocs.length}):**\n`;
+      documentInventory += dealSpaceDocs.map(d => `- ${d.name} (${d.content_type || 'unknown type'})`).join('\n');
+      documentInventory += '\n\n';
     }
-    if (dataRoomFiles.length > 0) {
+    
+    if (dataRoomDocs.length > 0) {
       // Group by category
-      const byCategory = dataRoomFiles.reduce((acc, d) => {
+      const byCategory = dataRoomDocs.reduce((acc, d) => {
         const cat = d.category || 'Uncategorized';
         if (!acc[cat]) acc[cat] = [];
         acc[cat].push(d.name);
         return acc;
       }, {} as Record<string, string[]>);
       
-      documentInventory += `**Data Room Documents (${dataRoomFiles.length}):**\n`;
+      documentInventory += `**Data Room Documents (${dataRoomDocs.length}):**\n`;
       for (const [category, files] of Object.entries(byCategory)) {
         documentInventory += `  ${category}:\n${files.map(f => `    - ${f}`).join('\n')}\n`;
       }
     }
 
-    // Build context from documents
-    const documentContext = documentContents.length > 0
-      ? documentContents.map(d => d.content).join("\n\n---\n\n")
-      : "No documents have been uploaded yet.";
+    if (!documentInventory) {
+      documentInventory = 'No documents have been uploaded yet.';
+    }
 
     // Build comprehensive deal context
     const formatCurrency = (val: number | null | undefined) => 
@@ -600,23 +525,20 @@ ${milestonesContext}
 ${activityContext}
 
 **DOCUMENT INVENTORY:**
-${documentInventory || 'No documents available.'}
-
-**DOCUMENT CONTENTS:**
-${documentContext}
+${documentInventory}
 
 Instructions:
 - You have FULL access to all deal information, not just documents
 - Answer questions about the deal, lenders, milestones, activity, write-up, and documents
 - When asked about the deal, provide relevant information from the appropriate section above
-- When citing document information, include specific locations (page, sheet, slide numbers)
-- Indicate whether document info is from Deal Space or Data Room
+- When listing documents, list them from the DOCUMENT INVENTORY above with their source location (Deal Space or Data Room category)
 - For activity questions, summarize recent events and patterns
 - For lender questions, provide status updates and quote information
 - For milestone questions, show progress and upcoming due dates
 - Be concise but thorough
 - Format responses with bullet points or sections when appropriate
-- If information isn't available, say so clearly and suggest what is available`;
+- If information isn't available, say so clearly and suggest what is available
+- Note: You can see document names but not their contents unless the user specifically asks to read a document`;
 
     // Call Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -662,30 +584,17 @@ Instructions:
     const aiData = await aiResponse.json();
     const content = aiData.choices?.[0]?.message?.content || "I couldn't generate a response.";
 
-    // Extract source document names and locations mentioned in the response
-    const sources: { name: string; location?: string }[] = [];
-    for (const d of documentContents) {
+    // Extract source document names mentioned in the response
+    const allDocs = [...dealSpaceDocs, ...dataRoomDocs];
+    const sources: string[] = [];
+    for (const d of allDocs) {
       if (content.toLowerCase().includes(d.name.toLowerCase())) {
-        const source: { name: string; location?: string } = { name: d.name };
-        
-        // Try to extract specific location references
-        const pageMatch = content.match(new RegExp(`${d.name}[^.]*(?:Page|page)\\s*(\\d+)`, 'i'));
-        const slideMatch = content.match(new RegExp(`${d.name}[^.]*(?:Slide|slide)\\s*(\\d+)`, 'i'));
-        const sheetMatch = content.match(new RegExp(`${d.name}[^.]*(?:Sheet|sheet)[:\\s]*['"]?([^'"\\n,]+)['"]?`, 'i'));
-        
-        if (pageMatch) source.location = `Page ${pageMatch[1]}`;
-        else if (slideMatch) source.location = `Slide ${slideMatch[1]}`;
-        else if (sheetMatch) source.location = `Sheet: ${sheetMatch[1].trim()}`;
-        
-        sources.push(source);
+        sources.push(d.name);
       }
     }
 
     return new Response(
-      JSON.stringify({ 
-        content, 
-        sources: sources.map(s => s.location ? `${s.name} (${s.location})` : s.name)
-      }),
+      JSON.stringify({ content, sources }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
