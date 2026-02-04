@@ -58,10 +58,13 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="relative">
+            {/* Ripple rings */}
+            <span className="absolute inset-0 rounded-full bg-primary/20 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
+            <span className="absolute inset-0 rounded-full bg-primary/10 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite_0.5s]" />
             <Button
               variant="gradient"
               size="sm"
-              className="rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center"
+              className="relative rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center"
             >
               <div className="flex items-center justify-center">
                 <img 
