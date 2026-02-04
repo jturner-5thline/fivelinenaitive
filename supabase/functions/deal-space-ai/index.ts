@@ -701,15 +701,25 @@ Each field should have:
 - "source": the document name where you found this
 - "sourceLocation": specific location like "Page 3" or "Slide 5" (if applicable)
 
-Valid field names:
-- companyName, companyUrl, linkedinUrl, industries (array of strings)
-- location, yearFounded, headcount
-- dealTypes (array of strings), billingModels (array of strings)
-- profitability, grossMargins, capitalAsk, useOfFunds
-- existingDebtDetails, accountingSystem
-- description (Company Overview - a comprehensive summary of what the company does, their business model, products/services, and value proposition. This is critical - look for executive summaries, about sections, or business descriptions.)
-- companyHighlights (array of {id, title, description})
-- keyItems (array of {id, title, description})
+Valid field names with examples:
+- companyName: string - The company's legal or trading name
+- companyUrl: string - Company website URL
+- linkedinUrl: string - LinkedIn company page URL
+- industries: array of strings - Business sectors like ["SaaS", "Healthcare Technology"]. MUST be an array even for single industry.
+- location: string - Headquarters location (city, state/country)
+- yearFounded: string - Year the company was founded, e.g. "2015". Extract from founding date, "since XXXX", or similar.
+- headcount: string - Number of employees, e.g. "50" or "100-200"
+- dealTypes: array of strings - Types of financing like ["Term Loan", "Revolving Credit"]
+- billingModels: array of strings - Revenue models like ["Subscription", "Usage-based"]
+- profitability: string - Current profitability status
+- grossMargins: string - Gross margin percentage
+- capitalAsk: string - Amount of capital being raised
+- useOfFunds: string - How the capital will be used
+- existingDebtDetails: string - Current debt obligations
+- accountingSystem: string - Financial software used (QuickBooks, NetSuite, etc.)
+- description: string - CRITICAL: Company Overview - comprehensive summary of what the company does, their business model, products/services, and value proposition. Look for executive summaries, about sections, or business descriptions in pitch decks and transcripts.
+- companyHighlights: array of {id: string, title: string, description: string}
+- keyItems: array of {id: string, title: string, description: string}
 
 Return ONLY a valid JSON array. Example:
 [
