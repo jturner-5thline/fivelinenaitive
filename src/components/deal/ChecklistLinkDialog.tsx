@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Check, FileText, X } from 'lucide-react';
 import {
   Dialog,
@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -31,6 +30,14 @@ interface ChecklistLinkDialogProps {
   onCancel: () => void;
 }
 
+// Map upload folder categories to checklist category keywords
+const CATEGORY_MAPPINGS: Record<string, string[]> = {
+  materials: ['materials', 'material', 'kpi', 'kpis', 'metrics', 'data'],
+  financials: ['financials', 'financial', 'finance', 'accounting', 'revenue', 'budget'],
+  agreements: ['agreements', 'agreement', 'legal', 'contract', 'contracts', 'compliance'],
+  other: ['other', 'miscellaneous', 'general'],
+};
+
 export function ChecklistLinkDialog({
   open,
   onOpenChange,
@@ -42,6 +49,19 @@ export function ChecklistLinkDialog({
 }: ChecklistLinkDialogProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
+  // Filter checklist items based on the upload category
+  const filteredItems = useMemo(() => {
+    const keywords = CATEGORY_MAPPINGS[category.toLowerCase()] || [];
+    
+    if (keywords.length === 0) return checklistItems;
+    
+    return checklistItems.filter(item => {
+      if (!item.category) return false;
+      const itemCategoryLower = item.category.toLowerCase();
+      return keywords.some(keyword => itemCategoryLower.includes(keyword));
+    });
+  }, [checklistItems, category]);
+
   const handleConfirm = () => {
     onConfirm(selectedItemId === 'na' ? null : selectedItemId);
     setSelectedItemId(null);
@@ -52,20 +72,19 @@ export function ChecklistLinkDialog({
     onCancel();
   };
 
-  const fileNames = files.map(f => f.name).join(', ');
-  const truncatedNames = fileNames.length > 50 ? fileNames.slice(0, 50) + '...' : fileNames;
-
-  // Group items by category
-  const groupedItems = checklistItems.reduce((acc, item) => {
+  // Group filtered items by category
+  const groupedItems = filteredItems.reduce((acc, item) => {
     const cat = item.category || 'Uncategorized';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(item);
     return acc;
   }, {} as Record<string, ChecklistItem[]>);
 
+  const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -73,13 +92,13 @@ export function ChecklistLinkDialog({
           </DialogTitle>
           <DialogDescription>
             You're uploading <span className="font-medium">{files.length} file{files.length > 1 ? 's' : ''}</span> to{' '}
-            <span className="font-medium capitalize">{category}</span>.
+            <span className="font-medium">{categoryLabel}</span>.
             <br />
             Select which checklist item this supports, or choose N/A if none apply.
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[300px] pr-4">
+        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
           <RadioGroup
             value={selectedItemId || ''}
             onValueChange={setSelectedItemId}
@@ -139,15 +158,16 @@ export function ChecklistLinkDialog({
               </div>
             ))}
 
-            {checklistItems.length === 0 && (
-              <div className="text-center py-4 text-muted-foreground">
-                No checklist items available
+            {filteredItems.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground">
+                <p className="text-sm">No matching checklist items for {categoryLabel}</p>
+                <p className="text-xs mt-1">Select N/A to upload without linking</p>
               </div>
             )}
           </RadioGroup>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
           <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
