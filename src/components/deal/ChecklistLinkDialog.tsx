@@ -30,8 +30,8 @@ interface ChecklistLinkDialogProps {
   onCancel: () => void;
 }
 
-// Map upload folder categories to checklist category names
-const CATEGORY_MAPPINGS: Record<string, string[]> = {
+// Map upload folder categories to checklist category names (fallback for legacy categories)
+const LEGACY_CATEGORY_MAPPINGS: Record<string, string[]> = {
   materials: ['materials', 'kpis & metrics', 'kpi'],
   financials: ['financials'],
   agreements: ['agreements', 'legal', 'contracts'],
@@ -51,9 +51,18 @@ export function ChecklistLinkDialog({
 
   // Filter checklist items based on the upload category
   const filteredItems = useMemo(() => {
-    const keywords = CATEGORY_MAPPINGS[category.toLowerCase()] || [];
+    const categoryLower = category.toLowerCase();
     
-    if (keywords.length === 0) return checklistItems;
+    // First try to match by the exact category name (for dynamic categories)
+    const exactMatches = checklistItems.filter(item => {
+      if (!item.category) return false;
+      return item.category.toLowerCase() === categoryLower;
+    });
+    
+    if (exactMatches.length > 0) return exactMatches;
+    
+    // Fall back to keyword-based matching for legacy categories
+    const keywords = LEGACY_CATEGORY_MAPPINGS[categoryLower] || [categoryLower];
     
     return checklistItems.filter(item => {
       if (!item.category) return false;
