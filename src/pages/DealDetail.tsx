@@ -528,8 +528,12 @@ export default function DealDetail() {
     }
     
     if (savedWriteupData) {
-      // Use saved writeup data if available
-      setDealWriteUpData(savedWriteupData);
+      // Use saved writeup data, but merge deal type from deal record if writeup has none
+      const mergedData = { ...savedWriteupData };
+      if ((!mergedData.dealTypes || mergedData.dealTypes.length === 0) && deal?.dealTypes && deal.dealTypes.length > 0) {
+        mergedData.dealTypes = deal.dealTypes;
+      }
+      setDealWriteUpData(mergedData);
       writeupInitializedRef.current = id || null;
     } else if (deal) {
       // Otherwise, pre-populate from deal data
