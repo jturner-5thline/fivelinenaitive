@@ -22,6 +22,7 @@ import { Check, ChevronsUpDown, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useDealTypes } from '@/contexts/DealTypesContext';
 
 const INDUSTRY_OPTIONS = [
   'Technology',
@@ -97,15 +98,7 @@ const LOCATION_OPTIONS = [
   'Other',
 ];
 
-const DEAL_TYPE_OPTIONS = [
-  'Growth Capital',
-  'Acquisition',
-  'Refinance',
-  'Working Capital',
-  'Bridge Loan',
-  'Term Loan',
-  'Other',
-];
+// Deal type options now come from DealTypesContext
 
 const BILLING_MODEL_OPTIONS = [
   'Subscription',
@@ -129,9 +122,17 @@ interface WriteUpCompanyOverviewTabProps {
 }
 
 export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyOverviewTabProps) {
+  const { dealTypes: dealTypeOptions } = useDealTypes();
   const [locationSearch, setLocationSearch] = useState('');
   const [locationOpen, setLocationOpen] = useState(false);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
+
+  // Get display labels for selected deal types (which are stored as IDs)
+  const getSelectedDealTypeLabels = () => {
+    return data.dealTypes
+      .map(id => dealTypeOptions.find(dt => dt.id === id)?.label || id)
+      .filter(Boolean);
+  };
 
   const filteredLocations = useMemo(() => {
     if (!locationSearch) return LOCATION_OPTIONS;
@@ -424,7 +425,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
                 className="w-full justify-between font-normal"
               >
                 {data.dealTypes.length > 0
-                  ? data.dealTypes.join(', ')
+                  ? getSelectedDealTypeLabels().join(', ')
                   : "Select deal types"}
                 <svg className="ml-2 h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -433,27 +434,27 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
             </PopoverTrigger>
             <PopoverContent className="w-[200px] p-0 bg-popover border z-50" align="start">
               <div className="p-2 space-y-1">
-                {DEAL_TYPE_OPTIONS.map(option => (
+                {dealTypeOptions.map(option => (
                   <div
-                    key={option}
+                    key={option.id}
                     className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
                     onClick={() => {
-                      const newTypes = data.dealTypes.includes(option)
-                        ? data.dealTypes.filter(t => t !== option)
-                        : [...data.dealTypes, option];
+                      const newTypes = data.dealTypes.includes(option.id)
+                        ? data.dealTypes.filter(t => t !== option.id)
+                        : [...data.dealTypes, option.id];
                       updateField('dealTypes', newTypes);
                     }}
                   >
                     <Checkbox
-                      checked={data.dealTypes.includes(option)}
+                      checked={data.dealTypes.includes(option.id)}
                       onCheckedChange={(checked) => {
                         const newTypes = checked
-                          ? [...data.dealTypes, option]
-                          : data.dealTypes.filter(t => t !== option);
+                          ? [...data.dealTypes, option.id]
+                          : data.dealTypes.filter(t => t !== option.id);
                         updateField('dealTypes', newTypes);
                       }}
                     />
-                    <span className="text-sm">{option}</span>
+                    <span className="text-sm">{option.label}</span>
                   </div>
                 ))}
               </div>
