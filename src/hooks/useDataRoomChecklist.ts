@@ -16,6 +16,16 @@ export interface ChecklistItem {
   updated_at: string;
 }
 
+// Helper to get user's company_id
+async function getUserCompanyId(userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('company_members')
+    .select('company_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return data?.company_id ?? null;
+}
+
 export interface DealChecklistStatus {
   id: string;
   deal_id: string;
@@ -75,9 +85,11 @@ export function useDataRoomChecklist() {
 
     try {
       const position = items.length;
+      const companyId = await getUserCompanyId(user.id);
+      
       const { data, error } = await supabase
         .from('data_room_checklist_items')
-        .insert({ ...item, user_id: user.id, position })
+        .insert({ ...item, user_id: user.id, company_id: companyId, position })
         .select()
         .single();
 
