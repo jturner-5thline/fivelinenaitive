@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -68,11 +69,21 @@ export function DealUpdatesDropdown({
       <PopoverTrigger asChild>
         <button 
           className={cn(
-            "flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
+            "flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer relative",
             highlightClass
           )}
         >
-          <Clock className="h-4 w-4" />
+          <div className="relative">
+            <Clock className="h-4 w-4" />
+            {recentActivities.length > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-2 -right-2 h-4 min-w-4 rounded-full text-[10px] px-1 flex items-center justify-center"
+              >
+                {recentActivities.length > 9 ? '9+' : recentActivities.length}
+              </Badge>
+            )}
+          </div>
           <span>{timeAgoText}</span>
         </button>
       </PopoverTrigger>
