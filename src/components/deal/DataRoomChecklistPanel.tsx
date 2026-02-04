@@ -643,117 +643,116 @@ export function DataRoomChecklistPanel({
                             "flex items-start gap-3 p-3 rounded-lg border transition-colors",
                             isComplete 
                               ? "bg-green-500/5 border-green-500/20" 
-                                : "bg-card hover:bg-muted/30",
-                              bulkMode && isSelected && "ring-2 ring-primary",
-                              isUploading && "opacity-70"
-                            )}
-                          >
-                            {bulkMode ? (
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleItemSelection(item.id)}
-                                className="mt-0.5"
-                              />
-                            ) : isUploading ? (
-                              <div className="mt-0.5 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                            ) : (
-                              <Checkbox
-                                checked={isComplete}
-                                onCheckedChange={() => handleToggle(item.id, isComplete)}
-                                className="mt-0.5"
-                              />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className={cn(
-                                  "font-medium text-sm",
-                                  isComplete && "text-muted-foreground line-through"
-                                )}>
-                                  {item.name}
-                                </span>
-                                {item.is_required && (
-                                  <Badge variant="secondary" className="text-xs">Required</Badge>
-                                )}
-                                {(item as UnifiedChecklistItem).is_deal_specific && (
-                                  <Badge variant="outline" className="text-xs bg-primary/10">Custom</Badge>
-                                )}
-                                {isComplete && !bulkMode && !isUploading && (
-                                  <Check className="h-3.5 w-3.5 text-green-500" />
-                                )}
-                                {isUploading && (
-                                  <Badge variant="outline" className="text-xs gap-1">
-                                    <Upload className="h-3 w-3" />
-                                    Uploading...
-                                  </Badge>
-                                )}
-                                {!linkedAttachment && !isUploading && (
-                                  <span className="flex items-center gap-1 text-xs text-amber-600">
-                                    <AlertCircle className="h-3 w-3" />
-                                    No file
-                                  </span>
-                                )}
-                              </div>
-                              {item.description && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <p className="text-xs text-muted-foreground truncate cursor-help mt-0.5">
-                                      {item.description}
-                                    </p>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom" className="max-w-xs">
-                                    {item.description}
-                                  </TooltipContent>
-                                </Tooltip>
+                              : "bg-card hover:bg-muted/30",
+                            bulkMode && isSelected && "ring-2 ring-primary",
+                            isUploading && "opacity-70"
+                          )}
+                        >
+                          {bulkMode ? (
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleItemSelection(item.id)}
+                              className="mt-0.5"
+                            />
+                          ) : isUploading ? (
+                            <div className="mt-0.5 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                          ) : (
+                            <Checkbox
+                              checked={isComplete}
+                              onCheckedChange={() => handleToggle(item.id, isComplete)}
+                              className="mt-0.5"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "font-medium text-sm",
+                                isComplete && "text-muted-foreground line-through"
+                              )}>
+                                {item.name}
+                              </span>
+                              {item.is_required && (
+                                <Badge variant="secondary" className="text-xs">Required</Badge>
                               )}
-                              {linkedAttachment && (
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge variant="outline" className="gap-1 text-xs">
-                                    <Link2 className="h-3 w-3" />
-                                    {linkedAttachment.name}
-                                  </Badge>
+                              {(item as UnifiedChecklistItem).is_deal_specific && (
+                                <Badge variant="outline" className="text-xs bg-primary/10">Custom</Badge>
+                              )}
+                              {isComplete && !bulkMode && !isUploading && (
+                                <Check className="h-3.5 w-3.5 text-green-500" />
+                              )}
+                              {isUploading && (
+                                <Badge variant="outline" className="text-xs gap-1">
+                                  <Upload className="h-3 w-3" />
+                                  Uploading...
+                                </Badge>
+                              )}
+                              {!linkedAttachment && !isUploading && (
+                                <span className="flex items-center gap-1 text-xs text-amber-600">
+                                  <AlertCircle className="h-3 w-3" />
+                                  No file
+                                </span>
+                              )}
+                            </div>
+                            {item.description && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p className="text-xs text-muted-foreground truncate cursor-help mt-0.5">
+                                    {item.description}
+                                  </p>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  {item.description}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {linkedAttachment && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant="outline" className="gap-1 text-xs">
+                                  <Link2 className="h-3 w-3" />
+                                  {linkedAttachment.name}
+                                </Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5"
+                                  onClick={() => handleUnlink(item.id)}
+                                >
+                                  <Unlink className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {!bulkMode && !isUploading && onLinkAttachment && !linkedAttachment && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-5 w-5"
-                                    onClick={() => handleUnlink(item.id)}
+                                    className="h-7 w-7"
+                                    onClick={() => onLinkAttachment(item.id)}
                                   >
-                                    <Unlink className="h-3 w-3" />
+                                    <Link2 className="h-4 w-4" />
                                   </Button>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {!bulkMode && !isUploading && onLinkAttachment && !linkedAttachment && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={() => onLinkAttachment(item.id)}
-                                    >
-                                      <Link2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Link attachment</TooltipContent>
-                                </Tooltip>
-                              )}
-                              {!bulkMode && (item as UnifiedChecklistItem).is_deal_specific && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 text-destructive hover:text-destructive"
-                                      onClick={() => handleDeleteDealItem(item.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Remove custom item</TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
+                                </TooltipTrigger>
+                                <TooltipContent>Link attachment</TooltipContent>
+                              </Tooltip>
+                            )}
+                            {!bulkMode && (item as UnifiedChecklistItem).is_deal_specific && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteDealItem(item.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Remove custom item</TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
                         </div>
                       );
