@@ -28,9 +28,9 @@ interface MFAChallenge {
   challengeId: string;
 }
 
-// Gate password hash for quick client-side check
-const GATE_PASSWORD = "nAItive2024!";
+// Gate validation is now done server-side via edge function
 const GATE_SESSION_KEY = "naitive_gate_verified";
+const GATE_TOKEN_KEY = "naitive_gate_token";
 
 const Auth = () => {
   // Check if user has already passed the gate this session
@@ -220,14 +220,30 @@ const Auth = () => {
     }
   };
 
-  const handleGateSubmit = (e: React.FormEvent) => {
+  const handleGateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (gatePassword === GATE_PASSWORD) {
-      sessionStorage.setItem(GATE_SESSION_KEY, "true");
-      setMode("login");
-      setGatePassword("");
-    } else {
-      toast.error("Incorrect password");
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-gate', {
+        body: { password: gatePassword }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.valid) {
+        sessionStorage.setItem(GATE_SESSION_KEY, "true");
+        sessionStorage.setItem(GATE_TOKEN_KEY, data.token);
+        setMode("login");
+        setGatePassword("");
+      } else {
+        toast.error("Incorrect password");
+      }
+    } catch (error: any) {
+      console.error('Gate validation error:', error);
+      toast.error("Unable to validate access. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
