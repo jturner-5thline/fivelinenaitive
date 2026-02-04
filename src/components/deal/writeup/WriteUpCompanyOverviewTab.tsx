@@ -18,8 +18,10 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { DealWriteUpData } from '../DealWriteUp';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const INDUSTRY_OPTIONS = [
   'Technology',
@@ -129,12 +131,87 @@ interface WriteUpCompanyOverviewTabProps {
 export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyOverviewTabProps) {
   const [locationSearch, setLocationSearch] = useState('');
   const [locationOpen, setLocationOpen] = useState(false);
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
 
   const filteredLocations = useMemo(() => {
     if (!locationSearch) return LOCATION_OPTIONS;
     const search = locationSearch.toLowerCase();
     return LOCATION_OPTIONS.filter(loc => loc.toLowerCase().includes(search));
   }, [locationSearch]);
+
+  const handleAutoFillFromUrl = async () => {
+    const url = data.companyUrl?.trim();
+    if (!url) {
+      toast.error('Please enter a company URL first');
+      return;
+    }
+
+    setIsAutoFilling(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('scrape-company-info', {
+        body: { url },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to extract company information');
+      }
+
+      const companyInfo = result.data;
+      let fieldsUpdated = 0;
+
+      // Only update fields that are currently empty
+      if (companyInfo.companyName && !data.companyName) {
+        updateField('companyName', companyInfo.companyName);
+        fieldsUpdated++;
+      }
+      if (companyInfo.description && !data.description) {
+        updateField('description', companyInfo.description);
+        fieldsUpdated++;
+      }
+      if (companyInfo.industries?.length > 0 && data.industries.length === 0) {
+        updateField('industries', companyInfo.industries);
+        fieldsUpdated++;
+      }
+      if (companyInfo.location && !data.location) {
+        // Try to match with our location options
+        const matchedLocation = LOCATION_OPTIONS.find(loc => 
+          companyInfo.location.toLowerCase().includes(loc.toLowerCase()) ||
+          loc.toLowerCase().includes(companyInfo.location.toLowerCase())
+        );
+        if (matchedLocation) {
+          updateField('location', matchedLocation);
+          fieldsUpdated++;
+        }
+      }
+      if (companyInfo.yearFounded && !data.yearFounded) {
+        updateField('yearFounded', companyInfo.yearFounded);
+        fieldsUpdated++;
+      }
+      if (companyInfo.headcount && !data.headcount) {
+        updateField('headcount', companyInfo.headcount);
+        fieldsUpdated++;
+      }
+      if (companyInfo.linkedinUrl && !data.linkedinUrl) {
+        updateField('linkedinUrl', companyInfo.linkedinUrl);
+        fieldsUpdated++;
+      }
+
+      if (fieldsUpdated > 0) {
+        toast.success(`Auto-filled ${fieldsUpdated} field${fieldsUpdated !== 1 ? 's' : ''} from company website`);
+      } else {
+        toast.info('No new information found to fill in (existing fields were not overwritten)');
+      }
+    } catch (err) {
+      console.error('Auto-fill error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to auto-fill company information');
+    } finally {
+      setIsAutoFilling(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -150,7 +227,24 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="companyUrl">Company URL</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="companyUrl">Company URL</Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs gap-1"
+              onClick={handleAutoFillFromUrl}
+              disabled={isAutoFilling || !data.companyUrl?.trim()}
+            >
+              {isAutoFilling ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3" />
+              )}
+              {isAutoFilling ? 'Extracting...' : 'Auto-fill'}
+            </Button>
+          </div>
           <Input
             id="companyUrl"
             value={data.companyUrl}
