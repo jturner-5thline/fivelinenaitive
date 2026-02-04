@@ -69,6 +69,7 @@ interface LenderInfo {
 export interface LenderEditData {
   name: string;
   contactName: string;
+  contactPhone: string;
   email: string;
   lenderType: string;
   minDeal: string;
@@ -82,6 +83,7 @@ export interface LenderEditData {
   companyRequirements: string;
   lenderNotes: string;
   tier: string;
+  relationshipOwners: string;
 }
 
 interface LenderDetailDialogProps {
@@ -204,6 +206,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [editForm, setEditForm] = useState<LenderEditData>({
     name: '',
     contactName: '',
+    contactPhone: '',
     email: '',
     lenderType: '',
     minDeal: '',
@@ -217,6 +220,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     companyRequirements: '',
     lenderNotes: '',
     tier: '',
+    relationshipOwners: '',
   });
   
   const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
@@ -235,6 +239,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       setEditForm({
         name: lender.name || '',
         contactName: lender.contact.name || '',
+        contactPhone: lender.contact.phone || '',
         email: lender.contact.email || '',
         lenderType: lender.lenderType || '',
         minDeal: lender.minDeal?.toString() || '',
@@ -248,6 +253,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         companyRequirements: lender.companyRequirements || '',
         lenderNotes: lender.lenderNotes || '',
         tier: lender.tier?.replace(/^T/, '') || '',
+        relationshipOwners: lender.relationshipOwners || '',
       });
     }
   }, [lender, isEditMode]);
@@ -266,6 +272,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       setEditForm({
         name: lender.name || '',
         contactName: lender.contact.name || '',
+        contactPhone: lender.contact.phone || '',
         email: lender.contact.email || '',
         lenderType: lender.lenderType || '',
         minDeal: lender.minDeal?.toString() || '',
@@ -279,6 +286,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         companyRequirements: lender.companyRequirements || '',
         lenderNotes: lender.lenderNotes || '',
         tier: lender.tier?.replace(/^T/, '') || '',
+        relationshipOwners: lender.relationshipOwners || '',
       });
       setIsEditMode(true);
     }
@@ -643,6 +651,26 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         placeholder="email@example.com"
                         className="text-sm"
                       />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Primary Phone</Label>
+                      <Input
+                        type="tel"
+                        value={editForm.contactPhone}
+                        onChange={(e) => setEditForm({ ...editForm, contactPhone: e.target.value })}
+                        placeholder="(555) 123-4567"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Relationship Owner(s)</Label>
+                      <Input
+                        value={editForm.relationshipOwners}
+                        onChange={(e) => setEditForm({ ...editForm, relationshipOwners: e.target.value })}
+                        placeholder="e.g., John Smith, Jane Doe"
+                        className="text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">Comma-separated list of owners</p>
                     </div>
                   </div>
                   <LenderContactsList 
