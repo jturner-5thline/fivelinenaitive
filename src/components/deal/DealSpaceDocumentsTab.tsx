@@ -68,15 +68,57 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState<{ text: string; keyPoints: string[] } | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [duplicateFile, setDuplicateFile] = useState<{ file: File; existingDoc: DealSpaceDocument } | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const checkForDuplicate = useCallback((fileName: string): DealSpaceDocument | undefined => {
+    return documents.find(doc => doc.name.toLowerCase() === fileName.toLowerCase());
+  }, [documents]);
+
+  const processFileUpload = useCallback(async (file: File, skipDuplicateCheck = false) => {
+    if (!skipDuplicateCheck) {
+      const existingDoc = checkForDuplicate(file.name);
+      if (existingDoc) {
+        setDuplicateFile({ file, existingDoc });
+        return;
+      }
+    }
+    await uploadDocument(file);
+  }, [checkForDuplicate, uploadDocument]);
+
   const handleFileUpload = useCallback(async (files: FileList | null) => {
     if (!files) return;
-    for (let i = 0; i < files.length; i++) {
-      await uploadDocument(files[i]);
+    const fileArray = Array.from(files);
+    setPendingFiles(fileArray.slice(1)); // Store remaining files
+    if (fileArray.length > 0) {
+      await processFileUpload(fileArray[0]);
     }
-  }, [uploadDocument]);
+  }, [processFileUpload]);
+
+  const handleDuplicateConfirm = useCallback(async () => {
+    if (duplicateFile) {
+      await uploadDocument(duplicateFile.file);
+      setDuplicateFile(null);
+      // Process remaining pending files
+      if (pendingFiles.length > 0) {
+        const [nextFile, ...remaining] = pendingFiles;
+        setPendingFiles(remaining);
+        await processFileUpload(nextFile);
+      }
+    }
+  }, [duplicateFile, uploadDocument, pendingFiles, processFileUpload]);
+
+  const handleDuplicateCancel = useCallback(async () => {
+    setDuplicateFile(null);
+    // Process remaining pending files
+    if (pendingFiles.length > 0) {
+      const [nextFile, ...remaining] = pendingFiles;
+      setPendingFiles(remaining);
+      await processFileUpload(nextFile);
+    }
+  }, [pendingFiles, processFileUpload]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -349,6 +391,25 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
         }}
         onDownload={handleDownload}
       />
+
+      {/* Duplicate File Confirmation Dialog */}
+      <AlertDialog open={!!duplicateFile} onOpenChange={(open) => !open && handleDuplicateCancel()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicate file detected</AlertDialogTitle>
+            <AlertDialogDescription>
+              A file named "{duplicateFile?.file.name}" already exists in the {duplicateFile?.existingDoc?.source === 'data_room' ? 'Data Room' : 'Deal Space'}. 
+              Do you want to upload it anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDuplicateCancel}>Skip</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDuplicateConfirm}>
+              Upload Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
