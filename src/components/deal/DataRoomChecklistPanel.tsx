@@ -460,19 +460,6 @@ export function DataRoomChecklistPanel({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Incomplete Only Toggle */}
-        <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-background">
-          <Switch
-            id="incomplete-only"
-            checked={showIncompleteOnly}
-            onCheckedChange={setShowIncompleteOnly}
-            className="scale-75"
-          />
-          <Label htmlFor="incomplete-only" className="text-xs cursor-pointer">
-            Incomplete only {incompleteCount > 0 && `(${incompleteCount})`}
-          </Label>
-        </div>
-
         {/* Missing Uploads Toggle */}
         <div className="flex items-center gap-2 px-2 py-1 rounded-md border bg-background">
           <Switch
