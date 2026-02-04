@@ -68,6 +68,7 @@ import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
 import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
+import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
@@ -4590,6 +4591,9 @@ export default function DealDetail() {
         onConfirm={handleChecklistDialogConfirm}
         onCancel={handleChecklistDialogCancel}
       />
+
+      {/* Floating AI Deal Assistant */}
+      {deal && <FloatingDealAssistant dealId={deal.id} dealName={deal.company} />}
     </>
   );
 }
