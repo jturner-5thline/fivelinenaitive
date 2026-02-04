@@ -3925,15 +3925,8 @@ export default function DealDetail() {
                             onChange={async (e) => {
                               const files = Array.from(e.target.files || []);
                               if (files.length > 0) {
-                                setIsUploading(true);
-                                setShowUploadProgress(true);
-                                try {
-                                  await uploadMultipleAttachments(files, uploadCategory, (progress) => {
-                                    setUploadProgress(progress);
-                                  });
-                                } finally {
-                                  setIsUploading(false);
-                                }
+                                // Use same flow as drag-and-drop to show checklist dialog
+                                handleFileDropToCategory(uploadCategory, files);
                               }
                               e.target.value = '';
                             }}
