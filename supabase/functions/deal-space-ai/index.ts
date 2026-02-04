@@ -706,7 +706,8 @@ Valid field names:
 - location, yearFounded, headcount
 - dealTypes (array of strings), billingModels (array of strings)
 - profitability, grossMargins, capitalAsk, useOfFunds
-- existingDebtDetails, description, accountingSystem
+- existingDebtDetails, accountingSystem
+- description (Company Overview - a comprehensive summary of what the company does, their business model, products/services, and value proposition. This is critical - look for executive summaries, about sections, or business descriptions.)
 - companyHighlights (array of {id, title, description})
 - keyItems (array of {id, title, description})
 
