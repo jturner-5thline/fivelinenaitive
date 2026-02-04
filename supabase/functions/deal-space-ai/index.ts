@@ -321,16 +321,40 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get documents from the deal space
-    const { data: documents, error: docsError } = await supabase
+    // Get documents from both deal_space_documents and deal_attachments (Data Room)
+    const { data: dealSpaceDocs, error: dealSpaceDocsError } = await supabase
       .from("deal_space_documents")
       .select("id, name, file_path, content_type")
       .eq("deal_id", dealId);
 
-    if (docsError) {
-      console.error("Error fetching documents:", docsError);
-      throw new Error("Failed to fetch documents");
+    if (dealSpaceDocsError) {
+      console.error("Error fetching deal space documents:", dealSpaceDocsError);
     }
+
+    const { data: dataRoomDocs, error: dataRoomDocsError } = await supabase
+      .from("deal_attachments")
+      .select("id, name, file_path, content_type, category")
+      .eq("deal_id", dealId);
+
+    if (dataRoomDocsError) {
+      console.error("Error fetching data room documents:", dataRoomDocsError);
+    }
+
+    // Combine documents with their source bucket info
+    interface CombinedDoc {
+      id: string;
+      name: string;
+      file_path: string;
+      content_type: string | null;
+      source: 'deal_space' | 'data_room';
+      bucket: string;
+      category?: string;
+    }
+    
+    const allDocuments: CombinedDoc[] = [
+      ...(dealSpaceDocs || []).map(doc => ({ ...doc, source: 'deal_space' as const, bucket: 'deal-space' })),
+      ...(dataRoomDocs || []).map(doc => ({ ...doc, source: 'data_room' as const, bucket: 'deal-attachments' })),
+    ];
 
     // Fetch document contents from storage and extract text
     const documentContents: { 
@@ -339,14 +363,16 @@ serve(async (req) => {
       hasPages: boolean;
       hasSheets: boolean;
       hasSlides: boolean;
+      source: string;
+      category?: string;
     }[] = [];
     
-    for (const doc of documents || []) {
+    for (const doc of allDocuments) {
       try {
-        console.log(`Processing document: ${doc.name}`);
+        console.log(`Processing document: ${doc.name} from ${doc.source}`);
         
         const { data: fileData, error: downloadError } = await supabase.storage
-          .from("deal-space")
+          .from(doc.bucket)
           .download(doc.file_path);
 
         if (downloadError) {
@@ -359,7 +385,8 @@ serve(async (req) => {
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
           // Truncate very large documents to prevent context overflow
           const maxChars = 50000;
-          const enhancedContent = buildEnhancedContext(doc.name, extracted);
+          const sourceLabel = doc.source === 'data_room' ? `[Data Room${doc.category ? ` - ${doc.category}` : ''}]` : '[Deal Space]';
+          const enhancedContent = `${sourceLabel}\n${buildEnhancedContext(doc.name, extracted)}`;
           const truncatedContent = enhancedContent.length > maxChars 
             ? enhancedContent.substring(0, maxChars) + "\n...[Content truncated due to length]"
             : enhancedContent;
@@ -370,11 +397,36 @@ serve(async (req) => {
             hasPages: !!extracted.pages,
             hasSheets: !!extracted.sheets,
             hasSlides: !!extracted.slides,
+            source: doc.source,
+            category: doc.category,
           });
           console.log(`Successfully extracted ${truncatedContent.length} chars from ${doc.name}`);
         }
       } catch (err) {
         console.error(`Error processing ${doc.name}:`, err);
+      }
+    }
+
+    // Build document inventory for the AI
+    const dealSpaceFiles = documentContents.filter(d => d.source === 'deal_space');
+    const dataRoomFiles = documentContents.filter(d => d.source === 'data_room');
+    
+    let documentInventory = '';
+    if (dealSpaceFiles.length > 0) {
+      documentInventory += `**Deal Space Documents (${dealSpaceFiles.length}):**\n${dealSpaceFiles.map(d => `- ${d.name}`).join('\n')}\n\n`;
+    }
+    if (dataRoomFiles.length > 0) {
+      // Group by category
+      const byCategory = dataRoomFiles.reduce((acc, d) => {
+        const cat = d.category || 'Uncategorized';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(d.name);
+        return acc;
+      }, {} as Record<string, string[]>);
+      
+      documentInventory += `**Data Room Documents (${dataRoomFiles.length}):**\n`;
+      for (const [category, files] of Object.entries(byCategory)) {
+        documentInventory += `  ${category}:\n${files.map(f => `    - ${f}`).join('\n')}\n`;
       }
     }
 
@@ -384,18 +436,24 @@ serve(async (req) => {
       : "No documents have been uploaded yet.";
 
     // Build the system prompt with citation instructions
-    const systemPrompt = `You are an AI assistant helping analyze deal-related documents. You have access to the following documents uploaded to this deal's space:
+    const systemPrompt = `You are an AI assistant helping analyze deal-related documents. You have access to documents from two sources:
 
+**DOCUMENT INVENTORY:**
+${documentInventory || 'No documents available.'}
+
+**DOCUMENT CONTENTS:**
 ${documentContext}
 
 Instructions:
 - Answer questions based ONLY on the information in these documents
 - If the answer isn't in the documents, say so clearly
+- When asked "what documents are in the data room" or similar, list the files from the Document Inventory above
 - **CRITICAL: When citing information, ALWAYS include the specific location:**
   - For PDFs: mention the document name AND page number (e.g., "According to Financial Report.pdf, Page 3...")
   - For Excel files: mention the document name AND sheet name (e.g., "From Budget.xlsx, Sheet 'Q1 Revenue'...")
   - For PowerPoint: mention the document name AND slide number (e.g., "As shown in Pitch Deck.pptx, Slide 5...")
   - For other documents: mention the document name
+  - Always indicate whether the document is from Deal Space or Data Room
 - Be concise but thorough
 - If asked about something not in the documents, acknowledge that and offer to help with what's available
 - Format your responses clearly with bullet points or sections when appropriate
