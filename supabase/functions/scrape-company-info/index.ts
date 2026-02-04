@@ -56,7 +56,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: ['markdown'],
+        // Firecrawl requires the 'extract' format when providing an extract option.
+        formats: ['markdown', 'extract'],
         extract: {
           prompt: `Extract company information from this website. Return a JSON object with these fields:
 - companyName: The company's name
