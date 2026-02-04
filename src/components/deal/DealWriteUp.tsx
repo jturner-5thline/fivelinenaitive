@@ -1045,9 +1045,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               Changes are saved automatically
             </div>
             <div className="flex gap-3 flex-wrap justify-end">
-              <Button variant="outline" onClick={onCancel}>
-                Done
-              </Button>
               <Button 
                 variant="secondary" 
                 onClick={onSave} 
