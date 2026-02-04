@@ -47,7 +47,7 @@ serve(async (req) => {
 
     console.log('Scraping company URL:', formattedUrl);
 
-    // Scrape the website with branding and markdown for content extraction
+    // Scrape the website with extract format for structured data extraction
     const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -56,11 +56,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: [
-          'markdown',
-          {
-            type: 'json',
-            prompt: `Extract company information from this website. Return a JSON object with these fields:
+        formats: ['markdown'],
+        extract: {
+          prompt: `Extract company information from this website. Return a JSON object with these fields:
 - companyName: The company's name
 - description: A brief company overview/description (2-3 sentences max)
 - industry: The primary industry (one of: Technology, Healthcare, Finance, Manufacturing, Retail, Real Estate, Energy, Transportation, Media, Other)
@@ -70,8 +68,7 @@ serve(async (req) => {
 - linkedinUrl: Company's LinkedIn page URL if found
 
 Only include fields you can confidently extract. Skip fields where information is not clearly available.`,
-          },
-        ],
+        },
         onlyMainContent: true,
       }),
     });
@@ -88,15 +85,15 @@ Only include fields you can confidently extract. Skip fields where information i
 
     console.log('Scrape response:', JSON.stringify(scrapeData, null, 2));
 
-    // Extract company info from the JSON extraction
-    const jsonData = scrapeData.data?.json || scrapeData.json || {};
+    // Extract company info from the extract response
+    const extractData = scrapeData.data?.extract || scrapeData.extract || {};
     const metadata = scrapeData.data?.metadata || scrapeData.metadata || {};
 
     const companyInfo: CompanyInfo = {};
 
     // Map extracted data
-    if (jsonData.companyName) {
-      companyInfo.companyName = jsonData.companyName;
+    if (extractData.companyName) {
+      companyInfo.companyName = extractData.companyName;
     } else if (metadata.title) {
       // Fallback to page title, clean it up
       const title = metadata.title.replace(/\s*[-|–—]\s*.+$/, '').trim();
@@ -105,13 +102,13 @@ Only include fields you can confidently extract. Skip fields where information i
       }
     }
 
-    if (jsonData.description) {
-      companyInfo.description = jsonData.description;
+    if (extractData.description) {
+      companyInfo.description = extractData.description;
     } else if (metadata.description) {
       companyInfo.description = metadata.description;
     }
 
-    if (jsonData.industry) {
+    if (extractData.industry) {
       // Map to our industry options
       const industryMap: Record<string, string> = {
         'tech': 'Technology',
@@ -142,34 +139,34 @@ Only include fields you can confidently extract. Skip fields where information i
         'advertising': 'Media',
       };
 
-      const lowerIndustry = jsonData.industry.toLowerCase();
+      const lowerIndustry = extractData.industry.toLowerCase();
       const mappedIndustry = industryMap[lowerIndustry] || 
         Object.entries(industryMap).find(([key]) => lowerIndustry.includes(key))?.[1] ||
-        jsonData.industry;
+        extractData.industry;
       
       companyInfo.industries = [mappedIndustry];
     }
 
-    if (jsonData.location) {
-      companyInfo.location = jsonData.location;
+    if (extractData.location) {
+      companyInfo.location = extractData.location;
     }
 
-    if (jsonData.yearFounded) {
-      const year = String(jsonData.yearFounded).match(/\d{4}/)?.[0];
+    if (extractData.yearFounded) {
+      const year = String(extractData.yearFounded).match(/\d{4}/)?.[0];
       if (year) {
         companyInfo.yearFounded = year;
       }
     }
 
-    if (jsonData.headcount) {
-      const count = String(jsonData.headcount).replace(/[^\d]/g, '');
+    if (extractData.headcount) {
+      const count = String(extractData.headcount).replace(/[^\d]/g, '');
       if (count) {
         companyInfo.headcount = count;
       }
     }
 
-    if (jsonData.linkedinUrl) {
-      companyInfo.linkedinUrl = jsonData.linkedinUrl;
+    if (extractData.linkedinUrl) {
+      companyInfo.linkedinUrl = extractData.linkedinUrl;
     }
 
     console.log('Extracted company info:', companyInfo);
