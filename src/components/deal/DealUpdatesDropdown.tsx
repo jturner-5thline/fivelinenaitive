@@ -56,8 +56,12 @@ export function DealUpdatesDropdown({
     return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
   };
 
-  // Show up to 20 recent activities
-  const recentActivities = activities.slice(0, 20);
+  // Filter to only show lender updates and milestone changes (same as LatestUpdatesWidget)
+  const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
+  const recentActivities = activities.filter(a => 
+    lenderUpdateTypes.includes(a.activity_type) || 
+    a.description.toLowerCase().includes('milestone changed')
+  ).slice(0, 20);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
