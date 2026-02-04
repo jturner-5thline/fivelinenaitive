@@ -319,7 +319,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
             <Label htmlFor="companyUrl">Company URL</Label>
             <Button
               type="button"
-              variant="ghost"
+              variant="gradient"
               size="sm"
               className="h-6 px-2 text-xs gap-1"
               onClick={handleAutoFillFromUrl}
