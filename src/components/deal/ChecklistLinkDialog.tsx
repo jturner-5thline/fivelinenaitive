@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
@@ -47,7 +47,8 @@ export function ChecklistLinkDialog({
   onConfirm,
   onCancel,
 }: ChecklistLinkDialogProps) {
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isNaSelected, setIsNaSelected] = useState(false);
 
   // Filter checklist items based on the upload category
   const filteredItems = useMemo(() => {
@@ -71,21 +72,56 @@ export function ChecklistLinkDialog({
     });
   }, [checklistItems, category]);
 
-  const handleConfirm = () => {
-    // Create assignments map - all files get the same checklist item (or null for N/A)
-    const assignments = new Map<number, string | null>();
-    const itemId = selectedItemId === 'na' ? null : selectedItemId;
-    files.forEach((_, index) => {
-      assignments.set(index, itemId);
+  const handleToggleItem = (itemId: string) => {
+    if (isNaSelected) {
+      setIsNaSelected(false);
+    }
+    setSelectedItemIds(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
     });
+  };
+
+  const handleToggleNa = () => {
+    if (!isNaSelected) {
+      setSelectedItemIds(new Set());
+    }
+    setIsNaSelected(!isNaSelected);
+  };
+
+  const handleConfirm = () => {
+    // Create assignments map - all files get linked to all selected checklist items
+    const assignments = new Map<number, string | null>();
+    if (isNaSelected) {
+      files.forEach((_, index) => {
+        assignments.set(index, null);
+      });
+    } else {
+      // For multiple selections, we pass the first item ID per file
+      // The actual linking will handle multiple items
+      const itemIds = Array.from(selectedItemIds);
+      files.forEach((_, index) => {
+        // Store comma-separated IDs for multiple selections
+        assignments.set(index, itemIds.length > 0 ? itemIds.join(',') : null);
+      });
+    }
     onConfirm(assignments);
-    setSelectedItemId(null);
+    setSelectedItemIds(new Set());
+    setIsNaSelected(false);
   };
 
   const handleCancel = () => {
-    setSelectedItemId(null);
+    setSelectedItemIds(new Set());
+    setIsNaSelected(false);
     onCancel();
   };
+
+  const hasSelection = isNaSelected || selectedItemIds.size > 0;
 
   // Group filtered items by category
   const groupedItems = filteredItems.reduce((acc, item) => {
@@ -128,22 +164,22 @@ export function ChecklistLinkDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-          <RadioGroup
-            value={selectedItemId || ''}
-            onValueChange={setSelectedItemId}
-            className="space-y-2"
-          >
+          <div className="space-y-2">
             {/* N/A Option at the top */}
             <div
               className={cn(
                 "flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                selectedItemId === 'na'
+                isNaSelected
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-muted-foreground/50"
               )}
-              onClick={() => setSelectedItemId('na')}
+              onClick={handleToggleNa}
             >
-              <RadioGroupItem value="na" id="na" />
+              <Checkbox 
+                checked={isNaSelected} 
+                onCheckedChange={handleToggleNa}
+                id="na"
+              />
               <Label htmlFor="na" className="flex-1 cursor-pointer">
                 <div className="flex items-center gap-2">
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -166,13 +202,19 @@ export function ChecklistLinkDialog({
                     key={item.id}
                     className={cn(
                       "flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                      selectedItemId === item.id
+                      selectedItemIds.has(item.id)
                         ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground/50"
+                        : "border-border hover:border-muted-foreground/50",
+                      isNaSelected && "opacity-50 pointer-events-none"
                     )}
-                    onClick={() => setSelectedItemId(item.id)}
+                    onClick={() => handleToggleItem(item.id)}
                   >
-                    <RadioGroupItem value={item.id} id={item.id} />
+                    <Checkbox 
+                      checked={selectedItemIds.has(item.id)} 
+                      onCheckedChange={() => handleToggleItem(item.id)}
+                      id={item.id}
+                      disabled={isNaSelected}
+                    />
                     <Label htmlFor={item.id} className="flex-1 cursor-pointer">
                       <div className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-primary" />
@@ -193,17 +235,19 @@ export function ChecklistLinkDialog({
                 <p className="text-xs mt-1">Select N/A to upload without linking</p>
               </div>
             )}
-          </RadioGroup>
+          </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
           <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={!selectedItemId}>
-            {selectedItemId === 'na' 
+          <Button onClick={handleConfirm} disabled={!hasSelection}>
+            {isNaSelected 
               ? `Upload ${files.length > 1 ? `${files.length} Files` : 'File'} Without Linking` 
-              : `Upload & Link ${files.length > 1 ? `${files.length} Files` : 'File'}`
+              : selectedItemIds.size > 1
+                ? `Upload & Link to ${selectedItemIds.size} Items`
+                : `Upload & Link ${files.length > 1 ? `${files.length} Files` : 'File'}`
             }
           </Button>
         </DialogFooter>
