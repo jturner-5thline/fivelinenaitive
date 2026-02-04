@@ -67,6 +67,7 @@ import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
+import { DealUpdatesDropdown } from '@/components/deal/DealUpdatesDropdown';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
@@ -314,7 +315,7 @@ export default function DealDetail() {
   const dynamicStageConfig = getStageConfig();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
-  const { activities: activityLogs, logActivity } = useActivityLog(id);
+  const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
   
   // Real-time FLEx activity notifications
   useFlexActivityNotifications(id);
@@ -2228,10 +2229,12 @@ export default function DealDetail() {
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <div className={`flex items-center gap-2 text-sm text-muted-foreground ${timeAgoData.highlightClass}`}>
-                    <Clock className="h-4 w-4" />
-                    <span>{timeAgoData.text}</span>
-                  </div>
+                  <DealUpdatesDropdown
+                    activities={activityLogs}
+                    isLoading={isLoadingActivities}
+                    timeAgoText={timeAgoData.text}
+                    highlightClass={timeAgoData.highlightClass}
+                  />
                   {deal.manager && (
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
