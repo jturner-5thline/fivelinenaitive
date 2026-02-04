@@ -11,6 +11,8 @@ export interface DealSpaceDocument {
   size_bytes: number;
   created_at: string;
   user_id: string | null;
+  source?: 'deal_space' | 'data_room'; // Track where the document came from
+  storage_bucket?: string; // Track which bucket to use for downloads
 }
 
 export function useDealSpaceDocuments(dealId: string | undefined) {
@@ -18,19 +20,55 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Fetch documents
+  // Fetch documents from both deal_space_documents and deal_attachments
   const fetchDocuments = useCallback(async () => {
     if (!dealId) return;
     
     try {
-      const { data, error } = await supabase
-        .from('deal_space_documents' as any)
+      // Fetch from deal_space_documents
+      const { data: dealSpaceDocs, error: dealSpaceError } = await supabase
+        .from('deal_space_documents')
         .select('*')
         .eq('deal_id', dealId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setDocuments((data as unknown as DealSpaceDocument[]) || []);
+      if (dealSpaceError) throw dealSpaceError;
+
+      // Fetch from deal_attachments (Data Room files)
+      const { data: dataRoomDocs, error: dataRoomError } = await supabase
+        .from('deal_attachments')
+        .select('*')
+        .eq('deal_id', dealId)
+        .order('created_at', { ascending: false });
+
+      if (dataRoomError) throw dataRoomError;
+
+      // Transform and combine documents
+      const dealSpaceDocuments: DealSpaceDocument[] = (dealSpaceDocs || []).map(doc => ({
+        ...doc,
+        source: 'deal_space' as const,
+        storage_bucket: 'deal-space',
+      }));
+
+      const dataRoomDocuments: DealSpaceDocument[] = (dataRoomDocs || []).map(doc => ({
+        id: doc.id,
+        deal_id: doc.deal_id,
+        name: doc.name,
+        file_path: doc.file_path,
+        content_type: doc.content_type,
+        size_bytes: doc.size_bytes,
+        created_at: doc.created_at,
+        user_id: doc.user_id,
+        source: 'data_room' as const,
+        storage_bucket: 'deal-attachments',
+      }));
+
+      // Combine and sort by created_at descending
+      const allDocuments = [...dealSpaceDocuments, ...dataRoomDocuments].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setDocuments(allDocuments);
     } catch (error) {
       console.error('Error fetching deal space documents:', error);
     } finally {
@@ -124,11 +162,12 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
     }
   }, []);
 
-  // Get signed URL for download
+  // Get signed URL for download - uses the correct bucket based on source
   const getDownloadUrl = useCallback(async (doc: DealSpaceDocument) => {
     try {
+      const bucket = doc.storage_bucket || 'deal-space';
       const { data, error } = await supabase.storage
-        .from('deal-space')
+        .from(bucket)
         .createSignedUrl(doc.file_path, 3600);
 
       if (error) throw error;
