@@ -66,6 +66,9 @@ import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog
 import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
+import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
+import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
+import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
@@ -765,27 +768,78 @@ export default function DealDetail() {
     reorderAttachments,
     formatFileSize 
   } = useDealAttachments(id || null);
+
+  // Checklist for file upload linking
+  const { items: templateChecklistItems } = useDataRoomChecklist();
+  const { items: dealChecklistItems } = useDealChecklistItems(id);
+  const { linkAttachment: linkChecklistAttachment } = useDealChecklistStatus(id);
+  const [pendingUpload, setPendingUpload] = useState<{
+    category: DealAttachmentCategory;
+    files: File[];
+  } | null>(null);
+
+  // Combine template and deal-specific checklist items for dialog
+  const allChecklistItems = useMemo(() => {
+    const templates = templateChecklistItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      is_required: item.is_required,
+    }));
+    const dealSpecific = dealChecklistItems.map(item => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      is_required: item.is_required,
+    }));
+    return [...templates, ...dealSpecific];
+  }, [templateChecklistItems, dealChecklistItems]);
   
   const filteredAttachments = attachmentFilter === 'all' 
     ? attachments 
     : attachments.filter(a => a.category === attachmentFilter);
 
-  const handleFileDrop = useCallback(async (files: File[], category?: DealAttachmentCategory) => {
+  const handleFileDrop = useCallback(async (files: File[], category?: DealAttachmentCategory, checklistItemId?: string | null) => {
     if (files.length === 0) return;
     setIsUploading(true);
     setShowUploadProgress(true);
     try {
-      await uploadMultipleAttachments(files, category || uploadCategory, (progress) => {
+      const uploadedAttachments = await uploadMultipleAttachments(files, category || uploadCategory, (progress) => {
         setUploadProgress(progress);
       });
+      
+      // If a checklist item was selected, link the first uploaded attachment to it
+      if (checklistItemId && uploadedAttachments && uploadedAttachments.length > 0) {
+        await linkChecklistAttachment(checklistItemId, uploadedAttachments[0].id);
+      }
     } finally {
       setIsUploading(false);
     }
-  }, [uploadMultipleAttachments, uploadCategory]);
+  }, [uploadMultipleAttachments, uploadCategory, linkChecklistAttachment]);
 
-  const handleFileDropToCategory = useCallback(async (category: DealAttachmentCategory, files: File[]) => {
-    await handleFileDrop(files, category);
-  }, [handleFileDrop]);
+  const handleFileDropToCategory = useCallback(async (category: DealAttachmentCategory, files: File[], checklistItemId?: string | null) => {
+    if (checklistItemId !== undefined) {
+      // If checklistItemId is provided, proceed with upload
+      await handleFileDrop(files, category, checklistItemId);
+    } else if (allChecklistItems.length > 0) {
+      // Show checklist dialog if there are checklist items
+      setPendingUpload({ category, files });
+    } else {
+      // No checklist items, proceed directly
+      await handleFileDrop(files, category);
+    }
+  }, [handleFileDrop, allChecklistItems.length]);
+
+  const handleChecklistDialogConfirm = useCallback(async (selectedItemId: string | null) => {
+    if (pendingUpload) {
+      await handleFileDrop(pendingUpload.files, pendingUpload.category, selectedItemId);
+      setPendingUpload(null);
+    }
+  }, [handleFileDrop, pendingUpload]);
+
+  const handleChecklistDialogCancel = useCallback(() => {
+    setPendingUpload(null);
+  }, []);
 
   // Handle attachment drag between categories and reordering within
   const handleAttachmentDragStart = useCallback((event: DragStartEvent) => {
@@ -3675,7 +3729,8 @@ export default function DealDetail() {
                       e.preventDefault();
                       e.stopPropagation();
                       const files = Array.from(e.dataTransfer.files);
-                      await handleFileDrop(files);
+                      // Use the category handler which shows checklist dialog
+                      await handleFileDropToCategory(uploadCategory, files);
                     }}
                   >
                     <CardHeader className="pb-3">
@@ -4468,6 +4523,19 @@ export default function DealDetail() {
         onReorder={reorderPanels}
         onToggleVisibility={togglePanelVisibility}
         onReset={resetToDefault}
+      />
+
+      {/* Checklist Link Dialog for file uploads */}
+      <ChecklistLinkDialog
+        open={!!pendingUpload}
+        onOpenChange={(open) => {
+          if (!open) handleChecklistDialogCancel();
+        }}
+        checklistItems={allChecklistItems}
+        files={pendingUpload?.files || []}
+        category={pendingUpload?.category || 'materials'}
+        onConfirm={handleChecklistDialogConfirm}
+        onCancel={handleChecklistDialogCancel}
       />
     </>
   );
