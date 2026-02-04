@@ -67,7 +67,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                 <img 
                   src={naitiveAiIcon} 
                   alt="AI" 
-                  className="h-5 w-5 shrink-0 brightness-0 invert"
+                  className="h-7 w-7 shrink-0 brightness-0 invert"
                 />
                 <span className="max-w-0 group-hover:max-w-32 group-hover:ml-2 overflow-hidden whitespace-nowrap transition-all duration-300">
                   Ask AI
