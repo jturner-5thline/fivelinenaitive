@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.deal-space-financials-ai]
 verify_jwt = false
+
+[functions.validate-gate]
+verify_jwt = false

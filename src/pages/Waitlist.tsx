@@ -35,17 +35,34 @@ const Waitlist = () => {
   const [gatePassword, setGatePassword] = useState('');
   const [showGatePassword, setShowGatePassword] = useState(false);
 
-  const GATE_PASSWORD = '5thlinecapital';
-
-  const handleGateSubmit = (e: React.FormEvent) => {
+  const handleGateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (gatePassword === GATE_PASSWORD) {
-      setShowGateDialog(false);
-      setGatePassword('');
-      navigate('/auth');
-    } else {
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-gate', {
+        body: { password: gatePassword }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.valid) {
+        setShowGateDialog(false);
+        setGatePassword('');
+        // Store token for auth page
+        sessionStorage.setItem('naitive_gate_verified', 'true');
+        sessionStorage.setItem('naitive_gate_token', data.token);
+        navigate('/auth');
+      } else {
+        toast({
+          title: 'Incorrect password',
+          description: 'Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      console.error('Gate validation error:', error);
       toast({
-        title: 'Incorrect password',
+        title: 'Validation failed',
         description: 'Please try again.',
         variant: 'destructive',
       });
