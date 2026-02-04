@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -6,12 +5,38 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    
+    // Use anon key with user's auth header for RLS-scoped access
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { dealId, messages } = await req.json();
 
     if (!dealId) {
@@ -23,11 +48,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch financial documents for this deal
+    // Fetch financial documents for this deal (RLS will enforce access control)
     const { data: financials, error: financialsError } = await supabase
       .from("deal_space_financials")
       .select("*")
@@ -49,7 +70,7 @@ serve(async (req) => {
       );
     }
 
-    // Fetch deal info for context
+    // Fetch deal info for context (RLS will enforce access control)
     const { data: deal } = await supabase
       .from("deals")
       .select("company, value, stage")
@@ -85,6 +106,8 @@ Important notes:
 4. When users ask specific questions about numbers, remind them that you can see document metadata but detailed analysis requires the documents to be processed
 5. Provide financial analysis frameworks and suggest what to look for
 6. Be concise but thorough in your responses`;
+
+    console.log('Deal space financials AI request:', { userId: user.id, dealId, messageCount: messages?.length || 0 });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
