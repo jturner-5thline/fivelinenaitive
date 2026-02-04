@@ -159,7 +159,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
       name: lender.contact_name || '',
       title: lender.contact_title || '',
       email: lender.email || '',
-      phone: '',
+      phone: lender.contact_phone || '',
     },
     preferences: [
       ...(lender.loan_types || []),
@@ -640,6 +640,7 @@ export default function Lenders() {
     const lenderData: MasterLenderInsert = {
       name: data.name.trim(),
       contact_name: data.contactName.trim() || null,
+      contact_phone: data.contactPhone?.trim() || null,
       email: data.email.trim() || null,
       lender_type: data.lenderType.trim() || null,
       loan_types: data.loanTypes.split(',').map(p => p.trim()).filter(p => p) || null,
@@ -652,6 +653,7 @@ export default function Lenders() {
       min_revenue: data.minRevenue ? parseFloat(data.minRevenue) : null,
       ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
       tier: data.tier ? `T${data.tier}` : null,
+      relationship_owners: data.relationshipOwners?.trim() || null,
     };
 
     // Check if name changed and new name already exists
