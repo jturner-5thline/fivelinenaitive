@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, Send, X, Loader2 } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
+import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 
 interface FloatingDealAssistantProps {
   dealId: string;
@@ -63,7 +64,11 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
               className="rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-hidden flex items-center justify-center"
             >
               <div className="flex items-center justify-center">
-                <Sparkles className="h-4 w-4 shrink-0" />
+                <img 
+                  src={naitiveAiIcon} 
+                  alt="AI" 
+                  className="h-5 w-5 shrink-0 brightness-0 invert"
+                />
                 <span className="max-w-0 group-hover:max-w-32 group-hover:ml-2 overflow-hidden whitespace-nowrap transition-all duration-300">
                   Ask AI
                 </span>
@@ -85,7 +90,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           <div className="p-4 border-b flex items-center justify-between">
             <div>
               <h3 className="font-semibold flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
+                <img src={naitiveAiIcon} alt="AI" className="h-4 w-4" />
                 Deal Assistant
               </h3>
               {dealName && (
