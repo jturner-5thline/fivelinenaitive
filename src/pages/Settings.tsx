@@ -15,6 +15,7 @@ import { DefaultMilestonesSettings } from '@/components/settings/DefaultMileston
 import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { DataRoomChecklistSettings } from '@/components/settings/DataRoomChecklistSettings';
+import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -69,6 +70,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'suggestions',
     keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders', 'opportunities', 'ai'],
+  },
+  {
+    id: 'lender-matching',
+    keywords: ['lender', 'matching', 'algorithm', 'scoring', 'weight', 'priority', 'criteria', 'suggested'],
   },
   {
     id: 'data-room-checklist',
@@ -294,6 +299,8 @@ export default function Settings() {
             {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
 
             {isVisible('suggestions') && <SuggestionSettings />}
+
+            {isVisible('lender-matching') && <LenderMatchingSettings />}
 
             {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
 

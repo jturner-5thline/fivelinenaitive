@@ -799,6 +799,7 @@ export type Database = {
           deal_stages: Json | null
           default_deal_stage_id: string | null
           id: string
+          lender_matching_config: Json | null
           permission_settings: Json | null
           updated_at: string
         }
@@ -809,6 +810,7 @@ export type Database = {
           deal_stages?: Json | null
           default_deal_stage_id?: string | null
           id?: string
+          lender_matching_config?: Json | null
           permission_settings?: Json | null
           updated_at?: string
         }
@@ -819,6 +821,7 @@ export type Database = {
           deal_stages?: Json | null
           default_deal_stage_id?: string | null
           id?: string
+          lender_matching_config?: Json | null
           permission_settings?: Json | null
           updated_at?: string
         }
