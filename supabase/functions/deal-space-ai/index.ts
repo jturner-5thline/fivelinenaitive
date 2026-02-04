@@ -321,23 +321,50 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get documents from both deal_space_documents and deal_attachments (Data Room)
-    const { data: dealSpaceDocs, error: dealSpaceDocsError } = await supabase
-      .from("deal_space_documents")
-      .select("id, name, file_path, content_type")
-      .eq("deal_id", dealId);
+    // Fetch comprehensive deal context in parallel
+    const [
+      dealResult,
+      writeupResult,
+      lendersResult,
+      milestonesResult,
+      activityResult,
+      memoResult,
+      dealSpaceDocsResult,
+      dataRoomDocsResult,
+    ] = await Promise.all([
+      // Deal information
+      supabase.from("deals").select("*").eq("id", dealId).single(),
+      // Deal write-up
+      supabase.from("deal_writeups").select("*").eq("deal_id", dealId).single(),
+      // Lenders
+      supabase.from("deal_lenders").select("*").eq("deal_id", dealId).order("created_at", { ascending: false }),
+      // Milestones
+      supabase.from("deal_milestones").select("*").eq("deal_id", dealId).order("position"),
+      // Recent activity (last 50)
+      supabase.from("activity_logs").select("*").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(50),
+      // Deal memo
+      supabase.from("deal_memos").select("*").eq("deal_id", dealId).single(),
+      // Deal space documents
+      supabase.from("deal_space_documents").select("id, name, file_path, content_type").eq("deal_id", dealId),
+      // Data room documents
+      supabase.from("deal_attachments").select("id, name, file_path, content_type, category").eq("deal_id", dealId),
+    ]);
 
-    if (dealSpaceDocsError) {
-      console.error("Error fetching deal space documents:", dealSpaceDocsError);
+    const deal = dealResult.data;
+    const writeup = writeupResult.data;
+    const lenders = lendersResult.data || [];
+    const milestones = milestonesResult.data || [];
+    const activities = activityResult.data || [];
+    const memo = memoResult.data;
+    const dealSpaceDocs = dealSpaceDocsResult.data;
+    const dataRoomDocs = dataRoomDocsResult.data;
+
+    if (dealSpaceDocsResult.error) {
+      console.error("Error fetching deal space documents:", dealSpaceDocsResult.error);
     }
 
-    const { data: dataRoomDocs, error: dataRoomDocsError } = await supabase
-      .from("deal_attachments")
-      .select("id, name, file_path, content_type, category")
-      .eq("deal_id", dealId);
-
-    if (dataRoomDocsError) {
-      console.error("Error fetching data room documents:", dataRoomDocsError);
+    if (dataRoomDocsResult.error) {
+      console.error("Error fetching data room documents:", dataRoomDocsResult.error);
     }
 
     // Combine documents with their source bucket info
@@ -435,8 +462,142 @@ serve(async (req) => {
       ? documentContents.map(d => d.content).join("\n\n---\n\n")
       : "No documents have been uploaded yet.";
 
-    // Build the system prompt with citation instructions
-    const systemPrompt = `You are an AI assistant helping analyze deal-related documents. You have access to documents from two sources:
+    // Build comprehensive deal context
+    const formatCurrency = (val: number | null | undefined) => 
+      val != null ? `$${val.toLocaleString()}` : 'Not specified';
+    
+    const formatDate = (date: string | null | undefined) => 
+      date ? new Date(date).toLocaleDateString() : 'Not set';
+
+    // Deal Information Context
+    let dealInfoContext = '';
+    if (deal) {
+      dealInfoContext = `
+**DEAL INFORMATION:**
+- Company: ${deal.company || 'N/A'}
+- Deal Value: ${formatCurrency(deal.value)}
+- Stage: ${deal.stage || 'N/A'}
+- Status: ${deal.status || 'N/A'}
+- Deal Type: ${deal.deal_type || 'Not specified'}
+- Business Model: ${deal.business_model || 'Not specified'}
+- Contact: ${deal.contact || 'Not specified'}
+- Contact Info: ${deal.contact_info || 'Not specified'}
+- Company URL: ${deal.company_url || 'Not specified'}
+- Deal Owner: ${deal.deal_owner || 'Not assigned'}
+- Manager: ${deal.manager || 'Not assigned'}
+- Referred By: ${deal.referred_by || 'N/A'}
+- Engagement Type: ${deal.engagement_type || 'Not specified'}
+- Exclusivity: ${deal.exclusivity || 'Not specified'}
+- Created: ${formatDate(deal.created_at)}
+- Last Updated: ${formatDate(deal.updated_at)}
+- Flagged: ${deal.is_flagged ? 'Yes' : 'No'}${deal.flag_notes ? ` - ${deal.flag_notes}` : ''}
+- Notes: ${deal.notes || 'No notes'}
+
+**Hours & Fees:**
+- Pre-Signing Hours: ${deal.pre_signing_hours ?? 'N/A'}
+- Post-Signing Hours: ${deal.post_signing_hours ?? 'N/A'}
+- Retainer Fee: ${formatCurrency(deal.retainer_fee)}
+- Milestone Fee: ${formatCurrency(deal.milestone_fee)}
+- Success Fee %: ${deal.success_fee_percent != null ? `${deal.success_fee_percent}%` : 'N/A'}
+- Total Fee: ${formatCurrency(deal.total_fee)}
+`;
+    }
+
+    // Deal Write-Up Context
+    let writeupContext = '';
+    if (writeup) {
+      writeupContext = `
+**DEAL WRITE-UP:**
+- Company Name: ${writeup.company_name || 'N/A'}
+- Description: ${writeup.description || 'No description'}
+- Industry: ${writeup.industry || 'Not specified'}
+- Location: ${writeup.location || 'Not specified'}
+- Year Founded: ${writeup.year_founded || 'N/A'}
+- Headcount: ${writeup.headcount || 'N/A'}
+- Capital Ask: ${writeup.capital_ask || 'Not specified'}
+- Use of Funds: ${writeup.use_of_funds || 'Not specified'}
+- Deal Type: ${writeup.deal_type || 'Not specified'}
+- B2B/B2C: ${writeup.b2b_b2c || 'Not specified'}
+- Revenue Type: ${writeup.revenue_type || 'Not specified'}
+- Billing Model: ${writeup.billing_model || 'Not specified'}
+- Gross Margins: ${writeup.gross_margins || 'Not specified'}
+- Profitability: ${writeup.profitability || 'Not specified'}
+- Last Year Revenue: ${writeup.last_year_revenue || 'N/A'}
+- This Year Revenue: ${writeup.this_year_revenue || 'N/A'}
+- Total Equity Raised: ${writeup.total_equity_raised || 'N/A'}
+- Sponsorship: ${writeup.sponsorship || 'Not specified'}
+- Collateral Available: ${writeup.collateral_available || 'Not specified'}
+- Existing Debt: ${writeup.existing_debt_details || 'None specified'}
+- Accounting System: ${writeup.accounting_system || 'Not specified'}
+- Company URL: ${writeup.company_url || 'N/A'}
+- LinkedIn: ${writeup.linkedin_url || 'N/A'}
+- Data Room URL: ${writeup.data_room_url || 'N/A'}
+${writeup.company_highlights ? `- Company Highlights: ${JSON.stringify(writeup.company_highlights)}` : ''}
+${writeup.key_items ? `- Key Items: ${JSON.stringify(writeup.key_items)}` : ''}
+${writeup.financial_years ? `- Financial Years Data: ${JSON.stringify(writeup.financial_years)}` : ''}
+${writeup.financial_comments ? `- Financial Comments: ${JSON.stringify(writeup.financial_comments)}` : ''}
+`;
+    }
+
+    // Deal Memo Context
+    let memoContext = '';
+    if (memo) {
+      memoContext = `
+**DEAL MEMO:**
+${memo.narrative ? `- Narrative: ${memo.narrative}` : ''}
+${memo.highlights ? `- Highlights: ${memo.highlights}` : ''}
+${memo.hurdles ? `- Hurdles: ${memo.hurdles}` : ''}
+${memo.analyst_notes ? `- Analyst Notes: ${memo.analyst_notes}` : ''}
+${memo.lender_notes ? `- Lender Notes: ${memo.lender_notes}` : ''}
+${memo.other_notes ? `- Other Notes: ${memo.other_notes}` : ''}
+`;
+    }
+
+    // Lenders Context
+    let lendersContext = '';
+    if (lenders.length > 0) {
+      lendersContext = `
+**LENDERS (${lenders.length} total):**
+${lenders.map((l, i) => `${i + 1}. ${l.name}
+   - Stage: ${l.stage || 'N/A'}${l.substage ? ` / ${l.substage}` : ''}
+   - Tracking Status: ${l.tracking_status || 'Active'}
+   ${l.quote_amount ? `- Quote Amount: ${formatCurrency(l.quote_amount)}` : ''}
+   ${l.quote_rate ? `- Quote Rate: ${l.quote_rate}%` : ''}
+   ${l.quote_term ? `- Quote Term: ${l.quote_term}` : ''}
+   ${l.notes ? `- Notes: ${l.notes}` : ''}
+   ${l.pass_reason ? `- Pass Reason: ${l.pass_reason}` : ''}`).join('\n')}
+`;
+    }
+
+    // Milestones Context
+    let milestonesContext = '';
+    if (milestones.length > 0) {
+      const completed = milestones.filter(m => m.completed).length;
+      milestonesContext = `
+**MILESTONES (${completed}/${milestones.length} completed):**
+${milestones.map((m, i) => `${i + 1}. ${m.completed ? '✓' : '○'} ${m.title}${m.due_date ? ` (Due: ${formatDate(m.due_date)})` : ''}${m.completed && m.completed_at ? ` - Completed: ${formatDate(m.completed_at)}` : ''}`).join('\n')}
+`;
+    }
+
+    // Activity Context (recent 20 for brevity)
+    let activityContext = '';
+    if (activities.length > 0) {
+      const recentActivities = activities.slice(0, 20);
+      activityContext = `
+**RECENT ACTIVITY (${activities.length} total, showing last ${recentActivities.length}):**
+${recentActivities.map(a => `- [${formatDate(a.created_at)}] ${a.activity_type}: ${a.description}${a.user_display_name ? ` (by ${a.user_display_name})` : ''}`).join('\n')}
+`;
+    }
+
+    // Build the system prompt with all context
+    const systemPrompt = `You are an AI assistant with complete knowledge of this deal. You have access to:
+
+${dealInfoContext}
+${writeupContext}
+${memoContext}
+${lendersContext}
+${milestonesContext}
+${activityContext}
 
 **DOCUMENT INVENTORY:**
 ${documentInventory || 'No documents available.'}
@@ -445,20 +606,17 @@ ${documentInventory || 'No documents available.'}
 ${documentContext}
 
 Instructions:
-- Answer questions based ONLY on the information in these documents
-- If the answer isn't in the documents, say so clearly
-- When asked "what documents are in the data room" or similar, list the files from the Document Inventory above
-- **CRITICAL: When citing information, ALWAYS include the specific location:**
-  - For PDFs: mention the document name AND page number (e.g., "According to Financial Report.pdf, Page 3...")
-  - For Excel files: mention the document name AND sheet name (e.g., "From Budget.xlsx, Sheet 'Q1 Revenue'...")
-  - For PowerPoint: mention the document name AND slide number (e.g., "As shown in Pitch Deck.pptx, Slide 5...")
-  - For other documents: mention the document name
-  - Always indicate whether the document is from Deal Space or Data Room
+- You have FULL access to all deal information, not just documents
+- Answer questions about the deal, lenders, milestones, activity, write-up, and documents
+- When asked about the deal, provide relevant information from the appropriate section above
+- When citing document information, include specific locations (page, sheet, slide numbers)
+- Indicate whether document info is from Deal Space or Data Room
+- For activity questions, summarize recent events and patterns
+- For lender questions, provide status updates and quote information
+- For milestone questions, show progress and upcoming due dates
 - Be concise but thorough
-- If asked about something not in the documents, acknowledge that and offer to help with what's available
-- Format your responses clearly with bullet points or sections when appropriate
-- For financial data or spreadsheets, summarize key figures and trends
-- Always provide specific, verifiable citations so users can find the source`;
+- Format responses with bullet points or sections when appropriate
+- If information isn't available, say so clearly and suggest what is available`;
 
     // Call Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -473,7 +631,7 @@ Instructions:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,
