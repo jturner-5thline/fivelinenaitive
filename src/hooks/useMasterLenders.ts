@@ -28,6 +28,7 @@ export interface MasterLender {
   geo?: string | null;
   contact_name?: string | null;
   contact_title?: string | null;
+  contact_phone?: string | null;
   relationship_owners?: string | null;
   lender_one_pager_url?: string | null;
   referral_lender?: string | null;
@@ -69,6 +70,7 @@ export interface MasterLenderInsert {
   geo?: string | null;
   contact_name?: string | null;
   contact_title?: string | null;
+  contact_phone?: string | null;
   relationship_owners?: string | null;
   lender_one_pager_url?: string | null;
   referral_lender?: string | null;

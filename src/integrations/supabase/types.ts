@@ -3387,6 +3387,7 @@ export type Database = {
           company_id: string | null
           company_requirements: string | null
           contact_name: string | null
+          contact_phone: string | null
           contact_title: string | null
           created_at: string
           deal_structure_notes: string | null
@@ -3431,6 +3432,7 @@ export type Database = {
           company_id?: string | null
           company_requirements?: string | null
           contact_name?: string | null
+          contact_phone?: string | null
           contact_title?: string | null
           created_at?: string
           deal_structure_notes?: string | null
@@ -3475,6 +3477,7 @@ export type Database = {
           company_id?: string | null
           company_requirements?: string | null
           contact_name?: string | null
+          contact_phone?: string | null
           contact_title?: string | null
           created_at?: string
           deal_structure_notes?: string | null
