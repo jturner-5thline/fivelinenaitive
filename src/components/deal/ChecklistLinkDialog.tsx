@@ -30,12 +30,12 @@ interface ChecklistLinkDialogProps {
   onCancel: () => void;
 }
 
-// Map upload folder categories to checklist category keywords
+// Map upload folder categories to checklist category names
 const CATEGORY_MAPPINGS: Record<string, string[]> = {
-  materials: ['materials', 'material', 'kpi', 'kpis', 'metrics', 'data'],
-  financials: ['financials', 'financial', 'finance', 'accounting', 'revenue', 'budget'],
-  agreements: ['agreements', 'agreement', 'legal', 'contract', 'contracts', 'compliance'],
-  other: ['other', 'miscellaneous', 'general'],
+  materials: ['materials', 'kpis & metrics', 'kpi'],
+  financials: ['financials'],
+  agreements: ['agreements', 'legal', 'contracts'],
+  other: ['other'],
 };
 
 export function ChecklistLinkDialog({
