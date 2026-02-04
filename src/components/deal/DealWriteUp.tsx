@@ -1039,26 +1039,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             </div>
           )}
 
-          {/* Publish as Anonymous */}
-          <div className="flex items-start space-x-3 border-t pt-4">
-            <Checkbox
-              id="publishAsAnonymous"
-              checked={data.publishAsAnonymous}
-              onCheckedChange={(checked) => updateField('publishAsAnonymous', checked as boolean)}
-            />
-            <div className="grid gap-1.5 leading-none">
-              <label
-                htmlFor="publishAsAnonymous"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Publish as Anonymous Deal
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Company name, website, and LinkedIn will be hidden. Users must request access and be approved to see these details.
-              </p>
-            </div>
-          </div>
-
           {/* Action Buttons */}
           <div className="flex items-center justify-between pt-4 border-t">
             <div className="text-xs text-muted-foreground">
@@ -1172,11 +1152,8 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             <div className="space-y-4">
               {/* Company Information */}
               <div className="rounded-lg border bg-muted/30 p-4">
-                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <h4 className="font-semibold text-sm mb-3">
                   Company Information
-                  {data.publishAsAnonymous && (
-                    <Badge variant="secondary" className="text-xs">Anonymous</Badge>
-                  )}
                 </h4>
                 <div className="space-y-1">
                   <DataPreviewRow label="Company Name" value={data.companyName} />
