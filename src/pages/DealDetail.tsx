@@ -799,7 +799,11 @@ export default function DealDetail() {
     ? attachments 
     : attachments.filter(a => a.category === attachmentFilter);
 
-  const handleFileDrop = useCallback(async (files: File[], category?: DealAttachmentCategory, checklistItemId?: string | null) => {
+  const handleFileDrop = useCallback(async (
+    files: File[], 
+    category?: DealAttachmentCategory, 
+    assignments?: Map<number, string | null>
+  ) => {
     if (files.length === 0) return;
     setIsUploading(true);
     setShowUploadProgress(true);
@@ -808,19 +812,28 @@ export default function DealDetail() {
         setUploadProgress(progress);
       });
       
-      // If a checklist item was selected, link the first uploaded attachment to it
-      if (checklistItemId && uploadedAttachments && uploadedAttachments.length > 0) {
-        await linkChecklistAttachment(checklistItemId, uploadedAttachments[0].id);
+      // Link each uploaded attachment to its assigned checklist item
+      if (assignments && uploadedAttachments && uploadedAttachments.length > 0) {
+        for (let i = 0; i < uploadedAttachments.length; i++) {
+          const checklistItemId = assignments.get(i);
+          if (checklistItemId) {
+            await linkChecklistAttachment(checklistItemId, uploadedAttachments[i].id);
+          }
+        }
       }
     } finally {
       setIsUploading(false);
     }
   }, [uploadMultipleAttachments, uploadCategory, linkChecklistAttachment]);
 
-  const handleFileDropToCategory = useCallback(async (category: DealAttachmentCategory, files: File[], checklistItemId?: string | null) => {
-    if (checklistItemId !== undefined) {
-      // If checklistItemId is provided, proceed with upload
-      await handleFileDrop(files, category, checklistItemId);
+  const handleFileDropToCategory = useCallback(async (
+    category: DealAttachmentCategory, 
+    files: File[], 
+    assignments?: Map<number, string | null>
+  ) => {
+    if (assignments !== undefined) {
+      // If assignments are provided, proceed with upload
+      await handleFileDrop(files, category, assignments);
     } else if (allChecklistItems.length > 0) {
       // Show checklist dialog if there are checklist items
       setPendingUpload({ category, files });
@@ -830,9 +843,9 @@ export default function DealDetail() {
     }
   }, [handleFileDrop, allChecklistItems.length]);
 
-  const handleChecklistDialogConfirm = useCallback(async (selectedItemId: string | null) => {
+  const handleChecklistDialogConfirm = useCallback(async (assignments: Map<number, string | null>) => {
     if (pendingUpload) {
-      await handleFileDrop(pendingUpload.files, pendingUpload.category, selectedItemId);
+      await handleFileDrop(pendingUpload.files, pendingUpload.category, assignments);
       setPendingUpload(null);
     }
   }, [handleFileDrop, pendingUpload]);
