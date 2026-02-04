@@ -12,7 +12,7 @@ interface ChecklistItemForLink {
 }
 
 interface FileDropzoneOverlayProps {
-  onDropToCategory: (category: DealAttachmentCategory, files: File[], checklistItemId: string | null) => void;
+  onDropToCategory: (category: DealAttachmentCategory, files: File[], assignments: Map<number, string | null>) => void;
   onDragEnd: () => void;
   checklistItems?: ChecklistItemForLink[];
 }
@@ -62,9 +62,9 @@ export function FileDropzoneOverlay({ onDropToCategory, onDragEnd, checklistItem
     }
   };
 
-  const handleDialogConfirm = (selectedItemId: string | null) => {
+  const handleDialogConfirm = (assignments: Map<number, string | null>) => {
     if (pendingUpload) {
-      onDropToCategory(pendingUpload.category, pendingUpload.files, selectedItemId);
+      onDropToCategory(pendingUpload.category, pendingUpload.files, assignments);
       setPendingUpload(null);
       onDragEnd();
     }
