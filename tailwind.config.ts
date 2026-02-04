@@ -159,6 +159,9 @@ export default {
 				'0%': {
 					transform: 'translate(-100%, -100%)'
 				},
+				'60%': {
+					transform: 'translate(100%, 100%)'
+				},
 				'100%': {
 					transform: 'translate(100%, 100%)'
 				}
