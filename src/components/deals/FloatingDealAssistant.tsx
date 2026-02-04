@@ -67,7 +67,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                 className="absolute inset-0 rounded-full overflow-hidden pointer-events-none"
               >
                 <span 
-                  className="absolute -inset-full animate-[shimmer_3s_ease-in-out_infinite]"
+                  className="absolute -inset-full animate-[shimmer_6s_ease-in-out_infinite]"
                   style={{
                     background: 'linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%)',
                   }}
