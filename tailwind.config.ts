@@ -145,17 +145,25 @@ export default {
   					transform: 'translateX(0)'
   				}
   			},
-  			'slide-in-from-left': {
-  				from: {
-  					opacity: '0',
-  					transform: 'translateX(-30px)'
-  				},
-  				to: {
-  					opacity: '1',
-  					transform: 'translateX(0)'
-  				}
-  			}
-  		},
+			'slide-in-from-left': {
+				from: {
+					opacity: '0',
+					transform: 'translateX(-30px)'
+				},
+				to: {
+					opacity: '1',
+					transform: 'translateX(0)'
+				}
+			},
+			'shimmer': {
+				'0%': {
+					transform: 'translateX(-100%) rotate(45deg)'
+				},
+				'100%': {
+					transform: 'translateX(200%) rotate(45deg)'
+				}
+			}
+		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
