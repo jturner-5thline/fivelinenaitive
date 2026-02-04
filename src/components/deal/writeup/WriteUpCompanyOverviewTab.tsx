@@ -178,14 +178,14 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
       }
       if (companyInfo.location && !data.location) {
         // Try to match with our location options
-        const matchedLocation = LOCATION_OPTIONS.find(loc => 
-          companyInfo.location.toLowerCase().includes(loc.toLowerCase()) ||
-          loc.toLowerCase().includes(companyInfo.location.toLowerCase())
-        );
-        if (matchedLocation) {
-          updateField('location', matchedLocation);
-          fieldsUpdated++;
-        }
+        const scrapedLoc = companyInfo.location.toLowerCase();
+        const matchedLocation = LOCATION_OPTIONS.find(loc => {
+          const optLower = loc.toLowerCase();
+          return scrapedLoc.includes(optLower) || optLower.includes(scrapedLoc);
+        });
+        // If no match found, default to "Other" and still count as updated
+        updateField('location', matchedLocation || 'Other');
+        fieldsUpdated++;
       }
       if (companyInfo.yearFounded && !data.yearFounded) {
         updateField('yearFounded', companyInfo.yearFounded);
