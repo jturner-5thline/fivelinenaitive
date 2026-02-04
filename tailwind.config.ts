@@ -157,10 +157,10 @@ export default {
 			},
 			'shimmer': {
 				'0%': {
-					transform: 'translateX(-100%) rotate(45deg)'
+					transform: 'translate(-100%, -100%)'
 				},
 				'100%': {
-					transform: 'translateX(200%) rotate(45deg)'
+					transform: 'translate(100%, 100%)'
 				}
 			}
 		},
