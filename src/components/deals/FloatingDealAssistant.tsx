@@ -74,11 +74,6 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                 </span>
               </div>
             </Button>
-            {messages.length > 0 && (
-              <Badge variant="secondary" className="absolute -top-1 -right-1 h-5 min-w-5 px-1.5 text-xs bg-destructive text-destructive-foreground border-2 border-background pointer-events-none">
-                {messages.length}
-              </Badge>
-            )}
           </div>
         </PopoverTrigger>
         <PopoverContent 
