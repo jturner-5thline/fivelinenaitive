@@ -1,10 +1,20 @@
+import { useState } from 'react';
 import { Upload, FileText, DollarSign, FileCheck, Folder } from 'lucide-react';
 import { DEAL_ATTACHMENT_CATEGORIES, DealAttachmentCategory } from '@/hooks/useDealAttachments';
+import { ChecklistLinkDialog } from './ChecklistLinkDialog';
 import { cn } from '@/lib/utils';
 
+interface ChecklistItemForLink {
+  id: string;
+  name: string;
+  category: string | null;
+  is_required: boolean;
+}
+
 interface FileDropzoneOverlayProps {
-  onDropToCategory: (category: DealAttachmentCategory, files: File[]) => void;
+  onDropToCategory: (category: DealAttachmentCategory, files: File[], checklistItemId: string | null) => void;
   onDragEnd: () => void;
+  checklistItems?: ChecklistItemForLink[];
 }
 
 const categoryIcons: Record<string, React.ReactNode> = {
@@ -35,29 +45,73 @@ const categoryIconColors: Record<string, string> = {
   other: 'text-gray-500',
 };
 
-export function FileDropzoneOverlay({ onDropToCategory, onDragEnd }: FileDropzoneOverlayProps) {
+export function FileDropzoneOverlay({ onDropToCategory, onDragEnd, checklistItems = [] }: FileDropzoneOverlayProps) {
+  const [pendingUpload, setPendingUpload] = useState<{
+    category: DealAttachmentCategory;
+    files: File[];
+  } | null>(null);
+
+  const handleCategoryDrop = (category: DealAttachmentCategory, files: File[]) => {
+    // If there are checklist items, show the dialog
+    if (checklistItems.length > 0) {
+      setPendingUpload({ category, files });
+    } else {
+      // No checklist items, proceed directly
+      onDropToCategory(category, files, null);
+      onDragEnd();
+    }
+  };
+
+  const handleDialogConfirm = (selectedItemId: string | null) => {
+    if (pendingUpload) {
+      onDropToCategory(pendingUpload.category, pendingUpload.files, selectedItemId);
+      setPendingUpload(null);
+      onDragEnd();
+    }
+  };
+
+  const handleDialogCancel = () => {
+    setPendingUpload(null);
+    onDragEnd();
+  };
+
   return (
-    <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 rounded-lg">
-      <div className="flex items-center gap-2 mb-4">
-        <Upload className="h-6 w-6 text-primary animate-bounce" />
-        <h3 className="text-lg font-semibold text-foreground">Drop files into a folder</h3>
+    <>
+      <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 rounded-lg">
+        <div className="flex items-center gap-2 mb-4">
+          <Upload className="h-6 w-6 text-primary animate-bounce" />
+          <h3 className="text-lg font-semibold text-foreground">Drop files into a folder</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3 w-full max-w-md">
+          {DEAL_ATTACHMENT_CATEGORIES.map((category) => (
+            <CategoryDropZone
+              key={category.value}
+              category={category}
+              onDrop={(files) => handleCategoryDrop(category.value as DealAttachmentCategory, files)}
+              onDragEnd={onDragEnd}
+            />
+          ))}
+        </div>
+        
+        <p className="text-xs text-muted-foreground mt-4">
+          Drag away or press Escape to cancel
+        </p>
       </div>
-      
-      <div className="grid grid-cols-2 gap-3 w-full max-w-md">
-        {DEAL_ATTACHMENT_CATEGORIES.map((category) => (
-          <CategoryDropZone
-            key={category.value}
-            category={category}
-            onDrop={(files) => onDropToCategory(category.value as DealAttachmentCategory, files)}
-            onDragEnd={onDragEnd}
-          />
-        ))}
-      </div>
-      
-      <p className="text-xs text-muted-foreground mt-4">
-        Drag away or press Escape to cancel
-      </p>
-    </div>
+
+      {/* Checklist Link Dialog */}
+      <ChecklistLinkDialog
+        open={!!pendingUpload}
+        onOpenChange={(open) => {
+          if (!open) handleDialogCancel();
+        }}
+        checklistItems={checklistItems}
+        files={pendingUpload?.files || []}
+        category={pendingUpload?.category || 'materials'}
+        onConfirm={handleDialogConfirm}
+        onCancel={handleDialogCancel}
+      />
+    </>
   );
 }
 
@@ -91,7 +145,7 @@ function CategoryDropZone({ category, onDrop, onDragEnd }: CategoryDropZoneProps
     if (files.length > 0) {
       onDrop(files);
     }
-    onDragEnd();
+    // Don't call onDragEnd here - let the dialog handle it
   };
 
   return (
