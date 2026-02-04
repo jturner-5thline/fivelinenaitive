@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as pdfParse from "https://esm.sh/pdf-parse@1.1.1";
 import mammoth from "https://esm.sh/mammoth@1.6.0";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 
@@ -16,37 +15,60 @@ interface ExtractedContent {
   slides?: { slideNumber: number; content: string }[];
 }
 
-// Extract text from PDF with page information
+// Extract text from PDF - simple text extraction without pdf-parse
+// This approach extracts readable text from the PDF binary
 async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<ExtractedContent> {
   try {
     const uint8Array = new Uint8Array(arrayBuffer);
-    const result = await pdfParse.default(uint8Array);
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    const rawText = decoder.decode(uint8Array);
     
-    // Try to split by page markers if available
-    const pages: { pageNumber: number; content: string }[] = [];
-    const text = result.text || "";
+    // Extract text between stream markers (common PDF text location)
+    const textParts: string[] = [];
     
-    // Simple page splitting (pdf-parse doesn't give exact page breaks)
-    // We'll approximate based on content length
-    const avgPageLength = 3000;
-    const numPages = result.numpages || Math.ceil(text.length / avgPageLength);
+    // Method 1: Extract text from stream objects
+    const streamMatches = rawText.matchAll(/stream\s*([\s\S]*?)endstream/g);
+    for (const match of streamMatches) {
+      const content = match[1];
+      // Try to extract readable ASCII text
+      const readable = content.replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (readable.length > 20 && !/^[\s\d\.\-\[\]\/]+$/.test(readable)) {
+        textParts.push(readable);
+      }
+    }
     
-    if (numPages > 1) {
-      const chunkSize = Math.ceil(text.length / numPages);
-      for (let i = 0; i < numPages; i++) {
-        const start = i * chunkSize;
-        const end = Math.min((i + 1) * chunkSize, text.length);
-        const pageContent = text.slice(start, end).trim();
-        if (pageContent) {
-          pages.push({ pageNumber: i + 1, content: pageContent });
+    // Method 2: Extract text from BT/ET blocks (text objects)
+    const textBlockMatches = rawText.matchAll(/BT\s*([\s\S]*?)ET/g);
+    for (const match of textBlockMatches) {
+      const content = match[1];
+      // Extract text from Tj and TJ operators
+      const tjMatches = content.matchAll(/\(([^)]*)\)\s*Tj/g);
+      for (const tj of tjMatches) {
+        const text = tj[1].replace(/\\(.)/g, '$1');
+        if (text.length > 0) {
+          textParts.push(text);
         }
       }
     }
     
-    return { text, pages: pages.length > 0 ? pages : undefined };
+    // Method 3: Look for plain text patterns
+    const plainTextMatches = rawText.matchAll(/\(([A-Za-z][A-Za-z0-9\s,.\-:;'"!?@#$%&*()]{10,})\)/g);
+    for (const match of plainTextMatches) {
+      textParts.push(match[1]);
+    }
+    
+    const extractedText = textParts.join(' ').replace(/\s+/g, ' ').trim();
+    
+    if (extractedText.length < 50) {
+      return { text: "[PDF content - text extraction limited. Upload Word or text documents for better results.]" };
+    }
+    
+    return { text: extractedText };
   } catch (error) {
     console.error("PDF extraction error:", error);
-    return { text: "[PDF content could not be extracted]" };
+    return { text: "[PDF content could not be extracted - try uploading as Word or text format]" };
   }
 }
 
@@ -593,23 +615,36 @@ async function handleExtractWriteUp(dealId: string) {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get documents from the deal space
-    const { data: documents, error: docsError } = await supabase
-      .from("deal_space_documents")
-      .select("id, name, file_path, content_type")
-      .eq("deal_id", dealId);
+    // Get documents from deal space documents AND financials
+    const [docsResult, financialsResult] = await Promise.all([
+      supabase
+        .from("deal_space_documents")
+        .select("id, name, file_path, content_type")
+        .eq("deal_id", dealId),
+      supabase
+        .from("deal_space_financials")
+        .select("id, name, file_path, content_type")
+        .eq("deal_id", dealId)
+    ]);
 
-    if (docsError) throw new Error("Failed to fetch documents");
-    if (!documents || documents.length === 0) {
+    const documents = docsResult.data || [];
+    const financials = financialsResult.data || [];
+    const allDocs = [...documents, ...financials];
+
+    if (allDocs.length === 0) {
       return new Response(
-        JSON.stringify({ error: "No documents to analyze" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ 
+          extractedFields: [],
+          documentCount: 0,
+          error: "No documents to analyze" 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Extract all document contents
-    const allContents: string[] = [];
-    for (const doc of documents) {
+    const allContents: { name: string; content: string }[] = [];
+    for (const doc of allDocs) {
       try {
         const { data: fileData, error: downloadError } = await supabase.storage
           .from("deal-space")
@@ -619,7 +654,10 @@ async function handleExtractWriteUp(dealId: string) {
 
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
-          allContents.push(`### ${doc.name}\n${extracted.text.substring(0, 30000)}`);
+          allContents.push({ 
+            name: doc.name, 
+            content: extracted.text.substring(0, 30000) 
+          });
         }
       } catch (err) {
         console.error(`Error processing ${doc.name}:`, err);
@@ -628,12 +666,16 @@ async function handleExtractWriteUp(dealId: string) {
 
     if (allContents.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Could not extract content from documents" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ 
+          extractedFields: [],
+          documentCount: allDocs.length,
+          error: "Could not extract content from documents" 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const combinedContent = allContents.join("\n\n---\n\n");
+    const combinedContent = allContents.map(d => `### ${d.name}\n${d.content}`).join("\n\n---\n\n");
 
     // Call Lovable AI for write-up extraction
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -650,37 +692,31 @@ async function handleExtractWriteUp(dealId: string) {
         messages: [
           {
             role: "system",
-            content: `You are an expert at extracting structured deal information from documents. Extract the following fields as a JSON object. Only include fields where you have confidence in the extracted value. Use null for unknown/unclear values.
+            content: `You are an expert at extracting structured deal information from documents. Extract information and return it as a JSON array of extracted fields.
 
-Required JSON structure:
-{
-  "company_name": "Company name",
-  "description": "Brief company description (1-2 sentences)",
-  "industry": "Industry sector",
-  "location": "Company location/headquarters",
-  "year_founded": "Year founded (string)",
-  "company_url": "Company website URL",
-  "linkedin_url": "LinkedIn company URL",
-  "capital_ask": "Requested capital amount (e.g., '$5M', '$10-15M')",
-  "deal_type": "Type of deal (e.g., 'Term Loan', 'Revolving Credit', 'Revenue-Based Financing')",
-  "use_of_funds": "Intended use of capital",
-  "total_equity_raised": "Total equity raised to date",
-  "last_year_revenue": "Previous year revenue",
-  "this_year_revenue": "Current/projected year revenue",
-  "headcount": "Number of employees",
-  "gross_margins": "Gross margin percentage",
-  "profitability": "Profitability status (e.g., 'Profitable', 'EBITDA Positive', 'Cash Flow Positive')",
-  "revenue_type": "Revenue model (e.g., 'Recurring', 'Transactional', 'Hybrid')",
-  "billing_model": "Billing approach (e.g., 'Monthly', 'Annual', 'Usage-Based')",
-  "b2b_b2c": "Business model (e.g., 'B2B', 'B2C', 'B2B2C')",
-  "accounting_system": "Accounting software used",
-  "existing_debt_details": "Details of existing debt facilities",
-  "collateral_available": "Available collateral",
-  "company_highlights": ["Array of 3-5 key company highlights/strengths"],
-  "key_items": ["Array of key deal items or terms to note"]
-}
+Each field should have:
+- "field": the field name (use exact names from the list below)
+- "value": the extracted value
+- "confidence": "high", "medium", or "low" based on how certain you are
+- "source": the document name where you found this
+- "sourceLocation": specific location like "Page 3" or "Slide 5" (if applicable)
 
-Return ONLY valid JSON. Do not include markdown formatting or explanations.`
+Valid field names:
+- companyName, companyUrl, linkedinUrl, industries (array of strings)
+- location, yearFounded, headcount
+- dealTypes (array of strings), billingModels (array of strings)
+- profitability, grossMargins, capitalAsk, useOfFunds
+- existingDebtDetails, description, accountingSystem
+- companyHighlights (array of {id, title, description})
+- keyItems (array of {id, title, description})
+
+Return ONLY a valid JSON array. Example:
+[
+  {"field": "companyName", "value": "Acme Corp", "confidence": "high", "source": "Pitch Deck.pdf", "sourceLocation": "Slide 1"},
+  {"field": "capitalAsk", "value": "$5M", "confidence": "medium", "source": "Term Sheet.docx"}
+]
+
+Only extract fields where you find clear evidence. Skip fields with no data.`
           },
           {
             role: "user",
@@ -697,23 +733,26 @@ Return ONLY valid JSON. Do not include markdown formatting or explanations.`
     }
 
     const aiData = await aiResponse.json();
-    let extractedContent = aiData.choices?.[0]?.message?.content || "{}";
+    let extractedContent = aiData.choices?.[0]?.message?.content || "[]";
     
     // Clean up the response - remove markdown code blocks if present
     extractedContent = extractedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
-    let extractedData;
+    let extractedFields = [];
     try {
-      extractedData = JSON.parse(extractedContent);
+      extractedFields = JSON.parse(extractedContent);
+      if (!Array.isArray(extractedFields)) {
+        extractedFields = [];
+      }
     } catch (e) {
       console.error("Failed to parse extracted data:", e, extractedContent);
-      extractedData = {};
+      extractedFields = [];
     }
 
     return new Response(
       JSON.stringify({ 
-        extractedData,
-        documentCount: documents.length
+        extractedFields,
+        documentCount: allDocs.length
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
