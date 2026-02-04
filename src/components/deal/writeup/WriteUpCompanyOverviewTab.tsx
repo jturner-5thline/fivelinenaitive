@@ -596,23 +596,6 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
         </div>
       </div>
 
-      {/* Status */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <Select value={data.status} onValueChange={(v) => updateField('status', v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map(option => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Auto-fill Review Dialog */}
       <AutoFillReviewDialog
         open={reviewDialogOpen}
