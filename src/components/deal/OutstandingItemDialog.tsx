@@ -289,16 +289,26 @@ export function OutstandingItemDialog({
             )}
             
             <div className="flex items-center gap-2 ml-auto">
-              <Badge variant={item.received ? 'default' : 'outline'} className={cn(
-                "text-xs",
-                item.received && "bg-emerald-500 hover:bg-emerald-600"
-              )}>
+              <Badge 
+                variant={item.received ? 'default' : 'outline'} 
+                className={cn(
+                  "text-xs cursor-pointer transition-colors",
+                  item.received && "bg-emerald-500 hover:bg-emerald-600",
+                  !item.received && "hover:bg-accent"
+                )}
+                onClick={() => onUpdate(item.id, { received: !item.received })}
+              >
                 Received
               </Badge>
-              <Badge variant={item.approved ? 'default' : 'outline'} className={cn(
-                "text-xs",
-                item.approved && "bg-emerald-500 hover:bg-emerald-600"
-              )}>
+              <Badge 
+                variant={item.approved ? 'default' : 'outline'} 
+                className={cn(
+                  "text-xs cursor-pointer transition-colors",
+                  item.approved && "bg-emerald-500 hover:bg-emerald-600",
+                  !item.approved && "hover:bg-accent"
+                )}
+                onClick={() => onUpdate(item.id, { approved: !item.approved })}
+              >
                 Submitted
               </Badge>
             </div>
