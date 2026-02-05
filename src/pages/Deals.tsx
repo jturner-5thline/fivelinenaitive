@@ -16,7 +16,7 @@ import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBan
 import { DemoBanner } from '@/components/deals/DemoBanner';
 import { DemoTour } from '@/components/deals/DemoTour';
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
-import { SmartSuggestionsDropdown } from '@/components/deals/SmartSuggestionsDropdown';
+
 import { LatestUpdatesDropdown } from '@/components/deals/LatestUpdatesDropdown';
 import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
@@ -147,7 +147,7 @@ export default function Dashboard() {
                 <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">5th Line</h1>
                 <div className="flex items-center gap-2">
                   <LatestUpdatesDropdown />
-                  <SmartSuggestionsDropdown deals={allDeals} />
+                  
                   <FlaggedDealsPanel deals={allDeals} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
