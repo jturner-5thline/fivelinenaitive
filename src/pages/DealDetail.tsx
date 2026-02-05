@@ -2672,7 +2672,6 @@ export default function DealDetail() {
                                                     variant="outline"
                                                     className="w-full justify-start h-8 px-3 font-normal text-sm overflow-hidden"
                                                   >
-                                                    <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
                                                     <span className="truncate">
                                                       {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
                                                     </span>
