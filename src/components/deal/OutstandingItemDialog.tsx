@@ -447,7 +447,7 @@ export function OutstandingItemDialog({
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a comment..."
-                className="flex-1"
+                className="flex-1 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
