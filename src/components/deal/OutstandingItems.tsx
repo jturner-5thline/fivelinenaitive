@@ -608,11 +608,13 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                               <Calendar className="h-3 w-3" />
                               {format(new Date(item.createdAt), 'M/d/yy')}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {!item.requestedBy || item.requestedBy.length === 0
-                                ? 'No requester assigned'
-                                : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
+                            <span className="flex items-center gap-1 whitespace-nowrap">
+                              <User className="h-3 w-3 shrink-0" />
+                              <span className="truncate">
+                                {!item.requestedBy || item.requestedBy.length === 0
+                                  ? 'No requester assigned'
+                                  : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
+                              </span>
                             </span>
                           </div>
                         </div>
@@ -775,11 +777,13 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                                     <Calendar className="h-3 w-3" />
                                     {format(new Date(item.createdAt), 'M/d/yy')}
                                   </span>
-                                  <span className="flex items-center gap-1">
-                                    <User className="h-3 w-3" />
-                                    {!item.requestedBy || item.requestedBy.length === 0
-                                      ? 'No requester assigned'
-                                      : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
+                                  <span className="flex items-center gap-1 whitespace-nowrap">
+                                    <User className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">
+                                      {!item.requestedBy || item.requestedBy.length === 0
+                                        ? 'No requester assigned'
+                                        : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
+                                    </span>
                                   </span>
                                 </div>
                               </div>
