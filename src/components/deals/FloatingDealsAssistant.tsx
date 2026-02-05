@@ -83,7 +83,7 @@ export function FloatingDealsAssistant() {
   ];
 
   return (
-    <div className={`fixed bottom-6 z-50 group transition-all duration-300 ${isEffectivelyExpanded ? 'left-80' : 'left-28'}`}>
+    <div className={`fixed bottom-6 z-50 group transition-all duration-300 ${isEffectivelyExpanded ? 'left-76' : 'left-24'}`}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="relative">
