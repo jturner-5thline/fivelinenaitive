@@ -120,19 +120,17 @@ export function OutstandingItemDialog({
   if (!item) return null;
 
   const currentIndex = items.findIndex(i => i.id === item.id);
-  const hasPrev = currentIndex > 0;
-  const hasNext = currentIndex < items.length - 1;
 
   const goToPrev = () => {
-    if (hasPrev) {
-      onSelectItem(items[currentIndex - 1]);
-    }
+    if (items.length <= 1) return;
+    const prevIndex = currentIndex === 0 ? items.length - 1 : currentIndex - 1;
+    onSelectItem(items[prevIndex]);
   };
 
   const goToNext = () => {
-    if (hasNext) {
-      onSelectItem(items[currentIndex + 1]);
-    }
+    if (items.length <= 1) return;
+    const nextIndex = currentIndex === items.length - 1 ? 0 : currentIndex + 1;
+    onSelectItem(items[nextIndex]);
   };
 
   const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
@@ -147,18 +145,16 @@ export function OutstandingItemDialog({
             <Button
               variant="ghost"
               size="icon"
-              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-accent disabled:opacity-30"
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-accent"
               onClick={goToPrev}
-              disabled={!hasPrev}
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-accent disabled:opacity-30"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-accent"
               onClick={goToNext}
-              disabled={!hasNext}
             >
               <ChevronRight className="h-5 w-5" />
             </Button>
