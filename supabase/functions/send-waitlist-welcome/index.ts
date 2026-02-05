@@ -28,15 +28,15 @@ const handler = async (req: Request): Promise<Response> => {
     const appUrl = "https://fivelinenaitive.lovable.app";
 
     const emailResponse = await resend.emails.send({
-      from: "nAItive <noreply@updates.naitive.co>",
+      from: "naitive <noreply@updates.naitive.co>",
       reply_to: "support@naitive.co",
       to: [email],
-      subject: "Welcome to the nAItive Waitlist!",
+      subject: "Welcome to the naitive Waitlist!",
       headers: {
         "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
-      text: `Hey ${name}!\n\nThanks for joining the nAItive waitlist! We're thrilled to have you on board.\n\nYou're now on the list to be among the first to experience our AI-powered lending platform. We're working hard to build something amazing, and we can't wait to share it with you.\n\nWe'll keep you updated on our progress and let you know as soon as early access becomes available.\n\nStay tuned for updates!\n— The nAItive Team\n\n---\nnAItive | Unsubscribe: ${appUrl}/unsubscribe`,
+      text: `Hey ${name}!\n\nThanks for joining the naitive waitlist! We're thrilled to have you on board.\n\nYou're now on the list to be among the first to experience our AI-powered lending platform. We're working hard to build something amazing, and we can't wait to share it with you.\n\nWe'll keep you updated on our progress and let you know as soon as early access becomes available.\n\nStay tuned for updates!\n— The naitive Team\n\n---\nnaitive | Unsubscribe: ${appUrl}/unsubscribe`,
       html: `
         <!DOCTYPE html>
         <html lang="en">
@@ -45,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <meta name="color-scheme" content="dark light">
           <meta name="supported-color-schemes" content="dark light">
-          <title>Welcome to nAItive</title>
+          <title>Welcome to naitive</title>
         </head>
         <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
           <!-- Preheader text -->
@@ -61,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <tr>
                     <td align="center" style="padding-bottom: 32px;">
                       <h1 style="margin: 0; font-size: 32px; font-weight: bold; color: #ffffff;">
-                        n<span style="color: #22c55e;">AI</span>tive
+                        naitive
                       </h1>
                     </td>
                   </tr>
@@ -73,7 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
                         Hey ${name}!
                       </h2>
                       <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #a1a1aa;">
-                        Thanks for joining the nAItive waitlist! We're thrilled to have you on board.
+                        Thanks for joining the naitive waitlist! We're thrilled to have you on board.
                       </p>
                       <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #a1a1aa;">
                         You're now on the list to be among the first to experience our AI-powered lending platform. We're working hard to build something amazing, and we can't wait to share it with you.
@@ -88,7 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
                         Stay tuned for updates!
                       </p>
                       <p style="margin: 8px 0 0 0; font-size: 14px; color: #22c55e; font-weight: 500;">
-                        — The nAItive Team
+                        — The naitive Team
                       </p>
                     </td>
                   </tr>
@@ -97,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <tr>
                     <td align="center" style="padding-top: 32px;">
                       <p style="margin: 0; font-size: 12px; color: #52525b;">
-                        © ${new Date().getFullYear()} nAItive. All rights reserved.
+                        © ${new Date().getFullYear()} naitive. All rights reserved.
                       </p>
                       <p style="margin: 8px 0 0 0; font-size: 12px; color: #52525b;">
                         <a href="${appUrl}/unsubscribe" style="color: #22c55e; text-decoration: underline;">Unsubscribe</a>

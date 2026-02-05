@@ -50,7 +50,7 @@ serve(async (req) => {
               <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
                 <span style="font-size: 32px;">✓</span>
               </div>
-              <h1 style="color: #1a1a1a; margin: 0;">Welcome to nAItive!</h1>
+              <h1 style="color: #1a1a1a; margin: 0;">Welcome to naitive!</h1>
             </div>
             
             <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
@@ -58,7 +58,7 @@ serve(async (req) => {
             </p>
             
             <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-              Great news! Your account has been approved by an administrator. You now have full access to nAItive.
+              Great news! Your account has been approved by an administrator. You now have full access to naitive.
             </p>
             
             <div style="text-align: center; margin: 32px 0;">
@@ -88,9 +88,9 @@ serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "nAItive <notifications@5thline.co>",
+        from: "naitive <notifications@5thline.co>",
         to: [user_email],
-        subject: "Your nAItive Account Has Been Approved! 🎉",
+        subject: "Your naitive Account Has Been Approved! 🎉",
         html: emailHtml,
       }),
     });

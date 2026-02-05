@@ -388,7 +388,7 @@ const handler = async (req: Request): Promise<Response> => {
                     <tr>
                       <td style="padding: 24px 40px; border-top: 1px solid #eeeeee; text-align: center;">
                         <p style="color: #888888; font-size: 12px; margin: 0 0 8px 0;">
-                          © ${new Date().getFullYear()} nAItive. All rights reserved.
+                          © ${new Date().getFullYear()} naitive. All rights reserved.
                         </p>
                         <p style="color: #888888; font-size: 12px; margin: 0;">
                           <a href="${appUrl}/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
@@ -427,12 +427,12 @@ ${sortedDeals.slice(0, 10).map(deal =>
 View all deals: ${appUrl}/deals
 
 ---
-nAItive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe
+naitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe
         `;
 
         // Send email
         const emailResponse = await resend.emails.send({
-          from: "nAItive <noreply@updates.naitive.co>",
+          from: "naitive <noreply@updates.naitive.co>",
           reply_to: "support@naitive.co",
           to: [userEmail],
           subject: `🔥 Weekly FLEx Summary: ${totalViews} views from ${totalUniqueLenders} lenders`,
