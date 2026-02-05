@@ -2519,51 +2519,55 @@ export default function DealDetail() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   {/* Left Column - Deal Management */}
                                   <div className="space-y-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Deal Manager</span>
-                                      <User className="h-4 w-4 text-muted-foreground" />
-                                      <Select
-                                        value={deal.manager}
-                                        onValueChange={(value) => updateDeal('manager', value)}
-                                      >
-                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
-                                          <SelectValue placeholder="Select manager" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {memberOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                              {option.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Deal Manager</span>
+                                      <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <Select
+                                          value={deal.manager}
+                                          onValueChange={(value) => updateDeal('manager', value)}
+                                        >
+                                          <SelectTrigger className="w-full h-8 text-sm">
+                                            <SelectValue placeholder="Select manager" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {memberOptions.map((option) => (
+                                              <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Deal Owner</span>
-                                      <User className="h-4 w-4 text-muted-foreground" />
-                                      <Select
-                                        value={deal.dealOwner || ''}
-                                        onValueChange={(value) => updateDeal('dealOwner', value)}
-                                      >
-                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
-                                          <SelectValue placeholder="Select owner" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {memberOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                              {option.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Deal Owner</span>
+                                      <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <Select
+                                          value={deal.dealOwner || ''}
+                                          onValueChange={(value) => updateDeal('dealOwner', value)}
+                                        >
+                                          <SelectTrigger className="w-full h-8 text-sm">
+                                            <SelectValue placeholder="Select owner" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {memberOptions.map((option) => (
+                                              <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Deal Type</span>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Deal Type</span>
                                       <Popover>
                                         <PopoverTrigger asChild>
-                                          <button className="flex items-center gap-1 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm min-h-[24px]">
+                                          <Button variant="outline" className="w-full justify-between h-8 text-sm font-normal">
                                             {deal.dealTypes && deal.dealTypes.length > 0 ? (
-                                              <span className="flex flex-wrap gap-1">
+                                              <span className="flex flex-wrap gap-1 overflow-hidden">
                                                 {deal.dealTypes.map(typeId => {
                                                   const typeConfig = availableDealTypes.find(t => t.id === typeId);
                                                   return typeConfig ? (
@@ -2576,8 +2580,8 @@ export default function DealDetail() {
                                             ) : (
                                               <span className="text-muted-foreground">Select types</span>
                                             )}
-                                            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                                          </button>
+                                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                                          </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-56 p-2" align="start">
                                           <div className="space-y-1">
@@ -2604,13 +2608,13 @@ export default function DealDetail() {
                                         </PopoverContent>
                                       </Popover>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Engagement</span>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Engagement</span>
                                       <Select
                                         value={deal.engagementType}
                                         onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
                                       >
-                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                        <SelectTrigger className="w-full h-8 text-sm">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -2622,13 +2626,13 @@ export default function DealDetail() {
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Exclusivity</span>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Exclusivity</span>
                                       <Select
                                         value={deal.exclusivity || ''}
                                         onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
                                       >
-                                        <SelectTrigger className="w-auto h-auto p-0 border-0 font-medium bg-transparent hover:bg-muted/50 rounded px-1 text-sm">
+                                        <SelectTrigger className="w-full h-8 text-sm">
                                           <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -2640,30 +2644,30 @@ export default function DealDetail() {
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    </div>
+                                  </div>
                                   
                                   {/* Right Column - Company Info */}
                                   <div className="space-y-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Company URL</span>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Company URL</span>
                                       <DebouncedInput
                                         value={deal.companyUrl || ''}
                                         onChange={(value) => updateDeal('companyUrl', String(value))}
                                         placeholder="https://example.com"
-                                        className="flex-1 h-8 text-sm"
+                                        className="w-full h-8 text-sm"
                                       />
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Business Model</span>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Business Model</span>
                                       <DebouncedInput
                                         value={deal.businessModel || ''}
                                         onChange={(value) => updateDeal('businessModel', String(value))}
                                         placeholder="Enter business model..."
-                                        className="flex-1 h-8 text-sm"
+                                        className="w-full h-8 text-sm"
                                       />
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Client Contact</span>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Client Contact</span>
                                       <TooltipProvider>
                                         <Tooltip>
                                           <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
@@ -2671,7 +2675,7 @@ export default function DealDetail() {
                                               <PopoverTrigger asChild>
                                                 <Button
                                                   variant="outline"
-                                                  className="flex-1 justify-start h-8 px-3 font-normal text-sm"
+                                                  className="w-full justify-start h-8 px-3 font-normal text-sm"
                                                 >
                                                   <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
                                                   <span className="truncate">
@@ -2712,15 +2716,13 @@ export default function DealDetail() {
                                         </Tooltip>
                                       </TooltipProvider>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-muted-foreground text-sm w-28">Referral Source</span>
-                                      <div className="flex-1">
-                                        <ReferralSourceInput
-                                          value={deal.referredBy || null}
-                                          onChange={(referrer) => updateDeal('referredBy', referrer)}
-                                          className="[&_input]:h-8 [&_input]:text-sm"
-                                        />
-                                      </div>
+                                    <div className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Referral Source</span>
+                                      <ReferralSourceInput
+                                        value={deal.referredBy || null}
+                                        onChange={(referrer) => updateDeal('referredBy', referrer)}
+                                        className="[&_input]:h-8 [&_input]:text-sm"
+                                      />
                                     </div>
                                   </div>
                                 </div>
@@ -2735,8 +2737,8 @@ export default function DealDetail() {
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Hours */}
                                     <div className="space-y-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-sm w-32">Pre-Signing Hours</span>
+                                      <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                        <span className="text-muted-foreground text-sm">Pre-Signing Hours</span>
                                         <DebouncedInput
                                           type="number"
                                           step="0.25"
@@ -2747,8 +2749,8 @@ export default function DealDetail() {
                                           min={0}
                                         />
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-sm w-32">Post-Signing Hours</span>
+                                      <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                        <span className="text-muted-foreground text-sm">Post-Signing Hours</span>
                                         <DebouncedInput
                                           type="number"
                                           step="0.25"
@@ -2759,15 +2761,15 @@ export default function DealDetail() {
                                           min={0}
                                         />
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-sm w-32">Total Hours</span>
-                                        <span className="text-sm font-medium w-24">
+                                      <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                        <span className="text-muted-foreground text-sm">Total Hours</span>
+                                        <span className="text-sm font-medium">
                                           {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toLocaleString()}
                                         </span>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-sm w-32">Revenue / Hour</span>
-                                        <span className="text-sm font-medium w-24">
+                                      <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                        <span className="text-muted-foreground text-sm">Revenue / Hour</span>
+                                        <span className="text-sm font-medium">
                                           {(() => {
                                             const totalHours = (deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0);
                                             if (totalHours === 0) return '-';
@@ -2779,8 +2781,8 @@ export default function DealDetail() {
                                     </div>
                                     {/* Fees */}
                                     <div className="space-y-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-sm w-32">Retainer Fee</span>
+                                      <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                        <span className="text-muted-foreground text-sm">Retainer Fee</span>
                                         <div className="relative w-28">
                                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                                           <Input
@@ -2797,8 +2799,8 @@ export default function DealDetail() {
                                           />
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-sm w-32">Milestone Fee</span>
+                                      <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                        <span className="text-muted-foreground text-sm">Milestone Fee</span>
                                         <div className="relative w-28">
                                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                                           <Input
@@ -2815,8 +2817,8 @@ export default function DealDetail() {
                                           />
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-sm w-32">Success Fee %</span>
+                                      <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                        <span className="text-muted-foreground text-sm">Success Fee %</span>
                                         <div className="relative w-28">
                                           <Input
                                             type="number"
@@ -2831,8 +2833,8 @@ export default function DealDetail() {
                                           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-muted-foreground text-sm w-32">Total Fee</span>
+                                      <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+                                        <span className="text-muted-foreground text-sm">Total Fee</span>
                                         <div className="relative w-28">
                                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                                           <Input
