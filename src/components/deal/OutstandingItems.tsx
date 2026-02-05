@@ -606,7 +606,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                           <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
+                              {format(new Date(item.createdAt), 'M/d/yy')}
                             </span>
                             <span className="flex items-center gap-1">
                               <User className="h-3 w-3" />
@@ -773,7 +773,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <Calendar className="h-3 w-3" />
-                                    Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
+                                    {format(new Date(item.createdAt), 'M/d/yy')}
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <User className="h-3 w-3" />
