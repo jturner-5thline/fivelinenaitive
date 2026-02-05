@@ -893,11 +893,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     setNewItemText('');
                   }
                 }}
-                onBlur={() => {
-                  if (newItemText.trim()) {
-                    handleAdd();
-                  }
-                }}
                 className="flex-1"
               />
               <Popover>
