@@ -42,15 +42,14 @@ export function LatestUpdatesDropdown() {
       <DropdownMenuTrigger asChild>
         <Button 
           variant="outline" 
-          size="sm" 
-          className="gap-2 relative"
+          size="icon"
+          className="relative h-9 w-9"
         >
           <Clock className="h-4 w-4" />
-          Latest Updates
           {updateCount > 0 && (
             <Badge 
               variant="destructive"
-              className="ml-1 h-5 min-w-5 px-1.5 text-xs"
+              className="absolute -top-1.5 -right-1.5 h-5 min-w-5 px-1.5 text-xs"
             >
               {updateCount > 99 ? '99+' : updateCount}
             </Badge>
