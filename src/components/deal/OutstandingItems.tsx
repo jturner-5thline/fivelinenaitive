@@ -327,10 +327,16 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
         return filterByLender.some(lender => requesters.includes(lender));
       });
 
-  // Split into active and completed (received + approved)
+  // Sort items: active first, then completed at the bottom
   const isCompleted = (item: OutstandingItem) => item.received && item.approved;
-  const activeItems = filteredItems.filter(item => !isCompleted(item));
-  const completedItems = filteredItems.filter(item => isCompleted(item));
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    const aCompleted = isCompleted(a);
+    const bCompleted = isCompleted(b);
+    if (aCompleted === bCompleted) return 0;
+    return aCompleted ? 1 : -1; // Completed items go to the bottom
+  });
+  const activeItems = sortedItems.filter(item => !isCompleted(item));
+  const completedItems = sortedItems.filter(item => isCompleted(item));
 
   const handleAdd = () => {
     if (newItemText.trim()) {
