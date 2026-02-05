@@ -600,6 +600,17 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                         <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
                           <X className="h-4 w-4" />
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            onDelete(item.id);
+                            handleCancelEdit();
+                          }}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     ) : (
                       <>
@@ -682,10 +693,11 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => onDelete(item.id)}
+                          className="h-7 w-7 text-muted-foreground hover:text-emerald-600"
+                          onClick={() => onUpdate(item.id, { received: true, approved: true })}
+                          title="Mark as complete"
                         >
-                          <X className="h-4 w-4" />
+                          <Check className="h-4 w-4" />
                         </Button>
                       </>
                     )}
@@ -776,6 +788,17 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                               <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
                                 <X className="h-4 w-4" />
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => {
+                                  onDelete(item.id);
+                                  handleCancelEdit();
+                                }}
+                              >
+                                Delete
+                              </Button>
                             </div>
                           ) : (
                             <>
@@ -837,14 +860,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                                 onClick={() => handleStartEdit(item)}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                onClick={() => onDelete(item.id)}
-                              >
-                                <X className="h-4 w-4" />
                               </Button>
                             </>
                           )}
