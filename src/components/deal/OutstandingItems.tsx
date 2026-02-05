@@ -561,9 +561,9 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                   <div
                     key={item.id}
                     className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border bg-card",
+                      "flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors",
                       isFullyDelivered(item) && "opacity-60",
-                      "border-border",
+                      "border-border hover:border-primary/50",
                       isSelected && "border-primary/50 bg-primary/5"
                     )}
                   >
@@ -648,7 +648,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     ) : (
                       <>
                         <div 
-                          className="flex-1 min-w-0 cursor-pointer hover:bg-accent/50 -my-1 py-1 -mx-2 px-2 rounded transition-colors"
+                          className="flex-1 min-w-0 cursor-pointer"
                           onClick={() => handleItemClick(item)}
                         >
                           <span
@@ -762,7 +762,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       return (
                         <div
                           key={item.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card opacity-60"
+                          className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card opacity-60 transition-colors hover:border-primary/50"
                         >
                           {editingId === item.id ? (
                             <div className="flex-1 flex items-center gap-2">
@@ -836,7 +836,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                           ) : (
                             <>
                               <div 
-                                className="flex-1 min-w-0 cursor-pointer hover:bg-accent/50 -my-1 py-1 -mx-2 px-2 rounded transition-colors"
+                                className="flex-1 min-w-0 cursor-pointer"
                                 onClick={() => handleItemClick(item)}
                               >
                                 <span className="text-sm block line-through text-muted-foreground">
