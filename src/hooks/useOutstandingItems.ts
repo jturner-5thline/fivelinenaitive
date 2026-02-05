@@ -14,6 +14,8 @@ export interface OutstandingItem {
   completedAt?: string;
   requestedBy: string[];
   lenderId?: string;
+  notes?: string;
+  eta?: string;
 }
 
 interface DbOutstandingItem {
@@ -24,6 +26,7 @@ interface DbOutstandingItem {
   status: string;
   due_date: string | null;
   notes: string | null;
+  eta: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -96,6 +99,8 @@ export function useOutstandingItems(dealId: string | undefined) {
           createdAt: dbItem.created_at,
           completedAt: isCompleted ? dbItem.updated_at : undefined,
           lenderId: dbItem.lender_id || undefined,
+          notes: dbItem.notes || undefined,
+          eta: dbItem.eta || undefined,
         };
       });
 
@@ -184,6 +189,12 @@ export function useOutstandingItems(dealId: string | undefined) {
       
       if (updates.text !== undefined) {
         dbUpdates.description = updates.text;
+      }
+      if (updates.notes !== undefined) {
+        dbUpdates.notes = updates.notes;
+      }
+      if (updates.eta !== undefined) {
+        dbUpdates.eta = updates.eta;
       }
       
       // Always rebuild status with all state

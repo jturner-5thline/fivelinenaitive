@@ -3552,12 +3552,48 @@ export type Database = {
         }
         Relationships: []
       }
+      outstanding_item_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          item_id: string
+          user_display_name: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          item_id: string
+          user_display_name?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          user_display_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outstanding_item_comments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "outstanding_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outstanding_items: {
         Row: {
           created_at: string
           deal_id: string
           description: string
           due_date: string | null
+          eta: string | null
           id: string
           lender_id: string | null
           notes: string | null
@@ -3570,6 +3606,7 @@ export type Database = {
           deal_id: string
           description: string
           due_date?: string | null
+          eta?: string | null
           id?: string
           lender_id?: string | null
           notes?: string | null
@@ -3582,6 +3619,7 @@ export type Database = {
           deal_id?: string
           description?: string
           due_date?: string | null
+          eta?: string | null
           id?: string
           lender_id?: string | null
           notes?: string | null
