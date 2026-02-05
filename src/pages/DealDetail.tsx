@@ -2762,8 +2762,6 @@ export default function DealDetail() {
                                           {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toLocaleString()}
                                         </span>
                                       </div>
-                                      {/* Spacer to align Revenue/Hour with Total Fee */}
-                                      <div className="h-8" />
                                       <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
                                         <span className="text-muted-foreground text-sm">Revenue / Hour</span>
                                         <span className="text-sm font-medium h-8 flex items-center">
