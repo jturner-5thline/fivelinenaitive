@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles, Workflow, Bot, DollarSign } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles, Workflow, Bot, DollarSign, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import naitiveIconLight from "@/assets/naitive-icon-light.png";
 import naitiveIconDark from "@/assets/naitive-icon-dark.png";
@@ -94,9 +94,9 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <button 
             onClick={toggleSidebar} 
-            className="h-9 w-9 rounded-md overflow-hidden flex-shrink-0"
+            className="h-9 w-9 rounded-md flex-shrink-0 flex items-center justify-center hover:bg-sidebar-accent transition-colors"
           >
-            <img src={iconSrc} alt="naitive" className="h-full w-full object-cover" />
+            <Menu className="h-5 w-5 text-sidebar-foreground" />
           </button>
           {showExpanded && <span className="font-semibold text-sidebar-foreground">5thLine</span>}
         </div>
