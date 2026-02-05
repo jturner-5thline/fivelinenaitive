@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { OutstandingItem } from '@/hooks/useOutstandingItems';
+import { OutstandingItemDialog } from './OutstandingItemDialog';
 
 export type { OutstandingItem };
 
@@ -249,6 +250,14 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
   const [filterByLender, setFilterByLender] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+
+  const handleItemClick = (item: OutstandingItem) => {
+    if (editingId) return; // Don't open dialog while editing
+    setSelectedItem(item);
+    setIsItemDialogOpen(true);
+  };
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => {
@@ -594,7 +603,10 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       </div>
                     ) : (
                       <>
-                        <div className="flex-1 min-w-0">
+                        <div 
+                          className="flex-1 min-w-0 cursor-pointer hover:bg-accent/50 -my-1 py-1 -mx-2 px-2 rounded transition-colors"
+                          onClick={() => handleItemClick(item)}
+                        >
                           <span
                             className={cn(
                               "text-sm block",
@@ -767,7 +779,10 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                             </div>
                           ) : (
                             <>
-                              <div className="flex-1 min-w-0">
+                              <div 
+                                className="flex-1 min-w-0 cursor-pointer hover:bg-accent/50 -my-1 py-1 -mx-2 px-2 rounded transition-colors"
+                                onClick={() => handleItemClick(item)}
+                              >
                                 <span className="text-sm block line-through text-muted-foreground">
                                   {item.text}
                                 </span>
@@ -922,6 +937,14 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
           />
         </DialogContent>
       </Dialog>
+
+      {/* Outstanding Item Detail Dialog */}
+      <OutstandingItemDialog
+        item={selectedItem}
+        open={isItemDialogOpen}
+        onOpenChange={setIsItemDialogOpen}
+        onUpdate={onUpdate}
+      />
     </>
   );
 }
