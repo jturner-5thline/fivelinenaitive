@@ -536,16 +536,22 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                   <div
                     key={item.id}
                     className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors",
+                      "flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors cursor-pointer",
                       isFullyDelivered(item) && "opacity-60",
                       "border-border hover:border-primary/50",
                       isSelected && "border-primary/50 bg-primary/5"
                     )}
+                    onClick={() => {
+                      if (editingId !== item.id) {
+                        handleItemClick(item);
+                      }
+                    }}
                   >
                     {/* Selection Checkbox */}
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => toggleSelection(item.id)}
+                      onClick={(e) => e.stopPropagation()}
                       className={cn(
                         "shrink-0",
                         isSelected && "border-primary bg-primary text-primary-foreground"
@@ -622,10 +628,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       </div>
                     ) : (
                       <>
-                        <div 
-                          className="flex-1 min-w-0 cursor-pointer"
-                          onClick={() => handleItemClick(item)}
-                        >
+                        <div className="flex-1 min-w-0">
                           <span
                             className={cn(
                               "text-sm block",
@@ -652,7 +655,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
                           <div className={cn(
                             "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
                             item.received && "bg-emerald-500/10"
@@ -694,7 +697,10 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleStartEdit(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartEdit(item);
+                          }}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -702,7 +708,10 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-muted-foreground hover:text-emerald-600"
-                          onClick={() => onUpdate(item.id, { received: true, approved: true })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdate(item.id, { received: true, approved: true });
+                          }}
                           title="Mark as complete"
                         >
                           <Check className="h-4 w-4" />
@@ -737,10 +746,15 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       return (
                         <div
                           key={item.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card opacity-60 transition-colors hover:border-primary/50"
+                          className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card opacity-60 transition-colors hover:border-primary/50 cursor-pointer"
+                          onClick={() => {
+                            if (editingId !== item.id) {
+                              handleItemClick(item);
+                            }
+                          }}
                         >
                           {editingId === item.id ? (
-                            <div className="flex-1 flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               <Input
                                 value={editingText}
                                 onChange={(e) => setEditingText(e.target.value)}
@@ -810,10 +824,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                             </div>
                           ) : (
                             <>
-                              <div 
-                                className="flex-1 min-w-0 cursor-pointer"
-                                onClick={() => handleItemClick(item)}
-                              >
+                              <div className="flex-1 min-w-0">
                                 <span className="text-sm block line-through text-muted-foreground">
                                   {item.text}
                                 </span>
@@ -839,7 +850,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                                   </span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10">
                                   <Checkbox
                                     checked={item.received}
@@ -865,7 +876,10 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                onClick={() => handleStartEdit(item)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartEdit(item);
+                                }}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
