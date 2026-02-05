@@ -992,6 +992,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
         open={isItemDialogOpen}
         onOpenChange={setIsItemDialogOpen}
         onUpdate={onUpdate}
+        lenderNames={lenderNames}
+        companyName={companyName}
       />
     </>
   );
