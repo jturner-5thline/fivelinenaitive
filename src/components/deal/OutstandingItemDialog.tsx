@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import { OutstandingItem } from '@/hooks/useOutstandingItems';
 import { useOutstandingItemComments } from '@/hooks/useOutstandingItemComments';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+import { parseDateFromText, formatDateForInput } from '@/lib/parseDateFromText';
 
 interface OutstandingItemDialogProps {
   item: OutstandingItem | null;
@@ -77,7 +79,26 @@ export function OutstandingItemDialog({
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !item) return;
+    
+    // Check for date references in the comment
+    const parsedDate = parseDateFromText(newComment);
+    if (parsedDate) {
+      const formattedDate = formatDateForInput(parsedDate);
+      const displayDate = format(parsedDate, 'MMM d, yyyy');
+      
+      // Update the ETA
+      setEtaValue(formattedDate);
+      onUpdate(item.id, { eta: formattedDate });
+      
+      // Show toast notification
+      toast({
+        title: 'ETA Updated',
+        description: `ETA automatically set to ${displayDate} based on your comment.`,
+        className: 'bg-primary text-primary-foreground',
+      });
+    }
+    
     await addComment(newComment);
     setNewComment('');
   };
