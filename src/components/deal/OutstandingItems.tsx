@@ -38,13 +38,12 @@ export const isFullyDelivered = (item: OutstandingItem): boolean => {
   return requesters.every(requester => item.deliveredToLenders.includes(requester));
 };
 
-type KanbanStage = 'requested' | 'received' | 'approved' | 'deliveredToLenders';
+type KanbanStage = 'requested' | 'received' | 'approved';
 
 const KANBAN_STAGES: { key: KanbanStage; label: string; color: string }[] = [
   { key: 'requested', label: 'Requested', color: 'bg-amber-500' },
   { key: 'received', label: 'Received', color: 'bg-blue-500' },
   { key: 'approved', label: 'Submitted', color: 'bg-emerald-500' },
-  { key: 'deliveredToLenders', label: 'Delivered to Lenders', color: 'bg-purple-500' },
 ];
 
 interface OutstandingItemsProps {
@@ -57,23 +56,19 @@ interface OutstandingItemsProps {
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
-  if (isFullyDelivered(item)) return 'deliveredToLenders';
   if (item.approved) return 'approved';
   if (item.received) return 'received';
   return 'requested';
 };
 
 const moveToStage = (stage: KanbanStage, item: OutstandingItem): Partial<OutstandingItem> => {
-  const allRequesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
   switch (stage) {
     case 'requested':
-      return { received: false, approved: false, deliveredToLenders: [] };
+      return { received: false, approved: false };
     case 'received':
-      return { received: true, approved: false, deliveredToLenders: [] };
+      return { received: true, approved: false };
     case 'approved':
-      return { received: true, approved: true, deliveredToLenders: [] };
-    case 'deliveredToLenders':
-      return { received: true, approved: true, deliveredToLenders: allRequesters };
+      return { received: true, approved: true };
     default:
       return {};
   }
