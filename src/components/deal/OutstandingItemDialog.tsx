@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Calendar, User, Send, Trash2, Clock, Pencil, Check, X, ChevronDown } from 'lucide-react';
+import { Calendar, User, Send, Trash2, Clock, Pencil, Check, X, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,18 +26,22 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface OutstandingItemDialogProps {
   item: OutstandingItem | null;
+  items: OutstandingItem[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: (id: string, updates: Partial<OutstandingItem>) => void;
+  onSelectItem: (item: OutstandingItem) => void;
   lenderNames?: string[];
   companyName?: string;
 }
 
 export function OutstandingItemDialog({
   item,
+  items,
   open,
   onOpenChange,
   onUpdate,
+  onSelectItem,
   lenderNames = [],
   companyName,
 }: OutstandingItemDialogProps) {
@@ -115,12 +119,51 @@ export function OutstandingItemDialog({
 
   if (!item) return null;
 
+  const currentIndex = items.findIndex(i => i.id === item.id);
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex < items.length - 1;
+
+  const goToPrev = () => {
+    if (hasPrev) {
+      onSelectItem(items[currentIndex - 1]);
+    }
+  };
+
+  const goToNext = () => {
+    if (hasNext) {
+      onSelectItem(items[currentIndex + 1]);
+    }
+  };
+
   const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
   const hasNoRequester = !item.requestedBy || requesters.length === 0 || (requesters.length === 1 && !requesters[0]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogContent className="max-w-xl max-h-[85vh] flex flex-col">
+        {/* Navigation arrows */}
+        {items.length > 1 && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-accent disabled:opacity-30"
+              onClick={goToPrev}
+              disabled={!hasPrev}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-accent disabled:opacity-30"
+              onClick={goToNext}
+              disabled={!hasNext}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </>
+        )}
         <DialogHeader>
           {editingText ? (
             <div className="flex items-center gap-2 pr-8">

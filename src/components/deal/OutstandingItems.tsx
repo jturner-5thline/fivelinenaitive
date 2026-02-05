@@ -989,9 +989,11 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
       {/* Outstanding Item Detail Dialog */}
       <OutstandingItemDialog
         item={selectedItem}
+        items={sortedItems}
         open={isItemDialogOpen}
         onOpenChange={setIsItemDialogOpen}
         onUpdate={onUpdate}
+        onSelectItem={(item) => setSelectedItem(item)}
         lenderNames={lenderNames}
         companyName={companyName}
       />
