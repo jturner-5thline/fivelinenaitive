@@ -42,7 +42,7 @@ type KanbanStage = 'requested' | 'received' | 'approved' | 'deliveredToLenders';
 const KANBAN_STAGES: { key: KanbanStage; label: string; color: string }[] = [
   { key: 'requested', label: 'Requested', color: 'bg-amber-500' },
   { key: 'received', label: 'Received', color: 'bg-blue-500' },
-  { key: 'approved', label: 'Approved', color: 'bg-emerald-500' },
+  { key: 'approved', label: 'Submitted', color: 'bg-emerald-500' },
   { key: 'deliveredToLenders', label: 'Delivered to Lenders', color: 'bg-purple-500' },
 ];
 
@@ -478,7 +478,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       Mark Received
                     </Button>
                     <Button size="sm" variant="outline" onClick={handleBulkMarkApproved}>
-                      Mark Approved
+                      Mark Submitted
                     </Button>
                     <Button size="sm" variant="gradient" onClick={handleBulkMarkBoth}>
                       Mark Both
@@ -651,7 +651,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                             <span className={cn(
                               "text-xs",
                               item.approved ? "text-emerald-600 font-medium" : "text-muted-foreground"
-                            )}>Approved</span>
+                            )}>Submitted</span>
                           </div>
                         </div>
                         <Button
@@ -802,7 +802,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                                     }
                                     className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                                   />
-                                  <span className="text-xs text-emerald-600 font-medium">Approved</span>
+                                  <span className="text-xs text-emerald-600 font-medium">Submitted</span>
                                 </div>
                               </div>
                               <Button
