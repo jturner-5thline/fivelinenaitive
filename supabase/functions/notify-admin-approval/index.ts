@@ -95,7 +95,7 @@ serve(async (req) => {
             <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
               <h1 style="color: #1a1a1a; margin-bottom: 24px;">New User Awaiting Approval</h1>
               <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-                A new user has signed up and requires your approval to access nAItive:
+                A new user has signed up and requires your approval to access naitive:
               </p>
               <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 24px 0;">
                 <p style="margin: 0 0 8px 0;"><strong>Name:</strong> ${displayName}</p>
@@ -120,7 +120,7 @@ serve(async (req) => {
             Authorization: `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: "nAItive <notifications@5thline.co>",
+            from: "naitive <notifications@5thline.co>",
             to: adminEmails,
             subject: `New User Approval Required: ${displayName}`,
             html: emailHtml,

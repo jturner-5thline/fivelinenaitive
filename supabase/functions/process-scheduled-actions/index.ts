@@ -473,10 +473,10 @@ async function sendWorkflowSummaryEmail(
         'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: 'nAItive <notifications@resend.dev>',
-        to: adminEmails,
-        subject: `${statusEmoji} Workflow Actions Processed ${status}`,
+        body: JSON.stringify({
+          from: 'naitive <notifications@resend.dev>',
+          to: adminEmails,
+          subject: `${statusEmoji} Workflow Actions Processed ${status}`,
         html: `
           <!DOCTYPE html>
           <html>

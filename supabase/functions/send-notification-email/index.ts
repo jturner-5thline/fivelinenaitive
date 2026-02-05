@@ -180,15 +180,15 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "nAItive <noreply@updates.naitive.co>",
+      from: "naitive <noreply@updates.naitive.co>",
       reply_to: "support@naitive.co",
       to: [userData.user.email],
-      subject: `nAItive: ${template.subject}`,
+      subject: `naitive: ${template.subject}`,
       headers: {
         "List-Unsubscribe": `<${appUrl}/unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
-      text: `${template.subject}\n\n${message}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnAItive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
+      text: `${template.subject}\n\n${message}\n\n${dealUrl ? `View Deal: ${dealUrl}\n\n` : ''}---\nnaitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubscribe`,
       html: `
         <!DOCTYPE html>
         <html lang="en">
@@ -227,7 +227,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <tr>
                     <td style="padding: 24px 40px; border-top: 1px solid #eeeeee; text-align: center;">
                       <p style="color: #888888; font-size: 12px; margin: 0 0 8px 0;">
-                        © ${new Date().getFullYear()} nAItive. All rights reserved.
+                        © ${new Date().getFullYear()} naitive. All rights reserved.
                       </p>
                       <p style="color: #888888; font-size: 12px; margin: 0;">
                         <a href="${appUrl}/settings" style="color: #8B5CF6; text-decoration: underline;">Manage preferences</a>
