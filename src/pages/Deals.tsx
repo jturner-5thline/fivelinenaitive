@@ -18,6 +18,7 @@ import { DemoTour } from '@/components/deals/DemoTour';
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
 
 import { LatestUpdatesDropdown } from '@/components/deals/LatestUpdatesDropdown';
+import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { FloatingDealsAssistant } from '@/components/deals/FloatingDealsAssistant';
@@ -146,8 +147,8 @@ export default function Dashboard() {
               >
                 <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">5th Line</h1>
                 <div className="flex items-center gap-2">
+                  <NotificationsDropdown />
                   <LatestUpdatesDropdown />
-                  
                   <FlaggedDealsPanel deals={allDeals} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
