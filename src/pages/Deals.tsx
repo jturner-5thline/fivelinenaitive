@@ -20,7 +20,7 @@ import { SmartSuggestionsDropdown } from '@/components/deals/SmartSuggestionsDro
 import { LatestUpdatesDropdown } from '@/components/deals/LatestUpdatesDropdown';
 import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
-import { LatestUpdatesWidget } from '@/components/deals/LatestUpdatesWidget';
+import { FloatingDealsAssistant } from '@/components/deals/FloatingDealsAssistant';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -419,8 +419,8 @@ export default function Dashboard() {
           }}
         />
 
-        {/* Latest Updates Widget */}
-        <LatestUpdatesWidget />
+        {/* Floating AI Assistant */}
+        <FloatingDealsAssistant />
       </div>
     </>
   );
