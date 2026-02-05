@@ -2561,11 +2561,11 @@ export default function DealDetail() {
                                         <PopoverTrigger asChild>
                                           <Button variant="outline" className="w-full justify-between h-8 text-sm font-normal overflow-hidden">
                                             {deal.dealTypes && deal.dealTypes.length > 0 ? (
-                                              <span className="flex flex-wrap gap-1 overflow-hidden truncate">
+                                              <span className="flex gap-1 overflow-hidden min-w-0">
                                                 {deal.dealTypes.map(typeId => {
                                                   const typeConfig = availableDealTypes.find(t => t.id === typeId);
                                                   return typeConfig ? (
-                                                    <Badge key={typeId} variant="secondary" className="text-xs">
+                                                    <Badge key={typeId} variant="secondary" className="text-xs shrink-0">
                                                       {typeConfig.label}
                                                     </Badge>
                                                   ) : null;
