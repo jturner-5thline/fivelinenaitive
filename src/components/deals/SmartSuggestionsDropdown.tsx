@@ -159,15 +159,14 @@ export function SmartSuggestionsDropdown({ deals }: SmartSuggestionsDropdownProp
         <DropdownMenuTrigger asChild>
           <Button 
             variant="outline" 
-            size="sm" 
-            className="gap-2 relative"
+            size="icon" 
+            className="h-8 w-8 relative"
           >
             <Lightbulb className="h-4 w-4" />
-            Suggestions
             {hasNotifications && (
               <Badge 
                 variant={highPriorityCount > 0 ? "destructive" : "secondary"}
-                className="ml-1 h-5 min-w-5 px-1.5 text-xs"
+                className="h-5 min-w-5 px-1.5 text-xs absolute -top-2 -right-2"
               >
                 {counts.total}
               </Badge>
