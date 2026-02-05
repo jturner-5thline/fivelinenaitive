@@ -30,6 +30,10 @@ export type { OutstandingItem };
 // Helper to check if item is delivered to all requesters
 export const isFullyDelivered = (item: OutstandingItem): boolean => {
   const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
+  // If no requesters assigned, item is NOT considered fully delivered
+  if (!item.requestedBy || requesters.length === 0 || (requesters.length === 1 && !requesters[0])) {
+    return false;
+  }
   return requesters.every(requester => item.deliveredToLenders.includes(requester));
 };
 
@@ -517,7 +521,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border bg-card",
                       isFullyDelivered(item) && "opacity-60",
-                      hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border",
+                      "border-border",
                       isSelected && "border-primary/50 bg-primary/5"
                     )}
                   >
@@ -604,10 +608,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                               <Calendar className="h-3 w-3" />
                               Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
                             </span>
-                            <span className={cn(
-                              "flex items-center gap-1",
-                              (!item.requestedBy || item.requestedBy.length === 0) && "text-destructive"
-                            )}>
+                            <span className="flex items-center gap-1">
                               <User className="h-3 w-3" />
                               {!item.requestedBy || item.requestedBy.length === 0
                                 ? 'No requester assigned'
@@ -699,10 +700,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       return (
                         <div
                           key={item.id}
-                          className={cn(
-                            "flex items-center gap-3 p-3 rounded-lg border bg-card opacity-60",
-                            hasNoRequester ? "border-destructive/50 bg-destructive/5" : "border-border"
-                          )}
+                          className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card opacity-60"
                         >
                           {editingId === item.id ? (
                             <div className="flex-1 flex items-center gap-2">
@@ -777,10 +775,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                                     <Calendar className="h-3 w-3" />
                                     Requested {format(new Date(item.createdAt), 'MMM d, yyyy')}
                                   </span>
-                                  <span className={cn(
-                                    "flex items-center gap-1",
-                                    (!item.requestedBy || item.requestedBy.length === 0) && "text-destructive"
-                                  )}>
+                                  <span className="flex items-center gap-1">
                                     <User className="h-3 w-3" />
                                     {!item.requestedBy || item.requestedBy.length === 0
                                       ? 'No requester assigned'
