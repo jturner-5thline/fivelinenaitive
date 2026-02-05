@@ -415,31 +415,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             )}
           </div>
           <div className="flex items-center gap-2">
-              {/* All/Outstanding Toggle */}
-              <div className="flex items-center rounded-md border border-border text-xs">
-                <button
-                  onClick={() => setShowAllItems(true)}
-                  className={cn(
-                    "px-2.5 py-1.5 rounded-l-md transition-colors",
-                    showAllItems 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent"
-                  )}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setShowAllItems(false)}
-                  className={cn(
-                    "px-2.5 py-1.5 rounded-r-md transition-colors",
-                    !showAllItems 
-                      ? "bg-primary text-primary-foreground" 
-                      : "hover:bg-accent"
-                  )}
-                >
-                  Outstanding
-                </button>
-              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
