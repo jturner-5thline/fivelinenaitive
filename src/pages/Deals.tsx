@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, PanelLeft } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { DealsList } from '@/components/deals/DealsList';
@@ -145,7 +145,10 @@ export default function Dashboard() {
                 className="flex items-center justify-between opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
               >
-                <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">5th Line</h1>
+                <div className="flex items-center gap-3">
+                  <PanelLeft className="h-6 w-6 text-muted-foreground" />
+                  <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">5th Line</h1>
+                </div>
                 <div className="flex items-center gap-2">
                   <NotificationsDropdown />
                   <LatestUpdatesDropdown />
