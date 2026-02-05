@@ -14,14 +14,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
-import { useSidebar } from '@/components/ui/sidebar';
-
 type FeedbackType = 'bug' | 'feature';
 
 export function FeedbackWidget() {
   const { user } = useAuth();
-  const { state: sidebarState, isHovering } = useSidebar();
-  const isEffectivelyExpanded = sidebarState === 'expanded' || isHovering;
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -164,7 +160,7 @@ export function FeedbackWidget() {
   };
 
   return (
-    <div className={`fixed bottom-6 z-50 transition-all duration-300 ${isEffectivelyExpanded ? 'left-[19rem]' : 'left-[5.5rem]'}`}>
+    <div className="fixed bottom-6 left-6 z-50">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
