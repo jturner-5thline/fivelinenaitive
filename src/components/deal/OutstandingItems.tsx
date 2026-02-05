@@ -252,6 +252,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  const [showAllItems, setShowAllItems] = useState(true);
 
   const handleItemClick = (item: OutstandingItem) => {
     if (editingId) return; // Don't open dialog while editing
@@ -329,7 +330,13 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
 
   // Sort items: active first, then completed at the bottom
   const isCompleted = (item: OutstandingItem) => item.received && item.approved;
-  const sortedItems = [...filteredItems].sort((a, b) => {
+  
+  // Apply showAllItems filter
+  const displayItems = showAllItems 
+    ? filteredItems 
+    : filteredItems.filter(item => !isCompleted(item));
+  
+  const sortedItems = [...displayItems].sort((a, b) => {
     const aCompleted = isCompleted(a);
     const bCompleted = isCompleted(b);
     if (aCompleted === bCompleted) return 0;
@@ -413,6 +420,31 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             )}
           </div>
           <div className="flex items-center gap-2">
+              {/* All/Outstanding Toggle */}
+              <div className="flex items-center rounded-md border border-border text-xs">
+                <button
+                  onClick={() => setShowAllItems(true)}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-l-md transition-colors",
+                    showAllItems 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-accent"
+                  )}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setShowAllItems(false)}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-r-md transition-colors",
+                    !showAllItems 
+                      ? "bg-primary text-primary-foreground" 
+                      : "hover:bg-accent"
+                  )}
+                >
+                  Outstanding
+                </button>
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
