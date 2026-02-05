@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Calendar, User, Send, Trash2, Clock } from 'lucide-react';
+import { Calendar, User, Send, Trash2, Clock, Pencil, Check, X, ChevronDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { OutstandingItem } from '@/hooks/useOutstandingItems';
 import { useOutstandingItemComments } from '@/hooks/useOutstandingItemComments';
@@ -24,6 +29,8 @@ interface OutstandingItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: (id: string, updates: Partial<OutstandingItem>) => void;
+  lenderNames?: string[];
+  companyName?: string;
 }
 
 export function OutstandingItemDialog({
@@ -31,19 +38,36 @@ export function OutstandingItemDialog({
   open,
   onOpenChange,
   onUpdate,
+  lenderNames = [],
+  companyName,
 }: OutstandingItemDialogProps) {
   const [newComment, setNewComment] = useState('');
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState('');
   const [etaValue, setEtaValue] = useState('');
+  const [editingText, setEditingText] = useState(false);
+  const [textValue, setTextValue] = useState('');
+  const [editingRequester, setEditingRequester] = useState(false);
+  const [requesterValue, setRequesterValue] = useState<string[]>([]);
   const { comments, isLoading, addComment, deleteComment } = useOutstandingItemComments(item?.id || null);
   const { user } = useAuth();
+
+  // Build requester options
+  const requestedByOptions = [
+    ...(companyName ? [companyName] : []),
+    ...lenderNames,
+  ];
 
   // Sync local state when item changes
   const handleOpen = (isOpen: boolean) => {
     if (isOpen && item) {
       setNotesValue(item.notes || '');
       setEtaValue(item.eta || '');
+      setTextValue(item.text);
+      setRequesterValue(Array.isArray(item.requestedBy) ? [...item.requestedBy] : item.requestedBy ? [item.requestedBy] : []);
+      setEditingText(false);
+      setEditingRequester(false);
+      setEditingNotes(false);
     }
     onOpenChange(isOpen);
   };
@@ -67,6 +91,28 @@ export function OutstandingItemDialog({
     }
   };
 
+  const handleSaveText = () => {
+    if (item && textValue.trim()) {
+      onUpdate(item.id, { text: textValue.trim() });
+      setEditingText(false);
+    }
+  };
+
+  const handleSaveRequester = () => {
+    if (item) {
+      onUpdate(item.id, { requestedBy: requesterValue });
+      setEditingRequester(false);
+    }
+  };
+
+  const toggleRequester = (option: string) => {
+    setRequesterValue(prev => 
+      prev.includes(option) 
+        ? prev.filter(o => o !== option)
+        : [...prev, option]
+    );
+  };
+
   if (!item) return null;
 
   const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
@@ -76,7 +122,44 @@ export function OutstandingItemDialog({
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogContent className="max-w-xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold pr-8">{item.text}</DialogTitle>
+          {editingText ? (
+            <div className="flex items-center gap-2 pr-8">
+              <Input
+                value={textValue}
+                onChange={(e) => setTextValue(e.target.value)}
+                className="flex-1"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveText();
+                  if (e.key === 'Escape') {
+                    setTextValue(item.text);
+                    setEditingText(false);
+                  }
+                }}
+              />
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSaveText}>
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
+                setTextValue(item.text);
+                setEditingText(false);
+              }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group">
+              <DialogTitle className="text-lg font-semibold pr-2">{item.text}</DialogTitle>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => setEditingText(true)}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col gap-4">
@@ -86,15 +169,82 @@ export function OutstandingItemDialog({
               <Calendar className="h-3.5 w-3.5" />
               {format(new Date(item.createdAt), 'M/d/yy')}
             </div>
-            <div className={cn(
-              "flex items-center gap-1.5",
-              hasNoRequester ? "text-destructive" : "text-muted-foreground"
-            )}>
-              <User className="h-3.5 w-3.5" />
-              {hasNoRequester
-                ? 'No requester assigned'
-                : `by ${requesters.join(', ')}`}
-            </div>
+            
+            {/* Editable Requester */}
+            {editingRequester ? (
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        'h-7 justify-between gap-2 font-normal text-xs',
+                        requesterValue.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 bg-destructive/5'
+                      )}
+                    >
+                      <span className="truncate">
+                        {requesterValue.length === 0 
+                          ? 'Select requester' 
+                          : requesterValue.length === 1 
+                            ? requesterValue[0] 
+                            : `${requesterValue.length} selected`}
+                      </span>
+                      <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="start">
+                    <div className="max-h-[300px] overflow-auto p-1">
+                      {requestedByOptions.map((option) => {
+                        const isSelected = requesterValue.includes(option);
+                        return (
+                          <div
+                            key={option}
+                            className={cn(
+                              'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                              isSelected && 'bg-accent/50'
+                            )}
+                            onClick={() => toggleRequester(option)}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleRequester(option)}
+                              className="pointer-events-none"
+                            />
+                            <span className="flex-1">{option}</span>
+                            {isSelected && <Check className="h-4 w-4 text-primary" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveRequester}>
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+                  setRequesterValue(Array.isArray(item.requestedBy) ? [...item.requestedBy] : item.requestedBy ? [item.requestedBy] : []);
+                  setEditingRequester(false);
+                }}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <div 
+                className={cn(
+                  "flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors group",
+                  hasNoRequester ? "text-destructive" : "text-muted-foreground"
+                )}
+                onClick={() => setEditingRequester(true)}
+              >
+                <User className="h-3.5 w-3.5" />
+                {hasNoRequester
+                  ? 'No requester assigned'
+                  : `by ${requesters.join(', ')}`}
+                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            )}
+            
             <div className="flex items-center gap-2 ml-auto">
               <Badge variant={item.received ? 'default' : 'outline'} className={cn(
                 "text-xs",
