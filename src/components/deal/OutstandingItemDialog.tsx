@@ -442,12 +442,12 @@ export function OutstandingItemDialog({
             </ScrollArea>
 
             {/* Add Comment Input */}
-            <div className="flex gap-2 mt-3 pt-3 border-t">
+            <div className="flex gap-2 mt-3 pt-3 border-t border-border">
               <Input
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a comment..."
-                className="flex-1 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+                className="flex-1 border-border focus:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
