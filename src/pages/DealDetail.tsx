@@ -2660,55 +2660,57 @@ export default function DealDetail() {
                                         className="w-full h-8 text-sm"
                                       />
                                     </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
                                       <span className="text-muted-foreground text-sm">Client Contact</span>
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
-                                            <TooltipTrigger asChild>
-                                              <PopoverTrigger asChild>
-                                                <Button
-                                                  variant="outline"
-                                                  className="w-full justify-start h-8 px-3 font-normal text-sm"
-                                                >
-                                                  <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
-                                                  <span className="truncate">
-                                                    {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
-                                                  </span>
-                                                </Button>
-                                              </PopoverTrigger>
-                                            </TooltipTrigger>
-                                            {deal.contact && deal.contactInfo && (
-                                              <TooltipContent side="left" className="max-w-[200px]">
-                                                <p className="font-medium">{deal.contact}</p>
-                                                <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
-                                              </TooltipContent>
-                                            )}
-                                            <PopoverContent className="w-72 p-4 bg-popover" align="start">
-                                              <div className="space-y-4">
-                                                <div className="space-y-2">
-                                                  <label className="text-sm font-medium">Contact Name</label>
-                                                  <DebouncedInput
-                                                    value={deal.contact || ''}
-                                                    onChange={(value) => updateDeal('contact', String(value))}
-                                                    onSave={() => setContactPopoverOpen(false)}
-                                                    placeholder="Enter contact name"
-                                                  />
+                                      <div className="min-w-0">
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
+                                              <TooltipTrigger asChild>
+                                                <PopoverTrigger asChild>
+                                                  <Button
+                                                    variant="outline"
+                                                    className="w-full justify-start h-8 px-3 font-normal text-sm overflow-hidden"
+                                                  >
+                                                    <User className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                                                    <span className="truncate">
+                                                      {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
+                                                    </span>
+                                                  </Button>
+                                                </PopoverTrigger>
+                                              </TooltipTrigger>
+                                              {deal.contact && deal.contactInfo && (
+                                                <TooltipContent side="left" className="max-w-[200px]">
+                                                  <p className="font-medium">{deal.contact}</p>
+                                                  <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
+                                                </TooltipContent>
+                                              )}
+                                              <PopoverContent className="w-72 p-4 bg-popover" align="start">
+                                                <div className="space-y-4">
+                                                  <div className="space-y-2">
+                                                    <label className="text-sm font-medium">Contact Name</label>
+                                                    <DebouncedInput
+                                                      value={deal.contact || ''}
+                                                      onChange={(value) => updateDeal('contact', String(value))}
+                                                      onSave={() => setContactPopoverOpen(false)}
+                                                      placeholder="Enter contact name"
+                                                    />
+                                                  </div>
+                                                  <div className="space-y-2">
+                                                    <label className="text-sm font-medium">Contact Info</label>
+                                                    <DebouncedInput
+                                                      value={deal.contactInfo || ''}
+                                                      onChange={(value) => updateDeal('contactInfo', String(value))}
+                                                      onSave={() => setContactPopoverOpen(false)}
+                                                      placeholder="Email or phone number"
+                                                    />
+                                                  </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                  <label className="text-sm font-medium">Contact Info</label>
-                                                  <DebouncedInput
-                                                    value={deal.contactInfo || ''}
-                                                    onChange={(value) => updateDeal('contactInfo', String(value))}
-                                                    onSave={() => setContactPopoverOpen(false)}
-                                                    placeholder="Email or phone number"
-                                                  />
-                                                </div>
-                                              </div>
-                                            </PopoverContent>
-                                          </Popover>
-                                        </Tooltip>
-                                      </TooltipProvider>
+                                              </PopoverContent>
+                                            </Popover>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </div>
                                     </div>
                                     <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
                                       <span className="text-muted-foreground text-sm">Referral Source</span>
