@@ -43,7 +43,7 @@ export interface EligibilityFilterResult {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalize(str: string): string {
-  return str.toLowerCase().trim();
+  return str.toLowerCase().replace(/-/g, ' ').trim();
 }
 
 /**

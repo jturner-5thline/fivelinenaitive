@@ -25,9 +25,9 @@ export interface LenderMatch {
   learningWarnings: LenderPassPattern[];
 }
 
-// Normalize strings for comparison
+// Normalize strings for comparison (hyphens → spaces for ID-to-label matching)
 function normalizeString(str: string): string {
-  return str.toLowerCase().trim();
+  return str.toLowerCase().replace(/-/g, ' ').trim();
 }
 
 // Check if deal industry matches lender industries
