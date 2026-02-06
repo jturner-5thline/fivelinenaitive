@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { MasterLender } from './useMasterLenders';
 import { supabase } from '@/integrations/supabase/client';
 import { LenderPassPattern, LenderPassReasonCategory } from './useLenderDisqualifications';
+import { filterEligibleLenders, dealCriteriaToFilterInput } from '@/utils/lenderEligibilityFilter';
 
 export interface DealCriteria {
   industry?: string;
@@ -462,108 +463,20 @@ export function useLenderMatching(
     
     // Filter out already-added lenders and inactive lenders
     const normalizedExcludeNames = excludeNames.map(n => n.toLowerCase().trim());
-    const eligibleLenders = masterLenders.filter(
+    const nameFilteredLenders = masterLenders.filter(
       lender => !normalizedExcludeNames.includes(lender.name.toLowerCase().trim())
     );
     
-    // Pre-filter: Exclude lenders where deal falls outside their deal size range
-    const capitalValue = parseCapitalAsk(criteria.capitalAsk) || criteria.dealValue;
-    const sizeFilteredLenders = eligibleLenders.filter(lender => {
-      if (!capitalValue) return true; // If no deal value, include all
-      
-      // If lender has a min_deal and deal is below it, exclude
-      if (lender.min_deal !== null && capitalValue < lender.min_deal) {
-        return false;
-      }
-      
-      // If lender has a max_deal and deal is above it, exclude
-      if (lender.max_deal !== null && capitalValue > lender.max_deal) {
-        return false;
-      }
-      
-      return true;
-    });
-    
-    // Pre-filter: Exclude lenders that don't offer the required loan types
-    const loanTypeFilteredLenders = sizeFilteredLenders.filter(lender => {
-      // If no deal types specified, include all lenders
-      if (!criteria.dealTypes || criteria.dealTypes.length === 0) return true;
-      
-      // If lender has no loan types defined, exclude them (we can't verify they offer what's needed)
-      if (!lender.loan_types || lender.loan_types.length === 0) return false;
-      
-      const normalizedLenderTypes = lender.loan_types.map(lt => normalizeString(lt));
-      
-      // Check if lender offers at least one of the required deal types
-      const hasMatchingLoanType = criteria.dealTypes.some(dealType => {
-        const normalizedDealType = normalizeString(dealType);
-        
-        return normalizedLenderTypes.some(lenderType => 
-          lenderType.includes(normalizedDealType) || 
-          normalizedDealType.includes(lenderType) ||
-          lenderType === normalizedDealType
-        );
-      });
-      
-      return hasMatchingLoanType;
-    });
-    
-    // Pre-filter: Exclude lenders that have the deal's industry in their "Industries to Avoid"
-    const industryFilteredLenders = loanTypeFilteredLenders.filter(lender => {
-      // If no deal industry specified, include all lenders
-      if (!criteria.industry) return true;
-      
-      // If lender has no industries to avoid, include them
-      if (!lender.industries_to_avoid || lender.industries_to_avoid.length === 0) return true;
-      
-      // Check if deal industry is in lender's avoid list
-      const normalizedDealIndustry = normalizeString(criteria.industry);
-      const isAvoided = lender.industries_to_avoid.some(avoidIndustry => {
-        const normalized = normalizeString(avoidIndustry);
-        return normalized.includes(normalizedDealIndustry) || 
-               normalizedDealIndustry.includes(normalized) ||
-               normalized === normalizedDealIndustry;
-      });
-      
-      return !isAvoided;
-    });
-    
-    // Pre-filter: Exclude lenders that require sponsorship when deal has no sponsorship
-    const sponsorshipFilteredLenders = industryFilteredLenders.filter(lender => {
-      // If no sponsorship info on the deal, include all lenders
-      if (!criteria.sponsorship) return true;
-      
-      // If lender has no sponsorship requirement defined, include them
-      if (!lender.sponsorship) return true;
-      
-      const normalizedDealSponsorship = normalizeString(criteria.sponsorship);
-      const normalizedLenderSponsorship = normalizeString(lender.sponsorship);
-      
-      // Check if deal is non-sponsored
-      const dealIsNonSponsored = normalizedDealSponsorship.includes('non-sponsor') || 
-                                  normalizedDealSponsorship.includes('non sponsor') || 
-                                  normalizedDealSponsorship === 'non-sponsored' ||
-                                  normalizedDealSponsorship === 'no';
-      
-      // Check if lender requires sponsorship (only accepts sponsored deals)
-      const lenderRequiresSponsorship = normalizedLenderSponsorship === 'yes' ||
-                                         normalizedLenderSponsorship === 'required' ||
-                                         normalizedLenderSponsorship === 'sponsored only' ||
-                                         (normalizedLenderSponsorship.includes('sponsor') && 
-                                          !normalizedLenderSponsorship.includes('non') &&
-                                          !normalizedLenderSponsorship.includes('both') &&
-                                          !normalizedLenderSponsorship.includes('either'));
-      
-      // Exclude if deal is non-sponsored but lender requires sponsorship
-      if (dealIsNonSponsored && lenderRequiresSponsorship) {
-        return false;
-      }
-      
-      return true;
-    });
+    // Apply strict 5-filter eligibility pipeline
+    const filterInput = dealCriteriaToFilterInput(criteria, parseCapitalAsk);
+    const { eligible: eligibleLenders } = filterEligibleLenders(
+      filterInput,
+      nameFilteredLenders,
+      false // set to true for debugging
+    );
     
     // Calculate match scores with learning data
-    const scoredLenders = sponsorshipFilteredLenders.map(lender => 
+    const scoredLenders = eligibleLenders.map(lender => 
       calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined)
     );
     
