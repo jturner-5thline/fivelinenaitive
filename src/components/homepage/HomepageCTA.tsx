@@ -16,7 +16,7 @@ export const HomepageCTA = () => {
           </h2>
 
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex items-center justify-center">
             <Button
               size="lg"
               className="bg-white text-primary hover:bg-white/90 px-8 py-6 text-base"
@@ -25,16 +25,6 @@ export const HomepageCTA = () => {
               <Link to="/waitlist">
                 Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-base"
-              asChild
-            >
-              <Link to="/waitlist">
-                Schedule a Demo
               </Link>
             </Button>
           </div>
