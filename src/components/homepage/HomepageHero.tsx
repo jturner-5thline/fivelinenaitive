@@ -15,10 +15,9 @@ export const HomepageHero = () => {
         <Logo className="h-32 md:h-44 lg:h-48 mx-auto mb-8" />
 
         <h1 className="text-2xl md:text-3xl lg:text-4xl font-light text-white mb-3 max-w-4xl mx-auto leading-[1.1]">
-          Welcome to the Operating System{" "}
-          <br className="hidden md:block" />
+          The Operating System{" "}
           <span className="bg-gradient-to-r from-white via-[hsl(292,46%,72%)] to-white bg-clip-text text-transparent">
-            for Deal Management.
+            for Deal Management
           </span>
         </h1>
 
