@@ -14,7 +14,7 @@ export const HomepageFeatureSection = ({
   reverse = false,
 }: HomepageFeatureSectionProps) => {
   return (
-    <section className="py-16 md:py-24 bg-[#0a0a12]">
+    <section className="py-10 md:py-14 bg-[#0a0a12]">
       <div className="container mx-auto px-6">
         <div className={`flex flex-col ${reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'} gap-12 lg:gap-16 items-center`}>
           {/* Text */}

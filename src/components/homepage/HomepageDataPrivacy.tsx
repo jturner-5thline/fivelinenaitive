@@ -26,7 +26,7 @@ const dataUsageItems = [
 
 export const HomepageDataPrivacy = () => {
   return (
-    <section className="py-24 md:py-32 bg-[#0a0a12] border-t border-white/5">
+    <section className="py-12 md:py-16 bg-[#0a0a12] border-t border-white/5">
       <div className="container mx-auto px-6">
         <div className="max-w-4xl mx-auto">
           {/* Badge */}
