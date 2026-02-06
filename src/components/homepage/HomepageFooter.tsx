@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Linkedin, Twitter } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
 const footerLinks = {
@@ -27,26 +26,6 @@ export const HomepageFooter = () => {
             <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">
               The AI-powered deal management platform for transaction-advisory professionals and lenders.
             </p>
-            <div className="flex gap-4">
-              <a
-                href="https://linkedin.com/company/5thline"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60 hover:text-white"
-                aria-label="LinkedIn"
-              >
-                <Linkedin className="w-5 h-5" />
-              </a>
-              <a
-                href="https://twitter.com/5thline"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60 hover:text-white"
-                aria-label="Twitter"
-              >
-                <Twitter className="w-5 h-5" />
-              </a>
-            </div>
           </div>
 
           {/* Links */}
