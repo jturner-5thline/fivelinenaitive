@@ -24,19 +24,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { AutoFillReviewDialog, ExtractedField } from './AutoFillReviewDialog';
+import { useMasterLenders } from '@/hooks/useMasterLenders';
 
-const INDUSTRY_OPTIONS = [
-  'Technology',
-  'Healthcare',
-  'Finance',
-  'Manufacturing',
-  'Retail',
-  'Real Estate',
-  'Energy',
-  'Transportation',
-  'Media',
-  'Other',
-];
 
 const LOCATION_OPTIONS = [
   // US States
@@ -124,12 +113,22 @@ interface WriteUpCompanyOverviewTabProps {
 
 export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyOverviewTabProps) {
   const { dealTypes: dealTypeOptions } = useDealTypes();
+  const { lenders: masterLenders } = useMasterLenders();
   const [locationSearch, setLocationSearch] = useState('');
   const [locationOpen, setLocationOpen] = useState(false);
+  const [industrySearch, setIndustrySearch] = useState('');
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
+
+  // Dynamically build industry options from lender database
+  const industryOptions = useMemo(() => {
+    const industries = Array.from(
+      new Set(masterLenders.flatMap(l => l.industries || []).filter(Boolean))
+    ).sort();
+    return industries;
+  }, [masterLenders]);
 
   // Get display labels for selected deal types (which are stored as IDs)
   const getSelectedDealTypeLabels = () => {
@@ -439,9 +438,20 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
                 </svg>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0 bg-popover border z-50" align="start">
+            <PopoverContent className="w-[280px] p-0 bg-popover border z-50" align="start">
+              <div className="p-2 border-b">
+                <Input
+                  placeholder="Search industries..."
+                  value={industrySearch}
+                  onChange={(e) => setIndustrySearch(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
               <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
-                {INDUSTRY_OPTIONS.map(option => (
+                {(industrySearch
+                  ? industryOptions.filter(o => o.toLowerCase().includes(industrySearch.toLowerCase()))
+                  : industryOptions
+                ).map(option => (
                   <div
                     key={option}
                     className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent cursor-pointer"
@@ -464,6 +474,9 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
                     <span className="text-sm">{option}</span>
                   </div>
                 ))}
+                {industrySearch && industryOptions.filter(o => o.toLowerCase().includes(industrySearch.toLowerCase())).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-2">No industries found</p>
+                )}
               </div>
             </PopoverContent>
           </Popover>
