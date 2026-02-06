@@ -26,7 +26,7 @@ export const HomepageScrollingTags = () => {
           {[...tags, ...tags, ...tags].map((tag, index) => (
             <div
               key={index}
-              className="flex-shrink-0 px-4 py-2 mx-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-sm whitespace-nowrap hover:bg-white/10 hover:text-white transition-colors cursor-default"
+              className="flex-shrink-0 px-4 py-2 mx-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-sm whitespace-nowrap pointer-events-none"
             >
               {tag}
             </div>
@@ -41,9 +41,6 @@ export const HomepageScrollingTags = () => {
         }
         .animate-scroll-left {
           animation: scroll-left 30s linear infinite;
-        }
-        .animate-scroll-left:hover {
-          animation-play-state: paused;
         }
       `}</style>
     </section>
