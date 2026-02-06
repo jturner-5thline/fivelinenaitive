@@ -22,9 +22,6 @@ export const HomepageHero = () => {
           </span>
         </h1>
 
-        <p className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
-          Built for teams running complex deals end-to-end
-        </p>
 
         <Button 
           size="lg" 
