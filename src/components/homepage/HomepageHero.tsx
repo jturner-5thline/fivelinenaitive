@@ -11,8 +11,8 @@ export const HomepageHero = () => {
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a12]" />
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-6 text-center pt-20">
-        <Logo className="h-32 md:h-44 lg:h-48 mx-auto mb-8" />
+      <div className="relative z-10 container mx-auto px-6 text-center pt-10">
+        <Logo className="h-32 md:h-44 lg:h-48 mx-auto mb-4" />
 
         <h1 className="text-xl md:text-2xl lg:text-3xl font-light text-white mb-3 max-w-4xl mx-auto leading-[1.1]">
           The Operating System{" "}
