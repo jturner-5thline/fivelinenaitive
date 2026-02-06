@@ -68,9 +68,6 @@ export const HomepageDataPrivacy = () => {
 
           {/* Privacy policy link */}
           <div className="text-center">
-            <p className="text-white/60 mb-4">
-              For complete details on data collection, storage, and your rights:
-            </p>
             <Link
               to="/privacy"
               className="inline-flex items-center gap-2 text-[hsl(292,46%,72%)] hover:text-[hsl(292,46%,82%)] transition-colors font-medium"
