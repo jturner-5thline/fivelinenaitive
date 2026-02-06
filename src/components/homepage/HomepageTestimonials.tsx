@@ -40,7 +40,7 @@ export const HomepageTestimonials = () => {
               <div className="mb-4 text-center">
                 <p className="text-2xl font-medium text-white">{testimonial.author}</p>
               </div>
-              <p className="text-white/80 leading-relaxed">
+              <p className="text-white/80 leading-relaxed text-center">
                 {testimonial.quote}
               </p>
             </div>
