@@ -15,7 +15,7 @@ const tags = [
 
 export const HomepageScrollingTags = () => {
   return (
-    <section className="py-12 bg-[#0a0a12] overflow-hidden">
+    <section className="py-6 bg-[#0a0a12] overflow-hidden">
       <div className="relative">
         {/* Gradient masks */}
         <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#0a0a12] to-transparent z-10" />

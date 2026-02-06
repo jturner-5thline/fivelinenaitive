@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 export const HomepageCTA = () => {
   return (
-    <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a0a12] to-[#1a1a2e]">
+    <section className="py-12 md:py-16 bg-gradient-to-b from-[#0a0a12] to-[#1a1a2e]">
       <div className="container mx-auto px-6">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
