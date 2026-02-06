@@ -164,18 +164,6 @@ const AutoSaveIndicator = ({ status }: { status: AutoSaveStatus }) => {
   );
 };
 
-const INDUSTRY_OPTIONS = [
-  'Technology',
-  'Healthcare',
-  'Finance',
-  'Manufacturing',
-  'Retail',
-  'Real Estate',
-  'Energy',
-  'Transportation',
-  'Media',
-  'Other',
-];
 
 const LOCATION_OPTIONS = [
   'California',
