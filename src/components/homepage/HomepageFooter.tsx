@@ -8,11 +8,6 @@ const footerLinks = {
     { label: "Security", href: "#" },
     { label: "Integrations", href: "#" },
   ],
-  company: [
-    { label: "About", href: "#" },
-    { label: "Careers", href: "mailto:careers@5thline.com" },
-    { label: "Contact", href: "mailto:hello@5thline.com" },
-  ],
   legal: [
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
@@ -59,22 +54,6 @@ export const HomepageFooter = () => {
             <h4 className="font-semibold mb-4 text-white">Product</h4>
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-white/50 hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold mb-4 text-white">Company</h4>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.href}
