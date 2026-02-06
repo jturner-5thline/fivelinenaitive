@@ -23,7 +23,7 @@ export const HomepageCTA = () => {
               asChild
             >
               <Link to="/waitlist">
-                Get Started
+                Join Waitlist
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
             </Button>
