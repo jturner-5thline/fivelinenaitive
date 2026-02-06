@@ -45,9 +45,6 @@ export const HomepageDataPrivacy = () => {
             </span>
           </h2>
 
-          <p className="text-center text-white/60 text-lg mb-12 max-w-2xl mx-auto">
-            Transparency is core to how we operate. Here's exactly what data we collect and why.
-          </p>
 
           {/* Data usage grid */}
           <div className="grid md:grid-cols-2 gap-6 mb-12">
