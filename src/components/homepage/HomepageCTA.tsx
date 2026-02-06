@@ -15,9 +15,6 @@ export const HomepageCTA = () => {
             </span>
           </h2>
 
-          <p className="text-lg text-white/60 mb-10 max-w-xl mx-auto">
-            Join transaction professionals who are closing deals faster with naitive.
-          </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
