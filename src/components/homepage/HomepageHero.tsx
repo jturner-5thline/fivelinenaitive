@@ -24,7 +24,7 @@ export const HomepageHero = () => {
 
         <Button 
           size="lg" 
-          className="bg-white text-primary hover:bg-white/90 px-8 py-6 text-base"
+          className="bg-white text-[hsl(292,46%,45%)] hover:bg-white/90 px-8 py-6 text-base"
           asChild
         >
           <Link to="/waitlist">Learn More</Link>
