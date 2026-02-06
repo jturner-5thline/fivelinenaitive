@@ -37,7 +37,7 @@ export default function Homepage() {
         
         {/* Feature Sections with Platform Previews */}
         <HomepageFeatureSection
-          title="The Operating Layer for Transaction Management"
+          title="The Operating System for Deal Management"
           description="naitive is designed for teams responsible for running complex deals end-to-end — coordinating stakeholders, managing review and diligence, and moving work forward across fragmented systems."
           image={<PlatformPreviewDealPipeline />}
         />
