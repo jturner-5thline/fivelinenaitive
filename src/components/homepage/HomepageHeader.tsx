@@ -20,7 +20,7 @@ export const HomepageHeader = () => {
             className="bg-white text-primary hover:bg-white/90"
             asChild
           >
-            <Link to="/waitlist">Request Demo</Link>
+            <Link to="/waitlist">Contact Us</Link>
           </Button>
         </div>
       </div>
