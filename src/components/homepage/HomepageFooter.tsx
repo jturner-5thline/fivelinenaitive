@@ -27,7 +27,7 @@ export const HomepageFooter = () => {
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/homepage" className="inline-block mb-4">
-              <Logo className="text-xl text-white" />
+              <Logo className="h-5" />
             </Link>
             <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">
               The AI-powered deal management platform for transaction-advisory professionals and lenders.
