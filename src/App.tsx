@@ -89,7 +89,7 @@ const App = () => (
                       <WelcomeScreenWrapper />
                       <Toaster />
                       <Sonner />
-                      <FeedbackWidget />
+                      
                       <BrowserRouter>
                         <CookieConsent />
                         <Routes>
