@@ -4,7 +4,6 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { AISearchWidget } from "@/components/AISearchWidget";
 import { cn } from "@/lib/utils";
-import appBackground from "@/assets/app-background.png";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -31,7 +30,7 @@ function MainContent({
   return (
     <main
       className={cn(
-        "min-h-0 min-w-0 flex-1 flex flex-col bg-background/20 backdrop-blur-sm rounded-xl border border-border/30 shadow-sm overflow-auto",
+        "min-h-0 min-w-0 flex-1 flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-auto",
         className,
       )}
       onClick={handleMainClick}
@@ -68,10 +67,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
       <BodyScrollLock />
-        <div
-          className="flex w-full h-full min-h-0 p-2 gap-1 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${appBackground})` }}
-        >
+      <div className="flex w-full h-full min-h-0 bg-muted/30 p-2 gap-1">
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
