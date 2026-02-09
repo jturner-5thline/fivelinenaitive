@@ -2556,7 +2556,7 @@ export default function DealDetail() {
                                       </Select>
                                     </div>
                                     <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Deal Type</span>
+                                      <span className="text-muted-foreground text-sm">Type</span>
                                       <Popover>
                                         <PopoverTrigger asChild>
                                           <Button variant="outline" className="w-full justify-between h-8 text-sm font-normal overflow-hidden">
