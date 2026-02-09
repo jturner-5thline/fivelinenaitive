@@ -263,7 +263,17 @@ export default function LenderDatabaseConfig() {
     const savedTileSettings = localStorage.getItem(TILE_DISPLAY_STORAGE_KEY);
 
     setLenderTypes(savedLenderTypes ? JSON.parse(savedLenderTypes) : defaultLenderTypes);
-    setIndustries(savedIndustries ? JSON.parse(savedIndustries) : defaultIndustries);
+    // Always use the canonical INDUSTRY_OPTIONS list as default; migrate old saved data
+    const parsedIndustries: ConfigItem[] = savedIndustries ? JSON.parse(savedIndustries) : [];
+    const savedValues = new Set(parsedIndustries.map((i: ConfigItem) => i.value));
+    const merged = [...parsedIndustries];
+    let nextId = parsedIndustries.length + 1;
+    for (const opt of INDUSTRY_OPTIONS) {
+      if (!savedValues.has(opt)) {
+        merged.push({ id: String(nextId++), value: opt, isDefault: true });
+      }
+    }
+    setIndustries(merged.length > 0 ? merged : defaultIndustries);
     setLoanTypes(savedLoanTypes ? JSON.parse(savedLoanTypes) : defaultLoanTypes);
     setGeographies(savedGeographies ? JSON.parse(savedGeographies) : defaultGeographies);
     setTileDisplaySettings(savedTileSettings ? JSON.parse(savedTileSettings) : DEFAULT_TILE_DISPLAY_SETTINGS);
