@@ -301,7 +301,7 @@ export function filterEligibleLenders(
 
 /**
  * Count how many of the 5 criteria a lender matches for a given deal.
- * Only counts criteria that are actually specified on the deal (non-skipped).
+ * Always reports out of 5 total criteria. Unspecified criteria count as passed.
  */
 export function countCriteriaMatches(
   deal: DealFilterInput,
@@ -311,11 +311,9 @@ export function countCriteriaMatches(
   const failedFilters: FilterName[] = [];
 
   for (const filter of FILTER_PIPELINE) {
-    // Check if this criterion is specified on the deal
     const isSpecified = isCriterionSpecified(filter.name, deal);
-    if (!isSpecified) continue;
-
-    if (filter.test(deal, lender)) {
+    
+    if (!isSpecified || filter.test(deal, lender)) {
       passedFilters.push(filter.name);
     } else {
       failedFilters.push(filter.name);
@@ -324,7 +322,7 @@ export function countCriteriaMatches(
 
   return {
     passed: passedFilters.length,
-    total: passedFilters.length + failedFilters.length,
+    total: FILTER_PIPELINE.length,
     passedFilters,
     failedFilters,
   };
