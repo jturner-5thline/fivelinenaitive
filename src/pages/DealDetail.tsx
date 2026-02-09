@@ -2905,8 +2905,14 @@ export default function DealDetail() {
                           )}
                         </button>
                       </CollapsibleTrigger>
+                      <div className="flex items-center gap-2">
+                        <LenderSearchInput
+                          lenderNames={lenderNames}
+                          existingLenderNames={existingLenderNames}
+                          onAddLender={addLender}
+                        />
                       {deal.lenders && deal.lenders.length > 0 && (
-                        <div className="flex items-center gap-2">
+                        <>
                           <button
                             onClick={() => setLenderGroupFilter('all')}
                             className={`px-2 py-1 text-xs rounded-md transition-colors ${
@@ -2960,8 +2966,9 @@ export default function DealDetail() {
                           >
                             <LayoutGrid className="h-4 w-4" />
                           </Button>
-                        </div>
+                        </>
                       )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CollapsibleContent>
@@ -3670,27 +3677,6 @@ export default function DealDetail() {
                         )}
                       </>
                     )}
-                    <div className={`flex items-center gap-2 ${deal.lenders && deal.lenders.length > 0 ? 'pt-4 border-t border-border' : ''}`}>
-                      <LenderSearchInput
-                        lenderNames={lenderNames}
-                        existingLenderNames={existingLenderNames}
-                        onAddLender={addLender}
-                      />
-                      <LenderSuggestionsPanel
-                        dealId={id}
-                        criteria={{
-                          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
-                          dealValue: deal.value || undefined,
-                          capitalAsk: dealWriteUpData.capitalAsk || undefined,
-                          dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
-                          geo: dealWriteUpData.location || undefined,
-                          cashBurnOk: savedMatchingCriteria.cashBurnOk,
-                          sponsorship: savedMatchingCriteria.sponsorship,
-                        }}
-                        existingLenderNames={deal.lenders?.map(l => l.name) || []}
-                        onAddLender={addLender}
-                      />
-                    </div>
                   </div>
                     </CardContent>
                   </CollapsibleContent>
