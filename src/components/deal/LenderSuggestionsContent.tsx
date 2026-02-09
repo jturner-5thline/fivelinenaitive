@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare, Brain, Ban, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,9 +17,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useMasterLenders } from '@/hooks/useMasterLenders';
+import { useMasterLenders, MasterLender } from '@/hooks/useMasterLenders';
 import { useLenderMatching, LenderMatch, DealCriteria } from '@/hooks/useLenderMatching';
 import { LenderWarningBadge } from './LenderWarningBadge';
+import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
 
 interface LenderSuggestionsContentProps {
   criteria: DealCriteria;
@@ -40,6 +41,34 @@ export function LenderSuggestionsContent({
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
   const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
   const [showLearningWarnings, setShowLearningWarnings] = useState(true);
+  const [detailLender, setDetailLender] = useState<MasterLender | null>(null);
+
+  const detailLenderInfo = useMemo(() => {
+    if (!detailLender) return null;
+    return {
+      id: detailLender.id,
+      name: detailLender.name,
+      contact: {
+        name: detailLender.contact_name || '',
+        title: '',
+        email: detailLender.email || '',
+        phone: '',
+      },
+      preferences: [],
+      website: undefined,
+      description: undefined,
+      lenderType: detailLender.lender_type || undefined,
+      minDeal: detailLender.min_deal,
+      maxDeal: detailLender.max_deal,
+      geo: detailLender.geo,
+      industries: detailLender.industries,
+      loanTypes: detailLender.loan_types,
+      minRevenue: detailLender.min_revenue,
+      ebitdaMin: detailLender.ebitda_min,
+      companyRequirements: detailLender.company_requirements,
+      tier: detailLender.tier,
+    };
+  }, [detailLender]);
   
   const { matches, learningEnabled } = useLenderMatching(masterLenders, criteria, {
     minScore: -10,
@@ -341,6 +370,7 @@ export function LenderSuggestionsContent({
               selectedLenders={selectedLenders}
               onToggleLender={handleToggleLender}
               onAddLender={onAddLender}
+              onViewDetail={setDetailLender}
               colorClass="bg-[#d1fae5] text-[#047857]"
               showLearningWarnings={showLearningWarnings}
             />
@@ -353,6 +383,7 @@ export function LenderSuggestionsContent({
               selectedLenders={selectedLenders}
               onToggleLender={handleToggleLender}
               onAddLender={onAddLender}
+              onViewDetail={setDetailLender}
               colorClass="bg-[#d0e7ff] text-[#1d4ed8]"
               showLearningWarnings={showLearningWarnings}
             />
@@ -365,6 +396,7 @@ export function LenderSuggestionsContent({
               selectedLenders={selectedLenders}
               onToggleLender={handleToggleLender}
               onAddLender={onAddLender}
+              onViewDetail={setDetailLender}
               colorClass="bg-[#fef3c7] text-[#b45309]"
               showLearningWarnings={showLearningWarnings}
             />
@@ -394,6 +426,7 @@ export function LenderSuggestionsContent({
                       isSelected={selectedLenders.has(match.lender.id)}
                       onToggle={() => handleToggleLender(match.lender.id)}
                       onAdd={() => onAddLender(match.lender.name)}
+                      onViewDetail={() => setDetailLender(match.lender)}
                       badgeVariant="secondary"
                       compact
                       showLearningWarnings={showLearningWarnings}
@@ -405,6 +438,13 @@ export function LenderSuggestionsContent({
           </div>
         )}
       </ScrollArea>
+
+      {/* Lender Detail Dialog */}
+      <LenderDetailDialog
+        lender={detailLenderInfo}
+        open={!!detailLender}
+        onOpenChange={(open) => { if (!open) setDetailLender(null); }}
+      />
     </div>
   );
 }
@@ -416,11 +456,12 @@ interface TierColumnProps {
   selectedLenders: Set<string>;
   onToggleLender: (lenderId: string) => void;
   onAddLender: (name: string) => void;
+  onViewDetail: (lender: MasterLender) => void;
   colorClass: string;
   showLearningWarnings?: boolean;
 }
 
-function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, colorClass, showLearningWarnings }: TierColumnProps) {
+function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, onViewDetail, colorClass, showLearningWarnings }: TierColumnProps) {
   const selectedCount = matches.filter(m => selectedLenders.has(m.lender.id)).length;
   
   return (
@@ -449,6 +490,7 @@ function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onA
               isSelected={selectedLenders.has(match.lender.id)}
               onToggle={() => onToggleLender(match.lender.id)}
               onAdd={() => onAddLender(match.lender.name)}
+              onViewDetail={() => onViewDetail(match.lender)}
               badgeVariant="default"
               compact
               showLearningWarnings={showLearningWarnings}
@@ -465,12 +507,13 @@ interface LenderMatchCardProps {
   isSelected: boolean;
   onToggle: () => void;
   onAdd: () => void;
+  onViewDetail?: () => void;
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
   compact?: boolean;
   showLearningWarnings?: boolean;
 }
 
-function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant, compact = false, showLearningWarnings = true }: LenderMatchCardProps) {
+function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, badgeVariant, compact = false, showLearningWarnings = true }: LenderMatchCardProps) {
   const { lender, matchReasons, warnings, score, learningWarnings } = match;
   
   return (
@@ -487,7 +530,13 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, badgeVariant, com
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className={cn("font-medium truncate", compact ? "text-xs" : "text-sm")}>{lender.name}</span>
+            <button
+              type="button"
+              className={cn("font-medium truncate hover:underline hover:text-primary text-left", compact ? "text-xs" : "text-sm")}
+              onClick={(e) => { e.stopPropagation(); onViewDetail?.(); }}
+            >
+              {lender.name}
+            </button>
             {/* Score indicator */}
             <Badge 
               variant={score >= 50 ? "default" : score >= 25 ? "secondary" : "outline"} 
