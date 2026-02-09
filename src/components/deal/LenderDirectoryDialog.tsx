@@ -384,7 +384,8 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                       key={col.key}
                       className={cn(
                         'flex-shrink-0 px-2 py-2 text-xs font-semibold text-foreground border-r border-border bg-muted flex items-center',
-                        col.sortable && 'cursor-pointer hover:bg-muted/80 select-none'
+                        col.sortable && 'cursor-pointer hover:bg-muted/80 select-none',
+                        col.key === 'name' && 'sticky left-[50px] z-20 bg-muted'
                       )}
                       style={{ width: col.width }}
                       title={col.sortable ? `Click to sort by ${col.label}` : col.label}
@@ -415,7 +416,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                     return (
                       <div
                         className={cn(
-                          'flex border-b border-border/50 hover:bg-muted/50 transition-colors',
+                          'group flex border-b border-border/50 hover:bg-muted/50 transition-colors',
                           lender.isOnDeal && 'bg-primary/5'
                         )}
                       >
@@ -480,7 +481,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             return (
                               <div
                                 key={col.key}
-                                className="flex-shrink-0 px-2 py-1.5 text-xs text-primary border-r border-border/50 truncate cursor-pointer hover:underline font-medium"
+                                className={cn("flex-shrink-0 px-2 py-1.5 text-xs text-primary border-r border-border/50 truncate cursor-pointer hover:underline font-medium sticky left-[50px] z-10 bg-background group-hover:bg-muted/50", lender.isOnDeal && "bg-primary/5 group-hover:bg-muted/50")}
                                 style={{ width: col.width }}
                                 title={lender.name}
                                 onClick={(e) => {
