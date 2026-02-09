@@ -15,6 +15,7 @@ import { LenderCriteriaSurvey } from './LenderCriteriaSurvey';
 import { DealCriteria } from '@/hooks/useLenderMatching';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
 import { useLenderMatching } from '@/hooks/useLenderMatching';
+import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
 
 // Helper to determine which filtering criteria are missing (in priority order)
 function getMissingCriteria(criteria: DealCriteria): string[] {
@@ -61,15 +62,17 @@ export function LenderSuggestionsPanel({
 }: LenderSuggestionsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
-  const [enhancedCriteria, setEnhancedCriteria] = useState<DealCriteria>(initialCriteria);
-  const { lenders: masterLenders } = useMasterLenders();
+  const { criteria: savedCriteria, refetch: refetchCriteria } = useDealMatchingCriteria(dealId);
   
-  // Reset to initial criteria when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      setEnhancedCriteria(initialCriteria);
-    }
-  }, [isOpen, initialCriteria]);
+  // Merge initial criteria with saved criteria (saved takes priority)
+  const enhancedCriteria = useMemo<DealCriteria>(() => ({
+    ...initialCriteria,
+    cashBurnOk: savedCriteria.cashBurnOk ?? initialCriteria.cashBurnOk,
+    industry: savedCriteria.industry || initialCriteria.industry,
+    sponsorship: savedCriteria.sponsorship || initialCriteria.sponsorship,
+  }), [initialCriteria, savedCriteria]);
+  
+  const { lenders: masterLenders } = useMasterLenders();
   
   const { matches } = useLenderMatching(masterLenders, enhancedCriteria, {
     minScore: -10,
@@ -97,11 +100,10 @@ export function LenderSuggestionsPanel({
     }
   };
 
-  const handleSurveyComplete = (criteria: DealCriteria) => {
-    setEnhancedCriteria(criteria);
+  const handleSurveyComplete = (_criteria: DealCriteria) => {
+    refetchCriteria();
     setShowSurvey(false);
   };
-
   const handleOpenSurvey = () => {
     setShowSurvey(true);
   };
@@ -237,14 +239,15 @@ export function LenderSuggestionsFAB({
 }: LenderSuggestionsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
-  const [enhancedCriteria, setEnhancedCriteria] = useState<DealCriteria>(criteria);
+  const { criteria: savedCriteriaFAB, refetch: refetchCriteriaFAB } = useDealMatchingCriteria(dealId);
   const { lenders: masterLenders } = useMasterLenders();
   
-  useEffect(() => {
-    if (isOpen) {
-      setEnhancedCriteria(criteria);
-    }
-  }, [isOpen, criteria]);
+  const enhancedCriteria = useMemo<DealCriteria>(() => ({
+    ...criteria,
+    cashBurnOk: savedCriteriaFAB.cashBurnOk ?? criteria.cashBurnOk,
+    industry: savedCriteriaFAB.industry || criteria.industry,
+    sponsorship: savedCriteriaFAB.sponsorship || criteria.sponsorship,
+  }), [criteria, savedCriteriaFAB]);
   
   const { matches } = useLenderMatching(masterLenders, enhancedCriteria, {
     minScore: 25,
@@ -268,8 +271,8 @@ export function LenderSuggestionsFAB({
     }
   };
 
-  const handleSurveyComplete = (newCriteria: DealCriteria) => {
-    setEnhancedCriteria(newCriteria);
+  const handleSurveyComplete = (_newCriteria: DealCriteria) => {
+    refetchCriteriaFAB();
     setShowSurvey(false);
   };
 
