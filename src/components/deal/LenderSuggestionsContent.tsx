@@ -545,26 +545,26 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
   const { lender, matchReasons, warnings, score, learningWarnings } = match;
   
   return (
-    <div className={cn(
-      "border rounded-lg bg-card hover:bg-muted/30 transition-colors group",
-      compact ? "p-2" : "p-3",
-      isSelected && "ring-2 ring-primary border-primary bg-primary/5"
-    )}>
+    <div
+      className={cn(
+        "border rounded-lg bg-card hover:bg-muted/30 transition-colors group cursor-pointer",
+        compact ? "p-2" : "p-3",
+        isSelected && "ring-2 ring-primary border-primary bg-primary/5"
+      )}
+      onClick={() => onViewDetail?.()}
+    >
       <div className="flex items-start gap-2">
         <Checkbox
           checked={isSelected}
           onCheckedChange={onToggle}
           className="mt-0.5"
+          onClick={(e) => e.stopPropagation()}
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <button
-              type="button"
-              className={cn("font-medium truncate hover:underline hover:text-primary text-left", compact ? "text-xs" : "text-sm")}
-              onClick={(e) => { e.stopPropagation(); onViewDetail?.(); }}
-            >
+            <span className={cn("font-medium truncate", compact ? "text-xs" : "text-sm")}>
               {lender.name}
-            </button>
+            </span>
             {/* Score indicator */}
             <Badge 
               variant={score >= 50 ? "default" : score >= 25 ? "secondary" : "outline"} 
