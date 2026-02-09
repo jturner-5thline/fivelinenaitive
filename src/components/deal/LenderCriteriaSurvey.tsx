@@ -121,7 +121,19 @@ export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSk
       if (value === 'true') processedValue = true;
       else if (value === 'false') processedValue = false;
     }
-    setAnswers(prev => ({ ...prev, [questionId]: processedValue }));
+    const updatedAnswers = { ...answers, [questionId]: processedValue };
+    setAnswers(updatedAnswers);
+
+    // Auto-save criteria to database
+    if (dealId) {
+      const matchingCriteria: DealMatchingCriteria = {};
+      if (typeof updatedAnswers.cashBurnOk === 'boolean') {
+        matchingCriteria.cashBurnOk = updatedAnswers.cashBurnOk;
+      }
+      if (updatedAnswers.industry) matchingCriteria.industry = updatedAnswers.industry as string;
+      if (updatedAnswers.sponsorship) matchingCriteria.sponsorship = updatedAnswers.sponsorship as string;
+      saveCriteria(matchingCriteria);
+    }
 
     // Auto-advance to next slide after selection
     setTimeout(() => {
