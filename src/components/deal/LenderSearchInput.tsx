@@ -36,9 +36,11 @@ export function LenderSearchInput({
       const isExisting = existingLenderNamesSet.has(name);
       
       const nameLower = name.toLowerCase();
+      const nameNoSpaces = nameLower.replace(/\s+/g, '');
+      const queryNoSpaces = queryLower.replace(/\s+/g, '');
       
-      // STRICT: Only include if name actually contains the search text
-      if (!nameLower.includes(queryLower)) continue;
+      // STRICT: Only include if name contains the search text (ignoring spaces)
+      if (!nameNoSpaces.includes(queryNoSpaces)) continue;
 
       // Score: prefix match = 0, word-start match = 1, substring = 2
       let score: number;
