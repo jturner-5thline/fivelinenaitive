@@ -84,6 +84,10 @@ export function LenderSuggestionsContent({
 
   const dealFilterInput = useMemo(() => dealCriteriaToFilterInput(criteria), [criteria]);
 
+  const existingNamesSet = useMemo(() => 
+    new Set(existingLenderNames.map(n => n.toLowerCase().trim())), 
+    [existingLenderNames]
+  );
   // Get unique lender types for filter
   const lenderTypes = useMemo(() => {
     const types = new Set<string>();
@@ -194,7 +198,9 @@ export function LenderSuggestionsContent({
   };
 
   const handleSelectAll = () => {
-    const allIds = filteredMatches.map(m => m.lender.id);
+    const allIds = filteredMatches
+      .filter(m => !existingNamesSet.has(m.lender.name.toLowerCase().trim()))
+      .map(m => m.lender.id);
     setSelectedLenders(new Set(allIds));
   };
 
@@ -204,7 +210,7 @@ export function LenderSuggestionsContent({
 
   const handleAddSelected = () => {
     const selectedNames = filteredMatches
-      .filter(m => selectedLenders.has(m.lender.id))
+      .filter(m => selectedLenders.has(m.lender.id) && !existingNamesSet.has(m.lender.name.toLowerCase().trim()))
       .map(m => m.lender.name);
     
     if (onAddMultipleLenders) {
@@ -431,6 +437,7 @@ export function LenderSuggestionsContent({
                   compact
                   showLearningWarnings={showLearningWarnings}
                   dealFilterInput={dealFilterInput}
+                  isAlreadyAdded={existingNamesSet.has(match.lender.name.toLowerCase().trim())}
                 />
               ))}
             </div>
@@ -450,6 +457,7 @@ export function LenderSuggestionsContent({
                 colorClass={col.colorClass}
                 showLearningWarnings={showLearningWarnings}
                 dealFilterInput={dealFilterInput}
+                existingNamesSet={existingNamesSet}
               />
             ))}
           </div>
@@ -483,6 +491,7 @@ export function LenderSuggestionsContent({
                       compact
                       showLearningWarnings={showLearningWarnings}
                       dealFilterInput={dealFilterInput}
+                      isAlreadyAdded={existingNamesSet.has(match.lender.name.toLowerCase().trim())}
                     />
                   ))}
                 </div>
@@ -539,9 +548,10 @@ interface TierColumnProps {
   colorClass: string;
   showLearningWarnings?: boolean;
   dealFilterInput?: DealFilterInput;
+  existingNamesSet: Set<string>;
 }
 
-function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, onViewDetail, colorClass, showLearningWarnings, dealFilterInput }: TierColumnProps) {
+function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, onViewDetail, colorClass, showLearningWarnings, dealFilterInput, existingNamesSet }: TierColumnProps) {
   const selectedCount = matches.filter(m => selectedLenders.has(m.lender.id)).length;
   
   return (
@@ -575,6 +585,7 @@ function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onA
               compact
               showLearningWarnings={showLearningWarnings}
               dealFilterInput={dealFilterInput}
+              isAlreadyAdded={existingNamesSet.has(match.lender.name.toLowerCase().trim())}
             />
           ))
         )}
@@ -593,9 +604,10 @@ interface LenderMatchCardProps {
   compact?: boolean;
   showLearningWarnings?: boolean;
   dealFilterInput?: DealFilterInput;
+  isAlreadyAdded?: boolean;
 }
 
-function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, badgeVariant, compact = false, showLearningWarnings = true, dealFilterInput }: LenderMatchCardProps) {
+function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, badgeVariant, compact = false, showLearningWarnings = true, dealFilterInput, isAlreadyAdded = false }: LenderMatchCardProps) {
   const { lender, matchReasons, warnings, score, learningWarnings } = match;
 
   const criteriaMatch = useMemo(() => {
@@ -606,12 +618,22 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
   return (
     <div
       className={cn(
-        "border rounded-lg bg-card hover:bg-muted/30 transition-colors group cursor-pointer relative",
+        "border rounded-lg transition-colors group cursor-pointer relative",
         compact ? "p-2" : "p-3",
-        isSelected && "ring-2 ring-primary border-primary bg-primary/5"
+        isAlreadyAdded
+          ? "bg-primary/5 border-primary/30 opacity-75"
+          : "bg-card hover:bg-muted/30",
+        isSelected && !isAlreadyAdded && "ring-2 ring-primary border-primary bg-primary/5"
       )}
       onClick={() => onViewDetail?.()}
     >
+      {/* Already added indicator */}
+      {isAlreadyAdded && (
+        <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary">
+          <CheckCircle2 className="h-3 w-3" />
+          Added
+        </div>
+      )}
       {/* Criteria match badge - top right */}
       {criteriaMatch && criteriaMatch.total > 0 && (
         <TooltipProvider>
@@ -645,13 +667,15 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
           </Tooltip>
         </TooltipProvider>
       )}
-      <div className="flex items-start gap-2">
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={onToggle}
-          className="mt-0.5"
-          onClick={(e) => e.stopPropagation()}
-        />
+      <div className={cn("flex items-start gap-2", isAlreadyAdded && "mt-4")}>
+        {!isAlreadyAdded && (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggle}
+            className="mt-0.5"
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             <span className={cn("font-medium truncate", compact ? "text-xs" : "text-sm")}>
@@ -685,21 +709,23 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
           )}
         </div>
         
-        {/* Add Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "shrink-0 opacity-0 group-hover:opacity-100 transition-opacity",
-            compact ? "h-6 w-6" : "h-7 w-7"
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdd();
-          }}
-        >
-          <Plus className={compact ? "h-3 w-3" : "h-4 w-4"} />
-        </Button>
+        {/* Add Button - hidden for already added lenders */}
+        {!isAlreadyAdded && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "shrink-0 opacity-0 group-hover:opacity-100 transition-opacity",
+              compact ? "h-6 w-6" : "h-7 w-7"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd();
+            }}
+          >
+            <Plus className={compact ? "h-3 w-3" : "h-4 w-4"} />
+          </Button>
+        )}
       </div>
     </div>
   );

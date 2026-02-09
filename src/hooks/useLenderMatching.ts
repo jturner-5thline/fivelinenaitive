@@ -488,11 +488,8 @@ export function useLenderMatching(
   const matches = useMemo(() => {
     if (!masterLenders.length) return [];
     
-    // Filter out already-added lenders and inactive lenders
-    const normalizedExcludeNames = excludeNames.map(n => n.toLowerCase().trim());
-    const nameFilteredLenders = masterLenders.filter(
-      lender => !normalizedExcludeNames.includes(lender.name.toLowerCase().trim())
-    );
+    // Include all lenders (don't exclude already-added ones; they'll be marked in the UI)
+    const nameFilteredLenders = masterLenders;
     
     // Apply criteria matching: include lenders with at least 3/5 criteria matched
     const filterInput = dealCriteriaToFilterInput(criteria, parseCapitalAsk);
