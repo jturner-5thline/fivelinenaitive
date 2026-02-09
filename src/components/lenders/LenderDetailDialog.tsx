@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
+import { GEO_OPTIONS } from '@/constants/geoOptions';
 
 const LENDER_TYPE_OPTIONS = [
   'Alternative',
@@ -224,6 +225,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
   const [loanTypeSearchEdit, setLoanTypeSearchEdit] = useState('');
   const [reqSearchEdit, setReqSearchEdit] = useState('');
+  const [geoSearchEdit, setGeoSearchEdit] = useState('');
   const [editForm, setEditForm] = useState<LenderEditData>({
     name: '',
     contactName: '',
@@ -767,12 +769,56 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Geographic Preference</Label>
-                      <Input
-                        value={editForm.geo}
-                        onChange={(e) => setEditForm({ ...editForm, geo: e.target.value })}
-                        placeholder="e.g., US, North America, Global"
-                        className="text-sm"
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
+                            {editForm.geo ? (
+                              <span className="flex flex-wrap gap-1">
+                                {editForm.geo.split(',').filter(t => t.trim()).map((t, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{t.trim()}</Badge>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Select regions</span>
+                            )}
+                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2 z-[9999] bg-popover" align="start">
+                          <div className="mb-2">
+                            <Input
+                              placeholder="Search regions..."
+                              value={geoSearchEdit}
+                              onChange={(e) => setGeoSearchEdit(e.target.value)}
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-0.5 max-h-52 overflow-y-auto">
+                            {(geoSearchEdit
+                              ? GEO_OPTIONS.filter(o => o.toLowerCase().includes(geoSearchEdit.toLowerCase()))
+                              : GEO_OPTIONS
+                            ).map((geo) => {
+                              const current = editForm.geo ? editForm.geo.split(',').map(t => t.trim()).filter(Boolean) : [];
+                              const isSelected = current.includes(geo);
+                              return (
+                                <button
+                                  key={geo}
+                                  className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
+                                  onClick={() => {
+                                    const newGeos = isSelected
+                                      ? current.filter(t => t !== geo)
+                                      : [...current, geo];
+                                    setEditForm({ ...editForm, geo: newGeos.join(',') });
+                                  }}
+                                >
+                                  <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
+                                  {geo}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Industries</Label>
