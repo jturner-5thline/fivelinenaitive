@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
 import { Sparkles, ChevronDown, ChevronUp, Plus, Search, Building2, Mail, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -179,7 +180,7 @@ export function LenderSuggestions({
             )}
             {criteria.dealTypes && criteria.dealTypes.length > 0 && (
               <Badge variant="outline" className="text-xs font-normal">
-                {criteria.dealTypes.slice(0, 2).join(', ')}
+                {dealTypeIdsToLabels(criteria.dealTypes.slice(0, 2)).join(', ')}
                 {criteria.dealTypes.length > 2 && ` +${criteria.dealTypes.length - 2}`}
               </Badge>
             )}
