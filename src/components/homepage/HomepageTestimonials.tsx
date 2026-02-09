@@ -24,7 +24,7 @@ export const HomepageTestimonials = () => {
         {/* Section header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-6xl font-bold text-white mb-4">
-            Who naitive is{" "}
+            Who n<span className="bg-gradient-to-b from-[hsl(292,46%,72%)] to-[hsl(280,60%,45%)] bg-clip-text text-transparent">ai</span>tive is{" "}
             <span className="bg-gradient-to-r from-[hsl(292,46%,72%)] to-white bg-clip-text text-transparent">
               built for
             </span>
