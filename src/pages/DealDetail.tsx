@@ -597,9 +597,12 @@ export default function DealDetail() {
   const [isLendersExpanded, setIsLendersExpanded] = useState<boolean>(
     savedViewPrefs?.isLendersExpanded ?? true
   );
-  const [lenderGroupFilter, setLenderGroupFilter] = useState<StageGroup | 'all'>(
-    savedViewPrefs?.lenderGroupFilter ?? 'all'
-  );
+  const [lenderGroupFilters, setLenderGroupFilters] = useState<Set<StageGroup>>(() => {
+    const saved = savedViewPrefs?.lenderGroupFilter;
+    if (saved && saved !== 'all') return new Set([saved as StageGroup]);
+    if (Array.isArray(savedViewPrefs?.lenderGroupFilters)) return new Set(savedViewPrefs.lenderGroupFilters as StageGroup[]);
+    return new Set<StageGroup>();
+  });
   const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'materials' | 'financials' | 'agreements' | 'other'>(
     savedViewPrefs?.attachmentFilter ?? 'all'
   );
@@ -610,29 +613,23 @@ export default function DealDetail() {
   
   // Check if current view differs from saved preferences
   useEffect(() => {
-    const currentPrefs = {
-      isLendersExpanded,
-      lenderGroupFilter,
-      attachmentFilter,
-    };
-    const savedPrefs = savedViewPrefs || {
-      isLendersExpanded: true,
-      lenderGroupFilter: 'all',
-      attachmentFilter: 'all',
-    };
+    const currentFilters = Array.from(lenderGroupFilters);
+    const savedFilters = savedViewPrefs?.lenderGroupFilters || 
+      (savedViewPrefs?.lenderGroupFilter && savedViewPrefs.lenderGroupFilter !== 'all' ? [savedViewPrefs.lenderGroupFilter] : []);
     
     const hasChanged = 
-      currentPrefs.isLendersExpanded !== savedPrefs.isLendersExpanded ||
-      currentPrefs.lenderGroupFilter !== savedPrefs.lenderGroupFilter ||
-      currentPrefs.attachmentFilter !== savedPrefs.attachmentFilter;
+      isLendersExpanded !== (savedViewPrefs?.isLendersExpanded ?? true) ||
+      currentFilters.length !== savedFilters.length ||
+      currentFilters.some(f => !savedFilters.includes(f)) ||
+      attachmentFilter !== (savedViewPrefs?.attachmentFilter ?? 'all');
     
     setViewModified(hasChanged);
-  }, [isLendersExpanded, lenderGroupFilter, attachmentFilter, savedViewPrefs]);
+  }, [isLendersExpanded, lenderGroupFilters, attachmentFilter, savedViewPrefs]);
   
   const saveViewPreferences = useCallback(() => {
     const prefs = {
       isLendersExpanded,
-      lenderGroupFilter,
+      lenderGroupFilters: Array.from(lenderGroupFilters),
       attachmentFilter,
     };
     localStorage.setItem('dealDetailViewPrefs', JSON.stringify(prefs));
@@ -641,7 +638,7 @@ export default function DealDetail() {
       title: "View saved",
       description: "Your view preferences have been saved as the default.",
     });
-  }, [isLendersExpanded, lenderGroupFilter, attachmentFilter]);
+  }, [isLendersExpanded, lenderGroupFilters, attachmentFilter]);
   
   // Pass reason dialog state
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
@@ -2914,9 +2911,9 @@ export default function DealDetail() {
                       {deal.lenders && deal.lenders.length > 0 && (
                         <>
                           <button
-                            onClick={() => setLenderGroupFilter('all')}
+                            onClick={() => setLenderGroupFilters(new Set())}
                             className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                              lenderGroupFilter === 'all'
+                              lenderGroupFilters.size === 0
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
                             }`}
@@ -2928,12 +2925,23 @@ export default function DealDetail() {
                               const stage = configuredStages.find(s => s.id === l.stage);
                               return stage?.group === group.id;
                             }).length || 0;
+                            const isActive = lenderGroupFilters.has(group.id);
                             return (
                               <button
                                 key={group.id}
-                                onClick={() => setLenderGroupFilter(group.id)}
+                                onClick={() => {
+                                  setLenderGroupFilters(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(group.id)) {
+                                      next.delete(group.id);
+                                    } else {
+                                      next.add(group.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
                                 className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${
-                                  lenderGroupFilter === group.id
+                                  isActive
                                     ? 'bg-primary text-primary-foreground'
                                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
                                 }`}
@@ -2976,7 +2984,7 @@ export default function DealDetail() {
                   <div className="space-y-4">
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
-                        {lenderGroupFilter === 'all' ? (
+                        {lenderGroupFilters.size === 0 ? (
                           // Flat list when "All" is selected - with drag and drop
                           <DndContext
                             sensors={sensors}
@@ -3359,7 +3367,7 @@ export default function DealDetail() {
                         ) : (
                           // Grouped list when a specific group is selected
                           STAGE_GROUPS
-                            .filter(group => lenderGroupFilter === group.id)
+                            .filter(group => lenderGroupFilters.has(group.id))
                             .map(group => {
                               const groupLenders = deal.lenders?.filter(l => {
                                 const stage = configuredStages.find(s => s.id === l.stage);
