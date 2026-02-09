@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2 } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
@@ -36,6 +38,19 @@ import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
 import { AddLenderContactDialog } from './AddLenderContactDialog';
 import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
+
+const LENDER_TYPE_OPTIONS = [
+  'Alternative',
+  'Asset-Based Lender',
+  'Bank',
+  'Distressed / Specialty',
+  'Equipment Financing',
+  'Equity',
+  'Mezzanine',
+  'Real Estate',
+  'SBA',
+  'Venture Debt',
+];
 
 interface LenderInfo {
   id?: string;
@@ -613,12 +628,45 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Lender Type
                   </h3>
-                  <Input
-                    value={editForm.lenderType}
-                    onChange={(e) => setEditForm({ ...editForm, lenderType: e.target.value })}
-                    placeholder="e.g., Bank, Venture Debt, ABL"
-                    className="text-sm"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
+                        {editForm.lenderType ? (
+                          <span className="flex flex-wrap gap-1">
+                            {editForm.lenderType.split(',').map((t, i) => (
+                              <Badge key={i} variant="secondary" className="text-xs">{t.trim()}</Badge>
+                            ))}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Select lender types</span>
+                        )}
+                        <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2 z-[9999] bg-popover" align="start">
+                      <div className="space-y-1 max-h-60 overflow-y-auto">
+                        {LENDER_TYPE_OPTIONS.map((type) => {
+                          const current = editForm.lenderType ? editForm.lenderType.split(',').map(t => t.trim()).filter(Boolean) : [];
+                          const isSelected = current.includes(type);
+                          return (
+                            <button
+                              key={type}
+                              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
+                              onClick={() => {
+                                const newTypes = isSelected
+                                  ? current.filter(t => t !== type)
+                                  : [...current, type];
+                                setEditForm({ ...editForm, lenderType: newTypes.join(',') });
+                              }}
+                            >
+                              <Checkbox checked={isSelected} className="pointer-events-none" />
+                              {type}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </section>
                 <Separator />
 
