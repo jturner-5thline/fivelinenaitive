@@ -224,14 +224,14 @@ export function LenderSuggestionsContent({
       </div>
 
       {/* Search and Filters */}
-      <div className="flex flex-col gap-2 mb-4">
-        <div className="relative">
+      <div className="flex items-center gap-2 mb-4 min-w-0">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search lenders..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-9 text-sm"
+            className="pl-8 h-8 text-sm"
           />
           {searchQuery && (
             <Button
@@ -245,47 +245,45 @@ export function LenderSuggestionsContent({
           )}
         </div>
         
-        <div className="flex gap-2">
-          <Select value={lenderTypeFilter} onValueChange={setLenderTypeFilter}>
-            <SelectTrigger className="h-8 text-xs flex-1">
-              <Filter className="h-3 w-3 mr-1" />
-              <SelectValue placeholder="Lender Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {lenderTypes.map(type => (
-                <SelectItem key={type} value={type}>{type}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Button
-            variant={showOnlyHighScore ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setShowOnlyHighScore(!showOnlyHighScore)}
-          >
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Top Matches
-          </Button>
-        </div>
+        <Select value={lenderTypeFilter} onValueChange={setLenderTypeFilter}>
+          <SelectTrigger className="h-8 text-xs w-[130px] shrink-0">
+            <Filter className="h-3 w-3 mr-1" />
+            <SelectValue placeholder="Lender Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {lenderTypes.map(type => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         
-        {/* Learning Toggle */}
-        {learningEnabled && (
-          <div className="flex items-center gap-2 text-xs">
-            <Brain className="h-3.5 w-3.5 text-primary" />
-            <Label htmlFor="show-warnings" className="text-xs font-normal cursor-pointer">
-              Show learning insights
-            </Label>
-            <Switch
-              id="show-warnings"
-              checked={showLearningWarnings}
-              onCheckedChange={setShowLearningWarnings}
-              className="scale-75"
-            />
-          </div>
-        )}
+        <Button
+          variant={showOnlyHighScore ? "default" : "outline"}
+          size="sm"
+          className="h-8 text-xs shrink-0 whitespace-nowrap"
+          onClick={() => setShowOnlyHighScore(!showOnlyHighScore)}
+        >
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Top Matches
+        </Button>
       </div>
+      
+      {/* Learning Toggle */}
+      {learningEnabled && (
+        <div className="flex items-center gap-2 text-xs mb-4">
+          <Brain className="h-3.5 w-3.5 text-primary" />
+          <Label htmlFor="show-warnings" className="text-xs font-normal cursor-pointer">
+            Show learning insights
+          </Label>
+          <Switch
+            id="show-warnings"
+            checked={showLearningWarnings}
+            onCheckedChange={setShowLearningWarnings}
+            className="scale-75"
+          />
+        </div>
+      )}
 
       {/* Selection Actions Bar */}
       {selectedLenders.size > 0 && (
