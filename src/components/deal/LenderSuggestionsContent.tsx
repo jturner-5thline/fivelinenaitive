@@ -42,6 +42,7 @@ export function LenderSuggestionsContent({
   const [lenderTypeFilter, setLenderTypeFilter] = useState<string>('all');
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
   const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
+  const [tierFilters, setTierFilters] = useState<Set<string>>(new Set());
   const [showLearningWarnings, setShowLearningWarnings] = useState(true);
   const [detailLender, setDetailLender] = useState<MasterLender | null>(null);
 
@@ -112,8 +113,15 @@ export function LenderSuggestionsContent({
       filtered = filtered.filter(m => m.score >= 25);
     }
     
+    if (tierFilters.size > 0) {
+      filtered = filtered.filter(m => {
+        const tier = m.lender.tier?.toUpperCase();
+        return tier && tierFilters.has(tier);
+      });
+    }
+    
     return filtered;
-  }, [matches, searchQuery, lenderTypeFilter, showOnlyHighScore]);
+  }, [matches, searchQuery, lenderTypeFilter, showOnlyHighScore, tierFilters]);
   
   // Group by tier
   const groupedByTier = useMemo(() => {
@@ -334,7 +342,7 @@ export function LenderSuggestionsContent({
         </div>
       )}
 
-      {/* Select All / Clear All buttons */}
+      {/* Select All / Tier Filters */}
       {totalMatches > 0 && selectedLenders.size === 0 && (
         <div className="flex items-center gap-2 mb-3">
           <Button
@@ -346,6 +354,28 @@ export function LenderSuggestionsContent({
             <CheckSquare className="h-3 w-3 mr-1" />
             Select All ({totalMatches})
           </Button>
+          <div className="h-4 w-px bg-border" />
+          {(['T1', 'T2', 'T3'] as const).map((tier) => (
+            <Button
+              key={tier}
+              variant={tierFilters.has(tier) ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 text-xs px-2.5"
+              onClick={() => {
+                setTierFilters(prev => {
+                  const next = new Set(prev);
+                  if (next.has(tier)) {
+                    next.delete(tier);
+                  } else {
+                    next.add(tier);
+                  }
+                  return next;
+                });
+              }}
+            >
+              {tier}
+            </Button>
+          ))}
         </div>
       )}
       
