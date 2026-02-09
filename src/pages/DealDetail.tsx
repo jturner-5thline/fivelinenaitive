@@ -47,6 +47,7 @@ import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary
 import { LendersKanban } from '@/components/deal/LendersKanban';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
+import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
@@ -1223,6 +1224,33 @@ export default function DealDetail() {
       });
     }
   }, [deal, addLenderToDeal, logActivity, preferences.defaultLenderStage]);
+
+  const removeLenderFromDeal = useCallback(async (lenderId: string, reason?: string) => {
+    if (!deal) return;
+    const lender = deal.lenders?.find(l => l.id === lenderId);
+    if (!lender) return;
+
+    const updatedLenders = deal.lenders?.filter(l => l.id !== lenderId);
+    setDeal(prev => {
+      if (!prev) return prev;
+      setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    });
+    await deleteLenderInDb(lenderId);
+    setRemovedLenders(prev => [...prev, {
+      lender,
+      timestamp: new Date().toISOString(),
+      id: `removed-${Date.now()}`,
+    }]);
+    const desc = reason
+      ? `Removed lender ${lender.name} — ${reason}`
+      : `Removed lender ${lender.name}`;
+    logActivity('lender_removed', desc, { lender_name: lender.name, reason });
+    toast({
+      title: "Lender removed",
+      description: `${lender.name} has been removed from the deal.${reason ? ` Reason: ${reason}` : ''}`,
+    });
+  }, [deal, deleteLenderInDb, logActivity]);
 
   const updateLenderNotes = useCallback((lenderId: string, notes: string, committed: Record<string, string>) => {
     const committedNote = committed[lenderId]?.trim() || '';
@@ -2906,6 +2934,12 @@ export default function DealDetail() {
                         lenderNames={lenderNames}
                         existingLenderNames={existingLenderNames}
                         onAddLender={addLender}
+                      />
+                      <LenderDirectoryDialog
+                        existingLenderNames={existingLenderNames}
+                        onAddLender={addLender}
+                        onRemoveLender={removeLenderFromDeal}
+                        dealLenders={(deal.lenders || []).map(l => ({ id: l.id, name: l.name }))}
                       />
                       <div className="flex items-center gap-2 ml-auto">
                       {deal.lenders && deal.lenders.length > 0 && (
