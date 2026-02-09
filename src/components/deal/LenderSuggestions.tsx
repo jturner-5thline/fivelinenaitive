@@ -103,7 +103,7 @@ export function LenderSuggestions({
   
   const totalMatches = groupedMatches.excellent.length + groupedMatches.good.length + groupedMatches.possible.length;
   
-  if (loading) {
+  if (loading || masterLenders.length === 0) {
     return (
       <Card className={cn("border-primary/20", className)}>
         <CardHeader className="pb-2">

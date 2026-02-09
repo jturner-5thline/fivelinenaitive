@@ -149,7 +149,9 @@ export function LenderSuggestionsContent({
     setSelectedLenders(new Set());
   };
   
-  if (loading) {
+  const isReady = !loading && masterLenders.length > 0 && (matches.length > 0 || masterLenders.length > 0);
+  
+  if (loading || (masterLenders.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
