@@ -14,7 +14,8 @@ import {
   GripVertical,
   Loader2,
   Users,
-  LayoutGrid
+  LayoutGrid,
+  Search
 } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
@@ -183,6 +184,9 @@ function ConfigSection({
     setSimilarMatches([]);
     toast({ title: 'Added', description: `"${pendingValue}" has been added.` });
   };
+  const filteredItems = newValue.trim()
+    ? items.filter(item => item.value.toLowerCase().includes(newValue.trim().toLowerCase()))
+    : items;
 
   return (
     <Card>
@@ -195,13 +199,16 @@ function ConfigSection({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
-          <Input
-            placeholder={`Add new ${title.toLowerCase().replace(/s$/, '')}...`}
-            value={newValue}
-            onChange={(e) => setNewValue(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-            className="flex-1"
-          />
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={`Search or add new ${title.toLowerCase().replace(/s$/, '')}...`}
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              className="pl-9"
+            />
+          </div>
           <Button onClick={handleAdd} size="sm" className="gap-1">
             <Plus className="h-4 w-4" />
             Add
@@ -209,12 +216,12 @@ function ConfigSection({
         </div>
         
         <div className="space-y-2 max-h-[300px] overflow-y-auto">
-          {items.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-4">
-              No items configured. Add one above.
+              {newValue.trim() ? `No items matching "${newValue}"` : 'No items configured. Add one above.'}
             </p>
           ) : (
-            items.map((item) => (
+            filteredItems.map((item) => (
               <div 
                 key={item.id} 
                 className="flex items-center gap-2 p-2 rounded-md border bg-card hover:bg-accent/50 transition-colors group"
@@ -259,7 +266,7 @@ function ConfigSection({
         </div>
         
         <p className="text-xs text-muted-foreground">
-          {items.length} item{items.length !== 1 ? 's' : ''} configured
+          {newValue.trim() ? `${filteredItems.length} of ${items.length}` : items.length} item{items.length !== 1 ? 's' : ''} configured
         </p>
       </CardContent>
 
