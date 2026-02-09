@@ -178,7 +178,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 )}
                 <span className={`h-2.5 w-2.5 rounded-full ${STATUS_CONFIG[status].dotColor}`} />
-                <h2 className="text-lg font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+                <h2 className="text-lg font-semibold text-foreground">
                   {STATUS_CONFIG[status].label}
                 </h2>
                 <span className="text-sm text-muted-foreground">({statusDeals.length})</span>
