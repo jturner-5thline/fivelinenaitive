@@ -75,8 +75,10 @@ function DraggableLenderTile({
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
   } : undefined;
 
-  const stageLabel = configuredStages.find(s => s.id === lender.stage)?.label || lender.stage;
-  const timeAgo = getRelativeTime(lender.updatedAt);
+  const stageConfig = configuredStages.find(s => s.id === lender.stage);
+  const stageLabel = stageConfig?.label || lender.stage;
+  const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender.trackingStatus === 'passed';
+  const timeAgo = hideTime ? '' : getRelativeTime(lender.updatedAt);
 
   return (
     <div
@@ -118,7 +120,7 @@ function DraggableLenderTile({
                 )}
                 {stageLabel}
               </span>
-            {timeAgo && lender.trackingStatus !== 'passed' && (
+            {timeAgo && (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {timeAgo}
