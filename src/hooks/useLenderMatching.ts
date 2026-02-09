@@ -229,7 +229,7 @@ export function calculateLenderMatch(
   lender: MasterLender,
   criteria: DealCriteria,
   learningPatterns?: LenderPassPattern[]
-): LenderMatch {
+): LenderMatch | null {
   const matchReasons: string[] = [];
   const warnings: string[] = [];
   const learningWarnings: LenderPassPattern[] = [];
@@ -306,8 +306,8 @@ export function calculateLenderMatch(
   // PRIORITY 4: Industry match
   if (criteria.industry) {
     if (isIndustriesAvoided(criteria.industry, lender.industries_to_avoid)) {
-      warnings.push(`Avoids ${criteria.industry}`);
-      score += PENALTIES.INDUSTRY_AVOIDED;
+      // Hard exclude — lender explicitly avoids this industry
+      return null;
     } else if (matchesIndustry(criteria.industry, lender.industries)) {
       matchReasons.push(`${criteria.industry} industry`);
       score += WEIGHTS.INDUSTRY;
@@ -476,9 +476,9 @@ export function useLenderMatching(
     );
     
     // Calculate match scores with learning data
-    const scoredLenders = eligibleLenders.map(lender => 
-      calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined)
-    );
+    const scoredLenders = eligibleLenders
+      .map(lender => calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined))
+      .filter((match): match is LenderMatch => match !== null);
     
     // Sort by score descending and filter by minimum score
     return scoredLenders
