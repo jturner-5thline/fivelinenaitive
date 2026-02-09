@@ -44,7 +44,7 @@ export function LenderSuggestionsContent({
   const [lenderTypeFilter, setLenderTypeFilter] = useState<string>('all');
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
   const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
-  const [tierFilters, setTierFilters] = useState<Set<string>>(new Set(['T1', 'T2', 'T3']));
+  const [tierFilters, setTierFilters] = useState<Set<string>>(new Set());
   const [showLearningWarnings, setShowLearningWarnings] = useState(true);
   const [detailLender, setDetailLender] = useState<MasterLender | null>(null);
 
@@ -127,10 +127,10 @@ export function LenderSuggestionsContent({
         if (tier && ['T1', 'T2', 'T3'].includes(tier)) {
           return tierFilters.has(tier);
         }
-        // Untiered lenders only shown if '?' filter is active
         return tierFilters.has('?');
       });
     }
+    // When no tier filters selected, show all lenders (no tier filtering)
     
     return filtered;
   }, [matches, searchQuery, lenderTypeFilter, showOnlyHighScore, tierFilters]);
