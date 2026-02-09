@@ -20,7 +20,9 @@ import { cn } from '@/lib/utils';
 import { useMasterLenders, MasterLender } from '@/hooks/useMasterLenders';
 import { useLenderMatching, LenderMatch, DealCriteria } from '@/hooks/useLenderMatching';
 import { LenderWarningBadge } from './LenderWarningBadge';
-import { LenderDetailDialog } from '@/components/lenders/LenderDetailDialog';
+import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
+import { MasterLenderInsert } from '@/hooks/useMasterLenders';
+import { toast } from 'sonner';
 
 interface LenderSuggestionsContentProps {
   criteria: DealCriteria;
@@ -35,7 +37,7 @@ export function LenderSuggestionsContent({
   onAddLender,
   onAddMultipleLenders,
 }: LenderSuggestionsContentProps) {
-  const { lenders: masterLenders, loading } = useMasterLenders();
+  const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [searchQuery, setSearchQuery] = useState('');
   const [lenderTypeFilter, setLenderTypeFilter] = useState<string>('all');
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
@@ -444,6 +446,32 @@ export function LenderSuggestionsContent({
         lender={detailLenderInfo}
         open={!!detailLender}
         onOpenChange={(open) => { if (!open) setDetailLender(null); }}
+        onSave={async (lenderId, data) => {
+          const updates: Partial<MasterLenderInsert> = {
+            name: data.name.trim(),
+            contact_name: data.contactName?.trim() || null,
+            email: data.email?.trim() || null,
+            lender_type: data.lenderType?.trim() || null,
+            loan_types: data.loanTypes?.split(',').map(p => p.trim()).filter(Boolean) || null,
+            min_deal: data.minDeal ? parseFloat(data.minDeal) : null,
+            max_deal: data.maxDeal ? parseFloat(data.maxDeal) : null,
+            industries: data.industries?.split(',').map(p => p.trim()).filter(Boolean) || null,
+            geo: data.geo?.trim() || null,
+            company_requirements: data.description?.trim() || null,
+            deal_structure_notes: data.lenderNotes?.trim() || null,
+            min_revenue: data.minRevenue ? parseFloat(data.minRevenue) : null,
+            ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
+            tier: data.tier ? `T${data.tier}` : null,
+            relationship_owners: data.relationshipOwners?.trim() || null,
+          };
+          const success = await updateLender(lenderId, updates);
+          if (success) {
+            toast.success(`${updates.name} updated`);
+            // Update the detail view with new data
+            const updated = masterLenders.find(l => l.id === lenderId);
+            if (updated) setDetailLender({ ...updated, ...updates } as MasterLender);
+          }
+        }}
       />
     </div>
   );
