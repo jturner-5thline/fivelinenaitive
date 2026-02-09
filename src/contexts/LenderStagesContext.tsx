@@ -17,11 +17,13 @@ export interface StageOption {
   id: string;
   label: string;
   group: StageGroup;
+  description?: string;
 }
 
 export interface SubstageOption {
   id: string;
   label: string;
+  description?: string;
 }
 
 export interface PassReasonOption {
