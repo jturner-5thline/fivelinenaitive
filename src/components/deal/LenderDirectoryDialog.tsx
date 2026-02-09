@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { BookOpen, Plus, Check, X, Search, ArrowUp, ArrowDown, ArrowUpDown, Building2 } from 'lucide-react';
+import { BookOpen, Plus, Check, X, Search, ArrowUp, ArrowDown, ArrowUpDown, Building2, Layers } from 'lucide-react';
 import { useMasterLenders, MasterLender } from '@/hooks/useMasterLenders';
 import { Virtuoso } from 'react-virtuoso';
 import { cn } from '@/lib/utils';
@@ -120,6 +120,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const { lenders: masterLenders, loading } = useMasterLenders();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [groupByTier, setGroupByTier] = useState(true);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
@@ -165,18 +166,27 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
 
   const sorted = useMemo(() => {
     const items = filtered.map(l => ({ ...l, isOnDeal: existingSet.has(l.name.toLowerCase()) }));
+    const tierOrder: Record<string, number> = { 'T1': 0, 'T2': 1, 'T3': 2 };
+
     if (!sortColumn || !sortDirection) {
-      // Default: group by tier T1→T2→T3→None, then alphabetical
-      const tierOrder: Record<string, number> = { 'T1': 0, 'T2': 1, 'T3': 2 };
+      // Default sort: tier order then alphabetical
       items.sort((a, b) => {
-        const at = tierOrder[a.tier || 'None'] ?? 99;
-        const bt = tierOrder[b.tier || 'None'] ?? 99;
-        if (at !== bt) return at - bt;
+        if (groupByTier) {
+          const at = tierOrder[a.tier || 'None'] ?? 99;
+          const bt = tierOrder[b.tier || 'None'] ?? 99;
+          if (at !== bt) return at - bt;
+        }
         return a.name.localeCompare(b.name);
       });
       return items;
     }
     items.sort((a, b) => {
+      // When grouping, always sort by tier first
+      if (groupByTier) {
+        const at = tierOrder[a.tier || 'None'] ?? 99;
+        const bt = tierOrder[b.tier || 'None'] ?? 99;
+        if (at !== bt) return at - bt;
+      }
       const aVal = getSortValue(a, sortColumn, a.isOnDeal);
       const bVal = getSortValue(b, sortColumn, b.isOnDeal);
       if (aVal === null && bVal === null) return 0;
@@ -188,7 +198,31 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
       return sortDirection === 'desc' ? -cmp : cmp;
     });
     return items;
-  }, [filtered, existingSet, sortColumn, sortDirection]);
+  }, [filtered, existingSet, sortColumn, sortDirection, groupByTier]);
+
+  // Build flat list with tier separator rows when grouping
+  type RowItem = { type: 'lender'; lender: typeof sorted[number] } | { type: 'tier-header'; tier: string; count: number };
+  const rows = useMemo<RowItem[]>(() => {
+    if (!groupByTier) {
+      return sorted.map(l => ({ type: 'lender' as const, lender: l }));
+    }
+    const result: RowItem[] = [];
+    let lastTier: string | null = null;
+    const tierCounts: Record<string, number> = {};
+    sorted.forEach(l => {
+      const t = l.tier || 'None';
+      tierCounts[t] = (tierCounts[t] || 0) + 1;
+    });
+    for (const l of sorted) {
+      const t = l.tier || 'None';
+      if (t !== lastTier) {
+        result.push({ type: 'tier-header', tier: t, count: tierCounts[t] });
+        lastTier = t;
+      }
+      result.push({ type: 'lender', lender: l });
+    }
+    return result;
+  }, [sorted, groupByTier]);
 
   const confirmRemove = useCallback(() => {
     if (!removingLender) return;
@@ -227,6 +261,15 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
             <option value="all">All Types</option>
             {lenderTypes.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
+          <Button
+            variant={groupByTier ? 'secondary' : 'outline'}
+            size="sm"
+            className="h-9 gap-1.5 text-xs"
+            onClick={() => setGroupByTier(g => !g)}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            Group by Tier
+          </Button>
           <div className="text-xs text-muted-foreground ml-auto">
             {sorted.length} lenders · {totalOnDeal} on deal
           </div>
@@ -268,9 +311,19 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                 {/* Data Rows - Virtualized */}
                 <Virtuoso
                   style={{ height: 'calc(85vh - 180px)' }}
-                  totalCount={sorted.length}
+                  totalCount={rows.length}
                   itemContent={(index) => {
-                    const lender = sorted[index];
+                    const row = rows[index];
+                    if (row.type === 'tier-header') {
+                      return (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-muted/70 border-b border-border font-semibold text-xs text-foreground sticky z-[5]" style={{ minWidth: TOTAL_WIDTH }}>
+                          <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                          {row.tier === 'None' ? 'No Tier' : row.tier}
+                          <span className="font-normal text-muted-foreground">({row.count} lender{row.count !== 1 ? 's' : ''})</span>
+                        </div>
+                      );
+                    }
+                    const lender = row.lender;
                     return (
                       <div
                         className={cn(
