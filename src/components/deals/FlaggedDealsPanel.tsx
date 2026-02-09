@@ -48,15 +48,28 @@ export function FlaggedDealsPanel({ deals }: FlaggedDealsPanelProps) {
         .in('deal_id', dealIds)
         .order('created_at', { ascending: false });
 
-      if (!notesData || notesData.length === 0) return;
-
-      const typedNotes = notesData as unknown as { id: string; deal_id: string; user_id: string | null; created_at: string }[];
+      const typedNotes = (notesData || []) as unknown as { id: string; deal_id: string; user_id: string | null; created_at: string }[];
 
       // Get latest note per deal
-      const latestPerDeal = new Map<string, typeof typedNotes[number]>();
+      const latestPerDeal = new Map<string, { user_id: string | null; created_at: string }>();
       for (const note of typedNotes) {
         if (!latestPerDeal.has(note.deal_id)) {
-          latestPerDeal.set(note.deal_id, note);
+          latestPerDeal.set(note.deal_id, { user_id: note.user_id, created_at: note.created_at });
+        }
+      }
+
+      // For deals without flag notes, fall back to the deal owner (user_id from deals table)
+      const dealsWithoutNotes = dealIds.filter(id => !latestPerDeal.has(id));
+      if (dealsWithoutNotes.length > 0) {
+        const { data: dealOwners } = await supabase
+          .from('deals')
+          .select('id, user_id, updated_at')
+          .in('id', dealsWithoutNotes);
+
+        if (dealOwners) {
+          for (const d of dealOwners) {
+            latestPerDeal.set(d.id, { user_id: d.user_id, created_at: d.updated_at });
+          }
         }
       }
 
@@ -77,15 +90,15 @@ export function FlaggedDealsPanel({ deals }: FlaggedDealsPanelProps) {
       }
 
       const authors: Record<string, FlagAuthor> = {};
-      for (const [dealId, note] of latestPerDeal) {
-        if (note.user_id) {
-          const profile = profilesMap[note.user_id];
+      for (const [dealId, entry] of latestPerDeal) {
+        if (entry.user_id) {
+          const profile = profilesMap[entry.user_id];
           authors[dealId] = {
             dealId,
-            userId: note.user_id,
+            userId: entry.user_id,
             displayName: profile?.display_name || null,
             avatarUrl: profile?.avatar_url || null,
-            createdAt: note.created_at,
+            createdAt: entry.created_at,
           };
         }
       }
