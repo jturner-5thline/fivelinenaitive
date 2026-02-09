@@ -40,6 +40,17 @@ export interface EligibilityFilterResult {
   excluded: ExcludedLenderDebug[];
 }
 
+export interface CriteriaMatchResult {
+  /** Number of criteria the lender passed. */
+  passed: number;
+  /** Total number of criteria that were evaluated (non-skipped). */
+  total: number;
+  /** Which filters passed. */
+  passedFilters: FilterName[];
+  /** Which filters failed. */
+  failedFilters: FilterName[];
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalize(str: string): string {
@@ -284,6 +295,60 @@ export function filterEligibleLenders(
   }
 
   return { eligible, excluded };
+}
+
+// ─── Criteria match counter ───────────────────────────────────────────────────
+
+/**
+ * Count how many of the 5 criteria a lender matches for a given deal.
+ * Only counts criteria that are actually specified on the deal (non-skipped).
+ */
+export function countCriteriaMatches(
+  deal: DealFilterInput,
+  lender: MasterLender
+): CriteriaMatchResult {
+  const passedFilters: FilterName[] = [];
+  const failedFilters: FilterName[] = [];
+
+  for (const filter of FILTER_PIPELINE) {
+    // Check if this criterion is specified on the deal
+    const isSpecified = isCriterionSpecified(filter.name, deal);
+    if (!isSpecified) continue;
+
+    if (filter.test(deal, lender)) {
+      passedFilters.push(filter.name);
+    } else {
+      failedFilters.push(filter.name);
+    }
+  }
+
+  return {
+    passed: passedFilters.length,
+    total: passedFilters.length + failedFilters.length,
+    passedFilters,
+    failedFilters,
+  };
+}
+
+function isCriterionSpecified(name: FilterName, deal: DealFilterInput): boolean {
+  switch (name) {
+    case 'DEAL_SIZE':
+      return deal.dealSize != null;
+    case 'DEAL_TYPE': {
+      const allTypes: string[] = [];
+      if (deal.dealType) allTypes.push(deal.dealType);
+      if (deal.dealTypes) allTypes.push(...deal.dealTypes);
+      return allTypes.length > 0;
+    }
+    case 'CASH_BURN':
+      return !!deal.isCashBurn;
+    case 'INDUSTRY':
+      return !!deal.industry;
+    case 'SPONSORSHIP':
+      return !!deal.isSponsorBacked || deal.isSponsorBacked === false;
+    default:
+      return false;
+  }
 }
 
 // ─── Adapter for DealCriteria ─────────────────────────────────────────────────
