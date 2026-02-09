@@ -54,7 +54,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   emailNotifications: true,
   dealStatusAlerts: true,
   currency: 'usd',
-  currencyFormat: 'abbreviated-1',
+  currencyFormat: 'abbreviated-2',
   dateFormat: 'mdy',
   lenderUpdateYellowDays: 7,
   lenderUpdateRedDays: 14,
