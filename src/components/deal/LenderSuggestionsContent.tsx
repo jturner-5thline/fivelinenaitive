@@ -165,9 +165,12 @@ export function LenderSuggestionsContent({
     return cols;
   }, [groupedByTier]);
 
+  // When only 1 tier column, render lenders as a flat grid (3 across) instead of a single tier column
+  const singleTierFlat = visibleTierColumns.length === 1;
+
   const gridColsClass = useMemo(() => {
     const count = visibleTierColumns.length;
-    if (count <= 1) return 'grid-cols-1 md:grid-cols-1';
+    if (count <= 1) return 'grid-cols-1';
     if (count === 2) return 'grid-cols-1 md:grid-cols-2';
     return 'grid-cols-1 md:grid-cols-3';
   }, [visibleTierColumns]);
@@ -404,6 +407,28 @@ export function LenderSuggestionsContent({
         {totalMatches === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">
             No matching lenders found. Try adjusting the deal criteria or filters.
+          </div>
+        ) : singleTierFlat ? (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Badge className={visibleTierColumns[0].colorClass}>{visibleTierColumns[0].label}</Badge>
+              <span className="text-xs text-muted-foreground">({visibleTierColumns[0].matches.length} lenders)</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pb-4">
+              {visibleTierColumns[0].matches.map(match => (
+                <LenderMatchCard
+                  key={match.lender.id}
+                  match={match}
+                  isSelected={selectedLenders.has(match.lender.id)}
+                  onToggle={() => handleToggleLender(match.lender.id)}
+                  onAdd={() => onAddLender(match.lender.name)}
+                  onViewDetail={() => setDetailLender(match.lender)}
+                  badgeVariant="secondary"
+                  compact
+                  showLearningWarnings={showLearningWarnings}
+                />
+              ))}
+            </div>
           </div>
         ) : (
           <div className={`grid ${gridColsClass} gap-4 pb-4`}>
