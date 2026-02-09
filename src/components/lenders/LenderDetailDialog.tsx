@@ -739,9 +739,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Min Deal Size ($)</Label>
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           value={editForm.minDeal}
-                          onChange={(e) => setEditForm({ ...editForm, minDeal: e.target.value })}
+                          onChange={(e) => setEditForm({ ...editForm, minDeal: e.target.value.replace(/[^0-9]/g, '') })}
                           placeholder="e.g., 500000"
                           className="text-sm"
                         />
@@ -749,9 +750,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">Max Deal Size ($)</Label>
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           value={editForm.maxDeal}
-                          onChange={(e) => setEditForm({ ...editForm, maxDeal: e.target.value })}
+                          onChange={(e) => setEditForm({ ...editForm, maxDeal: e.target.value.replace(/[^0-9]/g, '') })}
                           placeholder="e.g., 25000000"
                           className="text-sm"
                         />
