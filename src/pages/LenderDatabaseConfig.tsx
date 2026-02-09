@@ -142,6 +142,7 @@ function ConfigSection({
   const [similarMatches, setSimilarMatches] = useState<string[]>([]);
   const [pendingValue, setPendingValue] = useState('');
   const [showSimilarDialog, setShowSimilarDialog] = useState(false);
+  const [showFinalConfirm, setShowFinalConfirm] = useState(false);
 
   const findSimilar = (input: string) => {
     const normalized = input.trim().toLowerCase().replace(/[&,\-()]/g, ' ').replace(/\s+/g, ' ');
@@ -274,18 +275,18 @@ function ConfigSection({
       <AlertDialog open={showSimilarDialog} onOpenChange={setShowSimilarDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Similar industries found</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg">⚠️ Similar industries found</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div>
-                <p className="mb-2">
-                  "{pendingValue}" looks similar to existing {similarMatches.length === 1 ? 'industry' : 'industries'}:
+                <p className="mb-3 text-base text-foreground">
+                  "<span className="font-semibold">{pendingValue}</span>" looks similar to {similarMatches.length === 1 ? 'an existing industry' : 'existing industries'}:
                 </p>
-                <ul className="list-disc pl-5 space-y-1">
+                <ul className="space-y-2 mb-4">
                   {similarMatches.map(m => (
-                    <li key={m} className="font-medium">{m}</li>
+                    <li key={m} className="text-base font-semibold text-foreground bg-muted px-3 py-1.5 rounded-md">{m}</li>
                   ))}
                 </ul>
-                <p className="mt-3">Do you still want to add "{pendingValue}"?</p>
+                <p className="text-base text-muted-foreground">Are you sure you still want to add "<span className="font-semibold">{pendingValue}</span>"?</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -293,8 +294,28 @@ function ConfigSection({
             <AlertDialogCancel onClick={() => { setShowSimilarDialog(false); setPendingValue(''); setSimilarMatches([]); }}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={confirmAdd}>
+            <AlertDialogAction onClick={() => { setShowSimilarDialog(false); setShowFinalConfirm(true); }}>
               Add Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Final confirmation dialog */}
+      <AlertDialog open={showFinalConfirm} onOpenChange={setShowFinalConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm addition</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Please confirm you want to add "<span className="font-semibold text-foreground">{pendingValue}</span>" as a new industry.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowFinalConfirm(false); setPendingValue(''); setSimilarMatches([]); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowFinalConfirm(false); confirmAdd(); }}>
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
