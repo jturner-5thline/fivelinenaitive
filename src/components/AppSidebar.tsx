@@ -98,7 +98,7 @@ export function AppSidebar() {
           >
             <Menu className="h-5 w-5 text-sidebar-foreground" />
           </button>
-          {showExpanded && <span className="font-semibold text-sidebar-foreground">5thLine</span>}
+          {showExpanded && <span className="font-semibold text-foreground">5thLine</span>}
         </div>
       </SidebarHeader>
 
