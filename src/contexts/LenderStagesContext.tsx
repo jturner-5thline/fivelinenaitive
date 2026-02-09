@@ -114,14 +114,40 @@ export function LenderStagesProvider({ children }: { children: ReactNode }) {
 
         // If user belongs to a company, always use company-level config (shared across team)
         if (company?.id) {
-          const result = await supabase
+          // First try company-level config
+          const companyResult = await supabase
             .from('lender_stage_configs')
             .select('*')
             .eq('company_id', company.id)
             .maybeSingle();
           
-          data = result.data;
-          error = result.error;
+          if (companyResult.data) {
+            data = companyResult.data;
+            error = companyResult.error;
+          } else {
+            // Fall back to personal config and migrate it to company level
+            const personalResult = await supabase
+              .from('lender_stage_configs')
+              .select('*')
+              .eq('user_id', user.id)
+              .is('company_id', null)
+              .maybeSingle();
+            
+            if (personalResult.data) {
+              // Migrate personal config to company config
+              const { error: migrateError } = await supabase
+                .from('lender_stage_configs')
+                .update({ company_id: company.id })
+                .eq('id', personalResult.data.id);
+              
+              if (!migrateError) {
+                data = { ...personalResult.data, company_id: company.id };
+              } else {
+                data = personalResult.data;
+              }
+            }
+            error = personalResult.error;
+          }
         } else {
           // No company - use personal config
           const result = await supabase
