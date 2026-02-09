@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { Flag, ChevronLeft, ChevronRight, MessageSquare, X, DollarSign, Building2 } from 'lucide-react';
@@ -254,7 +255,7 @@ function CarouselInner({ deals, onClose, initialIndex = 0 }: {
                         <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                           <Building2 className="h-4 w-4" />
                           <span className={isActive ? 'text-sm' : 'text-xs'}>
-                            {deal.dealTypes.join(', ')}
+                            {dealTypeIdsToLabels(deal.dealTypes).join(', ')}
                           </span>
                         </div>
                       )}

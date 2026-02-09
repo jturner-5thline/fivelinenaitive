@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
 import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, Sparkles, AlertTriangle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -1155,7 +1156,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               <div className="rounded-lg border bg-muted/30 p-4">
                 <h4 className="font-semibold text-sm mb-3">Deal Details</h4>
                 <div className="space-y-1">
-                  <DataPreviewRow label="Deal Type" value={data.dealTypes.join(', ') || '—'} />
+                  <DataPreviewRow label="Deal Type" value={dealTypeIdsToLabels(data.dealTypes).join(', ') || '—'} />
                   <DataPreviewRow label="Capital Ask" value={data.capitalAsk} />
                   <DataPreviewRow label="Status" value={data.status} />
                   <DataPreviewRow label="Billing Model" value={data.billingModels.join(', ') || '—'} />
