@@ -138,7 +138,7 @@ export function LenderSearchInput({
       setIsOpen(open);
     }}>
       <PopoverTrigger asChild>
-        <div className="w-48">
+        <div className="w-48 ml-2">
           <Input
             placeholder="Type 2+ chars to search lenders..."
             value={searchQuery}
