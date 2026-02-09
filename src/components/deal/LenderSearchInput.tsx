@@ -30,10 +30,10 @@ export function LenderSearchInput({
 
     const queryLower = trimmedQuery.toLowerCase();
     const limit = 15; // Reduced limit for cleaner results
-    const matches: { name: string; score: number; coverage: number }[] = [];
+    const matches: { name: string; score: number; coverage: number; isExisting: boolean }[] = [];
 
     for (const name of lenderNames) {
-      if (existingLenderNamesSet.has(name)) continue;
+      const isExisting = existingLenderNamesSet.has(name);
       
       const nameLower = name.toLowerCase();
       
@@ -43,26 +43,23 @@ export function LenderSearchInput({
       // Score: prefix match = 0, word-start match = 1, substring = 2
       let score: number;
       if (nameLower.startsWith(queryLower)) {
-        score = 0; // Best: starts with query
+        score = 0;
       } else {
-        // Check if any word starts with query
         const words = nameLower.split(/\s+/);
         const wordStartMatch = words.some(word => word.startsWith(queryLower));
         score = wordStartMatch ? 1 : 2;
       }
 
-      // Coverage: what percentage of the name is matched by the query (higher = better)
       const coverage = queryLower.length / nameLower.length;
 
-      matches.push({ name, score, coverage });
+      matches.push({ name, score, coverage, isExisting });
     }
 
-    // Sort: closest letter-for-letter match first
-    // 1) score (exact/prefix/word-start/substring)
-    // 2) earliest match position in the name
-    // 3) closest overall length (prefers tighter matches)
-    // 4) coverage + alphabetical
+    // Sort: non-existing first, then by score/position/length/coverage
     matches.sort((a, b) => {
+      // Existing lenders go to the bottom
+      if (a.isExisting !== b.isExisting) return a.isExisting ? 1 : -1;
+      
       if (a.score !== b.score) return a.score - b.score;
 
       const aLower = a.name.toLowerCase();
@@ -80,7 +77,7 @@ export function LenderSearchInput({
       return a.name.localeCompare(b.name);
     });
 
-    return matches.slice(0, limit).map(m => m.name);
+    return matches.slice(0, limit).map(m => ({ name: m.name, isExisting: m.isExisting }));
   }, [lenderNames, existingLenderNamesSet, searchQuery]);
 
   // Check if a name already exists (exact match)
@@ -97,8 +94,8 @@ export function LenderSearchInput({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
-      if (filteredLenderNames.length > 0) {
-        handleAddLender(filteredLenderNames[0]);
+      if (filteredLenderNames.length > 0 && !filteredLenderNames[0].isExisting) {
+        handleAddLender(filteredLenderNames[0].name);
       } else if (!isLenderAlreadyAdded(searchQuery.trim())) {
         handleAddLender(searchQuery.trim());
       }
@@ -163,13 +160,21 @@ export function LenderSearchInput({
             {filteredLenderNames.length} match{filteredLenderNames.length !== 1 ? 'es' : ''} for "{searchQuery.trim()}"
           </div>
         )}
-        {filteredLenderNames.map((lenderName, idx) => (
+        {filteredLenderNames.map((item, idx) => (
           <button
-            key={`${lenderName}-${idx}`}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-            onClick={() => handleAddLender(lenderName)}
+            key={`${item.name}-${idx}`}
+            className={`w-full text-left px-3 py-2 text-sm cursor-pointer flex items-center justify-between ${
+              item.isExisting 
+                ? 'opacity-60 cursor-default' 
+                : 'hover:bg-accent hover:text-accent-foreground'
+            }`}
+            onClick={() => !item.isExisting && handleAddLender(item.name)}
+            disabled={item.isExisting}
           >
-            {highlightMatch(lenderName)}
+            <span>{highlightMatch(item.name)}</span>
+            {item.isExisting && (
+              <span className="text-xs text-muted-foreground italic ml-2 shrink-0">Added</span>
+            )}
           </button>
         ))}
         {searchQuery.trim() && !isDuplicateQuery && (
