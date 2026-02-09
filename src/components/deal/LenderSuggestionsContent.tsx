@@ -155,6 +155,22 @@ export function LenderSuggestionsContent({
     
     return { t1, t2, t3, other };
   }, [filteredMatches]);
+
+  // Determine which tier columns to show
+  const visibleTierColumns = useMemo(() => {
+    const cols: { key: string; label: string; matches: typeof groupedByTier.t1; colorClass: string }[] = [];
+    if (groupedByTier.t1.length > 0) cols.push({ key: 'T1', label: 'Tier 1', matches: groupedByTier.t1, colorClass: 'bg-[#d1fae5] text-[#047857]' });
+    if (groupedByTier.t2.length > 0) cols.push({ key: 'T2', label: 'Tier 2', matches: groupedByTier.t2, colorClass: 'bg-[#d0e7ff] text-[#1d4ed8]' });
+    if (groupedByTier.t3.length > 0) cols.push({ key: 'T3', label: 'Tier 3', matches: groupedByTier.t3, colorClass: 'bg-[#fef3c7] text-[#b45309]' });
+    return cols;
+  }, [groupedByTier]);
+
+  const gridColsClass = useMemo(() => {
+    const count = visibleTierColumns.length;
+    if (count <= 1) return 'grid-cols-1 md:grid-cols-1';
+    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
+    return 'grid-cols-1 md:grid-cols-3';
+  }, [visibleTierColumns]);
   
   const totalMatches = groupedByTier.t1.length + groupedByTier.t2.length + groupedByTier.t3.length + groupedByTier.other.length;
 
@@ -390,45 +406,21 @@ export function LenderSuggestionsContent({
             No matching lenders found. Try adjusting the deal criteria or filters.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4">
-            {/* Tier 1 Column */}
-            <TierColumn
-              tier="T1"
-              label="Tier 1"
-              matches={groupedByTier.t1}
-              selectedLenders={selectedLenders}
-              onToggleLender={handleToggleLender}
-              onAddLender={onAddLender}
-              onViewDetail={setDetailLender}
-              colorClass="bg-[#d1fae5] text-[#047857]"
-              showLearningWarnings={showLearningWarnings}
-            />
-            
-            {/* Tier 2 Column */}
-            <TierColumn
-              tier="T2"
-              label="Tier 2"
-              matches={groupedByTier.t2}
-              selectedLenders={selectedLenders}
-              onToggleLender={handleToggleLender}
-              onAddLender={onAddLender}
-              onViewDetail={setDetailLender}
-              colorClass="bg-[#d0e7ff] text-[#1d4ed8]"
-              showLearningWarnings={showLearningWarnings}
-            />
-            
-            {/* Tier 3 Column */}
-            <TierColumn
-              tier="T3"
-              label="Tier 3"
-              matches={groupedByTier.t3}
-              selectedLenders={selectedLenders}
-              onToggleLender={handleToggleLender}
-              onAddLender={onAddLender}
-              onViewDetail={setDetailLender}
-              colorClass="bg-[#fef3c7] text-[#b45309]"
-              showLearningWarnings={showLearningWarnings}
-            />
+          <div className={`grid ${gridColsClass} gap-4 pb-4`}>
+            {visibleTierColumns.map(col => (
+              <TierColumn
+                key={col.key}
+                tier={col.key}
+                label={col.label}
+                matches={col.matches}
+                selectedLenders={selectedLenders}
+                onToggleLender={handleToggleLender}
+                onAddLender={onAddLender}
+                onViewDetail={setDetailLender}
+                colorClass={col.colorClass}
+                showLearningWarnings={showLearningWarnings}
+              />
+            ))}
           </div>
         )}
         
