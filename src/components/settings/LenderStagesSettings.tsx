@@ -109,7 +109,7 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange, isAd
           onValueChange={(value: StageGroup) => onGroupChange(stage.id, value)}
           disabled={!isAdmin}
         >
-          <SelectTrigger className="w-[100px] h-7 text-xs">
+          <SelectTrigger className="w-[120px] h-7 text-xs whitespace-nowrap">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
