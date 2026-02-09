@@ -38,6 +38,7 @@ import { LenderSectionReorderDialog } from './LenderSectionReorderDialog';
 import { AddLenderContactDialog } from './AddLenderContactDialog';
 import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
+import { INDUSTRY_OPTIONS } from '@/constants/industries';
 
 const LENDER_TYPE_OPTIONS = [
   'Alternative',
@@ -218,6 +219,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isEditMode, setIsEditMode] = useState(initialEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
+  const [industrySearchEdit, setIndustrySearchEdit] = useState('');
   const [editForm, setEditForm] = useState<LenderEditData>({
     name: '',
     contactName: '',
@@ -769,13 +771,57 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Industries (comma-separated)</Label>
-                      <Input
-                        value={editForm.industries}
-                        onChange={(e) => setEditForm({ ...editForm, industries: e.target.value })}
-                        placeholder="e.g., SaaS, Healthcare, Technology"
-                        className="text-sm"
-                      />
+                      <Label className="text-xs text-muted-foreground">Industries</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
+                            {editForm.industries ? (
+                              <span className="flex flex-wrap gap-1">
+                                {editForm.industries.split(',').filter(t => t.trim()).map((t, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{t.trim()}</Badge>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Select industries</span>
+                            )}
+                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2 z-[9999] bg-popover" align="start">
+                          <div className="mb-2">
+                            <Input
+                              placeholder="Search industries..."
+                              value={industrySearchEdit}
+                              onChange={(e) => setIndustrySearchEdit(e.target.value)}
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-0.5 max-h-52 overflow-y-auto">
+                            {(industrySearchEdit
+                              ? INDUSTRY_OPTIONS.filter(o => o.toLowerCase().includes(industrySearchEdit.toLowerCase()))
+                              : INDUSTRY_OPTIONS
+                            ).map((industry) => {
+                              const current = editForm.industries ? editForm.industries.split(',').map(t => t.trim()).filter(Boolean) : [];
+                              const isSelected = current.includes(industry);
+                              return (
+                                <button
+                                  key={industry}
+                                  className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
+                                  onClick={() => {
+                                    const newIndustries = isSelected
+                                      ? current.filter(t => t !== industry)
+                                      : [...current, industry];
+                                    setEditForm({ ...editForm, industries: newIndustries.join(',') });
+                                  }}
+                                >
+                                  <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
+                                  {industry}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Loan Types (comma-separated)</Label>
