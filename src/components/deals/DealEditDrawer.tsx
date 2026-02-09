@@ -153,7 +153,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
       {/* Drawer */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 w-[400px] max-w-[90vw] bg-background border-l border-border shadow-xl z-[9999]",
+          "fixed inset-y-0 right-0 w-[400px] max-w-[90vw] bg-background shadow-xl z-[9999] border-l dark:border-l-[hsl(263,45%,40%,0.5)] dark:shadow-[−4px_0_24px_hsl(263,60%,50%,0.12)]",
           "transition-transform duration-250 ease-[cubic-bezier(0.32,0.72,0,1)]",
           isAnimating ? "translate-x-0" : "translate-x-full"
         )}
