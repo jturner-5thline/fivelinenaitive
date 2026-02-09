@@ -484,7 +484,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       }
       onOpenChange(newOpen);
     }}>
-      <DialogContent className="max-w-2xl max-h-[80vh] min-h-0 overflow-hidden !flex !flex-col z-[60]">
+      <DialogContent className="max-w-4xl max-h-[88vh] min-h-0 overflow-hidden !flex !flex-col z-[60]">
         <DialogHeader className="flex flex-col gap-1 pr-8 min-w-0">
           <div className="flex flex-row items-center justify-between gap-2 min-w-0">
             <DialogTitle className="flex items-center gap-2 text-xl text-foreground min-w-0 flex-1">
