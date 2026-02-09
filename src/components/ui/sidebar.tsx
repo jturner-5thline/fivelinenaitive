@@ -252,8 +252,8 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col bg-background rounded-xl border border-border overflow-hidden transition-all duration-200",
-            // Add enhanced shadow when hovering (like a drawer sliding out)
+            "flex h-full w-full flex-col rounded-xl border border-border/30 overflow-hidden transition-all duration-200",
+            "bg-[radial-gradient(circle_at_bottom_right,_hsl(280,70%,15%)_0%,_hsl(270,80%,4%)_60%,_hsl(270,100%,2%)_100%)]",
             isHovering && state === "collapsed" ? "shadow-xl" : "shadow-sm",
             className,
           )}
@@ -462,20 +462,19 @@ const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.ComponentProps<"li
 SidebarMenuItem.displayName = "SidebarMenuItem";
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-all duration-200 hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent/40 active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:rounded-none data-[active=true]:rounded-r-md data-[active=true]:border-l-[3px] data-[active=true]:border-l-[hsl(280,60%,60%)] data-[active=true]:bg-transparent data-[active=true]:font-medium data-[active=true]:text-sidebar-foreground data-[state=open]:hover:bg-sidebar-accent/40 data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button relative flex w-full items-center gap-2 overflow-hidden rounded-none p-2.5 px-4 text-left text-sm outline-none ring-sidebar-ring transition-all duration-[120ms] ease-out disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-[hsl(260,12%,67%)] [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-[hsl(260,16%,59%)] [&>span:last-child]:truncate hover:bg-[hsl(270,40%,12%)] hover:text-[hsl(270,100%,96%)] hover:[&>svg]:text-[hsl(270,100%,88%)] focus-visible:ring-2 focus-visible:bg-[hsl(270,40%,12%)] focus-visible:text-[hsl(270,100%,96%)] data-[active=true]:bg-[hsl(270,40%,12%)] data-[active=true]:text-[hsl(270,100%,96%)] data-[active=true]:font-medium data-[active=true]:[&>svg]:text-[hsl(270,100%,88%)] data-[state=open]:hover:bg-[hsl(270,40%,12%)] data-[state=open]:hover:text-[hsl(270,100%,96%)] before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0 before:rounded-full before:bg-gradient-to-b before:from-[hsl(295,100%,73%)] before:to-[hsl(280,100%,60%)] before:shadow-[0_0_16px_rgba(197,87,255,0.8)] before:opacity-0 before:transition-all before:duration-[120ms] before:ease-out hover:before:w-[3px] hover:before:opacity-100 data-[active=true]:before:w-[3px] data-[active=true]:before:opacity-100",
   {
     variants: {
       variant: {
-        default: "hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground",
+        default: "",
         outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-[hsl(270,40%,12%)] hover:text-[hsl(270,100%,96%)]",
       },
       size: {
-        default: "h-8 text-sm",
+        default: "h-9 text-sm",
         sm: "h-7 text-xs",
         lg: "h-12 text-sm",
       },
-      // Control collapsed appearance based on effective state (not just collapsible attribute)
       collapsed: {
         true: "!size-8 !p-2",
         false: "",
