@@ -96,7 +96,12 @@ function SortableStageItem({ stage, index, onEdit, onDelete, onGroupChange, isAd
           </button>
         )}
         <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
-        <p className="font-medium truncate">{stage.label}</p>
+        <div className="min-w-0">
+          <p className="font-medium truncate">{stage.label}</p>
+          {stage.description && (
+            <p className="text-xs text-muted-foreground truncate">{stage.description}</p>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <Select
@@ -192,6 +197,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
   };
   const [editingStage, setEditingStage] = useState<StageOption | null>(null);
   const [label, setLabel] = useState('');
+  const [description, setDescription] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<StageGroup>('active');
 
   const sensors = useSensors(
@@ -204,6 +210,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
   const openAddDialog = () => {
     setEditingStage(null);
     setLabel('');
+    setDescription('');
     setSelectedGroup('active');
     setIsDialogOpen(true);
   };
@@ -211,6 +218,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
   const openEditDialog = (stage: StageOption) => {
     setEditingStage(stage);
     setLabel(stage.label);
+    setDescription(stage.description || '');
     setSelectedGroup(stage.group);
     setIsDialogOpen(true);
   };
@@ -222,7 +230,7 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
     }
 
     if (editingStage) {
-      setLocalStages(localStages.map(s => s.id === editingStage.id ? { ...s, label: label.trim(), group: selectedGroup } : s));
+      setLocalStages(localStages.map(s => s.id === editingStage.id ? { ...s, label: label.trim(), group: selectedGroup, description: description.trim() || undefined } : s));
     } else {
       const exists = localStages.some(s => s.label.toLowerCase() === label.trim().toLowerCase());
       if (exists) {
@@ -233,12 +241,14 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
         id: crypto.randomUUID(),
         label: label.trim(),
         group: selectedGroup,
+        description: description.trim() || undefined,
       };
       setLocalStages([...localStages, newStage]);
     }
 
     setIsDialogOpen(false);
     setLabel('');
+    setDescription('');
     setEditingStage(null);
   };
 
@@ -423,6 +433,15 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stageDescription">Definition</Label>
+              <Input
+                id="stageDescription"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of this stage"
+              />
             </div>
           </div>
           <DialogFooter>

@@ -85,7 +85,12 @@ function SortableSubstageItem({ substage, index, onEdit, onDelete, isAdmin }: So
           </button>
         )}
         <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
-        <p className="font-medium">{substage.label}</p>
+        <div className="min-w-0">
+          <p className="font-medium">{substage.label}</p>
+          {substage.description && (
+            <p className="text-xs text-muted-foreground">{substage.description}</p>
+          )}
+        </div>
       </div>
       {isAdmin && (
         <div className="flex items-center gap-1">
@@ -160,6 +165,7 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
   };
   const [editingSubstage, setEditingSubstage] = useState<SubstageOption | null>(null);
   const [label, setLabel] = useState('');
+  const [description, setDescription] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -171,12 +177,14 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
   const openAddDialog = () => {
     setEditingSubstage(null);
     setLabel('');
+    setDescription('');
     setIsDialogOpen(true);
   };
 
   const openEditDialog = (substage: SubstageOption) => {
     setEditingSubstage(substage);
     setLabel(substage.label);
+    setDescription(substage.description || '');
     setIsDialogOpen(true);
   };
 
@@ -187,7 +195,7 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
     }
 
     if (editingSubstage) {
-      setLocalSubstages(localSubstages.map(s => s.id === editingSubstage.id ? { ...s, label: label.trim() } : s));
+      setLocalSubstages(localSubstages.map(s => s.id === editingSubstage.id ? { ...s, label: label.trim(), description: description.trim() || undefined } : s));
     } else {
       const exists = localSubstages.some(s => s.label.toLowerCase() === label.trim().toLowerCase());
       if (exists) {
@@ -197,12 +205,14 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
       const newSubstage: SubstageOption = {
         id: crypto.randomUUID(),
         label: label.trim(),
+        description: description.trim() || undefined,
       };
       setLocalSubstages([...localSubstages, newSubstage]);
     }
 
     setIsDialogOpen(false);
     setLabel('');
+    setDescription('');
     setEditingSubstage(null);
   };
 
@@ -352,6 +362,16 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="Enter milestone name"
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="substageDescription">Definition</Label>
+              <Input
+                id="substageDescription"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief description of this milestone"
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
               />
             </div>
