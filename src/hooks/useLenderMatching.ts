@@ -333,8 +333,9 @@ export function calculateLenderMatch(
   // PRIORITY 4: Industry match
   if (criteria.industry) {
     if (isIndustriesAvoided(criteria.industry, lender.industries_to_avoid)) {
-      // Hard exclude — lender explicitly avoids this industry
-      return null;
+      // Hard penalty — lender explicitly avoids this industry
+      warnings.push('Avoids this industry');
+      score += PENALTIES.INDUSTRY_AVOIDED;
     } else if (matchesIndustry(criteria.industry, lender.industries)) {
       matchReasons.push(`${criteria.industry} industry`);
       score += WEIGHTS.INDUSTRY;
