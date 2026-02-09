@@ -670,12 +670,6 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
             )}
           </div>
           
-          {/* Lender Type */}
-          {lender.lender_type && (
-            <Badge variant="outline" className="text-[10px] mb-1">
-              {lender.lender_type}
-            </Badge>
-          )}
           
           {/* Contact Info - only show if not compact */}
           {!compact && (lender.contact_name || lender.email) && (
@@ -687,61 +681,6 @@ function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, bad
                   {lender.email}
                 </a>
               )}
-            </div>
-          )}
-          
-          {/* Match Reasons - show fewer in compact mode */}
-          {matchReasons.length > 0 && (
-            <div className="flex flex-wrap gap-0.5 mb-1">
-              {matchReasons.slice(0, compact ? 2 : 3).map((reason, i) => (
-                <Badge key={i} variant={badgeVariant} className="text-[9px] font-normal py-0 px-1">
-                  <CheckCircle2 className="h-2 w-2 mr-0.5" />
-                  {reason}
-                </Badge>
-              ))}
-              {matchReasons.length > (compact ? 2 : 3) && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Badge variant="secondary" className="text-[9px] py-0 px-1">
-                        +{matchReasons.length - (compact ? 2 : 3)}
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <ul className="text-xs space-y-1">
-                        {matchReasons.slice(compact ? 2 : 3).map((reason, i) => (
-                          <li key={i}>✓ {reason}</li>
-                        ))}
-                      </ul>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-          )}
-          
-          {/* Warnings */}
-          {warnings.length > 0 && (
-            <div className="flex flex-wrap gap-0.5">
-              {warnings.slice(0, compact ? 1 : 3).map((warning, i) => (
-                <Badge key={i} variant="outline" className="text-[9px] font-normal py-0 px-1 text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
-                  <AlertTriangle className="h-2 w-2 mr-0.5" />
-                  {warning}
-                </Badge>
-              ))}
-              {warnings.length > (compact ? 1 : 3) && (
-                <Badge variant="outline" className="text-[9px] py-0 px-1 text-amber-600">
-                  +{warnings.length - (compact ? 1 : 3)}
-                </Badge>
-              )}
-            </div>
-          )}
-          
-          {/* Deal Range - compact display */}
-          {(lender.min_deal || lender.max_deal) && (
-            <div className="text-[10px] text-muted-foreground mt-1">
-              {lender.min_deal ? `$${(lender.min_deal / 1000).toFixed(0)}K` : '—'} 
-              - {lender.max_deal ? `$${(lender.max_deal / 1000000).toFixed(1)}M` : '—'}
             </div>
           )}
         </div>
