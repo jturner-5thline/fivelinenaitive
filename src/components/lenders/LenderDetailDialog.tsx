@@ -40,6 +40,7 @@ import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
+import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 
 const LENDER_TYPE_OPTIONS = [
   'Alternative',
@@ -222,6 +223,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
   const [loanTypeSearchEdit, setLoanTypeSearchEdit] = useState('');
+  const [reqSearchEdit, setReqSearchEdit] = useState('');
   const [editForm, setEditForm] = useState<LenderEditData>({
     name: '',
     contactName: '',
@@ -902,13 +904,56 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Company Requirements</Label>
-                      <Textarea
-                        value={editForm.companyRequirements}
-                        onChange={(e) => setEditForm({ ...editForm, companyRequirements: e.target.value })}
-                        placeholder="e.g., Must be profitable, 2+ years in business..."
-                        rows={2}
-                        className="text-sm"
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
+                            {editForm.companyRequirements ? (
+                              <span className="flex flex-wrap gap-1">
+                                {editForm.companyRequirements.split(',').filter(t => t.trim()).map((t, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{t.trim()}</Badge>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Select requirements</span>
+                            )}
+                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-2 z-[9999] bg-popover" align="start">
+                          <div className="mb-2">
+                            <Input
+                              placeholder="Search requirements..."
+                              value={reqSearchEdit}
+                              onChange={(e) => setReqSearchEdit(e.target.value)}
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-0.5 max-h-52 overflow-y-auto">
+                            {(reqSearchEdit
+                              ? COMPANY_REQUIREMENT_OPTIONS.filter(o => o.toLowerCase().includes(reqSearchEdit.toLowerCase()))
+                              : COMPANY_REQUIREMENT_OPTIONS
+                            ).map((req) => {
+                              const current = editForm.companyRequirements ? editForm.companyRequirements.split(',').map(t => t.trim()).filter(Boolean) : [];
+                              const isSelected = current.includes(req);
+                              return (
+                                <button
+                                  key={req}
+                                  className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
+                                  onClick={() => {
+                                    const newReqs = isSelected
+                                      ? current.filter(t => t !== req)
+                                      : [...current, req];
+                                    setEditForm({ ...editForm, companyRequirements: newReqs.join(',') });
+                                  }}
+                                >
+                                  <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
+                                  {req}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 </section>
