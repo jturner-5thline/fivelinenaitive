@@ -143,7 +143,7 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
       <TableCell>
         <Badge
           variant="outline"
-          className={`${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg`}
+          className={`${statusConfig.badgeColor} text-foreground dark:text-[hsl(240,25%,5%)] border-0 text-xs rounded-lg font-semibold`}
         >
           {statusConfig.label}
         </Badge>
