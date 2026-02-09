@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare, Brain, Ban } from 'lucide-react';
+import { ChevronDown, Plus, Search, Building2, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, CheckSquare, Brain, Ban, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -151,8 +151,9 @@ export function LenderSuggestionsContent({
   
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-        Loading lender database...
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <span className="text-sm text-muted-foreground">Loading lender database...</span>
       </div>
     );
   }
