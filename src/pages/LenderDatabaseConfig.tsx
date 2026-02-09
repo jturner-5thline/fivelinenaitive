@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -86,18 +87,11 @@ const defaultLenderTypes: ConfigItem[] = [
   { id: '8', value: 'SBA', isDefault: true },
 ];
 
-const defaultIndustries: ConfigItem[] = [
-  { id: '1', value: 'Technology', isDefault: true },
-  { id: '2', value: 'Healthcare', isDefault: true },
-  { id: '3', value: 'Financial Services', isDefault: true },
-  { id: '4', value: 'Consumer', isDefault: true },
-  { id: '5', value: 'Industrial', isDefault: true },
-  { id: '6', value: 'Real Estate', isDefault: true },
-  { id: '7', value: 'Energy', isDefault: true },
-  { id: '8', value: 'Media & Entertainment', isDefault: true },
-  { id: '9', value: 'Education', isDefault: true },
-  { id: '10', value: 'Hospitality', isDefault: true },
-];
+const defaultIndustries: ConfigItem[] = INDUSTRY_OPTIONS.map((value, idx) => ({
+  id: String(idx + 1),
+  value,
+  isDefault: true,
+}));
 
 const defaultLoanTypes: ConfigItem[] = [
   { id: '1', value: 'Term Loan', isDefault: true },
