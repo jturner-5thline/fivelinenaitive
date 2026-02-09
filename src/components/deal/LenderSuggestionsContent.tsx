@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useMasterLenders, MasterLender } from '@/hooks/useMasterLenders';
 import { useLenderMatching, LenderMatch, DealCriteria } from '@/hooks/useLenderMatching';
+import { countCriteriaMatches, dealCriteriaToFilterInput, DealFilterInput } from '@/utils/lenderEligibilityFilter';
 import { LenderWarningBadge } from './LenderWarningBadge';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { MasterLenderInsert } from '@/hooks/useMasterLenders';
@@ -80,7 +81,9 @@ export function LenderSuggestionsContent({
     excludeNames: existingLenderNames,
     enableLearning: true,
   });
-  
+
+  const dealFilterInput = useMemo(() => dealCriteriaToFilterInput(criteria), [criteria]);
+
   // Get unique lender types for filter
   const lenderTypes = useMemo(() => {
     const types = new Set<string>();
@@ -427,6 +430,7 @@ export function LenderSuggestionsContent({
                   badgeVariant="secondary"
                   compact
                   showLearningWarnings={showLearningWarnings}
+                  dealFilterInput={dealFilterInput}
                 />
               ))}
             </div>
@@ -445,6 +449,7 @@ export function LenderSuggestionsContent({
                 onViewDetail={setDetailLender}
                 colorClass={col.colorClass}
                 showLearningWarnings={showLearningWarnings}
+                dealFilterInput={dealFilterInput}
               />
             ))}
           </div>
@@ -477,6 +482,7 @@ export function LenderSuggestionsContent({
                       badgeVariant="secondary"
                       compact
                       showLearningWarnings={showLearningWarnings}
+                      dealFilterInput={dealFilterInput}
                     />
                   ))}
                 </div>
@@ -532,9 +538,10 @@ interface TierColumnProps {
   onViewDetail: (lender: MasterLender) => void;
   colorClass: string;
   showLearningWarnings?: boolean;
+  dealFilterInput?: DealFilterInput;
 }
 
-function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, onViewDetail, colorClass, showLearningWarnings }: TierColumnProps) {
+function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onAddLender, onViewDetail, colorClass, showLearningWarnings, dealFilterInput }: TierColumnProps) {
   const selectedCount = matches.filter(m => selectedLenders.has(m.lender.id)).length;
   
   return (
@@ -567,6 +574,7 @@ function TierColumn({ tier, label, matches, selectedLenders, onToggleLender, onA
               badgeVariant="default"
               compact
               showLearningWarnings={showLearningWarnings}
+              dealFilterInput={dealFilterInput}
             />
           ))
         )}
@@ -584,20 +592,59 @@ interface LenderMatchCardProps {
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
   compact?: boolean;
   showLearningWarnings?: boolean;
+  dealFilterInput?: DealFilterInput;
 }
 
-function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, badgeVariant, compact = false, showLearningWarnings = true }: LenderMatchCardProps) {
+function LenderMatchCard({ match, isSelected, onToggle, onAdd, onViewDetail, badgeVariant, compact = false, showLearningWarnings = true, dealFilterInput }: LenderMatchCardProps) {
   const { lender, matchReasons, warnings, score, learningWarnings } = match;
+
+  const criteriaMatch = useMemo(() => {
+    if (!dealFilterInput) return null;
+    return countCriteriaMatches(dealFilterInput, lender);
+  }, [dealFilterInput, lender]);
   
   return (
     <div
       className={cn(
-        "border rounded-lg bg-card hover:bg-muted/30 transition-colors group cursor-pointer",
+        "border rounded-lg bg-card hover:bg-muted/30 transition-colors group cursor-pointer relative",
         compact ? "p-2" : "p-3",
         isSelected && "ring-2 ring-primary border-primary bg-primary/5"
       )}
       onClick={() => onViewDetail?.()}
     >
+      {/* Criteria match badge - top right */}
+      {criteriaMatch && criteriaMatch.total > 0 && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={cn(
+                "absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                criteriaMatch.passed === criteriaMatch.total
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
+                  : criteriaMatch.passed >= criteriaMatch.total * 0.6
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400"
+                  : "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400"
+              )}>
+                <CheckCircle2 className="h-3 w-3" />
+                {criteriaMatch.passed}/{criteriaMatch.total}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="text-xs">
+              <p className="font-medium mb-1">Criteria Match: {criteriaMatch.passed}/{criteriaMatch.total}</p>
+              {criteriaMatch.passedFilters.map(f => (
+                <div key={f} className="flex items-center gap-1 text-emerald-600">
+                  <CheckCircle2 className="h-3 w-3" /> {f.replace('_', ' ')}
+                </div>
+              ))}
+              {criteriaMatch.failedFilters.map(f => (
+                <div key={f} className="flex items-center gap-1 text-destructive">
+                  <Ban className="h-3 w-3" /> {f.replace('_', ' ')}
+                </div>
+              ))}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <div className="flex items-start gap-2">
         <Checkbox
           checked={isSelected}
