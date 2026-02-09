@@ -31,7 +31,7 @@ function MainContent({
     <main
       className={cn(
         "min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border border-border/30 shadow-sm overflow-auto",
-        "bg-card dark:bg-[linear-gradient(180deg,_hsl(292,46%,72%)_0%,_hsl(280,60%,45%)_30%,_hsl(270,80%,10%)_70%,_hsl(270,100%,2%)_100%)]",
+        "bg-card dark:bg-[radial-gradient(ellipse_at_top_left,_hsl(199,80%,55%,0.12)_0%,_transparent_50%),radial-gradient(ellipse_at_bottom_right,_hsl(263,60%,50%,0.15)_0%,_transparent_50%),radial-gradient(ellipse_at_center,_hsl(240,20%,6%)_0%,_hsl(240,25%,4%)_100%)]",
         className,
       )}
       onClick={handleMainClick}

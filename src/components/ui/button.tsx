@@ -9,17 +9,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-sm hover:bg-brand-gradient hover:shadow-[0_0_20px_hsl(292,46%,72%,0.4)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
+        default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 dark:hover:shadow-[0_0_20px_hsl(199,80%,55%,0.3)]",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm hover:shadow-[0_0_15px_rgba(239,68,68,0.25)]",
-        outline: "border border-input bg-background hover:bg-brand-gradient/10 hover:border-[hsl(292,46%,72%)]/40 hover:shadow-[0_0_15px_hsl(292,46%,72%,0.2)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-brand-gradient/10 hover:shadow-[0_0_15px_hsl(292,46%,72%,0.2)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
-        ghost: "hover:bg-brand-gradient/10 hover:shadow-[0_0_12px_hsl(292,46%,72%,0.15)] dark:hover:shadow-none",
+        outline: "border border-input bg-background hover:bg-accent/10 hover:border-accent/40 dark:hover:shadow-[0_0_15px_hsl(263,60%,60%,0.15)]",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-accent/10 dark:hover:shadow-[0_0_15px_hsl(263,60%,60%,0.15)]",
+        ghost: "hover:bg-accent/10 dark:hover:shadow-[0_0_12px_hsl(263,60%,60%,0.1)]",
         link: "text-primary underline-offset-4 hover:underline hover:scale-100",
-        accent: "bg-accent text-accent-foreground hover:bg-brand-gradient hover:text-white shadow-sm hover:shadow-[0_0_20px_hsl(292,46%,72%,0.4)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
+        accent: "bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm dark:hover:shadow-[0_0_20px_hsl(263,60%,60%,0.3)]",
         success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]",
-        hero: "bg-primary text-primary-foreground hover:bg-brand-gradient shadow-lg hover:shadow-[0_4px_25px_hsl(292,46%,72%,0.5)] hover:-translate-y-0.5 dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
-        "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-brand-gradient/10 hover:border-[hsl(292,46%,72%)]/60 hover:shadow-[0_0_20px_hsl(292,46%,72%,0.3)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
-        gradient: "bg-brand-gradient text-white hover:bg-brand-gradient-hover shadow-sm hover:shadow-[0_0_25px_hsl(292,46%,72%,0.5)] dark:hover:shadow-none dark:ring-0 dark:hover:ring-[1.5px] dark:hover:ring-[hsl(292,46%,72%)]",
+        hero: "bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:-translate-y-0.5 dark:hover:shadow-[0_0_25px_hsl(199,80%,55%,0.4)]",
+        "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-primary/10 hover:border-primary/60 dark:hover:shadow-[0_0_20px_hsl(199,80%,55%,0.2)]",
+        gradient: "bg-[linear-gradient(135deg,hsl(199,80%,55%),hsl(263,60%,60%))] text-white hover:bg-[linear-gradient(135deg,hsl(199,80%,60%),hsl(263,60%,65%))] shadow-sm dark:hover:shadow-[0_0_25px_hsl(230,70%,58%,0.4)]",
       },
       size: {
         default: "h-10 px-4 py-2",
