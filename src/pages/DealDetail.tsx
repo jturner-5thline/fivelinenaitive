@@ -2902,12 +2902,12 @@ export default function DealDetail() {
                           )}
                         </button>
                       </CollapsibleTrigger>
-                      <div className="flex items-center gap-2">
-                        <LenderSearchInput
-                          lenderNames={lenderNames}
-                          existingLenderNames={existingLenderNames}
-                          onAddLender={addLender}
-                        />
+                      <LenderSearchInput
+                        lenderNames={lenderNames}
+                        existingLenderNames={existingLenderNames}
+                        onAddLender={addLender}
+                      />
+                      <div className="flex items-center gap-2 ml-auto">
                       {deal.lenders && deal.lenders.length > 0 && (
                         <>
                           <button
