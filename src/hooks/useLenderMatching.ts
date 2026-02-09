@@ -94,15 +94,28 @@ function matchesLoanType(dealTypes: string[] | undefined, lenderLoanTypes: strin
 }
 
 // Check cash burn match
+// - Lender cash_burn "Yes" → accepts both cash-burning and profitable companies
+// - Lender cash_burn "No" → only accepts profitable companies (dealCashBurnOk = false)
 function matchesCashBurn(dealCashBurnOk: boolean | undefined, lenderCashBurn: string | null): { matches: boolean; warning: boolean } {
-  // If deal needs cash burn ok
-  if (dealCashBurnOk === true) {
-    if (!lenderCashBurn) return { matches: false, warning: false };
-    const normalized = normalizeString(lenderCashBurn);
-    const matches = normalized.includes('yes') || normalized.includes('ok') || normalized === 'y';
-    return { matches, warning: !matches };
+  if (dealCashBurnOk === undefined) return { matches: false, warning: false };
+  if (!lenderCashBurn) return { matches: false, warning: false };
+  
+  const normalized = normalizeString(lenderCashBurn);
+  const lenderAcceptsCashBurn = normalized.includes('yes') || normalized.includes('ok') || normalized === 'y';
+  
+  if (lenderAcceptsCashBurn) {
+    // Lender accepts cash burn → matches regardless of company profitability
+    return { matches: true, warning: false };
   }
-  return { matches: false, warning: false };
+  
+  // Lender does NOT accept cash burn
+  if (dealCashBurnOk === true) {
+    // Company is cash-burning but lender doesn't accept it → mismatch
+    return { matches: false, warning: true };
+  }
+  
+  // Company is profitable and lender doesn't accept cash burn → that's fine
+  return { matches: true, warning: false };
 }
 
 // Check sponsorship match
