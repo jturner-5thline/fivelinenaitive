@@ -30,7 +30,8 @@ function MainContent({
   return (
     <main
       className={cn(
-        "min-h-0 min-w-0 flex-1 flex flex-col bg-card rounded-xl border border-border shadow-sm overflow-auto",
+        "min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border border-border/40 shadow-sm overflow-auto",
+        "bg-card dark:bg-gradient-to-br dark:from-[hsl(235,20%,10%)] dark:via-[hsl(240,18%,9%)] dark:to-[hsl(260,15%,8%)]",
         className,
       )}
       onClick={handleMainClick}
@@ -67,7 +68,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
       <BodyScrollLock />
-      <div className="flex w-full h-full min-h-0 bg-muted/30 p-2 gap-1">
+      <div className="flex w-full h-full min-h-0 bg-muted/30 dark:bg-[hsl(230,25%,5%)] p-2 gap-1">
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
