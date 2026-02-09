@@ -137,7 +137,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         )}
       <CardHeader className={`space-y-0 ${compact ? 'pb-2 p-3' : 'pb-3'} flex-shrink-0`}>
         <div className="flex flex-row items-center justify-between">
-          <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] leading-tight truncate ${compact ? 'max-w-[140px]' : 'max-w-[180px]'}`}>{deal.company}</h3>
+          <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground leading-tight truncate ${compact ? 'max-w-[140px]' : 'max-w-[180px]'}`}>{deal.company}</h3>
           <div className="flex items-center gap-2 shrink-0">
             <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]`}>{formatCurrencyValue(deal.value)}</span>
             {onToggleFlag && (
