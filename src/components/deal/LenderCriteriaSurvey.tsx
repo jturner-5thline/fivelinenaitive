@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { Check, Flame, Building2, ArrowRight, RotateCcw, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -84,13 +85,8 @@ export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSk
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
 
-  // Get unique industries from master lenders
-  const industryOptions = useMemo(() => {
-    const industries = Array.from(
-      new Set(masterLenders.flatMap(l => l.industries || []).filter(Boolean))
-    ).sort();
-    return industries;
-  }, [masterLenders]);
+  // Fixed industry options
+  const industryOptions = INDUSTRY_OPTIONS as unknown as string[];
 
   // Initialize answers from saved criteria when loaded
   useEffect(() => {

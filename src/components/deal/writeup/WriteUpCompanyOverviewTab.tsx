@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -122,13 +123,8 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
 
-  // Dynamically build industry options from lender database
-  const industryOptions = useMemo(() => {
-    const industries = Array.from(
-      new Set(masterLenders.flatMap(l => l.industries || []).filter(Boolean))
-    ).sort();
-    return industries;
-  }, [masterLenders]);
+  // Fixed industry options
+  const industryOptions = INDUSTRY_OPTIONS as unknown as string[];
 
   // Get display labels for selected deal types (which are stored as IDs)
   const getSelectedDealTypeLabels = () => {
