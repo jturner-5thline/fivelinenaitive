@@ -100,78 +100,76 @@
   }
 
   .dark {
-    /* Deep space foundation — near-black with blue undertone */
-    --background: 230 25% 6%;
+    /* Deep space foundation */
+    --background: 240 25% 5%;
     --foreground: 220 15% 90%;
 
-    /* Cards: slightly lifted charcoal with subtle warmth */
-    --card: 235 20% 10%;
+    /* Cards: dark charcoal */
+    --card: 240 20% 8%;
     --card-foreground: 220 15% 90%;
 
-    /* Popovers: match card depth */
-    --popover: 235 20% 10%;
+    --popover: 240 20% 8%;
     --popover-foreground: 220 15% 90%;
 
-    /* Primary: muted plasma purple */
-    --primary: 280 40% 55%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary: cyan-blue from logo dots */
+    --primary: 199 80% 55%;
+    --primary-foreground: 240 25% 5%;
 
-    /* Secondary: deep charcoal layer */
-    --secondary: 235 18% 14%;
+    /* Secondary: deep layer */
+    --secondary: 240 18% 13%;
     --secondary-foreground: 220 15% 85%;
 
-    /* Muted: receding depth layer */
-    --muted: 235 18% 12%;
+    /* Muted */
+    --muted: 240 18% 11%;
     --muted-foreground: 220 12% 55%;
 
-    /* Accent: cool midnight blue-purple */
-    --accent: 260 30% 45%;
+    /* Accent: medium purple from logo dots */
+    --accent: 263 60% 60%;
     --accent-foreground: 0 0% 100%;
 
-    /* Status colors — slightly desaturated for the dark palette */
+    /* Status */
     --success: 160 70% 42%;
-    --success-foreground: 230 25% 6%;
-
+    --success-foreground: 240 25% 5%;
     --warning: 38 85% 52%;
-    --warning-foreground: 230 25% 6%;
-
+    --warning-foreground: 240 25% 5%;
     --destructive: 0 65% 52%;
     --destructive-foreground: 220 15% 92%;
 
-    /* Borders: very subtle, no hard lines */
-    --border: 240 15% 16%;
-    --input: 240 15% 16%;
-    --ring: 280 40% 50%;
+    /* Borders */
+    --border: 240 15% 15%;
+    --input: 240 15% 15%;
+    --ring: 199 80% 55%;
 
-    /* Sidebar: anchored, matte, slightly darker than card */
-    --sidebar-background: 232 22% 8%;
+    /* Sidebar */
+    --sidebar-background: 240 22% 6%;
     --sidebar-foreground: 220 15% 80%;
-    --sidebar-primary: 280 40% 55%;
+    --sidebar-primary: 263 60% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 260 20% 16%;
+    --sidebar-accent: 260 20% 15%;
     --sidebar-accent-foreground: 220 15% 88%;
-    --sidebar-border: 240 15% 14%;
-    --sidebar-ring: 280 40% 50%;
+    --sidebar-border: 240 15% 13%;
+    --sidebar-ring: 263 60% 60%;
 
-    /* Brand — plasma purple */
-    --brand: 292 46% 50%;
+    /* Brand */
+    --brand: 263 60% 60%;
 
-    --chart-1: 280 40% 55%;
+    /* Charts: cyan-purple palette */
+    --chart-1: 199 80% 55%;
     --chart-2: 160 70% 42%;
     --chart-3: 38 85% 52%;
-    --chart-4: 260 30% 50%;
+    --chart-4: 263 60% 60%;
     --chart-5: 220 12% 55%;
 
-    /* Atmospheric gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(280 40% 50%), hsl(260 35% 55%));
-    --gradient-accent: linear-gradient(135deg, hsl(280 40% 55%), hsl(260 35% 60%));
-    --gradient-hero: linear-gradient(180deg, hsl(230 25% 6%) 0%, hsl(235 28% 4%) 100%);
+    /* Gradients: cyan → purple */
+    --gradient-primary: linear-gradient(135deg, hsl(199 80% 55%), hsl(263 60% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(199 80% 60%), hsl(263 60% 65%));
+    --gradient-hero: linear-gradient(180deg, hsl(240 25% 5%) 0%, hsl(240 28% 3%) 100%);
 
     --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
     --font-mono: "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
 
-    /* Shadows: deeper, more atmospheric */
+    /* Shadows */
     --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
     --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.4);
     --shadow-sm: 0 2px 6px -1px hsl(0 0% 0% / 0.5);

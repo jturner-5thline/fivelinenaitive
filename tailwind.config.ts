@@ -65,16 +65,16 @@ export default {
   				DEFAULT: 'hsl(var(--warning))',
   				foreground: 'hsl(var(--warning-foreground))'
   			},
-  			brand: 'hsl(var(--brand))',
-  			'brand-gradient': {
-  				from: '#861E81',
-  				to: '#5B21B6'
-  			}
-  		},
-  		backgroundImage: {
-  			'brand-gradient': 'linear-gradient(135deg, #861E81, #5B21B6)',
-  			'brand-gradient-hover': 'linear-gradient(135deg, #9B238F, #6D28D9)'
-  		},
+			brand: 'hsl(var(--brand))',
+			'brand-gradient': {
+				from: '#38BDF8',
+				to: '#A78BFA'
+			}
+		},
+		backgroundImage: {
+			'brand-gradient': 'linear-gradient(135deg, #38BDF8, #A78BFA)',
+			'brand-gradient-hover': 'linear-gradient(135deg, #5BC9F9, #B9A3FB)'
+		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
