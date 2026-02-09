@@ -304,6 +304,20 @@ export function calculateLenderMatch(
     score += 3;
   }
   
+  // Refinancing exclusion: if deal includes "Refinancing", exclude lenders who "don't like it"
+  if (criteria.dealTypes && criteria.dealTypes.length > 0) {
+    const dealIncludesRefinancing = criteria.dealTypes.some(dt =>
+      normalizeString(dt).includes('refinanc')
+    );
+    if (dealIncludesRefinancing && lender.refinancing) {
+      const refinancingNorm = normalizeString(lender.refinancing);
+      if (refinancingNorm.includes("don't like") || refinancingNorm.includes('dont like') || refinancingNorm.includes('do not like')) {
+        warnings.push('Does not like refinancing');
+        score += -200; // Heavy penalty to exclude
+      }
+    }
+  }
+
   // PRIORITY 3: Cash-burn OK
   if (criteria.cashBurnOk !== undefined) {
     const cashBurnResult = matchesCashBurn(criteria.cashBurnOk, lender.cash_burn);
