@@ -42,7 +42,7 @@ export function LenderSuggestionsContent({
   const [lenderTypeFilter, setLenderTypeFilter] = useState<string>('all');
   const [showOnlyHighScore, setShowOnlyHighScore] = useState(false);
   const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
-  const [tierFilters, setTierFilters] = useState<Set<string>>(new Set());
+  const [tierFilters, setTierFilters] = useState<Set<string>>(new Set(['T1', 'T2', 'T3']));
   const [showLearningWarnings, setShowLearningWarnings] = useState(true);
   const [detailLender, setDetailLender] = useState<MasterLender | null>(null);
 
@@ -116,7 +116,11 @@ export function LenderSuggestionsContent({
     if (tierFilters.size > 0) {
       filtered = filtered.filter(m => {
         const tier = m.lender.tier?.toUpperCase();
-        return tier && tierFilters.has(tier);
+        if (tier && ['T1', 'T2', 'T3'].includes(tier)) {
+          return tierFilters.has(tier);
+        }
+        // Untiered lenders only shown if '?' filter is active
+        return tierFilters.has('?');
       });
     }
     
@@ -355,7 +359,7 @@ export function LenderSuggestionsContent({
             Select All ({totalMatches})
           </Button>
           <div className="h-4 w-px bg-border" />
-          {(['T1', 'T2', 'T3'] as const).map((tier) => (
+          {(['T1', 'T2', 'T3', '?'] as const).map((tier) => (
             <Button
               key={tier}
               variant={tierFilters.has(tier) ? 'default' : 'outline'}
@@ -372,6 +376,7 @@ export function LenderSuggestionsContent({
                   return next;
                 });
               }}
+              title={tier === '?' ? 'Show untiered lenders' : `Filter by ${tier}`}
             >
               {tier}
             </Button>
