@@ -113,6 +113,11 @@ export interface UseMasterLendersOptions {
   eagerAll?: boolean;
 }
 
+// Simple in-memory cache to avoid redundant fetches across components
+let cachedLenders: MasterLender[] | null = null;
+let cacheUserId: string | null = null;
+let cachePromise: Promise<MasterLender[]> | null = null;
+
 export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const { user } = useAuth();
 
@@ -123,8 +128,20 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const searchQuery = options.searchQuery?.trim() ?? '';
   const eagerAll = options.eagerAll ?? false;
 
-  const [lenders, setLenders] = useState<MasterLender[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [lenders, setLenders] = useState<MasterLender[]>(() => {
+    // Initialize from cache if available and same user
+    if (mode === 'all' && !searchQuery && cachedLenders && cacheUserId === user?.id) {
+      return cachedLenders;
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    // Skip loading state if cache is warm
+    if (mode === 'all' && !searchQuery && cachedLenders && cacheUserId === user?.id) {
+      return false;
+    }
+    return true;
+  });
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
@@ -184,6 +201,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
       const firstPage = initialData ?? [];
       setLenders(firstPage);
+      if (mode === 'all' && !searchQuery) {
+        cachedLenders = firstPage;
+        cacheUserId = user.id;
+      }
       setTotalCount(count);
       setHasMore(count != null ? firstPage.length < count : firstPage.length === pageSize);
       setLoading(false);
@@ -226,7 +247,12 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
           }
 
           if (remainingLenders.length > 0) {
-            setLenders((prev) => [...prev, ...remainingLenders]);
+            setLenders((prev) => {
+              const full = [...prev, ...remainingLenders];
+              cachedLenders = full;
+              cacheUserId = user.id;
+              return full;
+            });
           }
 
           setLoadingMore(false);
@@ -361,10 +387,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
       setLenders((prev) => {
         const next = [...prev, data as MasterLender];
-        // Keep paging order stable when we can.
         if (orderColumn === 'name') {
           next.sort((a, b) => (orderAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
         }
+        cachedLenders = next;
         return next;
       });
 
