@@ -174,7 +174,7 @@ export function LenderSuggestionsPanel({
                       size="sm"
                       onClick={handleOpenSurvey}
                       className={hasMissingCriteria 
-                        ? "gap-1.5 animate-[pulse_3s_cubic-bezier(0.4,0,0.6,1)_infinite]" 
+                        ? "gap-1.5 animate-[pulse_5s_cubic-bezier(0.4,0,0.6,1)_infinite]" 
                         : "gap-1.5 bg-primary/90 hover:bg-primary"
                       }
                     >
@@ -325,7 +325,7 @@ export function LenderSuggestionsFAB({
                       size="sm"
                       onClick={() => setShowSurvey(true)}
                       className={hasMissingCriteriaFAB 
-                        ? "gap-1.5 animate-[pulse_3s_cubic-bezier(0.4,0,0.6,1)_infinite]" 
+                        ? "gap-1.5 animate-[pulse_5s_cubic-bezier(0.4,0,0.6,1)_infinite]" 
                         : "gap-1.5 bg-primary/90 hover:bg-primary"
                       }
                     >
