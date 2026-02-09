@@ -403,14 +403,30 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                             );
                           }
                           // Regular columns
+                          const rawValue = lender[col.key as keyof MasterLender];
+                          const isArray = Array.isArray(rawValue) && rawValue.length > 0;
                           return (
                             <div
                               key={col.key}
-                              className="flex-shrink-0 px-2 py-1.5 text-xs text-foreground border-r border-border/50 truncate"
+                              className={cn(
+                                'flex-shrink-0 px-2 py-1.5 text-xs text-foreground border-r border-border/50',
+                                isArray ? 'flex items-center gap-1 overflow-hidden' : 'truncate'
+                              )}
                               style={{ width: col.width }}
                               title={formatCellValue(lender, col.key)}
                             >
-                              {formatCellValue(lender, col.key)}
+                              {isArray ? (
+                                (rawValue as string[]).map((tag, i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-flex shrink-0 items-center rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground border border-border/50"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))
+                              ) : (
+                                formatCellValue(lender, col.key)
+                              )}
                             </div>
                           );
                         })}
