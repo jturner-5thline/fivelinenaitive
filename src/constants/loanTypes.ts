@@ -1,0 +1,17 @@
+export const LOAN_TYPE_OPTIONS = [
+  'AR',
+  'AR Inventory',
+  'Asset-Based Lending',
+  'Bridge Financing',
+  'CAPEX',
+  'Factoring',
+  'Full ABL',
+  'Growth Capital',
+  'Inventory',
+  'MCA',
+  'PO',
+  'Revolver',
+  'Sale Leaseback',
+  'Sub Debt',
+  'Term Loan',
+] as const;
