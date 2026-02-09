@@ -248,30 +248,30 @@ export function LenderSuggestionsContent({
         <p className="text-xs text-muted-foreground mb-2">Matching criteria (priority order):</p>
         <div className="flex flex-wrap gap-1.5">
           {dealSizeDisplay && (
-            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+            <Badge className="text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
               <DollarSign className="h-3 w-3 mr-1" />
               Deal Size: {dealSizeDisplay}
             </Badge>
           )}
           {criteria.dealTypes && criteria.dealTypes.length > 0 && (
-            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
-              Loan: {dealTypeIdsToLabels(criteria.dealTypes.slice(0, 2)).join(', ')}
+            <Badge className="text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+              Type: {dealTypeIdsToLabels(criteria.dealTypes.slice(0, 2)).join(', ')}
               {criteria.dealTypes.length > 2 && ` +${criteria.dealTypes.length - 2}`}
             </Badge>
           )}
           {criteria.cashBurnOk !== undefined && (
-            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+            <Badge className="text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800">
               Cash Burn: {criteria.cashBurnOk ? 'OK' : 'No'}
             </Badge>
           )}
           {criteria.industry && (
-            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+            <Badge className="text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800">
               <Building2 className="h-3 w-3 mr-1" />
               {criteria.industry}
             </Badge>
           )}
           {criteria.sponsorship && (
-            <Badge variant="outline" className="text-xs font-normal bg-primary/5">
+            <Badge className="text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800">
               Sponsorship: {criteria.sponsorship}
             </Badge>
           )}
