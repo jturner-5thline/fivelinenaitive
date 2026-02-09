@@ -13,9 +13,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BookOpen, Plus, Check, X, Search, ArrowUp, ArrowDown, ArrowUpDown, Building2, Layers } from 'lucide-react';
-import { useMasterLenders, MasterLender } from '@/hooks/useMasterLenders';
+import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { Virtuoso } from 'react-virtuoso';
 import { cn } from '@/lib/utils';
+import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
+import { toast } from 'sonner';
 
 interface LenderDirectoryDialogProps {
   existingLenderNames: string[];
@@ -117,7 +119,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   onRemoveLender,
   dealLenders,
 }: LenderDirectoryDialogProps) {
-  const { lenders: masterLenders, loading } = useMasterLenders();
+  const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [tierFilter, setTierFilter] = useState<string>('all');
@@ -128,6 +130,77 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   // Remove reason state
   const [removingLender, setRemovingLender] = useState<{ id: string; name: string } | null>(null);
   const [removeReason, setRemoveReason] = useState('');
+
+  // Lender detail dialog state
+  const [detailLender, setDetailLender] = useState<MasterLender | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const openLenderDetail = useCallback((lender: MasterLender) => {
+    setDetailLender(lender);
+    setIsDetailOpen(true);
+  }, []);
+
+  const detailLenderInfo = useMemo(() => {
+    if (!detailLender) return null;
+    return {
+      id: detailLender.id,
+      name: detailLender.name,
+      contact: {
+        name: detailLender.contact_name || '',
+        title: detailLender.contact_title || '',
+        email: detailLender.email || '',
+        phone: detailLender.contact_phone || '',
+      },
+      preferences: [
+        ...(detailLender.loan_types || []),
+        ...(detailLender.industries || []),
+        detailLender.geo,
+      ].filter(Boolean) as string[],
+      website: detailLender.lender_one_pager_url || undefined,
+      description: detailLender.company_requirements || undefined,
+      lenderType: detailLender.lender_type || undefined,
+      minDeal: detailLender.min_deal,
+      maxDeal: detailLender.max_deal,
+      geo: detailLender.geo,
+      industries: detailLender.industries,
+      loanTypes: detailLender.loan_types,
+      minRevenue: detailLender.min_revenue,
+      ebitdaMin: detailLender.ebitda_min,
+      companyRequirements: detailLender.company_requirements,
+      upfrontChecklist: detailLender.upfront_checklist,
+      postTermSheetChecklist: detailLender.post_term_sheet_checklist,
+      b2bB2c: detailLender.b2b_b2c,
+      lenderNotes: detailLender.deal_structure_notes,
+      tier: detailLender.tier,
+      relationshipOwners: detailLender.relationship_owners,
+    };
+  }, [detailLender]);
+
+  const handleDetailSave = useCallback(async (lenderId: string, data: LenderEditData) => {
+    const lenderData: MasterLenderInsert = {
+      name: data.name.trim(),
+      contact_name: data.contactName.trim() || null,
+      contact_phone: data.contactPhone?.trim() || null,
+      email: data.email.trim() || null,
+      lender_type: data.lenderType.trim() || null,
+      loan_types: data.loanTypes.split(',').map(p => p.trim()).filter(p => p) || null,
+      min_deal: data.minDeal ? parseFloat(data.minDeal) : null,
+      max_deal: data.maxDeal ? parseFloat(data.maxDeal) : null,
+      industries: data.industries.split(',').map(p => p.trim()).filter(p => p) || null,
+      geo: data.geo.trim() || null,
+      company_requirements: data.description?.trim() || null,
+      deal_structure_notes: data.lenderNotes?.trim() || null,
+      min_revenue: data.minRevenue ? parseFloat(data.minRevenue) : null,
+      ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
+      tier: data.tier ? `T${data.tier}` : null,
+      relationship_owners: data.relationshipOwners?.trim() || null,
+    };
+    await updateLender(lenderId, lenderData);
+    // Update detail lender in place
+    const updated = masterLenders.find(l => l.id === lenderId);
+    if (updated) setDetailLender({ ...updated, ...lenderData, id: lenderId } as MasterLender);
+    toast.success(`${lenderData.name} updated`);
+  }, [updateLender, masterLenders]);
 
   const existingSet = useMemo(() => new Set(existingLenderNames.map(n => n.toLowerCase())), [existingLenderNames]);
 
@@ -402,6 +475,24 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                               </div>
                             );
                           }
+                          // Name column - clickable
+                          if (col.key === 'name') {
+                            return (
+                              <div
+                                key={col.key}
+                                className="flex-shrink-0 px-2 py-1.5 text-xs text-primary border-r border-border/50 truncate cursor-pointer hover:underline font-medium"
+                                style={{ width: col.width }}
+                                title={lender.name}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const original = masterLenders.find(ml => ml.id === lender.id);
+                                  if (original) openLenderDetail(original);
+                                }}
+                              >
+                                {lender.name}
+                              </div>
+                            );
+                          }
                           // Regular columns
                           const rawValue = lender[col.key as keyof MasterLender];
                           const isArray = Array.isArray(rawValue) && rawValue.length > 0;
@@ -465,6 +556,17 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
           </div>
         </div>
       )}
+
+      {/* Lender Detail Dialog */}
+      <LenderDetailDialog
+        lender={detailLenderInfo}
+        open={isDetailOpen}
+        onOpenChange={(open) => {
+          setIsDetailOpen(open);
+          if (!open) setDetailLender(null);
+        }}
+        onSave={handleDetailSave}
+      />
     </DialogContent>
   );
 });
