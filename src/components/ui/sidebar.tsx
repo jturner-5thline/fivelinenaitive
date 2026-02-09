@@ -252,7 +252,7 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col rounded-xl border border-border/30 overflow-hidden transition-all duration-200",
+            "flex h-full w-full flex-col rounded-xl border overflow-hidden transition-all duration-200 border-border/50 dark:border-[hsl(263,45%,40%,0.5)] dark:shadow-[0_0_16px_hsl(263,60%,50%,0.08)]",
             "bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.4)_0%,_hsl(270,80%,4%)_60%,_hsl(270,100%,2%)_100%)]",
             isHovering && state === "collapsed" ? "shadow-xl" : "shadow-sm",
             className,
