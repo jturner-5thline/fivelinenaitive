@@ -1,8 +1,15 @@
+import { useScrollReveal } from "@/hooks/useScrollReveal";
+
 export const HomepageValueProp = () => {
+  const { ref, isVisible } = useScrollReveal();
+
   return (
     <section className="py-12 md:py-16 bg-[#0a0a12]">
       <div className="container mx-auto px-6">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
+        <div
+          ref={ref}
+          className={`max-w-4xl mx-auto text-center space-y-8 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+        >
           <p className="text-xl md:text-2xl lg:text-3xl font-medium text-white/90 leading-relaxed">
             We centralize deal execution into a single operating system — bringing work, decisions, and data together as deals move through review, diligence, and approval.
           </p>

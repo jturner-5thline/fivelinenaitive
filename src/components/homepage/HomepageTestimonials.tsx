@@ -1,4 +1,4 @@
-
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const testimonials = [
   {
@@ -16,9 +16,11 @@ const testimonials = [
 ];
 
 export const HomepageTestimonials = () => {
+  const { ref, isVisible } = useScrollReveal();
+
   return (
     <section className="py-12 md:py-16 bg-[#0a0a12]">
-      <div className="container mx-auto px-6">
+      <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
         {/* Section header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-6xl font-bold text-white mb-4">

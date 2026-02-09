@@ -1,5 +1,6 @@
 import { Database, Mail, BarChart3, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const dataUsageItems = [
   {
@@ -25,9 +26,11 @@ const dataUsageItems = [
 ];
 
 export const HomepageDataPrivacy = () => {
+  const { ref, isVisible } = useScrollReveal();
+
   return (
     <section className="py-12 md:py-16 bg-[#0a0a12] border-t border-white/5">
-      <div className="container mx-auto px-6">
+      <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
         <div className="max-w-4xl mx-auto">
           {/* Badge */}
           <div className="flex justify-center mb-8">
