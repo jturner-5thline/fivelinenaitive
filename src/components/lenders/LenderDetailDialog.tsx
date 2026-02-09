@@ -742,7 +742,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           type="number"
                           value={editForm.minDeal}
                           onChange={(e) => setEditForm({ ...editForm, minDeal: e.target.value })}
-                          placeholder="e.g., 1000000"
+                          placeholder="e.g., 500000"
                           className="text-sm"
                         />
                       </div>
@@ -856,10 +856,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                     <span className="text-sm font-medium">Deal Size: </span>
                                     <span className="text-sm">
                                       {lender.minDeal && lender.maxDeal
-                                        ? `${formatCurrencyValue(lender.minDeal)} - ${formatCurrencyValue(lender.maxDeal)}`
+                                        ? `$${lender.minDeal.toLocaleString()} - $${lender.maxDeal.toLocaleString()}`
                                         : lender.minDeal
-                                        ? `${formatCurrencyValue(lender.minDeal)}+`
-                                        : `Up to ${formatCurrencyValue(lender.maxDeal!)}`}
+                                        ? `$${lender.minDeal.toLocaleString()}+`
+                                        : `Up to $${lender.maxDeal!.toLocaleString()}`}
                                     </span>
                                   </div>
                                 </div>
@@ -925,7 +925,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
                                     <span className="text-sm font-medium">Min Revenue: </span>
-                                    <span className="text-sm">{formatCurrencyValue(lender.minRevenue)}</span>
+                                    <span className="text-sm">${lender.minRevenue.toLocaleString()}</span>
                                   </div>
                                 </div>
                               )}
@@ -934,7 +934,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
                                     <span className="text-sm font-medium">Min EBITDA: </span>
-                                    <span className="text-sm">{formatCurrencyValue(lender.ebitdaMin)}</span>
+                                    <span className="text-sm">${lender.ebitdaMin.toLocaleString()}</span>
                                   </div>
                                 </div>
                               )}
