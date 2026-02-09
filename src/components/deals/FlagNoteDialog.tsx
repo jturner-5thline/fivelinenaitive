@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Flag, Save, Clock, Trash2, Check, Loader2 } from 'lucide-react';
+import { Flag, Save, Clock, Trash2, Check, Loader2, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +14,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFlagNotes } from '@/hooks/useFlagNotes';
+import { useFlagAuthor } from '@/hooks/useFlagAuthor';
 import { toast } from '@/hooks/use-toast';
 
 interface FlagNoteDialogProps {
@@ -40,6 +42,7 @@ export function FlagNoteDialog({
   const [isSaving, setIsSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { flagNotes: flagHistory, addFlagNote, deleteFlagNote } = useFlagNotes(dealId);
+  const flagAuthor = useFlagAuthor(dealId, isOpen);
 
   useEffect(() => {
     if (isOpen) {
@@ -142,6 +145,25 @@ export function FlagNoteDialog({
           <p className="text-sm text-muted-foreground">
             Flagging <span className="font-medium text-foreground">{dealName}</span>
           </p>
+
+          {flagAuthor && isFlagged && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={flagAuthor.avatarUrl || undefined} />
+                <AvatarFallback className="text-[8px]">
+                  {flagAuthor.displayName?.[0]?.toUpperCase() || <User className="h-3 w-3" />}
+                </AvatarFallback>
+              </Avatar>
+              <span>
+                Flagged by <span className="font-medium text-foreground">{flagAuthor.displayName || 'Unknown'}</span>
+              </span>
+              {flagAuthor.createdAt && (
+                <span className="text-muted-foreground/60">
+                  · {format(new Date(flagAuthor.createdAt), 'MMM d, yyyy')}
+                </span>
+              )}
+            </div>
+          )}
           
           <div className="space-y-2">
             <div className="flex items-center justify-between">
