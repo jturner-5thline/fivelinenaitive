@@ -39,6 +39,7 @@ import { AddLenderContactDialog } from './AddLenderContactDialog';
 import { LenderContactsList } from './LenderContactsList';
 import { cn } from '@/lib/utils';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 
 const LENDER_TYPE_OPTIONS = [
   'Alternative',
@@ -220,6 +221,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const [isSaving, setIsSaving] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const [industrySearchEdit, setIndustrySearchEdit] = useState('');
+  const [loanTypeSearchEdit, setLoanTypeSearchEdit] = useState('');
   const [editForm, setEditForm] = useState<LenderEditData>({
     name: '',
     contactName: '',
@@ -824,13 +826,57 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       </Popover>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Loan Types (comma-separated)</Label>
-                      <Input
-                        value={editForm.loanTypes}
-                        onChange={(e) => setEditForm({ ...editForm, loanTypes: e.target.value })}
-                        placeholder="e.g., Term Loan, Revolver, ABL"
-                        className="text-sm"
-                      />
+                      <Label className="text-xs text-muted-foreground">Loan Types</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between h-auto min-h-[2.25rem] text-sm font-normal">
+                            {editForm.loanTypes ? (
+                              <span className="flex flex-wrap gap-1">
+                                {editForm.loanTypes.split(',').filter(t => t.trim()).map((t, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{t.trim()}</Badge>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">Select loan types</span>
+                            )}
+                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2 z-[9999] bg-popover" align="start">
+                          <div className="mb-2">
+                            <Input
+                              placeholder="Search loan types..."
+                              value={loanTypeSearchEdit}
+                              onChange={(e) => setLoanTypeSearchEdit(e.target.value)}
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                          <div className="space-y-0.5 max-h-52 overflow-y-auto">
+                            {(loanTypeSearchEdit
+                              ? LOAN_TYPE_OPTIONS.filter(o => o.toLowerCase().includes(loanTypeSearchEdit.toLowerCase()))
+                              : LOAN_TYPE_OPTIONS
+                            ).map((loanType) => {
+                              const current = editForm.loanTypes ? editForm.loanTypes.split(',').map(t => t.trim()).filter(Boolean) : [];
+                              const isSelected = current.includes(loanType);
+                              return (
+                                <button
+                                  key={loanType}
+                                  className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
+                                  onClick={() => {
+                                    const newTypes = isSelected
+                                      ? current.filter(t => t !== loanType)
+                                      : [...current, loanType];
+                                    setEditForm({ ...editForm, loanTypes: newTypes.join(',') });
+                                  }}
+                                >
+                                  <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
+                                  {loanType}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
