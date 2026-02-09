@@ -180,23 +180,15 @@ export function LenderSuggestionsContent({
     setSelectedLenders(new Set());
   };
   
-  const isReady = !loading && masterLenders.length > 0 && (matches.length > 0 || masterLenders.length > 0);
+  const isReady = !loading && masterLenders.length > 0 && matches.length > 0;
   
-  if (loading || (masterLenders.length === 0)) {
+  if (!isReady) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">Loading lender database...</span>
-      </div>
-    );
-  }
-  
-  if (masterLenders.length === 0) {
-    return (
-      <div className="py-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          Import your master lender database to get AI-powered suggestions based on deal characteristics.
-        </p>
+        <span className="text-sm text-muted-foreground">
+          {loading ? 'Loading lender database...' : masterLenders.length === 0 ? 'Loading lender database...' : 'Analyzing matches...'}
+        </span>
       </div>
     );
   }
