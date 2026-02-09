@@ -120,6 +120,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const { lenders: masterLenders, loading } = useMasterLenders();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [tierFilter, setTierFilter] = useState<string>('all');
   const [groupByTier, setGroupByTier] = useState(true);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -161,8 +162,11 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
     if (typeFilter !== 'all') {
       list = list.filter(l => l.lender_type === typeFilter);
     }
+    if (tierFilter !== 'all') {
+      list = list.filter(l => (l.tier || 'None') === tierFilter);
+    }
     return list;
-  }, [masterLenders, search, typeFilter]);
+  }, [masterLenders, search, typeFilter, tierFilter]);
 
   const sorted = useMemo(() => {
     const items = filtered.map(l => ({ ...l, isOnDeal: existingSet.has(l.name.toLowerCase()) }));
@@ -260,6 +264,17 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
           >
             <option value="all">All Types</option>
             {lenderTypes.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select
+            value={tierFilter}
+            onChange={e => setTierFilter(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="all">All Tiers</option>
+            <option value="T1">T1</option>
+            <option value="T2">T2</option>
+            <option value="T3">T3</option>
+            <option value="None">No Tier</option>
           </select>
           <Button
             variant={groupByTier ? 'secondary' : 'outline'}
