@@ -30,7 +30,7 @@ function MainContent({
   return (
     <main
       className={cn(
-        "min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border shadow-sm overflow-auto border-border/50 dark:border-[hsl(263,45%,40%,0.5)] dark:shadow-[0_0_16px_hsl(263,60%,50%,0.08)]",
+        "min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border shadow-sm overflow-auto border-border dark:border-[hsl(263,45%,45%,0.7)] dark:shadow-[0_0_20px_hsl(263,60%,50%,0.12)]",
         "bg-card dark:bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)]",
         className,
       )}
