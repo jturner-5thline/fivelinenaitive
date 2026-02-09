@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { MasterLender } from './useMasterLenders';
 import { supabase } from '@/integrations/supabase/client';
 import { LenderPassPattern, LenderPassReasonCategory } from './useLenderDisqualifications';
-import { filterEligibleLenders, dealCriteriaToFilterInput } from '@/utils/lenderEligibilityFilter';
+import { filterEligibleLenders, dealCriteriaToFilterInput, countCriteriaMatches } from '@/utils/lenderEligibilityFilter';
 
 export interface DealCriteria {
   industry?: string;
@@ -494,23 +494,30 @@ export function useLenderMatching(
       lender => !normalizedExcludeNames.includes(lender.name.toLowerCase().trim())
     );
     
-    // Apply strict 5-filter eligibility pipeline
+    // Apply criteria matching: include lenders with at least 3/5 criteria matched
     const filterInput = dealCriteriaToFilterInput(criteria, parseCapitalAsk);
-    const { eligible: eligibleLenders } = filterEligibleLenders(
-      filterInput,
-      nameFilteredLenders,
-      false // set to true for debugging
-    );
+    
+    // Score each lender by criteria match count (min 3/5 to be included)
+    const criteriaScored = nameFilteredLenders
+      .map(lender => ({
+        lender,
+        criteriaMatch: countCriteriaMatches(filterInput, lender),
+      }))
+      .filter(({ criteriaMatch }) => criteriaMatch.passed >= 3);
     
     // Calculate match scores with learning data
-    const scoredLenders = eligibleLenders
-      .map(lender => calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined))
-      .filter((match): match is LenderMatch => match !== null);
+    const scoredLenders = criteriaScored
+      .map(({ lender, criteriaMatch }) => {
+        const match = calculateLenderMatch(lender, criteria, enableLearning ? learningPatterns : undefined);
+        if (!match) return null;
+        return { ...match, criteriaPassed: criteriaMatch.passed };
+      })
+      .filter((match): match is LenderMatch & { criteriaPassed: number } => match !== null);
     
-    // Sort by score descending and filter by minimum score
+    // Sort by criteria passed descending (5/5 first), then by score
     return scoredLenders
       .filter(match => match.score >= minScore)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.criteriaPassed - a.criteriaPassed || b.score - a.score)
       .slice(0, maxResults);
   }, [masterLenders, criteria, minScore, maxResults, excludeNames, enableLearning, learningPatterns]);
   
