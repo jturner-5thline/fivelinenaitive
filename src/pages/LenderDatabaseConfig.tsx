@@ -138,6 +138,21 @@ function ConfigSection({
   storageKey: string;
 }) {
   const [newValue, setNewValue] = useState('');
+  const [similarMatches, setSimilarMatches] = useState<string[]>([]);
+  const [pendingValue, setPendingValue] = useState('');
+  const [showSimilarDialog, setShowSimilarDialog] = useState(false);
+
+  const findSimilar = (input: string) => {
+    const normalized = input.trim().toLowerCase().replace(/[&,\-()]/g, ' ').replace(/\s+/g, ' ');
+    const words = normalized.split(' ').filter(w => w.length > 2);
+    return items
+      .filter(item => {
+        const itemNorm = item.value.toLowerCase().replace(/[&,\-()]/g, ' ').replace(/\s+/g, ' ');
+        if (itemNorm === normalized) return false; // exact match handled separately
+        return words.some(w => itemNorm.includes(w));
+      })
+      .map(item => item.value);
+  };
 
   const handleAdd = () => {
     if (!newValue.trim()) {
@@ -145,12 +160,28 @@ function ConfigSection({
       return;
     }
     if (items.some(item => item.value.toLowerCase() === newValue.trim().toLowerCase())) {
-      toast({ title: 'Error', description: 'This value already exists', variant: 'destructive' });
+      toast({ title: 'Duplicate', description: 'This industry already exists.', variant: 'destructive' });
+      return;
+    }
+    const similar = findSimilar(newValue);
+    if (similar.length > 0) {
+      setPendingValue(newValue.trim());
+      setSimilarMatches(similar);
+      setShowSimilarDialog(true);
       return;
     }
     onAdd(newValue.trim());
     setNewValue('');
     toast({ title: 'Added', description: `"${newValue.trim()}" has been added.` });
+  };
+
+  const confirmAdd = () => {
+    onAdd(pendingValue);
+    setNewValue('');
+    setPendingValue('');
+    setShowSimilarDialog(false);
+    setSimilarMatches([]);
+    toast({ title: 'Added', description: `"${pendingValue}" has been added.` });
   };
 
   return (
@@ -231,6 +262,36 @@ function ConfigSection({
           {items.length} item{items.length !== 1 ? 's' : ''} configured
         </p>
       </CardContent>
+
+      {/* Similar industry confirmation dialog */}
+      <AlertDialog open={showSimilarDialog} onOpenChange={setShowSimilarDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Similar industries found</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-2">
+                  "{pendingValue}" looks similar to existing {similarMatches.length === 1 ? 'industry' : 'industries'}:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  {similarMatches.map(m => (
+                    <li key={m} className="font-medium">{m}</li>
+                  ))}
+                </ul>
+                <p className="mt-3">Do you still want to add "{pendingValue}"?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowSimilarDialog(false); setPendingValue(''); setSimilarMatches([]); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAdd}>
+              Add Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
