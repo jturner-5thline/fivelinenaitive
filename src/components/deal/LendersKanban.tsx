@@ -77,7 +77,7 @@ function DraggableLenderTile({
 
   const stageConfig = configuredStages.find(s => s.id === lender.stage);
   const stageLabel = stageConfig?.label || lender.stage;
-  const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender.trackingStatus === 'passed';
+  const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender.trackingStatus === 'passed' || lender.trackingStatus === 'on-deck';
   const timeAgo = hideTime ? '' : getRelativeTime(lender.updatedAt);
 
   return (
