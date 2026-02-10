@@ -588,6 +588,43 @@ function GlobeGlow() {
     }
   });
 
+  // Purple gradient outline shader matching naitive "ai" gradient
+  const outlineShader = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vWorldPosition;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        varying vec3 vWorldPosition;
+        uniform float uTime;
+        void main() {
+          vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+          float rim = 1.0 - abs(dot(viewDir, vNormal));
+          float rimPow = pow(rim, 3.0);
+          // Gradient from hsl(292,46%,72%) ≈ #c78dd9 to hsl(280,60%,45%) ≈ #7b2eb8
+          vec3 colorLight = vec3(0.78, 0.55, 0.85);
+          vec3 colorDark = vec3(0.48, 0.18, 0.72);
+          vec3 color = mix(colorDark, colorLight, rim);
+          float alpha = rimPow * 0.9;
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+      transparent: true,
+      side: THREE.FrontSide,
+      depthWrite: false,
+    });
+  }, []);
+
   return (
     <group ref={groupRef}>
       {/* Solid inner sphere to block backside visibility */}
@@ -605,6 +642,10 @@ function GlobeGlow() {
           transparent
           opacity={0.03}
         />
+      </Sphere>
+      {/* Purple gradient rim outline */}
+      <Sphere args={[2.04, 64, 64]} position={[0, 0, 0]}>
+        <primitive object={outlineShader} attach="material" />
       </Sphere>
     </group>
   );
