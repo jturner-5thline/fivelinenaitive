@@ -3,6 +3,7 @@ import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'reac
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
@@ -2678,12 +2679,21 @@ export default function DealDetail() {
                                     </div>
                                     <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
                                       <span className="text-muted-foreground text-sm">Business Model</span>
-                                      <DebouncedInput
+                                      <Select
                                         value={deal.businessModel || ''}
-                                        onChange={(value) => updateDeal('businessModel', String(value))}
-                                        placeholder="Enter business model..."
-                                        className="w-full h-8 text-sm"
-                                      />
+                                        onValueChange={(value) => updateDeal('businessModel', value)}
+                                      >
+                                        <SelectTrigger className="w-full h-8 text-sm">
+                                          <SelectValue placeholder="Select industry..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {INDUSTRY_OPTIONS.map((industry) => (
+                                            <SelectItem key={industry} value={industry}>
+                                              {industry}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
                                     </div>
                                     <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
                                       <span className="text-muted-foreground text-sm">Client Contact</span>
