@@ -2231,7 +2231,7 @@ export default function DealDetail() {
               </div>
               
               <div className="flex items-start justify-between gap-4 border-t border-border mt-4 pt-4">
-                <div className="w-[60%] flex flex-col gap-1 pl-4">
+                <div className="w-[75%] flex flex-col gap-1 pl-4">
                   <div className="flex items-start gap-2">
                     <span className="text-lg text-foreground/90 mt-0.5">•</span>
                     <RichTextInlineEdit
