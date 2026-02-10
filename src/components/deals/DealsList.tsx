@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { DealListRow } from './DealListRow';
-import { FileX, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { FileX, ChevronDown, ChevronRight, GripVertical, Settings2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
@@ -10,7 +10,10 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useDealListColumnOrder, COLUMN_LABELS, DealListColumnId } from '@/hooks/useDealListColumnOrder';
+import { useDealListColumnOrder, COLUMN_LABELS, ALL_COLUMNS, DealListColumnId } from '@/hooks/useDealListColumnOrder';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   DndContext,
   closestCenter,
@@ -70,7 +73,7 @@ const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold
 export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true, sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
-  const { columnOrder, updateColumnOrder } = useDealListColumnOrder();
+  const { columnOrder, activeColumns, visibleColumns, updateColumnOrder, toggleColumnVisibility } = useDealListColumnOrder();
   
   // Fetch FLEx engagement scores for all visible deals
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
@@ -138,34 +141,64 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   // List view rendering
   if (viewMode === 'list') {
     return (
-      <div className="rounded-md border">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                  {columnOrder.map((colId) => (
-                    <SortableTableHead key={colId} id={colId} />
-                  ))}
-                </SortableContext>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedDeals.map((deal) => (
-                <DealListRow
-                  key={deal.id}
-                  deal={deal}
-                  onStatusChange={onStatusChange}
-                  onMarkReviewed={onMarkReviewed}
-                  onToggleFlag={onToggleFlag}
-                  flexEngagement={flexEngagementScores?.get(deal.id)}
-                  columnOrder={columnOrder}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </DndContext>
+      <div className="space-y-2">
+        <div className="flex justify-end">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Settings2 className="h-3.5 w-3.5" />
+                Columns
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-52 p-3">
+              <p className="text-sm font-medium text-foreground mb-2">Toggle columns</p>
+              <div className="space-y-2">
+                {ALL_COLUMNS.map(colId => (
+                  <div key={colId} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`col-${colId}`}
+                      checked={visibleColumns.has(colId)}
+                      disabled={colId === 'company'}
+                      onCheckedChange={() => toggleColumnVisibility(colId)}
+                    />
+                    <Label htmlFor={`col-${colId}`} className="text-sm font-normal cursor-pointer">
+                      {COLUMN_LABELS[colId]}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="rounded-md border">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
+                    {activeColumns.map((colId) => (
+                      <SortableTableHead key={colId} id={colId} />
+                    ))}
+                  </SortableContext>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedDeals.map((deal) => (
+                  <DealListRow
+                    key={deal.id}
+                    deal={deal}
+                    onStatusChange={onStatusChange}
+                    onMarkReviewed={onMarkReviewed}
+                    onToggleFlag={onToggleFlag}
+                    flexEngagement={flexEngagementScores?.get(deal.id)}
+                    columnOrder={activeColumns}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </DndContext>
+        </div>
       </div>
     );
   }

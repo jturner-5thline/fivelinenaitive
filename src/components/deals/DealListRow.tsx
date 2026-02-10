@@ -12,7 +12,8 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { FlagNoteDialog } from './FlagNoteDialog';
-import { DealListColumnId, DEFAULT_COLUMN_ORDER } from '@/hooks/useDealListColumnOrder';
+import { DealListColumnId, DEFAULT_VISIBLE_COLUMNS } from '@/hooks/useDealListColumnOrder';
+import { isPast, isToday } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +38,7 @@ interface DealListRowProps {
   columnOrder?: DealListColumnId[];
 }
 
-export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_COLUMN_ORDER }: DealListRowProps) {
+export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
@@ -189,6 +190,37 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
         </span>
       </TableCell>
     ),
+    totalHours: (() => {
+      const total = (deal.preSigningHours || 0) + (deal.postSigningHours || 0);
+      return (
+        <TableCell key="totalHours">
+          <span className="text-sm text-foreground">{total > 0 ? total : '—'}</span>
+        </TableCell>
+      );
+    })(),
+    revenuePerHour: (() => {
+      const totalHours = (deal.preSigningHours || 0) + (deal.postSigningHours || 0);
+      const rpm = totalHours > 0 && deal.totalFee ? deal.totalFee / totalHours : null;
+      return (
+        <TableCell key="revenuePerHour">
+          <span className="text-sm text-foreground">{rpm !== null ? `$${Math.round(rpm).toLocaleString()}` : '—'}</span>
+        </TableCell>
+      );
+    })(),
+    lateMilestones: (() => {
+      const late = (deal.milestones || []).filter(m => !m.completed && m.dueDate && isPast(new Date(m.dueDate)) && !isToday(new Date(m.dueDate)));
+      return (
+        <TableCell key="lateMilestones">
+          {late.length > 0 ? (
+            <Badge variant="outline" className="text-xs rounded-lg border-destructive text-destructive">
+              {late.length} late
+            </Badge>
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
+          )}
+        </TableCell>
+      );
+    })(),
     updated: (
       <TableCell key="updated">
         <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
