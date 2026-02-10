@@ -903,9 +903,26 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleAutoFillClick}
+                      onClick={(e) => {
+                        // Ripple effect
+                        const btn = e.currentTarget;
+                        const rect = btn.getBoundingClientRect();
+                        const ripple = document.createElement('span');
+                        const size = Math.max(rect.width, rect.height);
+                        ripple.style.cssText = `
+                          position:absolute; border-radius:50%; pointer-events:none;
+                          width:${size}px; height:${size}px;
+                          left:${e.clientX - rect.left - size / 2}px;
+                          top:${e.clientY - rect.top - size / 2}px;
+                          background: hsl(var(--primary) / 0.25);
+                          transform: scale(0); animation: ripple-effect 0.6s ease-out forwards;
+                        `;
+                        btn.appendChild(ripple);
+                        setTimeout(() => ripple.remove(), 600);
+                        handleAutoFillClick();
+                      }}
                       disabled={isExtracting}
-                      className="gap-2"
+                      className="gap-2 relative overflow-hidden"
                     >
                       {isExtracting ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
