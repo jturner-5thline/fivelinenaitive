@@ -285,7 +285,7 @@ const Auth = () => {
       </Helmet>
       
       <div className="min-h-screen bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)] relative overflow-hidden">
-        <SpinningGlobe />
+        <div className="absolute inset-0 blur-sm"><SpinningGlobe /></div>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a12]" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
