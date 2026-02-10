@@ -26,7 +26,7 @@ export default function Database() {
 
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] flex items-center gap-2">
+              <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white flex items-center gap-2">
                 <DatabaseIcon className="h-6 w-6 text-foreground" />
                 Database
               </h1>
