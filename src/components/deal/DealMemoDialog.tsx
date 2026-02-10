@@ -194,7 +194,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
         </Tooltip>
       </TooltipProvider>
       
-      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0 border-0 ring-[1.5px] ring-transparent [background:linear-gradient(var(--background),var(--background))_padding-box,linear-gradient(135deg,hsl(200,80%,55%),hsl(230,70%,55%),hsl(263,60%,50%))_border-box] border border-transparent">
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b flex-shrink-0 pr-14">
           <div className="flex items-center justify-between">
             <div>
