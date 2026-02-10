@@ -139,7 +139,6 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         <div className="flex flex-row items-center justify-between">
           <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground leading-tight truncate ${compact ? 'max-w-[140px]' : 'max-w-[180px]'}`}>{deal.company}</h3>
           <div className="flex items-center gap-2 shrink-0">
-            <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground`}>{formatCurrencyValue(deal.value)}</span>
             {onToggleFlag && (
               <>
                 <TooltipProvider>
@@ -213,6 +212,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
               onClose={() => setIsEditDrawerOpen(false)}
               onStatusChange={onStatusChange}
             />
+            <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground`}>{formatCurrencyValue(deal.value)}</span>
           </div>
         </div>
         <div className={`flex items-center gap-2 ${compact ? 'mt-2' : 'mt-4'} flex-wrap`}>
