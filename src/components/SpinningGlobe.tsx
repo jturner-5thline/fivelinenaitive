@@ -1373,7 +1373,7 @@ export function SpinningGlobe() {
           <NeuralNetwork />
           <Globe />
           <GlobeLines />
-          <GlobeGlow />
+          {/* GlobeGlow removed */}
           <ContinentOutlines />
           <CityLights />
         </group>
