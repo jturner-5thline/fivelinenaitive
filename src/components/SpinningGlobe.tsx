@@ -1385,7 +1385,7 @@ export function SpinningGlobe() {
           autoRotateSpeed={-0.3}
         />
       </Canvas>
-      <div className="absolute inset-0 bg-background/55 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.15)_0%,_transparent_50%)] pointer-events-none" />
     </div>
   );
 }
