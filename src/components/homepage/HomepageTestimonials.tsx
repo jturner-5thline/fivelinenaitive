@@ -33,7 +33,7 @@ export const HomepageTestimonials = () => {
           {testimonials.map((testimonial, index) => (
             <div
               key={index}
-              className="relative p-8 rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-white/20 transition-colors"
+              className="relative p-8 rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-[hsl(263,45%,45%,0.7)] shadow-[0_0_20px_hsl(263,60%,50%,0.12)] hover:border-[hsl(263,45%,55%,0.9)] transition-colors"
             >
               
               <div className="mb-4 text-center">
