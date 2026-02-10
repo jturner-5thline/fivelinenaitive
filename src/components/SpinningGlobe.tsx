@@ -480,7 +480,7 @@ function createContinentMesh(coords: number[][], radius: number): THREE.Mesh {
   geometry.computeVertexNormals();
   
   const material = new THREE.MeshBasicMaterial({
-    color: '#7b2eb8',
+    color: '#0ea5e9',
     transparent: true,
     opacity: 0.08,
     side: THREE.FrontSide,
@@ -506,7 +506,7 @@ function ContinentOutlines() {
         points.push(latLonToVector3(lat, lon, outlineRadius));
       });
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-      const lineMaterial = new THREE.LineBasicMaterial({ color: '#9b59b6', transparent: true, opacity: 0.4 });
+      const lineMaterial = new THREE.LineBasicMaterial({ color: '#22d3ee', transparent: true, opacity: 0.4 });
       lines.push(new THREE.Line(lineGeometry, lineMaterial));
       
       // Create fill
@@ -547,7 +547,7 @@ function Globe() {
   return (
     <Sphere ref={meshRef} args={[2, 64, 64]} position={[0, 0, 0]}>
       <meshStandardMaterial
-        color="#7b2eb8"
+        color="#0ea5e9"
         wireframe
         transparent
         opacity={0.15}
