@@ -343,20 +343,41 @@ const cityLights = generateCityLights();
 function CityLights() {
   const groupRef = useRef<THREE.Group>(null);
   
-  const pointsGeometry = useMemo(() => {
+  const { geometry, colors } = useMemo(() => {
     const radius = 2.03;
     const positions = new Float32Array(cityLights.length * 3);
+    const colorsArr = new Float32Array(cityLights.length * 3);
+    
+    // Gradient palette from the reference image: cyan → periwinkle → purple
+    const palette = [
+      new THREE.Color('#7dd3fc'), // cyan
+      new THREE.Color('#93b5ff'), // periwinkle blue
+      new THREE.Color('#a78bfa'), // lavender
+      new THREE.Color('#a855f7'), // purple
+      new THREE.Color('#8b5cf6'), // violet
+    ];
     
     cityLights.forEach(([lat, lon], i) => {
       const vec = latLonToVector3(lat, lon, radius);
       positions[i * 3] = vec.x;
       positions[i * 3 + 1] = vec.y;
       positions[i * 3 + 2] = vec.z;
+      
+      // Assign gradient color based on a mix of position and randomness
+      const t = (Math.sin(lat * 0.05 + lon * 0.03) * 0.5 + 0.5) * 0.6 + Math.random() * 0.4;
+      const idx = Math.min(Math.floor(t * (palette.length - 1)), palette.length - 2);
+      const frac = (t * (palette.length - 1)) - idx;
+      const color = palette[idx].clone().lerp(palette[idx + 1], frac);
+      
+      colorsArr[i * 3] = color.r;
+      colorsArr[i * 3 + 1] = color.g;
+      colorsArr[i * 3 + 2] = color.b;
     });
     
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    return geometry;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colorsArr, 3));
+    return { geometry: geo, colors: colorsArr };
   }, []);
   
   useFrame((state, delta) => {
@@ -367,21 +388,21 @@ function CityLights() {
 
   return (
     <group ref={groupRef}>
-      <points geometry={pointsGeometry}>
+      <points geometry={geometry}>
         <pointsMaterial
           size={0.008}
-          color="#7dd3fc"
+          vertexColors
           transparent
-          opacity={0.7}
+          opacity={0.8}
           sizeAttenuation
         />
       </points>
-      <points geometry={pointsGeometry}>
+      <points geometry={geometry}>
         <pointsMaterial
-          size={0.006}
-          color="#a855f7"
+          size={0.014}
+          vertexColors
           transparent
-          opacity={0.5}
+          opacity={0.15}
           sizeAttenuation
         />
       </points>
