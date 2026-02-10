@@ -8,7 +8,7 @@ interface DealsListSkeletonProps {
 export function DealsListSkeleton({ groupByStatus = true }: DealsListSkeletonProps) {
   if (!groupByStatus) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {[...Array(6)].map((_, i) => (
           <DealCardSkeleton key={i} />
         ))}
@@ -27,7 +27,7 @@ export function DealsListSkeleton({ groupByStatus = true }: DealsListSkeletonPro
             <Skeleton className="h-6 w-24" />
             <Skeleton className="h-4 w-8" />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {[...Array(groupIndex === 0 ? 3 : 2)].map((_, i) => (
               <DealCardSkeleton key={i} />
             ))}
