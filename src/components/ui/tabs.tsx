@@ -8,16 +8,60 @@ const Tabs = TabsPrimitive.Root;
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      "inline-flex h-auto items-center justify-center gap-0 rounded-none bg-muted/50 p-0 text-muted-foreground",
-      className,
-    )}
-    {...props}
-  />
-));
+>(({ className, children, ...props }, ref) => {
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const [indicator, setIndicator] = React.useState<{ left: number; width: number } | null>(null);
+
+  const updateIndicator = React.useCallback(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const activeTab = list.querySelector('[data-state="active"]') as HTMLElement | null;
+    if (activeTab) {
+      const listRect = list.getBoundingClientRect();
+      const tabRect = activeTab.getBoundingClientRect();
+      setIndicator({
+        left: tabRect.left - listRect.left,
+        width: tabRect.width,
+      });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    updateIndicator();
+    const observer = new MutationObserver(updateIndicator);
+    if (listRef.current) {
+      observer.observe(listRef.current, { attributes: true, subtree: true, attributeFilter: ['data-state'] });
+    }
+    return () => observer.disconnect();
+  }, [updateIndicator]);
+
+  return (
+    <TabsPrimitive.List
+      ref={(node) => {
+        listRef.current = node;
+        if (typeof ref === 'function') ref(node);
+        else if (ref) ref.current = node;
+      }}
+      className={cn(
+        "relative inline-flex h-auto items-center justify-center gap-0 rounded-none bg-muted/50 p-0 text-muted-foreground overflow-hidden",
+        className,
+      )}
+      {...props}
+    >
+      {indicator && (
+        <span
+          className="absolute top-0 bottom-0 rounded-[inherit] bg-gradient-to-r from-primary/90 to-primary/60 shadow-sm z-0 pointer-events-none"
+          style={{
+            left: indicator.left,
+            width: indicator.width,
+            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+      )}
+      {children}
+    </TabsPrimitive.List>
+  );
+});
 TabsList.displayName = TabsPrimitive.List.displayName;
 
 const TabsTrigger = React.forwardRef<
@@ -27,8 +71,8 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-none px-3 py-0 text-sm font-medium ring-offset-background transition-all hover:bg-muted hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-full",
-      "data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary/90 data-[state=active]:to-primary/60 data-[state=active]:text-white data-[state=active]:font-medium data-[state=active]:shadow-sm",
+      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-none px-3 py-0 text-sm font-medium ring-offset-background transition-all hover:bg-muted hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-full",
+      "data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-medium data-[state=active]:shadow-none",
       className,
     )}
     {...props}
