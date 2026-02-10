@@ -159,7 +159,7 @@ export default function Dashboard() {
         <meta name="description" content="Your personal dashboard for managing deals and workflows." />
       </Helmet>
 
-      <div className="bg-background flex flex-col items-center px-4 py-12">
+      <div className="bg-transparent flex flex-col items-center px-4 py-12">
         <div className="w-full max-w-3xl space-y-8">
           {/* Settings Button */}
           <div className="flex justify-end">
