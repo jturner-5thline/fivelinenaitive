@@ -39,7 +39,7 @@ export const HomepageFeatureSection = ({
             ref={imageRef}
             className={`flex-1 w-full transition-all duration-700 delay-200 ${imageVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
           >
-            <div className="relative rounded-2xl overflow-hidden bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)] border border-white/10 shadow-2xl">
+            <div className="relative rounded-2xl overflow-hidden bg-[radial-gradient(ellipse_at_bottom_right,_hsl(220,80%,50%,0.15)_0%,_hsl(260,60%,40%,0.12)_30%,_hsl(270,80%,4%)_60%,_hsl(270,100%,2%)_100%)] border border-[hsl(220,70%,55%,0.25)] shadow-[0_0_30px_hsl(240,60%,50%,0.1)]">
               {image}
             </div>
           </div>
