@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Flame, Thermometer, Snowflake } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, ReactNode } from 'react';
+import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
-import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -12,6 +12,7 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { FlagNoteDialog } from './FlagNoteDialog';
+import { DealListColumnId, DEFAULT_COLUMN_ORDER } from '@/hooks/useDealListColumnOrder';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,9 +34,10 @@ interface DealListRowProps {
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;
+  columnOrder?: DealListColumnId[];
 }
 
-export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement }: DealListRowProps) {
+export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_COLUMN_ORDER }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
@@ -94,13 +96,10 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
 
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
-  return (
-    <TableRow 
-      className={`group cursor-pointer ${timeAgoData.isStale ? 'bg-warning/5' : ''}`}
-      onClick={() => navigate(`/deal/${deal.id}`)}
-    >
-      {/* Company Name */}
-      <TableCell className="font-medium">
+  // Column cell renderers
+  const columnCells: Record<DealListColumnId, ReactNode> = {
+    company: (
+      <TableCell key="company" className="font-medium">
         <div className="flex items-center gap-2">
           {timeAgoData.isStale && (
             <TooltipProvider>
@@ -131,16 +130,16 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
           )}
         </div>
       </TableCell>
-
-      {/* Value */}
-      <TableCell>
+    ),
+    value: (
+      <TableCell key="value">
         <span className="font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
           {formatCurrencyValue(deal.value)}
         </span>
       </TableCell>
-
-      {/* Status */}
-      <TableCell>
+    ),
+    status: (
+      <TableCell key="status">
         <Badge
           variant="outline"
           className={`${statusConfig.badgeColor} text-foreground dark:text-[hsl(240,25%,5%)] border-0 text-xs rounded-lg font-semibold`}
@@ -148,24 +147,24 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
           {statusConfig.label}
         </Badge>
       </TableCell>
-
-      {/* Stage */}
-      <TableCell>
+    ),
+    stage: (
+      <TableCell key="stage">
         <Badge variant="outline" className="text-xs rounded-lg">
           {stageConfig.label}
         </Badge>
       </TableCell>
-
-      {/* Manager */}
-      <TableCell>
+    ),
+    manager: (
+      <TableCell key="manager">
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <User className="h-3.5 w-3.5" />
           <span className="truncate max-w-[100px]">{deal.manager || 'No manager'}</span>
         </div>
       </TableCell>
-
-      {/* Deal Type */}
-      <TableCell>
+    ),
+    type: (
+      <TableCell key="type">
         <div className="flex flex-wrap gap-1">
           <Badge variant="secondary" className="text-xs rounded-lg">
             {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
@@ -182,23 +181,32 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
           )}
         </div>
       </TableCell>
-
-      {/* Total Fee */}
-      <TableCell>
+    ),
+    totalFee: (
+      <TableCell key="totalFee">
         <span className="text-sm font-medium text-foreground">
           {deal.totalFee ? `$${deal.totalFee.toLocaleString()}` : '—'}
         </span>
       </TableCell>
-
-      {/* Last Updated */}
-      <TableCell>
+    ),
+    updated: (
+      <TableCell key="updated">
         <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
           <Clock className="h-3 w-3" />
           <span>{timeAgoData.text}</span>
         </div>
       </TableCell>
+    ),
+  };
 
-      {/* Actions */}
+  return (
+    <TableRow 
+      className={`group cursor-pointer ${timeAgoData.isStale ? 'bg-warning/5' : ''}`}
+      onClick={() => navigate(`/deal/${deal.id}`)}
+    >
+      {columnOrder.map(colId => columnCells[colId])}
+
+      {/* Actions - always last */}
       <TableCell>
         <div className="flex items-center gap-1">
           {onToggleFlag && (

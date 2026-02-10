@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { DealListRow } from './DealListRow';
-import { FileX, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileX, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
@@ -10,6 +10,22 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useDealListColumnOrder, COLUMN_LABELS, DealListColumnId } from '@/hooks/useDealListColumnOrder';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface DealsListProps {
   deals: Deal[];
@@ -22,11 +38,39 @@ interface DealsListProps {
   viewMode?: 'grid' | 'list';
 }
 
+function SortableTableHead({ id }: { id: DealListColumnId }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    cursor: 'grab',
+  };
+
+  return (
+    <TableHead ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <div className="flex items-center gap-1">
+        <GripVertical className="h-3 w-3 text-muted-foreground/50" />
+        <span>{COLUMN_LABELS[id]}</span>
+      </div>
+    </TableHead>
+  );
+}
+
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
 export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true, sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
+  const { columnOrder, updateColumnOrder } = useDealListColumnOrder();
   
   // Fetch FLEx engagement scores for all visible deals
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
@@ -45,6 +89,25 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
       return sortDirection === 'asc' ? comparison : -comparison;
     });
   }, [deals, sortField, sortDirection, flexEngagementScores]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = columnOrder.indexOf(active.id as DealListColumnId);
+    const newIndex = columnOrder.indexOf(over.id as DealListColumnId);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newOrder = [...columnOrder];
+    newOrder.splice(oldIndex, 1);
+    newOrder.splice(newIndex, 0, active.id as DealListColumnId);
+    updateColumnOrder(newOrder);
+  };
 
   const toggleGroup = (status: DealStatus) => {
     setCollapsedGroups(prev => {
@@ -76,33 +139,33 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   if (viewMode === 'list') {
     return (
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Company</TableHead>
-              <TableHead>Value</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead>Manager</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Total Fee</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedDeals.map((deal) => (
-              <DealListRow
-                key={deal.id}
-                deal={deal}
-                onStatusChange={onStatusChange}
-                onMarkReviewed={onMarkReviewed}
-                onToggleFlag={onToggleFlag}
-                flexEngagement={flexEngagementScores?.get(deal.id)}
-              />
-            ))}
-          </TableBody>
-        </Table>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                  {columnOrder.map((colId) => (
+                    <SortableTableHead key={colId} id={colId} />
+                  ))}
+                </SortableContext>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedDeals.map((deal) => (
+                <DealListRow
+                  key={deal.id}
+                  deal={deal}
+                  onStatusChange={onStatusChange}
+                  onMarkReviewed={onMarkReviewed}
+                  onToggleFlag={onToggleFlag}
+                  flexEngagement={flexEngagementScores?.get(deal.id)}
+                  columnOrder={columnOrder}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </DndContext>
       </div>
     );
   }
@@ -187,7 +250,6 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
             <CollapsibleContent className="pt-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {statusDeals.map((deal, index) => {
-                  // Show hint only on the very first deal card across all groups
                   const isFirstDealOverall = groupedDeals[0].status === status && index === 0;
                   
                   if (isFirstDealOverall) {
