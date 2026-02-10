@@ -218,7 +218,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         <div className={`flex items-center gap-2 ${compact ? 'mt-2' : 'mt-4'} flex-wrap`}>
           <Badge
             variant="outline"
-            className={`${statusConfig.badgeColor} text-foreground dark:text-[hsl(240,25%,5%)] border-0 text-xs rounded-lg font-semibold`}
+            className={`${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg font-semibold`}
           >
             {statusConfig.label}
           </Badge>
