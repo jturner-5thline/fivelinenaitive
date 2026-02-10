@@ -27,7 +27,7 @@ const Index = () => {
         />
       </Helmet>
       
-      <div className="min-h-screen bg-muted/30 dark:bg-[hsl(230,25%,5%)] relative overflow-hidden">
+      <div className="min-h-screen bg-[hsl(270,30%,8%)] relative overflow-hidden">
         {/* YouTube Video Background */}
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <iframe
@@ -40,7 +40,7 @@ const Index = () => {
         </div>
         
         {/* Dark blue overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(230,30%,8%)]/90 via-[hsl(260,40%,12%)]/85 to-[hsl(280,35%,8%)]/90" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(270,35%,10%)]/90 via-[hsl(280,45%,15%)]/85 to-[hsl(270,35%,10%)]/90" />
         
         {/* Content */}
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
