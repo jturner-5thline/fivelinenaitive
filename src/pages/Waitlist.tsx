@@ -139,7 +139,7 @@ const Waitlist = () => {
       </Helmet>
       
       <div className="min-h-screen bg-[#010114] relative overflow-hidden">
-        <SpinningGlobe />
+        <div className="absolute inset-0 blur-[2px]"><SpinningGlobe /></div>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-8 md:pb-12 px-4">
