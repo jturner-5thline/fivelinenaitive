@@ -1365,7 +1365,7 @@ export function SpinningGlobe() {
   
   return (
     <div className="absolute inset-0">
-      <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
+      <Canvas camera={{ position: [0, 0, 5], fov: 60 }} gl={{ alpha: true }} style={{ background: 'transparent' }}>
         <ambientLight intensity={0.3} />
         <pointLight position={[10, 10, 10]} intensity={0.5} color="#22d3ee" />
         <pointLight position={[-10, -10, -10]} intensity={0.3} color="#0ea5e9" />
