@@ -1,4 +1,4 @@
-import { Settings, User, SlidersHorizontal, LogOut, HelpCircle, RotateCcw, BookOpen, Shield, Sun, Moon } from 'lucide-react';
+import { Settings, User, SlidersHorizontal, LogOut, HelpCircle, RotateCcw, BookOpen, Shield } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 import { LenderSyncNotificationBell } from '@/components/lenders/LenderSyncNotificationBell';
@@ -32,7 +32,7 @@ export function DealsHeader() {
   const { profile } = useProfile();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const { isAdmin } = useAdminRole();
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   const handleSignOut = async () => {
     await signOut();
@@ -114,23 +114,7 @@ export function DealsHeader() {
           >
             <CreateDealDialog />
           </HintTooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-                className="relative"
-              >
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                <span className="sr-only">Toggle theme</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Toggle theme</p>
-            </TooltipContent>
-          </Tooltip>
+          
           <HintTooltip
             hint="Access settings to customize stages, deal types, and your preferences."
             visible={isHintVisible('settings-menu')}
