@@ -610,12 +610,14 @@ function GlobeGlow() {
         void main() {
           vec3 viewDir = normalize(cameraPosition - vWorldPosition);
           float rim = 1.0 - abs(dot(viewDir, vNormal));
-          float rimPow = pow(rim, 3.0);
+          // Sharper edge for a clear border look
+          float rimEdge = smoothstep(0.55, 0.85, rim);
+          float rimGlow = pow(rim, 2.5) * 0.4;
+          float alpha = rimEdge * 1.0 + rimGlow;
           // Gradient from hsl(292,46%,72%) ≈ #c78dd9 to hsl(280,60%,45%) ≈ #7b2eb8
           vec3 colorLight = vec3(0.78, 0.55, 0.85);
           vec3 colorDark = vec3(0.48, 0.18, 0.72);
           vec3 color = mix(colorDark, colorLight, rim);
-          float alpha = rimPow * 0.9;
           gl_FragColor = vec4(color, alpha);
         }
       `,
