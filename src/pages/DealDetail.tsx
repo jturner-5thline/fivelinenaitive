@@ -1648,7 +1648,7 @@ export default function DealDetail() {
   // During background refetches (e.g., realtime events), keep the page rendered to avoid a full-page "refresh".
   if (isDealsLoading && !deal) {
     return (
-      <div className="bg-background min-h-screen flex items-center justify-center">
+      <div className="bg-transparent min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-muted-foreground">Loading deal...</p>
@@ -1659,7 +1659,7 @@ export default function DealDetail() {
 
   if (!deal) {
     return (
-      <div className="bg-background">
+      <div className="bg-transparent">
         <DealsHeader />
         <main className="container mx-auto max-w-5xl px-4 py-8">
           <div className="text-center">
@@ -1891,7 +1891,7 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="bg-background relative">
+      <div className="bg-transparent relative">
         <GlobalSaveBar isAnySaving={isAnySaving} />
         <DealsHeader />
 
