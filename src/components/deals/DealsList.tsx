@@ -110,7 +110,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   // If not grouping, show flat grid
   if (!groupByStatus) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {sortedDeals.map((deal, index) => (
           index === 0 ? (
             <HintTooltip
@@ -185,7 +185,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {statusDeals.map((deal, index) => {
                   // Show hint only on the very first deal card across all groups
                   const isFirstDealOverall = groupedDeals[0].status === status && index === 0;
