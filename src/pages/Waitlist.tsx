@@ -225,7 +225,7 @@ const Waitlist = () => {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0"
+                  className="w-full bg-[linear-gradient(135deg,hsl(280,60%,45%),hsl(263,50%,35%),hsl(240,30%,15%))] hover:bg-[linear-gradient(135deg,hsl(280,60%,50%),hsl(263,50%,40%),hsl(240,30%,20%))] text-white border-0 dark:hover:shadow-[0_0_20px_hsl(280,60%,45%,0.3)]"
                 >
                   {isSubmitting ? (
                     <>
