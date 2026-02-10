@@ -22,7 +22,7 @@ export const HeroSection = () => {
           </div>
 
           {/* Main headline */}
-          <h1 className="text-display md:text-5xl lg:text-6xl bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)] mb-6 animate-fade-in tracking-tight leading-[1.1]">
+          <h1 className="text-display md:text-5xl lg:text-6xl bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white mb-6 animate-fade-in tracking-tight leading-[1.1]">
             Deal Analysis Built for Growth-Stage Investors
           </h1>
 

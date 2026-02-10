@@ -110,7 +110,7 @@ export function LenderSuggestions({
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <span className="bg-brand-gradient bg-clip-text text-transparent">AI Lender Suggestions</span>
+            <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">AI Lender Suggestions</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -148,7 +148,7 @@ export function LenderSuggestions({
           <CollapsibleTrigger className="flex items-center justify-between w-full">
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+              <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
                 Suggested Lenders
               </span>
               <Badge variant="secondary" className="ml-1 font-normal">

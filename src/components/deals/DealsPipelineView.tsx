@@ -237,7 +237,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
           <FileX className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">No deals found</h3>
+        <h3 className="text-lg font-medium bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">No deals found</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Try adjusting your filters or create a new deal to get started.
         </p>

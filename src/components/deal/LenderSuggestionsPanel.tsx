@@ -156,7 +156,7 @@ export function LenderSuggestionsPanel({
                 </Button>
               )}
               <Sparkles className="h-5 w-5 text-primary" />
-              <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+              <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
                 {showSurvey ? 'Refine Your Search' : 'Suggested Lenders'}
               </span>
               {!showSurvey && totalMatches > 0 && (
@@ -307,7 +307,7 @@ export function LenderSuggestionsFAB({
                 </Button>
               )}
               <Sparkles className="h-5 w-5 text-primary" />
-              <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+              <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
                 {showSurvey ? 'Refine Your Search' : 'Suggested Lenders'}
               </span>
               {!showSurvey && matchCount > 0 && (

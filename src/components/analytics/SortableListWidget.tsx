@@ -118,7 +118,7 @@ export function SortableListWidget({ widget, hoursData, onEdit, onDelete, compac
                 <div className={cn("flex gap-4", compact ? "gap-2 text-xs" : "text-sm")}>
                   <span className="text-muted-foreground">{item.total.toFixed(1)}h</span>
                   <span className="text-muted-foreground">{formatCurrencyValue(item.fees)}</span>
-                  <span className="font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">
+                  <span className="font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
                     {item.revenuePerHour > 0 ? `$${item.revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}/hr` : '-'}
                   </span>
                 </div>

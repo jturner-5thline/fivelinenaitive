@@ -145,7 +145,7 @@ export default function Dashboard() {
                 className="flex items-center justify-between opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
               >
-                <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-gradient-to-b dark:from-white dark:to-[hsl(292,46%,72%)]">5th Line</h1>
+                <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">5th Line</h1>
                 <div className="flex items-center gap-2">
                   <NotificationsDropdown />
                   <LatestUpdatesDropdown />

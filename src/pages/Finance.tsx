@@ -87,7 +87,7 @@ export default function Finance() {
       <div className="p-6 space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold bg-brand-gradient bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
               Finance
             </h1>
             <p className="text-muted-foreground">
