@@ -183,43 +183,11 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
         </div>
       </TableCell>
 
-      {/* FLEx Engagement */}
+      {/* Total Fee */}
       <TableCell>
-        {flexEngagement && flexEngagement.level !== "none" && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className={`text-xs rounded-lg gap-1 ${
-                    flexEngagement.level === "hot" 
-                      ? "bg-red-500/10 text-red-600 border-red-500/20" 
-                      : flexEngagement.level === "warm"
-                      ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                      : "bg-blue-500/10 text-blue-600 border-blue-500/20"
-                  }`}
-                >
-                  {flexEngagement.level === "hot" ? (
-                    <Flame className="h-3 w-3" />
-                  ) : flexEngagement.level === "warm" ? (
-                    <Thermometer className="h-3 w-3" />
-                  ) : (
-                    <Snowflake className="h-3 w-3" />
-                  )}
-                  {flexEngagement.lenderCount}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="text-xs">
-                  <p className="font-medium capitalize">{flexEngagement.level} Lender Interest</p>
-                  <p className="text-muted-foreground">
-                    {flexEngagement.lenderCount} lender{flexEngagement.lenderCount !== 1 ? 's' : ''} engaged
-                  </p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        <span className="text-sm font-medium text-foreground">
+          {deal.totalFee ? `$${deal.totalFee.toLocaleString()}` : '—'}
+        </span>
       </TableCell>
 
       {/* Last Updated */}

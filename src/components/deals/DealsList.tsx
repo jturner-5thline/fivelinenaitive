@@ -85,7 +85,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
               <TableHead>Stage</TableHead>
               <TableHead>Manager</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>FLEx</TableHead>
+              <TableHead>Total Fee</TableHead>
               <TableHead>Updated</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
