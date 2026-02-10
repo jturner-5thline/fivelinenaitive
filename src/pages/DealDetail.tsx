@@ -2334,12 +2334,11 @@ export default function DealDetail() {
                   <div className="flex justify-end">
                     <Button 
                       variant="ghost" 
-                      size="sm" 
-                      className="h-8 gap-2 text-muted-foreground"
+                      size="icon" 
+                      className="h-8 w-8 text-muted-foreground"
                       onClick={() => setIsPanelReorderDialogOpen(true)}
                     >
                       <Settings2 className="h-4 w-4" />
-                      Customize Layout
                     </Button>
                   </div>
 
