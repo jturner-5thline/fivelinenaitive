@@ -28,9 +28,7 @@ export const HomepageSecurity = () => {
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-white mb-6 leading-tight">
             Built for Enterprise{" "}
             <br className="hidden md:block" />
-            <span className="bg-gradient-to-r from-[hsl(292,46%,72%)] to-white bg-clip-text text-transparent">
-              Secure by Design
-            </span>
+            Secure by Design
           </h2>
 
           <p className="text-center text-white/60 text-lg mb-12 max-w-2xl mx-auto">

@@ -42,10 +42,7 @@ export const HomepageDataPrivacy = () => {
 
           {/* Headline */}
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center text-white mb-8 leading-tight">
-            How We Use{" "}
-            <span className="bg-gradient-to-r from-[hsl(292,46%,72%)] to-white bg-clip-text text-transparent">
-              Your Data
-            </span>
+            How We Use Your Data
           </h2>
 
 
