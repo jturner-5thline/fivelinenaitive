@@ -44,14 +44,14 @@ export function FloatingDealsAssistant() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('deals-assistant-ai', {
-        body: { question: userMessage },
+      const { data, error } = await supabase.functions.invoke('deal-assistant', {
+        body: { messages: [{ role: 'user', content: userMessage }], dealContext: { company: 'Pipeline', value: 0, stage: 'all', status: 'active' } },
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: data.content || data.answer }]);
     } catch (err) {
       console.error('Deals assistant error:', err);
       toast({
