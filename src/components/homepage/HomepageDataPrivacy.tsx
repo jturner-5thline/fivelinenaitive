@@ -30,6 +30,16 @@ export const HomepageDataPrivacy = () => {
 
   return (
     <section className="py-12 md:py-16 bg-[#0a0a12] border-t border-white/5">
+      {/* SVG gradient definition for icons */}
+      <svg width="0" height="0" className="absolute">
+        <defs>
+          <linearGradient id="icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="hsl(200, 90%, 70%)" />
+            <stop offset="50%" stopColor="hsl(240, 70%, 65%)" />
+            <stop offset="100%" stopColor="hsl(280, 60%, 55%)" />
+          </linearGradient>
+        </defs>
+      </svg>
       <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
         <div className="max-w-4xl mx-auto">
           {/* Badge */}
@@ -53,8 +63,8 @@ export const HomepageDataPrivacy = () => {
                 key={item.title}
                 className="p-6 rounded-2xl bg-white/5 border border-white/10"
               >
-                <div className="w-10 h-10 rounded-lg bg-[hsl(292,46%,72%)]/10 flex items-center justify-center mb-4">
-                  <item.icon className="w-5 h-5 text-[hsl(292,46%,72%)]" />
+                <div className="w-10 h-10 rounded-lg bg-[hsl(220,80%,55%,0.1)] flex items-center justify-center mb-4">
+                  <item.icon className="w-5 h-5" style={{ stroke: 'url(#icon-gradient)' }} />
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">
                   {item.title}
