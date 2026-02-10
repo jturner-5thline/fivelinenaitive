@@ -61,7 +61,7 @@ export const HomepageDataPrivacy = () => {
             {dataUsageItems.map((item) => (
               <div
                 key={item.title}
-                className="p-6 rounded-2xl bg-white/5 border border-white/10"
+                className="p-6 rounded-2xl bg-white/5 border border-[hsl(263,45%,45%,0.7)] shadow-[0_0_20px_hsl(263,60%,50%,0.12)]"
               >
                 <div className="w-10 h-10 rounded-lg bg-[hsl(220,80%,55%,0.1)] flex items-center justify-center mb-4">
                   <item.icon className="w-5 h-5" style={{ stroke: 'url(#icon-gradient)' }} />
