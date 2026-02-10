@@ -40,7 +40,7 @@ const Index = () => {
         </div>
         
         {/* Dark blue overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(230,25%,5%)]/95 via-[hsl(230,25%,5%)]/90 to-[hsl(230,25%,5%)]/95 dark:from-[hsl(230,25%,5%)]/95 dark:via-[hsl(230,25%,5%)]/90 dark:to-[hsl(230,25%,5%)]/95" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[hsl(230,30%,8%)]/90 via-[hsl(260,40%,12%)]/85 to-[hsl(280,35%,8%)]/90" />
         
         {/* Content */}
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
