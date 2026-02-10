@@ -295,7 +295,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           <HoverCard openDelay={300}>
             <HoverCardTrigger asChild>
               <div 
-              className="text-sm line-clamp-2 mt-4 min-h-[2.5rem] text-foreground/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer"
+              className="text-sm line-clamp-2 mt-6 min-h-[2.5rem] text-foreground/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer"
                 dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
               />
             </HoverCardTrigger>
