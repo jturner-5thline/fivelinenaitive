@@ -40,7 +40,7 @@ export const HomepageSecurity = () => {
             {securityFeatures.map((feature) => (
               <div
                 key={feature}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/80 text-sm"
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-[hsl(263,45%,45%,0.7)] shadow-[0_0_20px_hsl(263,60%,50%,0.12)] text-white/80 text-sm"
               >
                 <CheckCircle2 className="w-4 h-4 text-[hsl(292,46%,72%)]" />
                 {feature}
@@ -67,7 +67,7 @@ export const HomepageSecurity = () => {
             {badges.map((badge) => (
               <div
                 key={badge}
-                className="px-6 py-3 rounded-lg bg-white/5 border border-white/10 text-white font-semibold text-sm"
+                className="px-6 py-3 rounded-lg bg-white/5 border border-[hsl(263,45%,45%,0.7)] shadow-[0_0_20px_hsl(263,60%,50%,0.12)] text-white font-semibold text-sm"
               >
                 {badge}
               </div>
