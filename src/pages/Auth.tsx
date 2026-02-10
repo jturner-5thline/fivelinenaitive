@@ -284,9 +284,9 @@ const Auth = () => {
         <title>{getTitle()} | nAItive</title>
       </Helmet>
       
-      <div className="min-h-screen bg-[#010114] relative overflow-hidden">
+      <div className="min-h-screen bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)] relative overflow-hidden">
         <SpinningGlobe />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#010114]/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a12]" />
         
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
           <div className="absolute top-[18%] left-1/2 -translate-x-1/2 pointer-events-none select-none flex flex-col items-center">
