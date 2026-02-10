@@ -570,10 +570,10 @@ function GlobeLines() {
   return (
     <Sphere ref={meshRef} args={[2.05, 48, 48]} position={[0, 0, 0]}>
       <meshBasicMaterial
-        color="#22d3ee"
+        color="#9b59b6"
         wireframe
         transparent
-        opacity={0.08}
+        opacity={0.1}
       />
     </Sphere>
   );
