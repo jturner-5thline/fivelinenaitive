@@ -24,10 +24,9 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
+
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
@@ -35,33 +34,29 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if user has Gmail tokens
+    // Check if user has a Nylas grant
     const { data: tokenData, error: tokenError } = await supabase
       .from("gmail_tokens")
-      .select("id, expires_at, scope, created_at")
+      .select("id, grant_id, email_address, scope, created_at")
       .eq("user_id", user.id)
       .single();
 
-    if (tokenError || !tokenData) {
-      return new Response(JSON.stringify({ 
+    if (tokenError || !tokenData || !tokenData.grant_id) {
+      return new Response(JSON.stringify({
         connected: false,
-        message: "Gmail not connected"
+        message: "Gmail not connected",
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const expiresAt = new Date(tokenData.expires_at);
-    const now = new Date();
-    const isExpired = expiresAt <= now;
-
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       connected: true,
-      expires_at: tokenData.expires_at,
-      is_expired: isExpired,
+      is_expired: false,
       scope: tokenData.scope,
       connected_at: tokenData.created_at,
+      email_address: tokenData.email_address,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
