@@ -68,14 +68,14 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={true}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" disabled={disabled}>
           <Plus className="h-3 w-3" />
           Add Contact
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md !z-[100]" overlayClassName="!z-[99]">
         <DialogHeader>
           <DialogTitle>Add Contact</DialogTitle>
         </DialogHeader>
