@@ -6,10 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
-const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET");
+const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const NYLAS_API_URL = "https://api.us.nylas.com";
 
 interface MessageRequest {
   action: "list" | "get" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete";
@@ -22,97 +22,28 @@ interface MessageRequest {
   body_html?: string;
   max_results?: number;
   page_token?: string;
-  label_ids?: string[];
   query?: string;
 }
 
-async function getValidAccessToken(supabase: any, userId: string): Promise<string | null> {
-  const { data: tokenData, error } = await supabase
+async function getGrantId(supabase: any, userId: string): Promise<string | null> {
+  const { data, error } = await supabase
     .from("gmail_tokens")
-    .select("*")
+    .select("grant_id")
     .eq("user_id", userId)
     .single();
 
-  if (error || !tokenData) {
-    console.error("No tokens found for user:", userId);
+  if (error || !data?.grant_id) {
     return null;
   }
-
-  // Check if token is expired
-  const expiresAt = new Date(tokenData.expires_at);
-  const now = new Date();
-
-  if (expiresAt <= now) {
-    console.log("Token expired, refreshing...");
-    
-    // Refresh the token
-    const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        refresh_token: tokenData.refresh_token,
-        client_id: GOOGLE_CLIENT_ID!,
-        client_secret: GOOGLE_CLIENT_SECRET!,
-        grant_type: "refresh_token",
-      }),
-    });
-
-    const refreshData = await refreshResponse.json();
-
-    if (refreshData.error) {
-      console.error("Token refresh failed:", refreshData);
-      return null;
-    }
-
-    const newExpiresAt = new Date(Date.now() + (refreshData.expires_in * 1000));
-
-    await supabase
-      .from("gmail_tokens")
-      .update({
-        access_token: refreshData.access_token,
-        expires_at: newExpiresAt.toISOString(),
-      })
-      .eq("user_id", userId);
-
-    return refreshData.access_token;
-  }
-
-  return tokenData.access_token;
+  return data.grant_id;
 }
 
-function parseEmailHeader(headers: any[], name: string): string {
-  const header = headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase());
-  return header?.value || "";
-}
-
-function parseEmailAddress(address: string): { email: string; name: string } {
-  const match = address.match(/^(?:(.+?)\s*)?<([^>]+)>$/);
-  if (match) {
-    return { name: match[1]?.trim() || "", email: match[2] };
-  }
-  return { name: "", email: address };
-}
-
-function createRawEmail(to: string[], subject: string, body: string, cc?: string[], bcc?: string[]): string {
-  const headers = [
-    `To: ${to.join(", ")}`,
-    `Subject: ${subject}`,
-    `Content-Type: text/html; charset=utf-8`,
-  ];
-  
-  if (cc && cc.length > 0) {
-    headers.push(`Cc: ${cc.join(", ")}`);
-  }
-  
-  if (bcc && bcc.length > 0) {
-    headers.push(`Bcc: ${bcc.join(", ")}`);
-  }
-
-  const email = `${headers.join("\r\n")}\r\n\r\n${body}`;
-  
-  // Base64url encode
-  const base64 = btoa(unescape(encodeURIComponent(email)));
-  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+function nylasHeaders() {
+  return {
+    Authorization: `Bearer ${NYLAS_API_KEY}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -129,11 +60,17 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
+    if (!NYLAS_API_KEY) {
+      return new Response(JSON.stringify({ error: "Nylas not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
+
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
@@ -141,86 +78,60 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const requestData: MessageRequest = await req.json();
-    const { action } = requestData;
-    console.log(`Gmail messages action: ${action} for user: ${user.id}`);
-
-    const accessToken = await getValidAccessToken(supabase, user.id);
-    if (!accessToken) {
+    const grantId = await getGrantId(supabase, user.id);
+    if (!grantId) {
       return new Response(JSON.stringify({ error: "Gmail not connected. Please connect your Gmail account." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const gmailHeaders = {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    };
+    const requestData: MessageRequest = await req.json();
+    const { action } = requestData;
+    console.log(`Nylas messages action: ${action} for user: ${user.id}`);
+
+    const headers = nylasHeaders();
 
     switch (action) {
       case "list": {
-        const { max_results = 20, page_token, label_ids, query } = requestData;
-        
-        const params = new URLSearchParams({
-          maxResults: String(max_results),
-        });
-        
-        if (page_token) params.set("pageToken", page_token);
-        if (label_ids && label_ids.length > 0) {
-          label_ids.forEach(id => params.append("labelIds", id));
-        }
-        if (query) params.set("q", query);
+        const { max_results = 20, page_token, query } = requestData;
+
+        const params = new URLSearchParams({ limit: String(max_results) });
+        if (page_token) params.set("page_token", page_token);
+        if (query) params.set("search_query_native", query);
 
         const listResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params}`,
-          { headers: gmailHeaders }
+          `${NYLAS_API_URL}/v3/grants/${grantId}/messages?${params}`,
+          { headers }
         );
 
         const listData = await listResponse.json();
 
-        if (listData.error) {
-          console.error("Gmail list error:", listData);
-          return new Response(JSON.stringify({ error: listData.error.message }), {
-            status: listData.error.code || 500,
+        if (!listResponse.ok) {
+          console.error("Nylas list error:", listData);
+          return new Response(JSON.stringify({ error: listData.message || "Failed to list messages" }), {
+            status: listResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        // Fetch details for each message
-        const messages = [];
-        if (listData.messages) {
-          for (const msg of listData.messages.slice(0, max_results)) {
-            const msgResponse = await fetch(
-              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,
-              { headers: gmailHeaders }
-            );
-            const msgData = await msgResponse.json();
-            
-            if (!msgData.error) {
-              const fromHeader = parseEmailHeader(msgData.payload?.headers || [], "From");
-              const { email, name } = parseEmailAddress(fromHeader);
-              
-              messages.push({
-                id: msgData.id,
-                thread_id: msgData.threadId,
-                subject: parseEmailHeader(msgData.payload?.headers || [], "Subject"),
-                from_email: email,
-                from_name: name,
-                snippet: msgData.snippet,
-                is_read: !msgData.labelIds?.includes("UNREAD"),
-                is_starred: msgData.labelIds?.includes("STARRED"),
-                labels: msgData.labelIds,
-                received_at: parseEmailHeader(msgData.payload?.headers || [], "Date"),
-              });
-            }
-          }
-        }
+        const messages = (listData.data || []).map((msg: any) => ({
+          id: msg.id,
+          thread_id: msg.thread_id,
+          subject: msg.subject || "",
+          from_email: msg.from?.[0]?.email || "",
+          from_name: msg.from?.[0]?.name || "",
+          to_emails: msg.to?.map((t: any) => t.email) || [],
+          snippet: msg.snippet || "",
+          is_read: !msg.unread,
+          is_starred: msg.starred || false,
+          labels: msg.folders || [],
+          received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
+        }));
 
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           messages,
-          next_page_token: listData.nextPageToken,
-          result_size_estimate: listData.resultSizeEstimate,
+          next_page_token: listData.next_cursor,
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -237,56 +148,35 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const msgResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message_id}?format=full`,
-          { headers: gmailHeaders }
+          `${NYLAS_API_URL}/v3/grants/${grantId}/messages/${message_id}`,
+          { headers }
         );
 
         const msgData = await msgResponse.json();
 
-        if (msgData.error) {
-          return new Response(JSON.stringify({ error: msgData.error.message }), {
-            status: msgData.error.code || 500,
+        if (!msgResponse.ok) {
+          return new Response(JSON.stringify({ error: msgData.message || "Failed to get message" }), {
+            status: msgResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        // Extract body content
-        let bodyText = "";
-        let bodyHtml = "";
-
-        const getBody = (part: any): void => {
-          if (part.mimeType === "text/plain" && part.body?.data) {
-            bodyText = atob(part.body.data.replace(/-/g, "+").replace(/_/g, "/"));
-          } else if (part.mimeType === "text/html" && part.body?.data) {
-            bodyHtml = atob(part.body.data.replace(/-/g, "+").replace(/_/g, "/"));
-          }
-          if (part.parts) {
-            part.parts.forEach(getBody);
-          }
-        };
-
-        if (msgData.payload) {
-          getBody(msgData.payload);
-        }
-
-        const fromHeader = parseEmailHeader(msgData.payload?.headers || [], "From");
-        const { email, name } = parseEmailAddress(fromHeader);
-
+        const msg = msgData.data;
         const message = {
-          id: msgData.id,
-          thread_id: msgData.threadId,
-          subject: parseEmailHeader(msgData.payload?.headers || [], "Subject"),
-          from_email: email,
-          from_name: name,
-          to_emails: parseEmailHeader(msgData.payload?.headers || [], "To").split(",").map((e: string) => e.trim()),
-          cc_emails: parseEmailHeader(msgData.payload?.headers || [], "Cc").split(",").filter(Boolean).map((e: string) => e.trim()),
-          snippet: msgData.snippet,
-          body_text: bodyText,
-          body_html: bodyHtml,
-          is_read: !msgData.labelIds?.includes("UNREAD"),
-          is_starred: msgData.labelIds?.includes("STARRED"),
-          labels: msgData.labelIds,
-          received_at: parseEmailHeader(msgData.payload?.headers || [], "Date"),
+          id: msg.id,
+          thread_id: msg.thread_id,
+          subject: msg.subject || "",
+          from_email: msg.from?.[0]?.email || "",
+          from_name: msg.from?.[0]?.name || "",
+          to_emails: msg.to?.map((t: any) => t.email) || [],
+          cc_emails: msg.cc?.map((c: any) => c.email) || [],
+          snippet: msg.snippet || "",
+          body_text: msg.body || "",
+          body_html: msg.body || "",
+          is_read: !msg.unread,
+          is_starred: msg.starred || false,
+          labels: msg.folders || [],
+          received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
         };
 
         return new Response(JSON.stringify({ message }), {
@@ -297,7 +187,7 @@ serve(async (req: Request): Promise<Response> => {
 
       case "send": {
         const { to, cc, bcc, subject, body, body_html } = requestData;
-        
+
         if (!to || to.length === 0 || !subject) {
           return new Response(JSON.stringify({ error: "To and subject are required" }), {
             status: 400,
@@ -305,33 +195,46 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const rawEmail = createRawEmail(to, subject, body_html || body || "", cc, bcc);
+        const sendBody: any = {
+          to: to.map(email => ({ email })),
+          subject,
+          body: body_html || body || "",
+        };
+
+        if (cc && cc.length > 0) {
+          sendBody.cc = cc.map(email => ({ email }));
+        }
+        if (bcc && bcc.length > 0) {
+          sendBody.bcc = bcc.map(email => ({ email }));
+        }
 
         const sendResponse = await fetch(
-          "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+          `${NYLAS_API_URL}/v3/grants/${grantId}/messages/send`,
           {
             method: "POST",
-            headers: gmailHeaders,
-            body: JSON.stringify({ raw: rawEmail }),
+            headers,
+            body: JSON.stringify(sendBody),
           }
         );
 
         const sendData = await sendResponse.json();
 
-        if (sendData.error) {
-          console.error("Gmail send error:", sendData);
-          return new Response(JSON.stringify({ error: sendData.error.message }), {
-            status: sendData.error.code || 500,
+        if (!sendResponse.ok) {
+          console.error("Nylas send error:", sendData);
+          return new Response(JSON.stringify({ error: sendData.message || "Failed to send" }), {
+            status: sendResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        // Store sent message in our database
+        const sentMsg = sendData.data;
+
+        // Store sent message
         await supabase
           .from("gmail_sent_messages")
           .insert({
             user_id: user.id,
-            gmail_message_id: sendData.id,
+            gmail_message_id: sentMsg?.id || "unknown",
             to_emails: to,
             cc_emails: cc || [],
             bcc_emails: bcc || [],
@@ -342,8 +245,8 @@ serve(async (req: Request): Promise<Response> => {
             sent_at: new Date().toISOString(),
           });
 
-        console.log(`Email sent successfully: ${sendData.id}`);
-        return new Response(JSON.stringify({ success: true, message_id: sendData.id }), {
+        console.log(`Email sent via Nylas: ${sentMsg?.id}`);
+        return new Response(JSON.stringify({ success: true, message_id: sentMsg?.id }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -359,27 +262,23 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const modifyBody = action === "mark_read" 
-          ? { removeLabelIds: ["UNREAD"] }
-          : { addLabelIds: ["UNREAD"] };
-
-        const modifyResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message_id}/modify`,
+        const updateResponse = await fetch(
+          `${NYLAS_API_URL}/v3/grants/${grantId}/messages/${message_id}`,
           {
-            method: "POST",
-            headers: gmailHeaders,
-            body: JSON.stringify(modifyBody),
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ unread: action === "mark_unread" }),
           }
         );
 
-        const modifyData = await modifyResponse.json();
-
-        if (modifyData.error) {
-          return new Response(JSON.stringify({ error: modifyData.error.message }), {
-            status: modifyData.error.code || 500,
+        if (!updateResponse.ok) {
+          const errData = await updateResponse.json();
+          return new Response(JSON.stringify({ error: errData.message || "Failed to update" }), {
+            status: updateResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+        await updateResponse.json();
 
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
@@ -397,27 +296,23 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const modifyBody = action === "star" 
-          ? { addLabelIds: ["STARRED"] }
-          : { removeLabelIds: ["STARRED"] };
-
-        const modifyResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message_id}/modify`,
+        const updateResponse = await fetch(
+          `${NYLAS_API_URL}/v3/grants/${grantId}/messages/${message_id}`,
           {
-            method: "POST",
-            headers: gmailHeaders,
-            body: JSON.stringify(modifyBody),
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ starred: action === "star" }),
           }
         );
 
-        const modifyData = await modifyResponse.json();
-
-        if (modifyData.error) {
-          return new Response(JSON.stringify({ error: modifyData.error.message }), {
-            status: modifyData.error.code || 500,
+        if (!updateResponse.ok) {
+          const errData = await updateResponse.json();
+          return new Response(JSON.stringify({ error: errData.message || "Failed to update" }), {
+            status: updateResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+        await updateResponse.json();
 
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
@@ -434,22 +329,24 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
+        // Nylas v3: move to trash by adding TRASH folder
         const trashResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message_id}/trash`,
+          `${NYLAS_API_URL}/v3/grants/${grantId}/messages/${message_id}`,
           {
-            method: "POST",
-            headers: gmailHeaders,
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ folders: ["TRASH"] }),
           }
         );
 
-        const trashData = await trashResponse.json();
-
-        if (trashData.error) {
-          return new Response(JSON.stringify({ error: trashData.error.message }), {
-            status: trashData.error.code || 500,
+        if (!trashResponse.ok) {
+          const errData = await trashResponse.json();
+          return new Response(JSON.stringify({ error: errData.message || "Failed to trash" }), {
+            status: trashResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+        await trashResponse.json();
 
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
@@ -467,16 +364,16 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const deleteResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message_id}`,
+          `${NYLAS_API_URL}/v3/grants/${grantId}/messages/${message_id}`,
           {
             method: "DELETE",
-            headers: gmailHeaders,
+            headers,
           }
         );
 
         if (!deleteResponse.ok) {
-          const errorData = await deleteResponse.json();
-          return new Response(JSON.stringify({ error: errorData.error?.message || "Delete failed" }), {
+          const errData = await deleteResponse.json().catch(() => ({}));
+          return new Response(JSON.stringify({ error: errData.message || "Delete failed" }), {
             status: deleteResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -495,7 +392,7 @@ serve(async (req: Request): Promise<Response> => {
         });
     }
   } catch (error: any) {
-    console.error("Gmail messages error:", error);
+    console.error("Nylas messages error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

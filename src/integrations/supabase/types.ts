@@ -2808,33 +2808,39 @@ export type Database = {
       }
       gmail_tokens: {
         Row: {
-          access_token: string
+          access_token: string | null
           created_at: string
-          expires_at: string
+          email_address: string | null
+          expires_at: string | null
+          grant_id: string | null
           id: string
-          refresh_token: string
+          refresh_token: string | null
           scope: string | null
           token_type: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          access_token: string
+          access_token?: string | null
           created_at?: string
-          expires_at: string
+          email_address?: string | null
+          expires_at?: string | null
+          grant_id?: string | null
           id?: string
-          refresh_token: string
+          refresh_token?: string | null
           scope?: string | null
           token_type?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          access_token?: string
+          access_token?: string | null
           created_at?: string
-          expires_at?: string
+          email_address?: string | null
+          expires_at?: string | null
+          grant_id?: string | null
           id?: string
-          refresh_token?: string
+          refresh_token?: string | null
           scope?: string | null
           token_type?: string | null
           updated_at?: string
