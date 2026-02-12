@@ -12,20 +12,20 @@ interface DealSpaceTabProps {
 export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
   return (
     <Tabs defaultValue="ask-ai" className="w-full">
-      <TabsList className="mb-2">
-        <TabsTrigger value="ask-ai" className="flex items-center gap-2">
+      <TabsList className="mb-2 rounded-lg">
+        <TabsTrigger value="ask-ai" className="flex items-center gap-2 rounded-md">
           <Sparkles className="h-4 w-4" />
           Ask AI
         </TabsTrigger>
-        <TabsTrigger value="notes" className="flex items-center gap-2">
+        <TabsTrigger value="notes" className="flex items-center gap-2 rounded-md">
           <StickyNote className="h-4 w-4" />
           Notes
         </TabsTrigger>
-        <TabsTrigger value="financials" className="flex items-center gap-2">
+        <TabsTrigger value="financials" className="flex items-center gap-2 rounded-md">
           <DollarSign className="h-4 w-4" />
           Financials
         </TabsTrigger>
-        <TabsTrigger value="documents" className="flex items-center gap-2">
+        <TabsTrigger value="documents" className="flex items-center gap-2 rounded-md">
           <FileText className="h-4 w-4" />
           Documents
         </TabsTrigger>
