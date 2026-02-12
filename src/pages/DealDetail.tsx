@@ -1356,7 +1356,7 @@ export default function DealDetail() {
     
     // Build auto-note for passed/not-a-fit lenders
     const autoNote = newGroup === 'passed' && passReason
-      ? `Lender was marked "${targetStage.label}" due to: ${passReason}`
+      ? `Lender passed due to ${passReason}`
       : undefined;
 
     // Persist to database with loading indicator
@@ -4327,7 +4327,7 @@ export default function DealDetail() {
                 // Build auto-note based on stage label
                 const stageName = configuredStages.find(s => s.id === stageId)?.label || 'Passed';
                 const autoNote = reasonLabels.length > 0
-                  ? `Lender was marked "${stageName}" due to: ${reasonLabels.join(', ')}`
+                  ? `Lender passed due to ${reasonLabels.join(', ')}`
                   : '';
 
                 // Optimistically update local state
