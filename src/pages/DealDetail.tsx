@@ -11,6 +11,7 @@ import { DealMilestones } from '@/components/deals/DealMilestones';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useFlagNotes } from '@/hooks/useFlagNotes';
 import { useDealAttachments, DealAttachmentCategory, DEAL_ATTACHMENT_CATEGORIES, UploadProgress } from '@/hooks/useDealAttachments';
 import { UploadProgressOverlay } from '@/components/deal/UploadProgressOverlay';
@@ -328,10 +329,8 @@ export default function DealDetail() {
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
-  const mentionUsers = useMemo(() => 
-    members.map(m => ({ id: m.user_id, display_name: m.display_name || 'Unknown', avatar_url: m.avatar_url || null })),
-    [members]
-  );
+  const teamMembers = useTeamMembers();
+  const mentionUsers = useMemo(() => teamMembers, [teamMembers]);
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();

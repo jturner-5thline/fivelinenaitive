@@ -3,7 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Mention from '@tiptap/extension-mention';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { MentionList, type MentionUser } from '@/components/ui/mention-list';
+import { MentionList, matchesMentionQuery, type MentionUser } from '@/components/ui/mention-list';
 
 interface MentionTextareaProps {
   value: string;
@@ -43,7 +43,7 @@ export function MentionTextarea({
         suggestion: {
           items: ({ query }: { query: string }) =>
             mentionUsersRef.current
-              .filter((u) => u.display_name.toLowerCase().includes(query.toLowerCase()))
+              .filter((u) => matchesMentionQuery(u, query))
               .slice(0, 5),
           render: () => {
             let component: ReactRenderer | null = null;
@@ -96,7 +96,7 @@ export function MentionTextarea({
         },
       }),
     ],
-    content: value ? `<p>${value}</p>` : '',
+    content: value || '',
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },

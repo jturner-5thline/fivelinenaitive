@@ -5543,6 +5543,17 @@ export type Database = {
       }
       can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      get_team_members_for_mention: {
+        Args: { _user_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          email: string
+          first_name: string
+          last_name: string
+          user_id: string
+        }[]
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_company_role: {
         Args: { _company_id: string; _user_id: string }

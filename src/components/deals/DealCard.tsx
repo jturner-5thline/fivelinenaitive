@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link } from 'react-router-dom';
@@ -11,7 +11,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
-import { useCompany } from '@/hooks/useCompany';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { FlagNoteDialog } from './FlagNoteDialog';
@@ -48,11 +48,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
-  const { members } = useCompany();
-  const mentionUsers = useMemo(() => 
-    members.map(m => ({ id: m.user_id, display_name: m.display_name || 'Unknown', avatar_url: m.avatar_url || null })),
-    [members]
-  );
+  const mentionUsers = useTeamMembers();
 
   useEffect(() => {
     if (isEditingStatus && statusInputRef.current) {
