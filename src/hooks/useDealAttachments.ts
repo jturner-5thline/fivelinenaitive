@@ -60,7 +60,6 @@ export function useDealAttachments(dealId: string | null) {
       const { data, error } = await supabase
         .from('deal_attachments')
         .select('*')
-        .eq('user_id', user.id)
         .eq('deal_id', dealId)
         .order('category')
         .order('position', { ascending: true })
