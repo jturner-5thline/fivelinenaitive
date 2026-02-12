@@ -258,7 +258,10 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
 
   const handleConfirmPass = () => {
     if (pendingPassChange && selectedPassReasons.length > 0) {
-      onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', selectedPassReasons.join(', '));
+      const reasonStr = selectedPassReasons.join(', ');
+      onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', reasonStr);
+
+      // Auto-update lender notes is handled by the parent via onUpdateLenderGroup
       setPassReasonDialogOpen(false);
       setPendingPassChange(null);
       setSelectedPassReasons([]);

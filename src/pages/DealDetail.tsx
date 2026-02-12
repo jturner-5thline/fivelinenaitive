@@ -1354,13 +1354,19 @@ export default function DealDetail() {
       return next;
     });
     
+    // Build auto-note for passed/not-a-fit lenders
+    const autoNote = newGroup === 'passed' && passReason
+      ? `Lender was marked "${targetStage.label}" due to: ${passReason}`
+      : undefined;
+
     // Persist to database with loading indicator
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
       try {
         await updateLenderInDb(lenderId, { 
           stage: targetStage.id, 
           trackingStatus: newGroup,
-          passReason: newGroup === 'passed' ? (passReason || null) : null 
+          passReason: newGroup === 'passed' ? (passReason || null) : null,
+          ...(autoNote ? { notes: autoNote } : {}),
         });
       } catch (err) {
         // Mark as failed for retry UI
@@ -4313,6 +4319,17 @@ export default function DealDetail() {
                 const lenderId = pendingPassStageChange.lenderId;
                 const stageId = pendingPassStageChange.newStageId as LenderStage;
 
+                const reasonLabels = selectedPassReasons.length > 0
+                  ? selectedPassReasons.map(id => passReasons.find(r => r.id === id)?.label || id)
+                  : [];
+                const passReasonStr = reasonLabels.join(', ');
+
+                // Build auto-note based on stage label
+                const stageName = configuredStages.find(s => s.id === stageId)?.label || 'Passed';
+                const autoNote = reasonLabels.length > 0
+                  ? `Lender was marked "${stageName}" due to: ${reasonLabels.join(', ')}`
+                  : '';
+
                 // Optimistically update local state
                 setDeal((prev) => {
                   if (!prev) return prev;
@@ -4322,7 +4339,8 @@ export default function DealDetail() {
                           ...l,
                           stage: stageId,
                           trackingStatus: 'passed' as DealLender['trackingStatus'],
-                          passReason: selectedPassReasons.length > 0 ? selectedPassReasons.map(id => passReasons.find(r => r.id === id)?.label || id).join(', ') : undefined,
+                          passReason: passReasonStr || undefined,
+                          notes: autoNote || l.notes,
                           updatedAt: new Date().toISOString(),
                         }
                       : l
@@ -4335,7 +4353,8 @@ export default function DealDetail() {
                   await updateLenderInDb(lenderId, {
                     stage: stageId,
                     trackingStatus: 'passed',
-                    passReason: selectedPassReasons.length > 0 ? selectedPassReasons.map(id => passReasons.find(r => r.id === id)?.label || id).join(', ') : null,
+                    passReason: passReasonStr || null,
+                    ...(autoNote ? { notes: autoNote } : {}),
                   });
                 });
 
