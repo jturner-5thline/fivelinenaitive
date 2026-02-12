@@ -36,7 +36,7 @@ export function DealSpaceNoteEditor({ note, onUpdate, onDownload }: DealSpaceNot
     content: note.content || '<p></p>',
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[300px] px-8 py-6',
+        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[300px] px-8 py-6 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1',
       },
     },
     onUpdate: ({ editor }) => {
