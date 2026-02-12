@@ -4,8 +4,8 @@ import Mention from '@tiptap/extension-mention';
 import { Bold, Italic, List, ListOrdered, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useEffect, useCallback, useRef } from 'react';
-import { MentionList, type MentionUser } from '@/components/ui/mention-list';
+import { useEffect, useRef } from 'react';
+import { MentionList, matchesMentionQuery, type MentionUser } from '@/components/ui/mention-list';
 
 interface RichTextEditorProps {
   content: string;
@@ -37,9 +37,7 @@ export function RichTextEditor({
         suggestion: {
           items: ({ query }: { query: string }) => {
             return mentionUsersRef.current
-              .filter((user) =>
-                user.display_name.toLowerCase().includes(query.toLowerCase())
-              )
+              .filter((user) => matchesMentionQuery(user, query))
               .slice(0, 5);
           },
           render: () => {
@@ -55,9 +53,8 @@ export function RichTextEditor({
 
                 popup = document.createElement('div');
                 popup.style.position = 'absolute';
-                popup.style.zIndex = '50';
+                popup.style.zIndex = '9999';
                 document.body.appendChild(popup);
-
                 popup.appendChild(component.element);
                 
                 const { clientRect } = props;

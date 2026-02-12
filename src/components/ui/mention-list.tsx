@@ -5,7 +5,20 @@ import { cn } from '@/lib/utils';
 export interface MentionUser {
   id: string;
   display_name: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
   avatar_url?: string | null;
+}
+
+/** Check if a user matches a query by display name, first/last name, or email */
+export function matchesMentionQuery(user: MentionUser, query: string): boolean {
+  const q = query.toLowerCase();
+  if (user.display_name.toLowerCase().includes(q)) return true;
+  if (user.first_name?.toLowerCase().includes(q)) return true;
+  if (user.last_name?.toLowerCase().includes(q)) return true;
+  if (user.email?.toLowerCase().includes(q)) return true;
+  return false;
 }
 
 interface MentionListProps {
@@ -76,7 +89,12 @@ export const MentionList = forwardRef<any, MentionListProps>(({ items, command }
               <AvatarImage src={item.avatar_url || undefined} />
               <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
             </Avatar>
-            <span className="text-foreground">{item.display_name}</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-foreground truncate">{item.display_name}</span>
+              {item.email && (
+                <span className="text-xs text-muted-foreground truncate">{item.email}</span>
+              )}
+            </div>
           </button>
         );
       })}

@@ -5,6 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface TeamMember {
   id: string;
   display_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
   avatar_url: string | null;
 }
 
@@ -16,36 +19,23 @@ export function useTeamMembers() {
     if (!user) return;
 
     try {
-      // Get user's company
-      const { data: memberData } = await supabase
-        .from('company_members')
-        .select('company_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('get_team_members_for_mention', {
+        _user_id: user.id,
+      });
 
-      if (!memberData?.company_id) return;
+      if (error) {
+        console.error('Error fetching team members for mention:', error);
+        return;
+      }
 
-      // Get all company members
-      const { data: companyMembers } = await supabase
-        .from('company_members')
-        .select('user_id')
-        .eq('company_id', memberData.company_id);
-
-      if (!companyMembers?.length) return;
-
-      const userIds = companyMembers.map((m) => m.user_id);
-
-      // Get profiles via the public view
-      const { data: profiles } = await supabase
-        .from('profiles_public' as any)
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds);
-
-      if (profiles) {
+      if (data) {
         setMembers(
-          (profiles as any[]).map((p) => ({
+          (data as any[]).map((p) => ({
             id: p.user_id,
-            display_name: p.display_name || 'Unknown',
+            display_name: p.display_name || [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Unknown',
+            first_name: p.first_name,
+            last_name: p.last_name,
+            email: p.email,
             avatar_url: p.avatar_url,
           }))
         );
