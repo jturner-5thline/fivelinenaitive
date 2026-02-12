@@ -4239,7 +4239,16 @@ export default function DealDetail() {
       }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Why is this lender being passed?</DialogTitle>
+            <DialogTitle>
+              {(() => {
+                const stageName = pendingPassStageChange 
+                  ? configuredStages.find(s => s.id === pendingPassStageChange.newStageId)?.label 
+                  : null;
+                return stageName && stageName.toLowerCase() !== 'passed'
+                  ? `Why is this lender "${stageName}"?`
+                  : 'Why is this lender being passed?';
+              })()}
+            </DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-3">
             <div className="relative">
