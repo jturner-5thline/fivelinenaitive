@@ -1,7 +1,6 @@
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Mention from '@tiptap/extension-mention';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { MentionList, matchesMentionQuery, type MentionUser } from '@/components/ui/mention-list';
 
@@ -29,71 +28,89 @@ export function MentionTextarea({
   const mentionUsersRef = useRef(mentionUsers);
   mentionUsersRef.current = mentionUsers;
   const isMentionOpenRef = useRef(false);
+  const [MentionExt, setMentionExt] = useState<any>(null);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: false,
-        codeBlock: false,
-        blockquote: false,
-        horizontalRule: false,
-      }),
-      Mention.configure({
-        HTMLAttributes: { class: 'mention' },
-        suggestion: {
-          items: ({ query }: { query: string }) =>
-            mentionUsersRef.current
-              .filter((u) => matchesMentionQuery(u, query))
-              .slice(0, 5),
-          render: () => {
-            let component: ReactRenderer | null = null;
-            let popup: HTMLDivElement | null = null;
+  useEffect(() => {
+    import('@tiptap/extension-mention').then((mod) => {
+      setMentionExt(() => mod.default || mod.Mention);
+    });
+  }, []);
 
-            return {
-              onStart: (props: any) => {
-                isMentionOpenRef.current = true;
-                component = new ReactRenderer(MentionList, {
-                  props,
-                  editor: props.editor,
-                });
-                popup = document.createElement('div');
-                popup.style.position = 'absolute';
-                popup.style.zIndex = '9999';
-                document.body.appendChild(popup);
-                popup.appendChild(component.element);
-                const rect = props.clientRect?.();
-                if (rect) {
-                  popup.style.left = `${rect.left}px`;
-                  popup.style.top = `${rect.bottom + 4}px`;
-                }
-              },
-              onUpdate: (props: any) => {
-                component?.updateProps(props);
-                if (popup) {
+  const extensions = MentionExt
+    ? [
+        StarterKit.configure({
+          heading: false,
+          codeBlock: false,
+          blockquote: false,
+          horizontalRule: false,
+        }),
+        MentionExt.configure({
+          HTMLAttributes: { class: 'mention' },
+          suggestion: {
+            items: ({ query }: { query: string }) =>
+              mentionUsersRef.current
+                .filter((u) => matchesMentionQuery(u, query))
+                .slice(0, 5),
+            render: () => {
+              let component: ReactRenderer | null = null;
+              let popup: HTMLDivElement | null = null;
+
+              return {
+                onStart: (props: any) => {
+                  isMentionOpenRef.current = true;
+                  component = new ReactRenderer(MentionList, {
+                    props,
+                    editor: props.editor,
+                  });
+                  popup = document.createElement('div');
+                  popup.style.position = 'absolute';
+                  popup.style.zIndex = '9999';
+                  document.body.appendChild(popup);
+                  popup.appendChild(component.element);
                   const rect = props.clientRect?.();
                   if (rect) {
                     popup.style.left = `${rect.left}px`;
                     popup.style.top = `${rect.bottom + 4}px`;
                   }
-                }
-              },
-              onKeyDown: (props: any) => {
-                if (props.event.key === 'Escape') {
+                },
+                onUpdate: (props: any) => {
+                  component?.updateProps(props);
+                  if (popup) {
+                    const rect = props.clientRect?.();
+                    if (rect) {
+                      popup.style.left = `${rect.left}px`;
+                      popup.style.top = `${rect.bottom + 4}px`;
+                    }
+                  }
+                },
+                onKeyDown: (props: any) => {
+                  if (props.event.key === 'Escape') {
+                    popup?.remove();
+                    component?.destroy();
+                    isMentionOpenRef.current = false;
+                    return true;
+                  }
+                  return (component?.ref as any)?.onKeyDown?.(props) ?? false;
+                },
+                onExit: () => {
                   popup?.remove();
                   component?.destroy();
                   isMentionOpenRef.current = false;
-                  return true;
-                }
-                return (component?.ref as any)?.onKeyDown?.(props) ?? false;
-              },
-              onExit: () => {
-                popup?.remove();
-                component?.destroy();
-                isMentionOpenRef.current = false;
-              },
-            };
+                },
+              };
+            },
           },
-        },
+        }),
+      ]
+    : null;
+
+  const editor = useEditor({
+    extensions: extensions || [
+      StarterKit.configure({
+        heading: false,
+        codeBlock: false,
+        blockquote: false,
+        horizontalRule: false,
       }),
     ],
     content: value || '',
@@ -118,7 +135,7 @@ export function MentionTextarea({
         return false;
       },
     },
-  });
+  }, [extensions]);
 
   useEffect(() => {
     if (autoFocus && editor) {
