@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
@@ -37,10 +38,47 @@ interface DealCardProps {
 export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, compact = false }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [statusText, setStatusText] = useState('');
+  const statusInputRef = useRef<HTMLTextAreaElement>(null);
   const { formatCurrencyValue, preferences } = usePreferences();
+  const { updateDeal } = useDealsContext();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
+
+  useEffect(() => {
+    if (isEditingStatus && statusInputRef.current) {
+      statusInputRef.current.focus();
+      statusInputRef.current.select();
+    }
+  }, [isEditingStatus]);
+
+  const handleStatusEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Strip HTML tags for plain text editing
+    const plainText = deal.notes ? deal.notes.replace(/<[^>]*>/g, '').trim() : '';
+    setStatusText(plainText);
+    setIsEditingStatus(true);
+  };
+
+  const handleStatusSave = async () => {
+    setIsEditingStatus(false);
+    const newNotes = statusText.trim() ? `<p>${statusText.trim()}</p>` : '';
+    if (newNotes !== (deal.notes || '')) {
+      await updateDeal(deal.id, { notes: newNotes || null });
+    }
+  };
+
+  const handleStatusKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleStatusSave();
+    } else if (e.key === 'Escape') {
+      setIsEditingStatus(false);
+    }
+  };
   
   const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
   const stageConfig = dynamicStageConfig[deal.stage] || STAGE_CONFIG[deal.stage] || { label: deal.stage, color: 'bg-muted' };
@@ -291,25 +329,54 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             </TooltipProvider>
           )}
         </div>
-        {!compact && deal.notes && deal.notes !== '<p></p>' ? (
-          <HoverCard openDelay={300}>
-            <HoverCardTrigger asChild>
-              <div 
-              className="text-sm line-clamp-2 mt-6 min-h-[2.5rem] text-foreground/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
-              />
-            </HoverCardTrigger>
-            <HoverCardContent className="w-80 max-h-60 overflow-y-auto" align="start">
-              <div 
-                className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
-              />
-            </HoverCardContent>
-          </HoverCard>
+        {!compact && isEditingStatus ? (
+          <div className="mt-6 min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+            <textarea
+              ref={statusInputRef}
+              value={statusText}
+              onChange={(e) => setStatusText(e.target.value)}
+              onBlur={handleStatusSave}
+              onKeyDown={handleStatusKeyDown}
+              className="w-full text-sm bg-muted/50 border border-border rounded-md px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+              rows={2}
+              placeholder="Add a status note..."
+            />
+          </div>
+        ) : !compact && deal.notes && deal.notes !== '<p></p>' ? (
+          <div className="relative group/status mt-6 min-h-[2.5rem]">
+            <HoverCard openDelay={300}>
+              <HoverCardTrigger asChild>
+                <div 
+                  className="text-sm line-clamp-2 text-foreground/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer pr-6"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
+                />
+              </HoverCardTrigger>
+              <HoverCardContent className="w-80 max-h-60 overflow-y-auto" align="start">
+                <div 
+                  className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
+                />
+              </HoverCardContent>
+            </HoverCard>
+            <button
+              onClick={handleStatusEdit}
+              className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
+            >
+              <Pencil className="h-3 w-3 text-muted-foreground" />
+            </button>
+          </div>
         ) : !compact ? (
-          <p className="text-sm line-clamp-2 mt-4 min-h-[2.5rem] text-muted-foreground/50 italic">
-            No Status
-          </p>
+          <div className="relative group/status mt-4 min-h-[2.5rem]">
+            <p className="text-sm line-clamp-2 text-muted-foreground/50 italic pr-6">
+              No Status
+            </p>
+            <button
+              onClick={handleStatusEdit}
+              className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
+            >
+              <Pencil className="h-3 w-3 text-muted-foreground" />
+            </button>
+          </div>
         ) : null}
       </CardHeader>
       {!compact && (
