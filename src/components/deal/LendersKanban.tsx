@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { GripVertical, Clock, MessageSquare, Search, RefreshCw } from 'lucide-react';
+import { GripVertical, Clock, MessageSquare, Search, RefreshCw, Settings2 } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
 import { STAGE_GROUPS, StageGroup, PassReasonOption } from '@/contexts/LenderStagesContext';
@@ -21,6 +21,8 @@ interface LendersKanbanProps {
   configuredStages: { id: string; label: string; group: StageGroup }[];
   passReasons: PassReasonOption[];
   onUpdateLenderGroup: (lenderId: string, newGroup: StageGroup, passReason?: string) => void;
+  /** Optional: called when user wants to edit pass reasons on an already-passed lender */
+  onEditPassReasons?: (lenderId: string) => void;
   /** Optional: function to check if a lender is being saved */
   isSaving?: (id: string) => boolean;
   /** Optional: set of lender IDs that failed to save */
@@ -58,13 +60,15 @@ function DraggableLenderTile({
   configuredStages, 
   isSaving, 
   hasFailed, 
-  onRetry 
+  onRetry,
+  onEditPassReasons,
 }: { 
   lender: DealLender; 
   configuredStages: { id: string; label: string; group: StageGroup }[]; 
   isSaving?: boolean;
   hasFailed?: boolean;
   onRetry?: () => void;
+  onEditPassReasons?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lender.id,
@@ -134,12 +138,24 @@ function DraggableLenderTile({
             </div>
           )}
           {lender.passReason && (
-            <div className="mt-2 flex flex-wrap gap-1">
+            <div className="mt-2 flex flex-wrap gap-1 items-center">
               {lender.passReason.split(', ').map((reason, idx) => (
                 <span key={idx} className="text-xs text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
                   {reason}
                 </span>
               ))}
+              {onEditPassReasons && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditPassReasons();
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-1"
+                  title="Edit pass reasons"
+                >
+                  <Settings2 className="h-3 w-3" />
+                </button>
+              )}
             </div>
           )}
           {hasFailed && (
@@ -159,6 +175,7 @@ function DroppableColumn({
   isSaving,
   failedSaves,
   onRetry,
+  onEditPassReasons,
 }: { 
   group: { id: StageGroup; label: string; color: string }; 
   lenders: DealLender[];
@@ -166,6 +183,7 @@ function DroppableColumn({
   isSaving?: (id: string) => boolean;
   failedSaves?: Set<string>;
   onRetry?: (lenderId: string) => void;
+  onEditPassReasons?: (lenderId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.id,
@@ -200,6 +218,7 @@ function DroppableColumn({
             isSaving={isSaving?.(`lender-stage-${lender.id}`)}
             hasFailed={failedSaves?.has(lender.id)}
             onRetry={onRetry ? () => onRetry(lender.id) : undefined}
+            onEditPassReasons={onEditPassReasons ? () => onEditPassReasons(lender.id) : undefined}
           />
         ))}
       </div>
@@ -207,7 +226,7 @@ function DroppableColumn({
   );
 }
 
-export function LendersKanban({ lenders, configuredStages, passReasons, onUpdateLenderGroup, isSaving, failedSaves, onRetry }: LendersKanbanProps) {
+export function LendersKanban({ lenders, configuredStages, passReasons, onUpdateLenderGroup, onEditPassReasons, isSaving, failedSaves, onRetry }: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
   const [pendingPassChange, setPendingPassChange] = useState<{ lenderId: string } | null>(null);
@@ -325,6 +344,7 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
               isSaving={isSaving}
               failedSaves={failedSaves}
               onRetry={onRetry}
+              onEditPassReasons={onEditPassReasons}
             />
           ))}
         </div>

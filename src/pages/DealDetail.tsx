@@ -647,6 +647,7 @@ export default function DealDetail() {
   const [pendingPassStageChange, setPendingPassStageChange] = useState<{
     lenderId: string;
     newStageId: string;
+    isEditing?: boolean;
   } | null>(null);
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
@@ -3082,8 +3083,19 @@ export default function DealDetail() {
                                     onValueChange={(value: LenderStage) => {
                                       const newStage = configuredStages.find(s => s.id === value);
                                       if (newStage?.group === 'passed') {
-                                        setPendingPassStageChange({ lenderId: lender.id, newStageId: value });
-                                        setSelectedPassReasons([]);
+                                        const currentStageConfig = configuredStages.find(s => s.id === lender.stage);
+                                        const isAlreadyPassed = currentStageConfig?.group === 'passed' && value === lender.stage;
+                                        setPendingPassStageChange({ lenderId: lender.id, newStageId: value, isEditing: isAlreadyPassed });
+                                        // Pre-populate existing reasons when editing
+                                        if (isAlreadyPassed && lender.passReason) {
+                                          const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
+                                          const existingReasonIds = existingReasonLabels
+                                            .map(label => passReasons.find(pr => pr.label === label)?.id)
+                                            .filter(Boolean) as string[];
+                                          setSelectedPassReasons(existingReasonIds);
+                                        } else {
+                                          setSelectedPassReasons([]);
+                                        }
                                         setPassReasonDialogOpen(true);
                                       } else {
                                         // Update local state optimistically
@@ -3135,6 +3147,25 @@ export default function DealDetail() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                  {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && lender.passReason && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                                      title="Edit pass reasons"
+                                      onClick={() => {
+                                        setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
+                                        const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
+                                        const existingReasonIds = existingReasonLabels
+                                          .map(label => passReasons.find(pr => pr.label === label)?.id)
+                                          .filter(Boolean) as string[];
+                                        setSelectedPassReasons(existingReasonIds);
+                                        setPassReasonDialogOpen(true);
+                                      }}
+                                    >
+                                      <Settings2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
                                   <Select
                                     value={lender.substage || '__none__'}
                                     onValueChange={(value: LenderSubstage) => {
@@ -3463,8 +3494,18 @@ export default function DealDetail() {
                                             onValueChange={(value: LenderStage) => {
                                               const newStage = configuredStages.find(s => s.id === value);
                                               if (newStage?.group === 'passed') {
-                                                setPendingPassStageChange({ lenderId: lender.id, newStageId: value });
-                                                setSelectedPassReasons([]);
+                                                const currentStageConfig = configuredStages.find(s => s.id === lender.stage);
+                                                const isAlreadyPassed = currentStageConfig?.group === 'passed' && value === lender.stage;
+                                                setPendingPassStageChange({ lenderId: lender.id, newStageId: value, isEditing: isAlreadyPassed });
+                                                if (isAlreadyPassed && lender.passReason) {
+                                                  const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
+                                                  const existingReasonIds = existingReasonLabels
+                                                    .map(label => passReasons.find(pr => pr.label === label)?.id)
+                                                    .filter(Boolean) as string[];
+                                                  setSelectedPassReasons(existingReasonIds);
+                                                } else {
+                                                  setSelectedPassReasons([]);
+                                                }
                                                 setPassReasonDialogOpen(true);
                                               } else {
                                                 // Update local state optimistically
@@ -3516,6 +3557,25 @@ export default function DealDetail() {
                                               ))}
                                             </SelectContent>
                                           </Select>
+                                          {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && lender.passReason && (
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                                              title="Edit pass reasons"
+                                              onClick={() => {
+                                                setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
+                                                const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
+                                                const existingReasonIds = existingReasonLabels
+                                                  .map(label => passReasons.find(pr => pr.label === label)?.id)
+                                                  .filter(Boolean) as string[];
+                                                setSelectedPassReasons(existingReasonIds);
+                                                setPassReasonDialogOpen(true);
+                                              }}
+                                            >
+                                              <Settings2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                          )}
                                           <Select
                                             value={lender.substage || '__none__'}
                                             onValueChange={(value: LenderSubstage) => {
@@ -4247,6 +4307,10 @@ export default function DealDetail() {
           <DialogHeader>
             <DialogTitle>
               {(() => {
+                if (pendingPassStageChange?.isEditing) {
+                  const stageName = configuredStages.find(s => s.id === pendingPassStageChange.newStageId)?.label || 'Passed';
+                  return `Edit reasons for "${stageName}"`;
+                }
                 const stageName = pendingPassStageChange 
                   ? configuredStages.find(s => s.id === pendingPassStageChange.newStageId)?.label 
                   : null;
@@ -4364,7 +4428,7 @@ export default function DealDetail() {
               }}
               disabled={selectedPassReasons.length === 0 && passReasons.length > 0}
             >
-              Confirm Pass
+              {pendingPassStageChange?.isEditing ? 'Update Reasons' : 'Confirm Pass'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -4446,6 +4510,22 @@ export default function DealDetail() {
               configuredStages={configuredStages}
               passReasons={passReasons}
               onUpdateLenderGroup={updateLenderGroup}
+              onEditPassReasons={(lenderId) => {
+                const lender = deal.lenders?.find(l => l.id === lenderId);
+                if (lender) {
+                  setPendingPassStageChange({ lenderId, newStageId: lender.stage, isEditing: true });
+                  if (lender.passReason) {
+                    const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
+                    const existingReasonIds = existingReasonLabels
+                      .map(label => passReasons.find(pr => pr.label === label)?.id)
+                      .filter(Boolean) as string[];
+                    setSelectedPassReasons(existingReasonIds);
+                  } else {
+                    setSelectedPassReasons([]);
+                  }
+                  setPassReasonDialogOpen(true);
+                }
+              }}
               isSaving={isSaving}
               failedSaves={failedLenderSaves}
               onRetry={retryLenderSave}
