@@ -1,8 +1,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sparkles, DollarSign, FileText } from 'lucide-react';
+import { Sparkles, DollarSign, FileText, StickyNote } from 'lucide-react';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
 import { DealSpaceFinancialsTab } from './DealSpaceFinancialsTab';
 import { DealSpaceDocumentsTab } from './DealSpaceDocumentsTab';
+import { DealSpaceNotesTab } from './DealSpaceNotesTab';
 
 interface DealSpaceTabProps {
   dealId: string;
@@ -16,6 +17,10 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
           <Sparkles className="h-4 w-4" />
           Ask AI
         </TabsTrigger>
+        <TabsTrigger value="notes" className="flex items-center gap-2">
+          <StickyNote className="h-4 w-4" />
+          Notes
+        </TabsTrigger>
         <TabsTrigger value="financials" className="flex items-center gap-2">
           <DollarSign className="h-4 w-4" />
           Financials
@@ -28,6 +33,10 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
 
       <TabsContent value="ask-ai">
         <DealSpaceAskAITab dealId={dealId} />
+      </TabsContent>
+
+      <TabsContent value="notes">
+        <DealSpaceNotesTab dealId={dealId} />
       </TabsContent>
 
       <TabsContent value="financials">
