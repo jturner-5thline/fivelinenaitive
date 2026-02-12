@@ -1,10 +1,9 @@
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Mention from '@tiptap/extension-mention';
 import { Bold, Italic, List, ListOrdered, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MentionList, matchesMentionQuery, type MentionUser } from '@/components/ui/mention-list';
 
 interface RichTextEditorProps {
@@ -26,50 +25,40 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const mentionUsersRef = useRef(mentionUsers);
   mentionUsersRef.current = mentionUsers;
+  const [MentionExt, setMentionExt] = useState<any>(null);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Mention.configure({
-        HTMLAttributes: {
-          class: 'mention',
-        },
-        suggestion: {
-          items: ({ query }: { query: string }) => {
-            return mentionUsersRef.current
-              .filter((user) => matchesMentionQuery(user, query))
-              .slice(0, 5);
-          },
-          render: () => {
-            let component: ReactRenderer | null = null;
-            let popup: HTMLDivElement | null = null;
+  useEffect(() => {
+    import('@tiptap/extension-mention').then((mod) => {
+      setMentionExt(() => mod.default || mod.Mention);
+    });
+  }, []);
 
-            return {
-              onStart: (props: any) => {
-                component = new ReactRenderer(MentionList, {
-                  props,
-                  editor: props.editor,
-                });
+  const extensions = MentionExt
+    ? [
+        StarterKit,
+        MentionExt.configure({
+          HTMLAttributes: { class: 'mention' },
+          suggestion: {
+            items: ({ query }: { query: string }) => {
+              return mentionUsersRef.current
+                .filter((user) => matchesMentionQuery(user, query))
+                .slice(0, 5);
+            },
+            render: () => {
+              let component: ReactRenderer | null = null;
+              let popup: HTMLDivElement | null = null;
 
-                popup = document.createElement('div');
-                popup.style.position = 'absolute';
-                popup.style.zIndex = '9999';
-                document.body.appendChild(popup);
-                popup.appendChild(component.element);
-                
-                const { clientRect } = props;
-                if (clientRect) {
-                  const rect = clientRect();
-                  if (rect) {
-                    popup.style.left = `${rect.left}px`;
-                    popup.style.top = `${rect.bottom + 4}px`;
-                  }
-                }
-              },
-              onUpdate: (props: any) => {
-                component?.updateProps(props);
-
-                if (popup) {
+              return {
+                onStart: (props: any) => {
+                  component = new ReactRenderer(MentionList, {
+                    props,
+                    editor: props.editor,
+                  });
+                  popup = document.createElement('div');
+                  popup.style.position = 'absolute';
+                  popup.style.zIndex = '9999';
+                  document.body.appendChild(popup);
+                  popup.appendChild(component.element);
                   const { clientRect } = props;
                   if (clientRect) {
                     const rect = clientRect();
@@ -78,25 +67,41 @@ export function RichTextEditor({
                       popup.style.top = `${rect.bottom + 4}px`;
                     }
                   }
-                }
-              },
-              onKeyDown: (props: any) => {
-                if (props.event.key === 'Escape') {
+                },
+                onUpdate: (props: any) => {
+                  component?.updateProps(props);
+                  if (popup) {
+                    const { clientRect } = props;
+                    if (clientRect) {
+                      const rect = clientRect();
+                      if (rect) {
+                        popup.style.left = `${rect.left}px`;
+                        popup.style.top = `${rect.bottom + 4}px`;
+                      }
+                    }
+                  }
+                },
+                onKeyDown: (props: any) => {
+                  if (props.event.key === 'Escape') {
+                    popup?.remove();
+                    component?.destroy();
+                    return true;
+                  }
+                  return (component?.ref as any)?.onKeyDown?.(props) ?? false;
+                },
+                onExit: () => {
                   popup?.remove();
                   component?.destroy();
-                  return true;
-                }
-                return (component?.ref as any)?.onKeyDown?.(props) ?? false;
-              },
-              onExit: () => {
-                popup?.remove();
-                component?.destroy();
-              },
-            };
+                },
+              };
+            },
           },
-        },
-      }),
-    ],
+        }),
+      ]
+    : null;
+
+  const editor = useEditor({
+    extensions: extensions || [StarterKit],
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
@@ -106,7 +111,7 @@ export function RichTextEditor({
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[80px] px-3 py-2',
       },
     },
-  });
+  }, [extensions]);
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
