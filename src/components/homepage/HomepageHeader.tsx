@@ -17,7 +17,7 @@ export const HomepageHeader = () => {
           </Button>
           <Button 
             size="sm" 
-            className="bg-white text-primary hover:bg-white/90"
+            className="bg-gradient-to-r from-[hsl(280,60%,50%)] via-[hsl(260,60%,45%)] to-[hsl(240,50%,30%)] text-white hover:opacity-90 border border-white/10"
             asChild
           >
             <Link to="/waitlist">Contact Us</Link>
