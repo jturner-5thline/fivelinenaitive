@@ -328,6 +328,10 @@ export default function DealDetail() {
   const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
+  const mentionUsers = useMemo(() => 
+    members.map(m => ({ id: m.user_id, display_name: m.display_name || 'Unknown', avatar_url: m.avatar_url || null })),
+    [members]
+  );
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();
@@ -2254,6 +2258,7 @@ export default function DealDetail() {
                       displayClassName="text-lg text-foreground/90"
                       autoSave
                       autoSaveDelay={1500}
+                      mentionUsers={mentionUsers}
                     />
                   </div>
                   {deal.notesUpdatedAt && (
