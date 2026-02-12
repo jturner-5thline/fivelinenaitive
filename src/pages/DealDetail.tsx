@@ -3061,67 +3061,69 @@ export default function DealDetail() {
                                       shouldHighlight && staleStatus.isUrgent && 'bg-destructive/10 -ml-2 pl-8 pr-2 py-2 rounded-lg border border-destructive/20',
                                       shouldHighlight && !staleStatus.isUrgent && 'bg-warning/10 -ml-2 pl-8 pr-2 py-2 rounded-lg border border-warning/20'
                                     )}>
-                                      <div className="grid grid-cols-[28px_140px_160px_140px_auto_1fr] items-center gap-3">
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you sure you want to delete {lender.name}?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          This will remove the lender from this deal. This action cannot be undone.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={async () => {
-                                            const removedLender = lender;
-                                            const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
-                                            setDeal(prev => {
-                                              if (!prev) return prev;
-                                              setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
-                                              return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
-                                            });
-                                            await deleteLenderInDb(lender.id);
-                                            setRemovedLenders(prev => [...prev, {
-                                              lender: removedLender,
-                                              timestamp: new Date().toISOString(),
-                                              id: `removed-${Date.now()}`,
-                                            }]);
-                                            toast({
-                                              title: "Lender removed",
-                                              description: `${lender.name} has been removed from the deal.`,
-                                            });
-                                          }}
+                                      <div className="grid grid-cols-[160px_160px_140px_auto_1fr] items-center gap-3">
+                                  <div className="flex items-center gap-1 group/lender -ml-1">
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover/lender:opacity-100 transition-opacity shrink-0"
                                         >
-                                          Delete
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                  <div className="flex flex-col">
-                                    <button 
-                                      className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
-                                      onClick={() => setSelectedLenderName(lender.name)}
-                                    >
-                                      {lender.name}
-                                    </button>
-                                    {lender.trackingStatus !== 'passed' && (() => {
-                                      const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                      return timeInfo.text ? (
-                                        <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
-                                          {timeInfo.text}
-                                        </span>
-                                      ) : null;
-                                    })()}
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Are you sure you want to delete {lender.name}?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This will remove the lender from this deal. This action cannot be undone.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={async () => {
+                                              const removedLender = lender;
+                                              const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
+                                              setDeal(prev => {
+                                                if (!prev) return prev;
+                                                setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+                                                return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+                                              });
+                                              await deleteLenderInDb(lender.id);
+                                              setRemovedLenders(prev => [...prev, {
+                                                lender: removedLender,
+                                                timestamp: new Date().toISOString(),
+                                                id: `removed-${Date.now()}`,
+                                              }]);
+                                              toast({
+                                                title: "Lender removed",
+                                                description: `${lender.name} has been removed from the deal.`,
+                                              });
+                                            }}
+                                          >
+                                            Delete
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                    <div className="flex flex-col min-w-0">
+                                      <button 
+                                        className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
+                                        onClick={() => setSelectedLenderName(lender.name)}
+                                      >
+                                        {lender.name}
+                                      </button>
+                                      {lender.trackingStatus !== 'passed' && (() => {
+                                        const timeInfo = getLenderTimeInfo(lender.updatedAt);
+                                        return timeInfo.text ? (
+                                          <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
+                                            {timeInfo.text}
+                                          </span>
+                                        ) : null;
+                                      })()}
+                                    </div>
                                   </div>
                                   <Select
                                     value={lender.stage}
@@ -3478,67 +3480,69 @@ export default function DealDetail() {
                                     );
                                     return (
                                       <div key={lender.id} className={`${index > 0 ? 'pt-3' : ''}`}>
-                                        <div className="grid grid-cols-[28px_140px_160px_140px_1fr] items-center gap-3">
-                                          <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                              >
-                                                <X className="h-4 w-4" />
-                                              </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure you want to delete {lender.name}?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  This will remove the lender from this deal. This action cannot be undone.
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction
-                                                  onClick={async () => {
-                                                    const removedLender = lender;
-                                                    const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
-                                                    setDeal(prev => {
-                                                      if (!prev) return prev;
-                                                      setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
-                                                      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
-                                                    });
-                                                    await deleteLenderInDb(lender.id);
-                                                    setRemovedLenders(prev => [...prev, {
-                                                      lender: removedLender,
-                                                      timestamp: new Date().toISOString(),
-                                                      id: `removed-${Date.now()}`,
-                                                    }]);
-                                                    toast({
-                                                      title: "Lender removed",
-                                                      description: `${lender.name} has been removed from the deal.`,
-                                                    });
-                                                  }}
+                                        <div className="grid grid-cols-[160px_160px_140px_1fr] items-center gap-3">
+                                          <div className="flex items-center gap-1 group/lender -ml-1">
+                                            <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6 text-muted-foreground hover:text-destructive opacity-0 group-hover/lender:opacity-100 transition-opacity shrink-0"
                                                 >
-                                                  Delete
-                                                </AlertDialogAction>
-                                              </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                          </AlertDialog>
-                                          <div className="flex flex-col">
-                                            <button 
-                                              className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
-                                              onClick={() => setSelectedLenderName(lender.name)}
-                                            >
-                                              {lender.name}
-                                            </button>
-                                            {lender.trackingStatus !== 'passed' && (() => {
-                                              const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                              return timeInfo.text ? (
-                                                <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
-                                                  {timeInfo.text}
-                                                </span>
-                                              ) : null;
-                                            })()}
+                                                  <X className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                  <AlertDialogTitle>Are you sure you want to delete {lender.name}?</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                    This will remove the lender from this deal. This action cannot be undone.
+                                                  </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                  <AlertDialogAction
+                                                    onClick={async () => {
+                                                      const removedLender = lender;
+                                                      const updatedLenders = deal.lenders?.filter(l => l.id !== lender.id);
+                                                      setDeal(prev => {
+                                                        if (!prev) return prev;
+                                                        setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+                                                        return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+                                                      });
+                                                      await deleteLenderInDb(lender.id);
+                                                      setRemovedLenders(prev => [...prev, {
+                                                        lender: removedLender,
+                                                        timestamp: new Date().toISOString(),
+                                                        id: `removed-${Date.now()}`,
+                                                      }]);
+                                                      toast({
+                                                        title: "Lender removed",
+                                                        description: `${lender.name} has been removed from the deal.`,
+                                                      });
+                                                    }}
+                                                  >
+                                                    Delete
+                                                  </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                            </AlertDialog>
+                                            <div className="flex flex-col min-w-0">
+                                              <button 
+                                                className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
+                                                onClick={() => setSelectedLenderName(lender.name)}
+                                              >
+                                                {lender.name}
+                                              </button>
+                                              {lender.trackingStatus !== 'passed' && (() => {
+                                                const timeInfo = getLenderTimeInfo(lender.updatedAt);
+                                                return timeInfo.text ? (
+                                                  <span className={`text-[10px] text-muted-foreground ${timeInfo.highlightClass}`}>
+                                                    {timeInfo.text}
+                                                  </span>
+                                                ) : null;
+                                              })()}
+                                            </div>
                                           </div>
                                           <Select
                                             value={lender.stage}
