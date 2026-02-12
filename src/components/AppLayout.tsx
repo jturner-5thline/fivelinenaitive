@@ -41,8 +41,8 @@ function MainContent({
       onClick={handleMainClick}
     >
       {/* Persistent top header bar */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border/50 shrink-0">
-        <div className="flex-1 max-w-xl">
+      <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-border/50 shrink-0">
+        <div className="w-64">
           <GlobalSearchAI />
         </div>
         <CreateDealDialog
