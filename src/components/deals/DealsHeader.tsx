@@ -1,4 +1,5 @@
 import { Settings, User, SlidersHorizontal, LogOut, HelpCircle, RotateCcw, BookOpen, Shield } from 'lucide-react';
+import { GlobalSearchAI } from '@/components/GlobalSearchAI';
 import { useTheme } from 'next-themes';
 
 import { LenderSyncNotificationBell } from '@/components/lenders/LenderSyncNotificationBell';
@@ -104,6 +105,9 @@ export function DealsHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          <div className="w-52">
+            <GlobalSearchAI />
+          </div>
           <LenderSyncNotificationBell />
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
