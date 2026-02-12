@@ -3258,6 +3258,42 @@ export default function DealDetail() {
                                     </AlertDialog>
                                   </div>
                                 </div>
+                                {lender.passReason && (
+                                  <div className="ml-2 mt-1.5 flex items-center gap-2">
+                                    <span className="text-xs text-destructive font-medium whitespace-nowrap">Pass reasons:</span>
+                                    <Input
+                                      value={lender.passReason}
+                                      onChange={(e) => {
+                                        const newValue = e.target.value;
+                                        setDeal(prev => {
+                                          if (!prev) return prev;
+                                          const updatedLenders = prev.lenders?.map(l =>
+                                            l.id === lender.id ? { ...l, passReason: newValue, updatedAt: new Date().toISOString() } : l
+                                          );
+                                          return { ...prev, lenders: updatedLenders };
+                                        });
+                                      }}
+                                      onBlur={() => {
+                                        const currentLender = deal.lenders?.find(l => l.id === lender.id);
+                                        if (currentLender) {
+                                          const autoNote = `Lender passed due to ${currentLender.passReason}`;
+                                          withSavingAsync(`lender-passreason-${lender.id}`, async () => {
+                                            await updateLenderInDb(lender.id, { 
+                                              passReason: currentLender.passReason || null,
+                                              notes: autoNote,
+                                            });
+                                          });
+                                        }
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          (e.target as HTMLInputElement).blur();
+                                        }
+                                      }}
+                                      className="h-6 text-xs flex-1 bg-destructive/5 border-destructive/20"
+                                    />
+                                  </div>
+                                )}
                                 {lenderOutstandingItems.length > 0 && (
                                   <div className="ml-2 mt-2 space-y-1">
                                     {lenderOutstandingItems.map((item) => (
@@ -3599,6 +3635,42 @@ export default function DealDetail() {
                                             </AlertDialog>
                                           </div>
                                         </div>
+                                        {lender.passReason && (
+                                          <div className="ml-2 mt-1.5 flex items-center gap-2">
+                                            <span className="text-xs text-destructive font-medium whitespace-nowrap">Pass reasons:</span>
+                                            <Input
+                                              value={lender.passReason}
+                                              onChange={(e) => {
+                                                const newValue = e.target.value;
+                                                setDeal(prev => {
+                                                  if (!prev) return prev;
+                                                  const updatedLenders = prev.lenders?.map(l =>
+                                                    l.id === lender.id ? { ...l, passReason: newValue, updatedAt: new Date().toISOString() } : l
+                                                  );
+                                                  return { ...prev, lenders: updatedLenders };
+                                                });
+                                              }}
+                                              onBlur={() => {
+                                                const currentLender = deal.lenders?.find(l => l.id === lender.id);
+                                                if (currentLender) {
+                                                  const autoNote = `Lender passed due to ${currentLender.passReason}`;
+                                                  withSavingAsync(`lender-passreason-${lender.id}`, async () => {
+                                                    await updateLenderInDb(lender.id, { 
+                                                      passReason: currentLender.passReason || null,
+                                                      notes: autoNote,
+                                                    });
+                                                  });
+                                                }
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  (e.target as HTMLInputElement).blur();
+                                                }
+                                              }}
+                                              className="h-6 text-xs flex-1 bg-destructive/5 border-destructive/20"
+                                            />
+                                          </div>
+                                        )}
                                         {lenderOutstandingItems.length > 0 && (
                                           <div className="ml-2 mt-2 space-y-1">
                                             {lenderOutstandingItems.map((item) => (
