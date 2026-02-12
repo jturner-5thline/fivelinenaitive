@@ -2970,7 +2970,7 @@ export default function DealDetail() {
                           >
                             All
                           </button>
-                          {STAGE_GROUPS.map(group => {
+                          {STAGE_GROUPS.map((group) => {
                             const count = deal.lenders?.filter(l => {
                               const stage = configuredStages.find(s => s.id === l.stage);
                               return stage?.group === group.id;
@@ -3002,6 +3002,8 @@ export default function DealDetail() {
                               </button>
                             );
                           })}
+                        </>
+                      )}
                           <LenderSuggestionsPanel
                             dealId={id}
                             criteria={{
@@ -3024,8 +3026,6 @@ export default function DealDetail() {
                           >
                             <LayoutGrid className="h-4 w-4" />
                           </Button>
-                        </>
-                      )}
                       </div>
                     </div>
                   </CardHeader>
