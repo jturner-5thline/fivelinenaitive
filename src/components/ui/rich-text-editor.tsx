@@ -3,7 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MentionList, matchesMentionQuery, type MentionUser } from '@/components/ui/mention-list';
 
 interface RichTextEditorProps {
@@ -33,7 +33,7 @@ export function RichTextEditor({
     });
   }, []);
 
-  const extensions = MentionExt
+  const extensions = useMemo(() => MentionExt
     ? [
         StarterKit,
         MentionExt.configure({
@@ -98,7 +98,7 @@ export function RichTextEditor({
           },
         }),
       ]
-    : null;
+    : null, [MentionExt]);
 
   const editor = useEditor({
     extensions: extensions || [StarterKit],
