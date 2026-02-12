@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -3135,37 +3135,46 @@ export default function DealDetail() {
                                       </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {configuredStages.map((stage) => (
-                                        <SelectItem key={stage.id} value={stage.id}>
-                                          <span className="flex items-center gap-1.5">
-                                            {stage.group === 'passed' && (
-                                              <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
-                                            )}
-                                            {stage.label}
-                                          </span>
-                                        </SelectItem>
-                                      ))}
+                                      {configuredStages.map((stage) => {
+                                        const isCurrentPassedStage = stage.group === 'passed' && stage.id === lender.stage && lender.passReason;
+                                        return (
+                                          <SelectItem key={stage.id} value={stage.id}>
+                                            <span className="flex items-center gap-1.5">
+                                              {stage.group === 'passed' && (
+                                                <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                                              )}
+                                              {stage.label}
+                                              {isCurrentPassedStage && (
+                                                <span
+                                                  className="ml-1 text-muted-foreground hover:text-foreground"
+                                                  title="Edit pass reasons"
+                                                  onPointerDown={(e) => {
+                                                    e.stopPropagation();
+                                                    e.preventDefault();
+                                                    // Close select and open edit dialog
+                                                    const trigger = (e.target as HTMLElement).closest('[data-radix-collection-item]');
+                                                    if (trigger) {
+                                                      // Programmatically close select by blurring
+                                                      (document.activeElement as HTMLElement)?.blur();
+                                                    }
+                                                    setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
+                                                    const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
+                                                    const existingReasonIds = existingReasonLabels
+                                                      .map(label => passReasons.find(pr => pr.label === label)?.id)
+                                                      .filter(Boolean) as string[];
+                                                    setSelectedPassReasons(existingReasonIds);
+                                                    setTimeout(() => setPassReasonDialogOpen(true), 100);
+                                                  }}
+                                                >
+                                                  <Pencil className="h-3 w-3" />
+                                                </span>
+                                              )}
+                                            </span>
+                                          </SelectItem>
+                                        );
+                                      })}
                                     </SelectContent>
                                   </Select>
-                                  {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && lender.passReason && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                                      title="Edit pass reasons"
-                                      onClick={() => {
-                                        setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
-                                        const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
-                                        const existingReasonIds = existingReasonLabels
-                                          .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                          .filter(Boolean) as string[];
-                                        setSelectedPassReasons(existingReasonIds);
-                                        setPassReasonDialogOpen(true);
-                                      }}
-                                    >
-                                      <Settings2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  )}
                                   <Select
                                     value={lender.substage || '__none__'}
                                     onValueChange={(value: LenderSubstage) => {
@@ -3545,37 +3554,41 @@ export default function DealDetail() {
                                               </SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
-                                              {configuredStages.map((stage) => (
-                                                <SelectItem key={stage.id} value={stage.id}>
-                                                  <span className="flex items-center gap-1.5">
-                                                    {stage.group === 'passed' && (
-                                                      <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
-                                                    )}
-                                                    {stage.label}
-                                                  </span>
-                                                </SelectItem>
-                                              ))}
+                                              {configuredStages.map((stage) => {
+                                                const isCurrentPassedStage = stage.group === 'passed' && stage.id === lender.stage && lender.passReason;
+                                                return (
+                                                  <SelectItem key={stage.id} value={stage.id}>
+                                                    <span className="flex items-center gap-1.5">
+                                                      {stage.group === 'passed' && (
+                                                        <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                                                      )}
+                                                      {stage.label}
+                                                      {isCurrentPassedStage && (
+                                                        <span
+                                                          className="ml-1 text-muted-foreground hover:text-foreground"
+                                                          title="Edit pass reasons"
+                                                          onPointerDown={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            (document.activeElement as HTMLElement)?.blur();
+                                                            setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
+                                                            const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
+                                                            const existingReasonIds = existingReasonLabels
+                                                              .map(label => passReasons.find(pr => pr.label === label)?.id)
+                                                              .filter(Boolean) as string[];
+                                                            setSelectedPassReasons(existingReasonIds);
+                                                            setTimeout(() => setPassReasonDialogOpen(true), 100);
+                                                          }}
+                                                        >
+                                                          <Pencil className="h-3 w-3" />
+                                                        </span>
+                                                      )}
+                                                    </span>
+                                                  </SelectItem>
+                                                );
+                                              })}
                                             </SelectContent>
                                           </Select>
-                                          {configuredStages.find(s => s.id === lender.stage)?.group === 'passed' && lender.passReason && (
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                                              title="Edit pass reasons"
-                                              onClick={() => {
-                                                setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
-                                                const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
-                                                const existingReasonIds = existingReasonLabels
-                                                  .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                                  .filter(Boolean) as string[];
-                                                setSelectedPassReasons(existingReasonIds);
-                                                setPassReasonDialogOpen(true);
-                                              }}
-                                            >
-                                              <Settings2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                          )}
                                           <Select
                                             value={lender.substage || '__none__'}
                                             onValueChange={(value: LenderSubstage) => {
