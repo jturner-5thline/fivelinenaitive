@@ -11,6 +11,34 @@ export interface DealSpaceNote {
   user_id: string;
   created_at: string;
   updated_at: string;
+  is_pinned: boolean;
+  folder: string | null;
+  tags: string[];
+  position: number;
+  linked_lender_id: string | null;
+  is_shared: boolean;
+  template_name: string | null;
+}
+
+export interface NoteVersion {
+  id: string;
+  note_id: string;
+  content: string;
+  title: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface NoteComment {
+  id: string;
+  note_id: string;
+  user_id: string;
+  content: string;
+  quote_text: string | null;
+  resolved: boolean;
+  resolved_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export function useDealSpaceNotes(dealId: string | undefined) {
@@ -25,9 +53,10 @@ export function useDealSpaceNotes(dealId: string | undefined) {
         .from('deal_space_notes')
         .select('*')
         .eq('deal_id', dealId)
+        .order('is_pinned', { ascending: false })
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      setNotes(data || []);
+      setNotes((data as DealSpaceNote[]) || []);
     } catch (error) {
       console.error('Error fetching notes:', error);
     } finally {
@@ -55,7 +84,7 @@ export function useDealSpaceNotes(dealId: string | undefined) {
     }
   }, [fetchNotes, dealId]);
 
-  const createNote = useCallback(async (title?: string) => {
+  const createNote = useCallback(async (title?: string, templateContent?: string) => {
     if (!dealId || !user) return null;
     try {
       const { data, error } = await supabase
@@ -64,13 +93,14 @@ export function useDealSpaceNotes(dealId: string | undefined) {
           deal_id: dealId,
           user_id: user.id,
           title: title || 'Untitled Note',
-          content: '',
+          content: templateContent || '',
         })
         .select()
         .single();
       if (error) throw error;
-      setNotes(prev => [data, ...prev]);
-      return data;
+      const note = data as DealSpaceNote;
+      setNotes(prev => [note, ...prev]);
+      return note;
     } catch (error) {
       console.error('Error creating note:', error);
       toast({ title: 'Failed to create note', variant: 'destructive' });
@@ -78,7 +108,7 @@ export function useDealSpaceNotes(dealId: string | undefined) {
     }
   }, [dealId, user]);
 
-  const updateNote = useCallback(async (noteId: string, updates: { title?: string; content?: string }) => {
+  const updateNote = useCallback(async (noteId: string, updates: Partial<Pick<DealSpaceNote, 'title' | 'content' | 'is_pinned' | 'folder' | 'tags' | 'position' | 'linked_lender_id' | 'is_shared'>>) => {
     try {
       const { error } = await supabase
         .from('deal_space_notes')
@@ -107,5 +137,59 @@ export function useDealSpaceNotes(dealId: string | undefined) {
     }
   }, []);
 
-  return { notes, isLoading, createNote, updateNote, deleteNote, refetch: fetchNotes };
+  // Version history
+  const fetchVersions = useCallback(async (noteId: string) => {
+    const { data, error } = await supabase
+      .from('deal_space_note_versions')
+      .select('*')
+      .eq('note_id', noteId)
+      .order('created_at', { ascending: false });
+    if (error) { console.error(error); return []; }
+    return (data as NoteVersion[]) || [];
+  }, []);
+
+  const restoreVersion = useCallback(async (noteId: string, version: NoteVersion) => {
+    await updateNote(noteId, { content: version.content, title: version.title });
+    toast({ title: 'Version restored' });
+  }, [updateNote]);
+
+  // Comments
+  const fetchComments = useCallback(async (noteId: string) => {
+    const { data, error } = await supabase
+      .from('deal_space_note_comments')
+      .select('*')
+      .eq('note_id', noteId)
+      .order('created_at', { ascending: true });
+    if (error) { console.error(error); return []; }
+    return (data as NoteComment[]) || [];
+  }, []);
+
+  const addComment = useCallback(async (noteId: string, content: string, quoteText?: string) => {
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from('deal_space_note_comments')
+      .insert({ note_id: noteId, user_id: user.id, content, quote_text: quoteText || null })
+      .select()
+      .single();
+    if (error) { console.error(error); toast({ title: 'Failed to add comment', variant: 'destructive' }); return null; }
+    return data as NoteComment;
+  }, [user]);
+
+  const resolveComment = useCallback(async (commentId: string) => {
+    if (!user) return;
+    await supabase
+      .from('deal_space_note_comments')
+      .update({ resolved: true, resolved_by: user.id })
+      .eq('id', commentId);
+  }, [user]);
+
+  const deleteComment = useCallback(async (commentId: string) => {
+    await supabase.from('deal_space_note_comments').delete().eq('id', commentId);
+  }, []);
+
+  return {
+    notes, isLoading, createNote, updateNote, deleteNote, refetch: fetchNotes,
+    fetchVersions, restoreVersion,
+    fetchComments, addComment, resolveComment, deleteComment,
+  };
 }

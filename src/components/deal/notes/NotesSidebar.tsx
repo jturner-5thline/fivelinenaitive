@@ -1,0 +1,315 @@
+import { useState, useRef } from 'react';
+import { Plus, FileText, Trash2, Download, Upload, Pin, PinOff, FolderOpen, Tag, Star, Filter, ChevronDown, GripVertical, LayoutTemplate } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DealSpaceNote } from '@/hooks/useDealSpaceNotes';
+import { NOTE_TEMPLATES } from './NoteTemplates';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+interface NotesSidebarProps {
+  notes: DealSpaceNote[];
+  selectedNoteId: string | null;
+  onSelectNote: (id: string) => void;
+  onCreateNote: (title?: string, content?: string) => Promise<any>;
+  onDeleteNote: (id: string) => void;
+  onUpdateNote: (id: string, updates: any) => Promise<void>;
+  onDownload: (note: DealSpaceNote) => void;
+  onUpload: () => void;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+}
+
+export function NotesSidebar({
+  notes, selectedNoteId, onSelectNote, onCreateNote, onDeleteNote, onUpdateNote, onDownload, onUpload, fileInputRef,
+}: NotesSidebarProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterFolder, setFilterFolder] = useState<string | null>(null);
+  const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [showTagInput, setShowTagInput] = useState<string | null>(null);
+  const [newTag, setNewTag] = useState('');
+  const [showFolderInput, setShowFolderInput] = useState<string | null>(null);
+  const [newFolder, setNewFolder] = useState('');
+
+  // Derive unique folders and tags
+  const allFolders = [...new Set(notes.map(n => n.folder).filter(Boolean))] as string[];
+  const allTags = [...new Set(notes.flatMap(n => n.tags || []))];
+
+  // Filter & sort notes
+  const filteredNotes = notes.filter(n => {
+    if (searchQuery && !n.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filterFolder && n.folder !== filterFolder) return false;
+    if (filterTag && !(n.tags || []).includes(filterTag)) return false;
+    return true;
+  });
+
+  // Group: pinned first, then by folder
+  const pinnedNotes = filteredNotes.filter(n => n.is_pinned);
+  const unpinnedNotes = filteredNotes.filter(n => !n.is_pinned);
+
+  const handleAddTag = async (noteId: string) => {
+    if (!newTag.trim()) return;
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    const tags = [...(note.tags || []), newTag.trim()];
+    await onUpdateNote(noteId, { tags });
+    setNewTag('');
+    setShowTagInput(null);
+  };
+
+  const handleRemoveTag = async (noteId: string, tag: string) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    const tags = (note.tags || []).filter(t => t !== tag);
+    await onUpdateNote(noteId, { tags });
+  };
+
+  const handleSetFolder = async (noteId: string, folder: string | null) => {
+    await onUpdateNote(noteId, { folder });
+  };
+
+  const renderNote = (note: DealSpaceNote) => (
+    <div
+      key={note.id}
+      className={cn(
+        "group flex items-start gap-2 px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors",
+        selectedNoteId === note.id && "bg-muted"
+      )}
+      onClick={() => onSelectNote(note.id)}
+    >
+      <FileText className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1">
+          <p className="text-sm font-medium truncate flex-1">{note.title || 'Untitled'}</p>
+          {note.is_pinned && <Pin className="h-3 w-3 text-primary shrink-0" />}
+        </div>
+        <p className="text-xs text-muted-foreground">{format(new Date(note.updated_at), 'MMM d, yyyy')}</p>
+        {note.folder && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <FolderOpen className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] text-muted-foreground">{note.folder}</span>
+          </div>
+        )}
+        {(note.tags || []).length > 0 && (
+          <div className="flex flex-wrap gap-0.5 mt-0.5">
+            {note.tags.map(tag => (
+              <Badge key={tag} variant="secondary" className="text-[9px] px-1 py-0 h-4">{tag}</Badge>
+            ))}
+          </div>
+        )}
+        {!note.is_shared && (
+          <span className="text-[10px] text-muted-foreground italic">Private</span>
+        )}
+      </div>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={e => e.stopPropagation()}>
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[160px]">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onUpdateNote(note.id, { is_pinned: !note.is_pinned }); }}>
+              {note.is_pinned ? <PinOff className="h-3.5 w-3.5 mr-2" /> : <Pin className="h-3.5 w-3.5 mr-2" />}
+              {note.is_pinned ? 'Unpin' : 'Pin to top'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onUpdateNote(note.id, { is_shared: !note.is_shared }); }}>
+              {note.is_shared ? '🔒 Make private' : '👁 Make shared'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger><FolderOpen className="h-3.5 w-3.5 mr-2" /> Move to folder</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetFolder(note.id, null); }}>
+                  None
+                </DropdownMenuItem>
+                {allFolders.map(f => (
+                  <DropdownMenuItem key={f} onClick={(e) => { e.stopPropagation(); handleSetFolder(note.id, f); }}>
+                    {f}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowFolderInput(note.id); }}>
+                  + New folder
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowTagInput(note.id); }}>
+              <Tag className="h-3.5 w-3.5 mr-2" /> Add tag
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDownload(note); }}>
+              <Download className="h-3.5 w-3.5 mr-2" /> Download .docx
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive hover:text-destructive" onClick={e => e.stopPropagation()}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Note</AlertDialogTitle>
+              <AlertDialogDescription>Are you sure you want to delete "{note.title}"? This cannot be undone.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { if (selectedNoteId === note.id) onSelectNote(''); onDeleteNote(note.id); }}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-64 border-r flex flex-col shrink-0">
+      {/* Actions */}
+      <div className="p-2 border-b flex flex-col gap-1.5">
+        <div className="flex items-center gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="default" className="flex-1 gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> New Note <ChevronDown className="h-3 w-3 ml-auto opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[200px]">
+              <DropdownMenuItem onClick={() => onCreateNote()}>
+                <FileText className="h-3.5 w-3.5 mr-2" /> Blank note
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium">TEMPLATES</p>
+              {NOTE_TEMPLATES.map(t => (
+                <DropdownMenuItem key={t.name} onClick={() => onCreateNote(t.title, t.content)}>
+                  <span className="mr-2">{t.icon}</span> {t.title}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={onUpload}>
+            <Upload className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <Input
+          placeholder="Search notes…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="h-7 text-xs"
+        />
+        {/* Filter row */}
+        {(allFolders.length > 0 || allTags.length > 0) && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {filterFolder && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 cursor-pointer" onClick={() => setFilterFolder(null)}>
+                📁 {filterFolder} ×
+              </Badge>
+            )}
+            {filterTag && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 cursor-pointer" onClick={() => setFilterTag(null)}>
+                🏷 {filterTag} ×
+              </Badge>
+            )}
+            {!filterFolder && !filterTag && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 gap-1 text-muted-foreground">
+                    <Filter className="h-3 w-3" /> Filter
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {allFolders.length > 0 && (
+                    <>
+                      <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium">FOLDERS</p>
+                      {allFolders.map(f => (
+                        <DropdownMenuItem key={f} onClick={() => setFilterFolder(f)}>📁 {f}</DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                  {allTags.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium">TAGS</p>
+                      {allTags.map(t => (
+                        <DropdownMenuItem key={t} onClick={() => setFilterTag(t)}>🏷 {t}</DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Tag/Folder inline input */}
+      {showTagInput && (
+        <div className="px-2 py-1.5 border-b flex items-center gap-1">
+          <Input
+            autoFocus
+            placeholder="Tag name…"
+            value={newTag}
+            onChange={e => setNewTag(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAddTag(showTagInput); if (e.key === 'Escape') setShowTagInput(null); }}
+            className="h-6 text-xs flex-1"
+          />
+          <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => handleAddTag(showTagInput)}>Add</Button>
+          <Button size="sm" variant="ghost" className="h-6 text-xs px-1" onClick={() => setShowTagInput(null)}>×</Button>
+        </div>
+      )}
+      {showFolderInput && (
+        <div className="px-2 py-1.5 border-b flex items-center gap-1">
+          <Input
+            autoFocus
+            placeholder="Folder name…"
+            value={newFolder}
+            onChange={e => setNewFolder(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && newFolder.trim()) {
+                handleSetFolder(showFolderInput, newFolder.trim());
+                setNewFolder('');
+                setShowFolderInput(null);
+              }
+              if (e.key === 'Escape') setShowFolderInput(null);
+            }}
+            className="h-6 text-xs flex-1"
+          />
+        </div>
+      )}
+
+      {/* Notes list */}
+      <ScrollArea className="flex-1">
+        {filteredNotes.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>No notes yet</p>
+            <p className="text-xs mt-1">Create a note to get started</p>
+          </div>
+        ) : (
+          <div className="py-1">
+            {pinnedNotes.length > 0 && (
+              <>
+                <p className="px-3 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Pinned</p>
+                {pinnedNotes.map(renderNote)}
+                {unpinnedNotes.length > 0 && <div className="border-b border-border/30 my-1" />}
+              </>
+            )}
+            {unpinnedNotes.length > 0 && (
+              <>
+                {pinnedNotes.length > 0 && (
+                  <p className="px-3 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">All Notes</p>
+                )}
+                {unpinnedNotes.map(renderNote)}
+              </>
+            )}
+          </div>
+        )}
+      </ScrollArea>
+    </div>
+  );
+}

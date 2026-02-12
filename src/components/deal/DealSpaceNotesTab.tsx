@@ -1,12 +1,9 @@
 import { useState, useRef } from 'react';
-import { Plus, FileText, Trash2, Download, Upload, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileText, Loader2 } from 'lucide-react';
 import { useDealSpaceNotes, DealSpaceNote } from '@/hooks/useDealSpaceNotes';
 import { DealSpaceNoteEditor } from './DealSpaceNoteEditor';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { NotesSidebar } from './notes/NotesSidebar';
+import { NoteComments } from './notes/NoteComments';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { toast } from '@/hooks/use-toast';
 
@@ -15,20 +12,25 @@ interface DealSpaceNotesTabProps {
 }
 
 export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
-  const { notes, isLoading, createNote, updateNote, deleteNote } = useDealSpaceNotes(dealId);
+  const {
+    notes, isLoading, createNote, updateNote, deleteNote,
+    fetchVersions, restoreVersion,
+    fetchComments, addComment, resolveComment, deleteComment,
+  } = useDealSpaceNotes(dealId);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [showComments, setShowComments] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
 
-  const handleCreateNote = async () => {
-    const note = await createNote();
+  const handleCreateNote = async (title?: string, content?: string) => {
+    const note = await createNote(title, content);
     if (note) setSelectedNoteId(note.id);
   };
 
   const handleDownloadDocx = async (note: DealSpaceNote) => {
     try {
-      // Parse HTML content to plain text paragraphs
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = note.content || '';
       const textBlocks = tempDiv.innerText.split('\n').filter(Boolean);
@@ -65,18 +67,15 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      // Basic extraction: read as text for simple docs
-      // For complex .docx, we'll extract the document.xml
       const JSZip = (await import('jszip')).default;
       const zip = await JSZip.loadAsync(arrayBuffer);
       const docXml = await zip.file('word/document.xml')?.async('string');
-      
+
       if (!docXml) {
         toast({ title: 'Could not read document', variant: 'destructive' });
         return;
       }
 
-      // Parse XML to extract text
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(docXml, 'application/xml');
       const paragraphs = xmlDoc.getElementsByTagName('w:p');
@@ -91,17 +90,14 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
             paraText += textNodes[k].textContent || '';
           }
         }
-        if (paraText) {
-          htmlParts.push(`<p>${paraText}</p>`);
-        }
+        if (paraText) htmlParts.push(`<p>${paraText}</p>`);
       }
 
       const title = file.name.replace(/\.docx?$/i, '');
       const content = htmlParts.join('');
-      
-      const note = await createNote(title);
+
+      const note = await createNote(title, content);
       if (note) {
-        await updateNote(note.id, { content });
         setSelectedNoteId(note.id);
         toast({ title: 'Document imported', description: `"${title}" has been imported as a note` });
       }
@@ -110,7 +106,6 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
       toast({ title: 'Import failed', description: 'Could not parse the document', variant: 'destructive' });
     }
 
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -122,104 +117,48 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
     );
   }
 
-  return (
-    <div className="flex h-[calc(100vh-280px)] min-h-[400px] border rounded-lg overflow-hidden bg-background">
-      {/* Sidebar - note list */}
-      <div className="w-64 border-r flex flex-col shrink-0">
-        <div className="p-2 border-b flex items-center gap-1">
-          <Button size="sm" variant="default" className="flex-1 gap-1.5" onClick={handleCreateNote}>
-            <Plus className="h-3.5 w-3.5" />
-            New Note
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-3.5 w-3.5" />
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".docx,.doc"
-            className="hidden"
-            onChange={handleUploadDocx}
-          />
-        </div>
-        <ScrollArea className="flex-1">
-          {notes.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No notes yet</p>
-              <p className="text-xs mt-1">Create a note to get started</p>
-            </div>
-          ) : (
-            <div className="py-1">
-              {notes.map(note => (
-                <div
-                  key={note.id}
-                  className={cn(
-                    "group flex items-start gap-2 px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors",
-                    selectedNoteId === note.id && "bg-muted"
-                  )}
-                  onClick={() => setSelectedNoteId(note.id)}
-                >
-                  <FileText className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{note.title || 'Untitled'}</p>
-                    <p className="text-xs text-muted-foreground">{format(new Date(note.updated_at), 'MMM d, yyyy')}</p>
-                  </div>
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6"
-                      onClick={(e) => { e.stopPropagation(); handleDownloadDocx(note); }}
-                    >
-                      <Download className="h-3 w-3" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 text-destructive hover:text-destructive"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Note</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{note.title}"? This cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => {
-                              if (selectedNoteId === note.id) setSelectedNoteId(null);
-                              deleteNote(note.id);
-                            }}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-      </div>
+  const containerClass = isFullscreen
+    ? "fixed inset-0 z-50 flex bg-background"
+    : "flex h-[calc(100vh-280px)] min-h-[400px] border rounded-lg overflow-hidden bg-background";
 
-      {/* Main editor area */}
+  return (
+    <div className={containerClass}>
+      {/* Hidden file input for upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".docx,.doc"
+        className="hidden"
+        onChange={handleUploadDocx}
+      />
+
+      {/* Sidebar */}
+      <NotesSidebar
+        notes={notes}
+        selectedNoteId={selectedNoteId}
+        onSelectNote={(id) => setSelectedNoteId(id || null)}
+        onCreateNote={handleCreateNote}
+        onDeleteNote={(id) => { if (selectedNoteId === id) setSelectedNoteId(null); deleteNote(id); }}
+        onUpdateNote={updateNote}
+        onDownload={handleDownloadDocx}
+        onUpload={() => fileInputRef.current?.click()}
+        fileInputRef={fileInputRef}
+      />
+
+      {/* Main editor */}
       <div className="flex-1 flex flex-col min-w-0">
         {selectedNote ? (
           <DealSpaceNoteEditor
             note={selectedNote}
             onUpdate={updateNote}
             onDownload={handleDownloadDocx}
+            dealId={dealId}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+            showComments={showComments}
+            onToggleComments={() => setShowComments(!showComments)}
+            fetchVersions={fetchVersions}
+            restoreVersion={restoreVersion}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
@@ -228,6 +167,17 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
           </div>
         )}
       </div>
+
+      {/* Comments panel */}
+      {selectedNote && showComments && (
+        <NoteComments
+          noteId={selectedNote.id}
+          fetchComments={fetchComments}
+          addComment={addComment}
+          resolveComment={resolveComment}
+          deleteComment={deleteComment}
+        />
+      )}
     </div>
   );
 }

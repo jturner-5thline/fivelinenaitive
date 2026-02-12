@@ -1682,12 +1682,98 @@ export type Database = {
           },
         ]
       }
+      deal_space_note_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          note_id: string
+          quote_text: string | null
+          resolved: boolean
+          resolved_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          note_id: string
+          quote_text?: string | null
+          resolved?: boolean
+          resolved_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          note_id?: string
+          quote_text?: string | null
+          resolved?: boolean
+          resolved_by?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_space_note_comments_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "deal_space_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_space_note_versions: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          note_id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          note_id: string
+          title?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          note_id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_space_note_versions_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "deal_space_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_space_notes: {
         Row: {
           content: string
           created_at: string
           deal_id: string
+          folder: string | null
           id: string
+          is_pinned: boolean
+          is_shared: boolean
+          linked_lender_id: string | null
+          position: number
+          tags: string[] | null
+          template_name: string | null
           title: string
           updated_at: string
           user_id: string
@@ -1696,7 +1782,14 @@ export type Database = {
           content?: string
           created_at?: string
           deal_id: string
+          folder?: string | null
           id?: string
+          is_pinned?: boolean
+          is_shared?: boolean
+          linked_lender_id?: string | null
+          position?: number
+          tags?: string[] | null
+          template_name?: string | null
           title?: string
           updated_at?: string
           user_id: string
@@ -1705,7 +1798,14 @@ export type Database = {
           content?: string
           created_at?: string
           deal_id?: string
+          folder?: string | null
           id?: string
+          is_pinned?: boolean
+          is_shared?: boolean
+          linked_lender_id?: string | null
+          position?: number
+          tags?: string[] | null
+          template_name?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -1716,6 +1816,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_space_notes_linked_lender_id_fkey"
+            columns: ["linked_lender_id"]
+            isOneToOne: false
+            referencedRelation: "deal_lenders"
             referencedColumns: ["id"]
           },
         ]
