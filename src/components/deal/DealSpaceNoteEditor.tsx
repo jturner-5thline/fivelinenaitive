@@ -15,6 +15,30 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { DealSpaceNote } from '@/hooks/useDealSpaceNotes';
 import { cn } from '@/lib/utils';
 
+function ToolbarButton({ 
+  onClick, isActive, icon: Icon, label 
+}: { 
+  onClick: () => void; isActive?: boolean; icon: React.ElementType; label: string 
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant={isActive ? 'secondary' : 'ghost'}
+          className="h-7 w-7"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onClick}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 interface DealSpaceNoteEditorProps {
   note: DealSpaceNote;
   onUpdate: (noteId: string, updates: { title?: string; content?: string }) => Promise<void>;
@@ -45,7 +69,7 @@ export function DealSpaceNoteEditor({ note, onUpdate, onDownload }: DealSpaceNot
         debouncedSave(html);
       }
     },
-  }, [note.id]); // Re-create editor when note changes
+  }, [note.id]);
 
   const debouncedSave = useCallback((content: string) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -57,45 +81,21 @@ export function DealSpaceNoteEditor({ note, onUpdate, onDownload }: DealSpaceNot
     }, 1000);
   }, [note.id, onUpdate]);
 
-  // Save title on blur
   const handleTitleBlur = useCallback(() => {
     if (title !== note.title) {
       onUpdate(note.id, { title });
     }
   }, [title, note.id, note.title, onUpdate]);
 
-  // Sync title when note changes
   useEffect(() => {
     setTitle(note.title);
   }, [note.id, note.title]);
 
-  // Cleanup timer
   useEffect(() => {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, []);
 
   if (!editor) return null;
-
-  const ToolbarButton = ({ 
-    onClick, isActive, icon: Icon, label 
-  }: { 
-    onClick: () => void; isActive?: boolean; icon: React.ElementType; label: string 
-  }) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          size="icon"
-          variant={isActive ? 'secondary' : 'ghost'}
-          className="h-7 w-7"
-          onClick={onClick}
-        >
-          <Icon className="h-3.5 w-3.5" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-xs">{label}</TooltipContent>
-    </Tooltip>
-  );
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -104,69 +104,21 @@ export function DealSpaceNoteEditor({ note, onUpdate, onDownload }: DealSpaceNot
         <ToolbarButton onClick={() => editor.chain().focus().undo().run()} icon={Undo} label="Undo" />
         <ToolbarButton onClick={() => editor.chain().focus().redo().run()} icon={Redo} label="Redo" />
         <Separator orientation="vertical" className="h-5 mx-1" />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          isActive={editor.isActive('heading', { level: 1 })}
-          icon={Heading1} label="Heading 1"
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          isActive={editor.isActive('heading', { level: 2 })}
-          icon={Heading2} label="Heading 2"
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          isActive={editor.isActive('heading', { level: 3 })}
-          icon={Heading3} label="Heading 3"
-        />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} isActive={editor.isActive('heading', { level: 1 })} icon={Heading1} label="Heading 1" />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} isActive={editor.isActive('heading', { level: 2 })} icon={Heading2} label="Heading 2" />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} isActive={editor.isActive('heading', { level: 3 })} icon={Heading3} label="Heading 3" />
         <Separator orientation="vertical" className="h-5 mx-1" />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          isActive={editor.isActive('bold')}
-          icon={Bold} label="Bold"
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          isActive={editor.isActive('italic')}
-          icon={Italic} label="Italic"
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          isActive={editor.isActive('underline')}
-          icon={UnderlineIcon} label="Underline"
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          isActive={editor.isActive('strike')}
-          icon={Strikethrough} label="Strikethrough"
-        />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive('bold')} icon={Bold} label="Bold" />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive('italic')} icon={Italic} label="Italic" />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive('underline')} icon={UnderlineIcon} label="Underline" />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive('strike')} icon={Strikethrough} label="Strikethrough" />
         <Separator orientation="vertical" className="h-5 mx-1" />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          isActive={editor.isActive('bulletList')}
-          icon={List} label="Bullet List"
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          isActive={editor.isActive('orderedList')}
-          icon={ListOrdered} label="Numbered List"
-        />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive('bulletList')} icon={List} label="Bullet List" />
+        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive('orderedList')} icon={ListOrdered} label="Numbered List" />
         <Separator orientation="vertical" className="h-5 mx-1" />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          isActive={editor.isActive({ textAlign: 'left' })}
-          icon={AlignLeft} label="Align Left"
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          isActive={editor.isActive({ textAlign: 'center' })}
-          icon={AlignCenter} label="Align Center"
-        />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          isActive={editor.isActive({ textAlign: 'right' })}
-          icon={AlignRight} label="Align Right"
-        />
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} isActive={editor.isActive({ textAlign: 'left' })} icon={AlignLeft} label="Align Left" />
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={editor.isActive({ textAlign: 'center' })} icon={AlignCenter} label="Align Center" />
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={editor.isActive({ textAlign: 'right' })} icon={AlignRight} label="Align Right" />
         <div className="flex-1" />
         <div className="flex items-center gap-1">
           {isSaving && (
