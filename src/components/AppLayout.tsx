@@ -3,10 +3,6 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { AISearchWidget } from "@/components/AISearchWidget";
-import { GlobalSearchAI } from "@/components/GlobalSearchAI";
-import { CreateDealDialog } from "@/components/deals/CreateDealDialog";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
@@ -40,20 +36,6 @@ function MainContent({
       )}
       onClick={handleMainClick}
     >
-      {/* Persistent top header bar */}
-      <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-border/50 shrink-0">
-        <div className="w-64">
-          <GlobalSearchAI />
-        </div>
-        <CreateDealDialog
-          trigger={
-            <Button size="sm" className="gap-1.5 shrink-0">
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">New Deal</span>
-            </Button>
-          }
-        />
-      </div>
       {children}
     </main>
   );
