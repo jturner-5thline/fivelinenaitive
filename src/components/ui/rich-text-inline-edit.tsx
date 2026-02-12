@@ -3,6 +3,7 @@ import { Pencil, Check } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { cn } from '@/lib/utils';
 import DOMPurify from 'dompurify';
+import type { MentionUser } from '@/components/ui/mention-list';
 
 interface RichTextInlineEditProps {
   value: string;
@@ -11,6 +12,7 @@ interface RichTextInlineEditProps {
   displayClassName?: string;
   autoSave?: boolean;
   autoSaveDelay?: number;
+  mentionUsers?: MentionUser[];
 }
 
 export function RichTextInlineEdit({
@@ -20,6 +22,7 @@ export function RichTextInlineEdit({
   displayClassName,
   autoSave = false,
   autoSaveDelay = 1000,
+  mentionUsers,
 }: RichTextInlineEditProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -110,6 +113,7 @@ export function RichTextInlineEdit({
           onChange={handleChange}
           onSave={handleSave}
           onCancel={handleCancel}
+          mentionUsers={mentionUsers}
         />
         {showSaved && (
           <div className="absolute -top-6 right-0 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 animate-fade-in">
@@ -135,8 +139,8 @@ export function RichTextInlineEdit({
         <span className="text-muted-foreground/50 italic">{placeholder}</span>
       ) : (
         <div 
-          className="prose prose-sm max-w-[600px] w-[600px] break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
+          className="prose prose-sm max-w-[600px] w-[600px] break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.mention]:text-primary [&_.mention]:font-medium"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
         />
       )}
       <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />

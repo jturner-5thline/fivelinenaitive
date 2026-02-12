@@ -1,9 +1,11 @@
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Mention from '@tiptap/extension-mention';
 import { Bold, Italic, List, ListOrdered, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useEffect } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
+import { MentionList, type MentionUser } from '@/components/ui/mention-list';
 
 interface RichTextEditorProps {
   content: string;
@@ -11,6 +13,7 @@ interface RichTextEditorProps {
   onSave: () => void;
   onCancel: () => void;
   className?: string;
+  mentionUsers?: MentionUser[];
 }
 
 export function RichTextEditor({
@@ -19,9 +22,84 @@ export function RichTextEditor({
   onSave,
   onCancel,
   className,
+  mentionUsers = [],
 }: RichTextEditorProps) {
+  const mentionUsersRef = useRef(mentionUsers);
+  mentionUsersRef.current = mentionUsers;
+
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention',
+        },
+        suggestion: {
+          items: ({ query }: { query: string }) => {
+            return mentionUsersRef.current
+              .filter((user) =>
+                user.display_name.toLowerCase().includes(query.toLowerCase())
+              )
+              .slice(0, 5);
+          },
+          render: () => {
+            let component: ReactRenderer | null = null;
+            let popup: HTMLDivElement | null = null;
+
+            return {
+              onStart: (props: any) => {
+                component = new ReactRenderer(MentionList, {
+                  props,
+                  editor: props.editor,
+                });
+
+                popup = document.createElement('div');
+                popup.style.position = 'absolute';
+                popup.style.zIndex = '50';
+                document.body.appendChild(popup);
+
+                popup.appendChild(component.element);
+                
+                const { clientRect } = props;
+                if (clientRect) {
+                  const rect = clientRect();
+                  if (rect) {
+                    popup.style.left = `${rect.left}px`;
+                    popup.style.top = `${rect.bottom + 4}px`;
+                  }
+                }
+              },
+              onUpdate: (props: any) => {
+                component?.updateProps(props);
+
+                if (popup) {
+                  const { clientRect } = props;
+                  if (clientRect) {
+                    const rect = clientRect();
+                    if (rect) {
+                      popup.style.left = `${rect.left}px`;
+                      popup.style.top = `${rect.bottom + 4}px`;
+                    }
+                  }
+                }
+              },
+              onKeyDown: (props: any) => {
+                if (props.event.key === 'Escape') {
+                  popup?.remove();
+                  component?.destroy();
+                  return true;
+                }
+                return (component?.ref as any)?.onKeyDown?.(props) ?? false;
+              },
+              onExit: () => {
+                popup?.remove();
+                component?.destroy();
+              },
+            };
+          },
+        },
+      }),
+    ],
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
@@ -107,7 +185,7 @@ export function RichTextEditor({
       </div>
       <EditorContent 
         editor={editor} 
-        className="w-[600px] max-w-[600px] border border-input rounded-md bg-background focus-within:ring-1 focus-within:ring-ring [&_.ProseMirror]:break-words [&_.ProseMirror]:whitespace-pre-wrap [&_.ProseMirror]:overflow-wrap-anywhere"
+        className="w-[600px] max-w-[600px] border border-input rounded-md bg-background focus-within:ring-1 focus-within:ring-ring [&_.ProseMirror]:break-words [&_.ProseMirror]:whitespace-pre-wrap [&_.ProseMirror]:overflow-wrap-anywhere [&_.mention]:text-primary [&_.mention]:font-medium"
       />
     </div>
   );
