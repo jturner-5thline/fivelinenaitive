@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link } from 'react-router-dom';
@@ -11,6 +11,8 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { useCompany } from '@/hooks/useCompany';
+import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { FlagNoteDialog } from './FlagNoteDialog';
 import { DealEditDrawer } from './DealEditDrawer';
@@ -46,6 +48,11 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
+  const { members } = useCompany();
+  const mentionUsers = useMemo(() => 
+    members.map(m => ({ id: m.user_id, display_name: m.display_name || 'Unknown', avatar_url: m.avatar_url || null })),
+    [members]
+  );
 
   useEffect(() => {
     if (isEditingStatus && statusInputRef.current) {
@@ -57,15 +64,15 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const handleStatusEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Strip HTML tags for plain text editing
-    const plainText = deal.notes ? deal.notes.replace(/<[^>]*>/g, '').trim() : '';
-    setStatusText(plainText);
+    // Pass existing HTML notes directly (MentionTextarea handles HTML)
+    setStatusText(deal.notes || '');
     setIsEditingStatus(true);
   };
 
   const handleStatusSave = async () => {
     setIsEditingStatus(false);
-    const newNotes = statusText.trim() ? `<p>${statusText.trim()}</p>` : '';
+    const isEmpty = !statusText.trim() || statusText === '<p></p>';
+    const newNotes = isEmpty ? '' : statusText;
     if (newNotes !== (deal.notes || '')) {
       await updateDeal(deal.id, { notes: newNotes || null });
     }
@@ -331,15 +338,19 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         </div>
         {!compact && isEditingStatus ? (
           <div className="mt-6 min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-            <textarea
-              ref={statusInputRef}
+            <MentionTextarea
               value={statusText}
-              onChange={(e) => setStatusText(e.target.value)}
+              onChange={(html) => setStatusText(html)}
               onBlur={handleStatusSave}
-              onKeyDown={handleStatusKeyDown}
-              className="w-full text-sm bg-muted/50 border border-border rounded-md px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
-              rows={2}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  handleStatusSave();
+                } else if (e.key === 'Escape') {
+                  setIsEditingStatus(false);
+                }
+              }}
               placeholder="Add a status note..."
+              mentionUsers={mentionUsers}
             />
           </div>
         ) : !compact && deal.notes && deal.notes !== '<p></p>' ? (
@@ -347,14 +358,14 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             <HoverCard openDelay={300}>
               <HoverCardTrigger asChild>
                 <div 
-                  className="text-sm line-clamp-2 text-foreground/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer pr-6"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
+                  className="text-sm line-clamp-2 text-foreground/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer pr-6 [&_.mention]:text-primary [&_.mention]:font-medium"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
                 />
               </HoverCardTrigger>
               <HoverCardContent className="w-80 max-h-60 overflow-y-auto" align="start">
                 <div 
-                  className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br'], ALLOWED_ATTR: [] }) }}
+                  className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.mention]:text-primary [&_.mention]:font-medium"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
                 />
               </HoverCardContent>
             </HoverCard>
