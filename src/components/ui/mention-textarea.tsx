@@ -1,6 +1,6 @@
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { MentionList, matchesMentionQuery, type MentionUser } from '@/components/ui/mention-list';
 
@@ -36,7 +36,7 @@ export function MentionTextarea({
     });
   }, []);
 
-  const extensions = MentionExt
+  const extensions = useMemo(() => MentionExt
     ? [
         StarterKit.configure({
           heading: false,
@@ -102,7 +102,7 @@ export function MentionTextarea({
           },
         }),
       ]
-    : null;
+    : null, [MentionExt]);
 
   const editor = useEditor({
     extensions: extensions || [
