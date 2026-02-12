@@ -108,25 +108,43 @@ export function LenderSuggestionsPanel({
     setShowSurvey(true);
   };
 
+  const hasNoLenders = existingLenderNames.length === 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 border-primary/30 hover:border-primary/50 hover:bg-primary/5"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Suggestions</span>
-                {totalMatches > 0 && (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal">
-                    {totalMatches}
-                  </Badge>
-                )}
-              </Button>
+              {hasNoLenders ? (
+                <Button
+                  variant="default"
+                  size="default"
+                  className="gap-2 bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-primary-foreground shadow-md"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Suggested Lenders
+                  {totalMatches > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-background/20 text-primary-foreground border-0">
+                      {totalMatches}
+                    </Badge>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 border-primary/30 hover:border-primary/50 hover:bg-primary/5"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <span className="hidden sm:inline">Suggestions</span>
+                  {totalMatches > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal">
+                      {totalMatches}
+                    </Badge>
+                  )}
+                </Button>
+              )}
             </DialogTrigger>
           </TooltipTrigger>
           <TooltipContent>
