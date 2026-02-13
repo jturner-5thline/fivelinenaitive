@@ -336,6 +336,13 @@ serve(async (req) => {
       };
       activityDescription = `Data room synced to FLEx (${dataRoomFiles!.length} files)`;
     } else {
+      // Fetch fresh ownership data from DB to ensure URLs are current
+      const { data: freshOwnership } = await supabase
+        .from("deal_ownership")
+        .select("owner_name, ownership_percentage, owner_url")
+        .eq("deal_id", dealId)
+        .order("position", { ascending: true });
+
       // Prepare the payload for FLEx API (publish) - include deal id
       const flexDeal = {
         id: dealId, // Original Naitive deal UUID
@@ -355,9 +362,9 @@ serve(async (req) => {
         company_highlights: writeUpData!.companyHighlights?.length > 0 ? writeUpData!.companyHighlights : undefined,
         financial_years: writeUpData!.financialYears?.length > 0 ? writeUpData!.financialYears : undefined,
         financial_comments: writeUpData!.financialComments?.length > 0 ? writeUpData!.financialComments : undefined,
-        cap_table: writeUpData!.ownership?.length > 0 ? writeUpData!.ownership.map(o => ({
+        cap_table: freshOwnership && freshOwnership.length > 0 ? freshOwnership.map(o => ({
           name: o.owner_name,
-          ownership: o.ownership_percentage,
+          ownership: Number(o.ownership_percentage),
           link: o.owner_url || undefined,
         })) : undefined,
         total_equity_raised: writeUpData!.totalEquityRaised || undefined,
