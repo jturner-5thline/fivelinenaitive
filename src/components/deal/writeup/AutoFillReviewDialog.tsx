@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -37,10 +37,12 @@ export function AutoFillReviewDialog({
   onApply,
   companyName,
 }: AutoFillReviewDialogProps) {
-  // By default, select all fields that don't have existing values
-  const [selectedFields, setSelectedFields] = useState<Set<string>>(() => {
-    return new Set(fields.filter(f => !f.hasExisting).map(f => f.key));
-  });
+  const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
+
+  // Reset selection whenever fields change (e.g., dialog re-opens with new data)
+  useEffect(() => {
+    setSelectedFields(new Set(fields.filter(f => !f.hasExisting).map(f => f.key)));
+  }, [fields]);
 
   const handleToggle = (key: string) => {
     const newSet = new Set(selectedFields);
