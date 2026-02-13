@@ -110,9 +110,10 @@ const STATUS_OPTIONS = [
 interface WriteUpCompanyOverviewTabProps {
   data: DealWriteUpData;
   updateField: <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => void;
+  onChange?: (data: DealWriteUpData) => void;
 }
 
-export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyOverviewTabProps) {
+export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: WriteUpCompanyOverviewTabProps) {
   const { dealTypes: dealTypeOptions } = useDealTypes();
   const { lenders: masterLenders } = useMasterLenders();
   const [locationSearch, setLocationSearch] = useState('');
@@ -258,33 +259,33 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
   };
 
   const handleApplyFields = (selectedKeys: string[]) => {
+    const updates: Partial<DealWriteUpData> = {};
     let fieldsApplied = 0;
 
     for (const field of extractedFields) {
       if (selectedKeys.includes(field.key)) {
         const value = field.value;
-        
         switch (field.key) {
           case 'companyName':
-            updateField('companyName', value as string);
+            updates.companyName = value as string;
             break;
           case 'description':
-            updateField('description', value as string);
+            updates.description = value as string;
             break;
           case 'industries':
-            updateField('industries', value as string[]);
+            updates.industries = value as string[];
             break;
           case 'location':
-            updateField('location', value as string);
+            updates.location = value as string;
             break;
           case 'yearFounded':
-            updateField('yearFounded', value as string);
+            updates.yearFounded = value as string;
             break;
           case 'headcount':
-            updateField('headcount', value as string);
+            updates.headcount = value as string;
             break;
           case 'linkedinUrl':
-            updateField('linkedinUrl', value as string);
+            updates.linkedinUrl = value as string;
             break;
         }
         fieldsApplied++;
@@ -292,6 +293,15 @@ export function WriteUpCompanyOverviewTab({ data, updateField }: WriteUpCompanyO
     }
 
     if (fieldsApplied > 0) {
+      // Apply all fields in a single batch update to avoid stale data overwrites
+      if (onChange) {
+        onChange({ ...data, ...updates });
+      } else {
+        // Fallback: apply individually (may lose some if React hasn't re-rendered)
+        Object.entries(updates).forEach(([key, value]) => {
+          updateField(key as keyof DealWriteUpData, value as DealWriteUpData[keyof DealWriteUpData]);
+        });
+      }
       toast.success(`Applied ${fieldsApplied} field${fieldsApplied !== 1 ? 's' : ''}`);
     }
   };

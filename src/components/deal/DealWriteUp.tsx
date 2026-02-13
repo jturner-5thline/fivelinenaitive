@@ -980,7 +980,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
-                <WriteUpCompanyOverviewTab data={data} updateField={updateField} />
+                <WriteUpCompanyOverviewTab data={data} updateField={updateField} onChange={onChange} />
               </TabsContent>
               
               <TabsContent value="financial" className="mt-6">
@@ -1008,7 +1008,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Company Overview</h4>
                 </div>
-                <WriteUpCompanyOverviewTab data={data} updateField={updateField} />
+                <WriteUpCompanyOverviewTab data={data} updateField={updateField} onChange={onChange} />
               </div>
               
               {/* Financial Section */}
