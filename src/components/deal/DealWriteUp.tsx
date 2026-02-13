@@ -986,12 +986,12 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           
           {viewMode === 'tabs' && (
             <Tabs defaultValue="company-overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="company-overview" className="min-w-0 truncate">Company Overview</TabsTrigger>
-                <TabsTrigger value="financial" className="min-w-0 truncate">Financial</TabsTrigger>
-                <TabsTrigger value="highlights" className="min-w-0 truncate">Company Highlights</TabsTrigger>
-                <TabsTrigger value="key-items" className="min-w-0 truncate">Key Items</TabsTrigger>
-                <TabsTrigger value="ownership" className="min-w-0 truncate">Ownership</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-5 rounded-sm">
+                <TabsTrigger value="company-overview" className="min-w-0 truncate rounded-sm">Company Overview</TabsTrigger>
+                <TabsTrigger value="financial" className="min-w-0 truncate rounded-sm">Financial</TabsTrigger>
+                <TabsTrigger value="highlights" className="min-w-0 truncate rounded-sm">Company Highlights</TabsTrigger>
+                <TabsTrigger value="key-items" className="min-w-0 truncate rounded-sm">Key Items</TabsTrigger>
+                <TabsTrigger value="ownership" className="min-w-0 truncate rounded-sm">Ownership</TabsTrigger>
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
