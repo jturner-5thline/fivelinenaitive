@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LendersProvider } from "@/contexts/LendersContext";
 import { LenderStagesProvider } from "@/contexts/LenderStagesContext";
 import { DealStagesProvider } from "@/contexts/DealStagesContext";
+import { PipelineProvider } from "@/contexts/PipelineContext";
 import { DealTypesProvider } from "@/contexts/DealTypesContext";
 import { DefaultMilestonesProvider } from "@/contexts/DefaultMilestonesContext";
 import { WidgetsProvider } from "@/contexts/WidgetsContext";
@@ -77,6 +78,7 @@ const App = () => (
               <LendersProvider>
                 <LenderStagesProvider>
                   <DealStagesProvider>
+                  <PipelineProvider>
                   <DealTypesProvider>
                   <DefaultMilestonesProvider>
                     <ChartsProvider>
@@ -207,6 +209,7 @@ const App = () => (
                     </ChartsProvider>
                   </DefaultMilestonesProvider>
                   </DealTypesProvider>
+                  </PipelineProvider>
                   </DealStagesProvider>
                 </LenderStagesProvider>
               </LendersProvider>
