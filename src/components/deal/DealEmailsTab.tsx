@@ -1,95 +1,98 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useDealEmails, DealEmailWithMessage } from '@/hooks/useDealEmails';
-import { useGmail } from '@/hooks/useGmail';
-import { formatDistanceToNow, format } from 'date-fns';
-import {
   Mail,
-  Star,
-  Unlink,
-  Loader2,
   Inbox,
-  ExternalLink,
+  Send,
+  FileEdit,
+  Link2,
+  Search,
   RefreshCw,
+  PenSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
+import {
+  MockEmail,
+  mockEmails as initialMockEmails,
+  getUnreadCount,
+} from './email/mockEmailData';
+import { EmailList, EmailDetail } from './email/EmailListAndDetail';
 
 interface DealEmailsTabProps {
   dealId: string;
 }
 
 export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
-  const { emails, isLoading, fetchEmails, unlinkEmail } = useDealEmails(dealId);
-  const { status } = useGmail();
-  const [emailToUnlink, setEmailToUnlink] = useState<DealEmailWithMessage | null>(null);
-  const [isUnlinking, setIsUnlinking] = useState(false);
+  const [emails, setEmails] = useState<MockEmail[]>(initialMockEmails);
+  const [selectedEmail, setSelectedEmail] = useState<MockEmail | null>(null);
+  const [activeFolder, setActiveFolder] = useState<string>('inbox');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleUnlink = async () => {
-    if (!emailToUnlink) return;
+  const filteredEmails = useMemo(() => {
+    let filtered = emails;
 
-    setIsUnlinking(true);
-    const success = await unlinkEmail(emailToUnlink.id);
-    setIsUnlinking(false);
-
-    if (success) {
-      toast.success('Email unlinked from deal');
+    if (activeFolder === 'linked') {
+      filtered = filtered.filter(e => e.is_linked_to_deal);
     } else {
-      toast.error('Failed to unlink email');
+      filtered = filtered.filter(e => e.folder === activeFolder);
     }
-    setEmailToUnlink(null);
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        e =>
+          e.subject.toLowerCase().includes(q) ||
+          e.from_name.toLowerCase().includes(q) ||
+          e.from_email.toLowerCase().includes(q) ||
+          e.snippet.toLowerCase().includes(q)
+      );
+    }
+
+    return filtered;
+  }, [emails, activeFolder, searchQuery]);
+
+  const handleToggleLink = (email: MockEmail) => {
+    setEmails(prev =>
+      prev.map(e =>
+        e.id === email.id ? { ...e, is_linked_to_deal: !e.is_linked_to_deal } : e
+      )
+    );
+    setSelectedEmail(prev =>
+      prev?.id === email.id ? { ...prev, is_linked_to_deal: !prev.is_linked_to_deal } : prev
+    );
+    toast.success(email.is_linked_to_deal ? 'Email unlinked from deal' : 'Email linked to deal');
   };
 
-  if (!status.connected) {
-    return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Deal Emails</CardTitle>
-              <CardDescription>Track email correspondence for this deal</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center py-8 text-center">
-            <Mail className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="font-medium mb-2">Gmail not connected</h3>
-            <p className="text-sm text-muted-foreground mb-4 max-w-md">
-              Connect your Gmail account to link emails to this deal.
-            </p>
-            <Button asChild variant="outline">
-              <Link to="/integrations">
-                <Mail className="mr-2 h-4 w-4" />
-                Connect Gmail
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+  const handleToggleStar = (email: MockEmail) => {
+    setEmails(prev =>
+      prev.map(e =>
+        e.id === email.id ? { ...e, is_starred: !e.is_starred } : e
+      )
     );
-  }
+    setSelectedEmail(prev =>
+      prev?.id === email.id ? { ...prev, is_starred: !prev.is_starred } : prev
+    );
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await new Promise(r => setTimeout(r, 1000));
+    setIsRefreshing(false);
+    toast.success('Inbox refreshed');
+  };
+
+  const inboxUnread = emails.filter(e => e.folder === 'inbox' && !e.is_read).length;
+  const linkedCount = emails.filter(e => e.is_linked_to_deal).length;
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -98,129 +101,104 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
             <div>
               <div className="flex items-center gap-2">
                 <CardTitle className="text-lg">Deal Emails</CardTitle>
-                {emails.length > 0 && (
-                  <Badge variant="secondary">{emails.length}</Badge>
-                )}
+                <Badge variant="secondary" className="text-xs">Mock</Badge>
               </div>
               <CardDescription>Email correspondence linked to this deal</CardDescription>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={fetchEmails} disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/integrations">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Link Emails
-              </Link>
+            <Button variant="outline" size="sm" onClick={() => toast.info('Compose feature coming soon')}>
+              <PenSquare className="mr-2 h-4 w-4" />
+              Compose
             </Button>
           </div>
         </div>
       </CardHeader>
-      
-      <Separator />
-      
-      <CardContent className="p-4">
-        {isLoading && emails.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : emails.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="font-medium mb-2">No emails linked</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Link emails from your inbox to track correspondence for this deal.
-            </p>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/integrations">
-                <Mail className="mr-2 h-4 w-4" />
-                Go to Gmail
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <ScrollArea className="h-[400px]">
-            <div className="space-y-2">
-              {emails.map((email) => (
-                <div
-                  key={email.id}
-                  className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      {email.message?.is_starred && (
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 shrink-0 mt-1" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">
-                            {email.message?.from_name || email.message?.from_email || 'Unknown sender'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-foreground truncate">
-                          {email.message?.subject || '(No subject)'}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {email.message?.snippet}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {email.message?.received_at && (
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(email.message.received_at), 'MMM d, yyyy h:mm a')}
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            · Linked {formatDistanceToNow(new Date(email.linked_at), { addSuffix: true })}
-                          </span>
-                        </div>
-                        {email.notes && (
-                          <p className="text-xs text-muted-foreground mt-1 italic">
-                            Note: {email.notes}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => setEmailToUnlink(email)}
-                    >
-                      <Unlink className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
 
-      <AlertDialog open={!!emailToUnlink} onOpenChange={() => setEmailToUnlink(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unlink Email</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to unlink this email from the deal? The email will remain in your Gmail inbox.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleUnlink} disabled={isUnlinking}>
-              {isUnlinking ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Unlinking...
-                </>
+      <Separator />
+
+      <CardContent className="p-0">
+        <Tabs value={activeFolder} onValueChange={(v) => { setActiveFolder(v); setSelectedEmail(null); }}>
+          <div className="px-4 pt-3 pb-2 space-y-3">
+            <TabsList className="w-full justify-start h-9">
+              <TabsTrigger value="inbox" className="text-xs gap-1.5">
+                <Inbox className="h-3.5 w-3.5" />
+                Inbox
+                {inboxUnread > 0 && (
+                  <Badge variant="destructive" className="h-4 px-1 text-[10px] ml-0.5">
+                    {inboxUnread}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="sent" className="text-xs gap-1.5">
+                <Send className="h-3.5 w-3.5" />
+                Sent
+              </TabsTrigger>
+              <TabsTrigger value="drafts" className="text-xs gap-1.5">
+                <FileEdit className="h-3.5 w-3.5" />
+                Drafts
+              </TabsTrigger>
+              <TabsTrigger value="linked" className="text-xs gap-1.5">
+                <Link2 className="h-3.5 w-3.5" />
+                Linked
+                {linkedCount > 0 && (
+                  <Badge variant="secondary" className="h-4 px-1 text-[10px] ml-0.5">
+                    {linkedCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search emails..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
+            <div className={`border-r ${selectedEmail ? 'hidden md:block' : ''}`}>
+              <TabsContent value="inbox" className="m-0">
+                <EmailList emails={filteredEmails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} onToggleLink={handleToggleLink} onToggleStar={handleToggleStar} />
+              </TabsContent>
+              <TabsContent value="sent" className="m-0">
+                <EmailList emails={filteredEmails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} onToggleLink={handleToggleLink} onToggleStar={handleToggleStar} />
+              </TabsContent>
+              <TabsContent value="drafts" className="m-0">
+                <EmailList emails={filteredEmails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} onToggleLink={handleToggleLink} onToggleStar={handleToggleStar} />
+              </TabsContent>
+              <TabsContent value="linked" className="m-0">
+                <EmailList emails={filteredEmails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} onToggleLink={handleToggleLink} onToggleStar={handleToggleStar} />
+              </TabsContent>
+            </div>
+
+            <div className={`${!selectedEmail ? 'hidden md:flex' : 'flex'} flex-col`}>
+              {selectedEmail ? (
+                <EmailDetail
+                  email={selectedEmail}
+                  onBack={() => setSelectedEmail(null)}
+                  onToggleLink={handleToggleLink}
+                  onToggleStar={handleToggleStar}
+                />
               ) : (
-                'Unlink'
+                <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                  <Mail className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                  <p className="text-sm text-muted-foreground">Select an email to view</p>
+                </div>
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </div>
+          </div>
+        </Tabs>
+      </CardContent>
     </Card>
   );
 }
