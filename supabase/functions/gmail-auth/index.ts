@@ -6,15 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const NYLAS_CLIENT_ID = Deno.env.get("NYLAS_CLIENT_ID");
-const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+const UNIPILE_API_KEY = Deno.env.get("UNIPILE_API_KEY");
+const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const NYLAS_API_URL = "https://api.us.nylas.com";
 
 interface AuthRequest {
   action: "get_auth_url" | "exchange_code" | "disconnect";
-  code?: string;
+  account_id?: string;
   redirect_uri?: string;
   email_address?: string;
 }
@@ -44,15 +43,17 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const { action, code, redirect_uri, email_address }: AuthRequest = await req.json();
-    console.log(`Nylas auth action: ${action} for user: ${user.id}`);
+    const { action, account_id, redirect_uri }: AuthRequest = await req.json();
+    console.log(`Unipile auth action: ${action} for user: ${user.id}`);
 
-    if (!NYLAS_CLIENT_ID || !NYLAS_API_KEY) {
-      return new Response(JSON.stringify({ error: "Nylas integration not configured" }), {
+    if (!UNIPILE_API_KEY || !UNIPILE_DSN) {
+      return new Response(JSON.stringify({ error: "Unipile integration not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const unipileBaseUrl = UNIPILE_DSN.startsWith("http") ? UNIPILE_DSN : `https://${UNIPILE_DSN}`;
 
     switch (action) {
       case "get_auth_url": {
@@ -63,88 +64,95 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const authUrl = new URL(`${NYLAS_API_URL}/v3/connect/auth`);
-        authUrl.searchParams.set("client_id", NYLAS_CLIENT_ID);
-        authUrl.searchParams.set("redirect_uri", redirect_uri);
-        authUrl.searchParams.set("response_type", "code");
-        authUrl.searchParams.set("access_type", "offline");
-        if (email_address) {
-          authUrl.searchParams.set("login_hint", email_address);
-        }
-        authUrl.searchParams.set("scope", [
-          "openid",
-          "https://www.googleapis.com/auth/userinfo.email",
-          "https://www.googleapis.com/auth/gmail.modify",
-          "https://www.googleapis.com/auth/gmail.send",
-        ].join(" "));
-        authUrl.searchParams.set("state", user.id);
+        // Generate Unipile Hosted Auth Link
+        const response = await fetch(`${unipileBaseUrl}/api/v1/hosted/accounts/link`, {
+          method: "POST",
+          headers: {
+            "X-API-KEY": UNIPILE_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify({
+            type: "create",
+            providers: ["GOOGLE"],
+            api_url: unipileBaseUrl,
+            expiresOn: new Date(Date.now() + 3600000).toISOString(), // 1 hour
+            success_redirect_url: redirect_uri,
+            failure_redirect_url: redirect_uri,
+            notify_url: `${SUPABASE_URL}/functions/v1/gmail-auth-callback`,
+            name: user.id, // Use user ID to identify in callback
+          }),
+        });
 
-        return new Response(JSON.stringify({ auth_url: authUrl.toString() }), {
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error("Unipile hosted auth error:", data);
+          return new Response(JSON.stringify({ error: data.message || "Failed to generate auth link" }), {
+            status: response.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ auth_url: data.url }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       case "exchange_code": {
-        if (!code || !redirect_uri) {
-          return new Response(JSON.stringify({ error: "Missing code or redirect_uri" }), {
+        // For Unipile, the account_id comes from the callback/notify_url
+        // or the user provides it after the hosted auth flow completes
+        if (!account_id) {
+          return new Response(JSON.stringify({ error: "account_id is required" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        // Exchange code for grant via Nylas
-        const tokenResponse = await fetch(`${NYLAS_API_URL}/v3/connect/token`, {
-          method: "POST",
+        // Verify the account exists in Unipile
+        const accountResponse = await fetch(`${unipileBaseUrl}/api/v1/accounts/${account_id}`, {
           headers: {
-            "Content-Type": "application/json",
+            "X-API-KEY": UNIPILE_API_KEY,
+            "Accept": "application/json",
           },
-          body: JSON.stringify({
-            client_id: NYLAS_CLIENT_ID,
-            client_secret: NYLAS_API_KEY,
-            code,
-            redirect_uri,
-            grant_type: "authorization_code",
-          }),
         });
 
-        const tokenData = await tokenResponse.json();
+        const accountData = await accountResponse.json();
 
-        if (!tokenResponse.ok || tokenData.error) {
-          console.error("Nylas token exchange error:", tokenData);
-          return new Response(JSON.stringify({ error: tokenData.error_description || tokenData.error || "Token exchange failed" }), {
+        if (!accountResponse.ok) {
+          console.error("Unipile account verify error:", accountData);
+          return new Response(JSON.stringify({ error: "Failed to verify account" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const grantId = tokenData.grant_id;
-        const emailAddr = tokenData.email;
-
-        // Store grant info in database
+        // Store account info in database
         const { error: upsertError } = await supabase
           .from("gmail_tokens")
           .upsert({
             user_id: user.id,
-            grant_id: grantId,
-            email_address: emailAddr,
+            account_id: account_id,
+            grant_id: account_id, // Keep grant_id populated for backward compat
+            email_address: accountData.sources?.[0]?.email || accountData.identifier || null,
             access_token: null,
             refresh_token: null,
             expires_at: null,
-            token_type: "nylas",
+            token_type: "unipile",
             scope: "gmail",
           }, { onConflict: "user_id" });
 
         if (upsertError) {
-          console.error("Grant storage error:", upsertError);
-          return new Response(JSON.stringify({ error: "Failed to store grant" }), {
+          console.error("Account storage error:", upsertError);
+          return new Response(JSON.stringify({ error: "Failed to store account" }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        console.log(`Nylas Gmail connected for user: ${user.id}, grant: ${grantId}`);
-        return new Response(JSON.stringify({ success: true, message: "Gmail connected via Nylas" }), {
+        console.log(`Unipile Gmail connected for user: ${user.id}, account: ${account_id}`);
+        return new Response(JSON.stringify({ success: true, message: "Gmail connected via Unipile" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -157,14 +165,14 @@ serve(async (req: Request): Promise<Response> => {
           .eq("user_id", user.id);
 
         if (deleteError) {
-          console.error("Grant deletion error:", deleteError);
+          console.error("Account deletion error:", deleteError);
           return new Response(JSON.stringify({ error: "Failed to disconnect" }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        console.log(`Nylas Gmail disconnected for user: ${user.id}`);
+        console.log(`Unipile Gmail disconnected for user: ${user.id}`);
         return new Response(JSON.stringify({ success: true, message: "Gmail disconnected" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -178,7 +186,7 @@ serve(async (req: Request): Promise<Response> => {
         });
     }
   } catch (error: any) {
-    console.error("Nylas auth error:", error);
+    console.error("Unipile auth error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
