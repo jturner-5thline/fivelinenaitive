@@ -2,6 +2,7 @@ import { useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Json } from "@/integrations/supabase/types";
+import { sendDesktopNotification } from "@/hooks/useBrowserNotifications";
 import { 
   Eye, 
   Download, 
@@ -128,21 +129,12 @@ export function useFlexActivityNotifications(dealId: string | undefined) {
       });
     }
 
-    // Play notification sound for high priority events
-    if (priority === "high") {
-      try {
-        // Use browser's notification API if available
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(title, {
-            body: payload.description,
-            icon: "/favicon.png",
-            tag: payload.id, // Prevent duplicate notifications
-          });
-        }
-      } catch (e) {
-        // Ignore notification errors
-        console.log("Browser notification not available");
-      }
+    // Send desktop notification for medium and high priority events
+    if (priority === "high" || priority === "medium") {
+      sendDesktopNotification(title, {
+        body: payload.description,
+        tag: payload.id,
+      });
     }
   }, []);
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Mail, Smartphone, Loader2, AlertCircle, Activity, Target, ChevronDown, Send, Zap } from 'lucide-react';
+import { Bell, Mail, Smartphone, Monitor, Loader2, AlertCircle, Activity, Target, ChevronDown, Send, Zap, CheckCircle2, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useBrowserNotifications, sendDesktopNotification } from '@/hooks/useBrowserNotifications';
 
 interface NotificationSettingsProps {
   collapsible?: boolean;
@@ -20,6 +21,7 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ collapsible = false, open, onOpenChange }: NotificationSettingsProps) {
   const { user } = useAuth();
   const { profile, isLoading, updateProfile } = useProfile();
+  const { permission, isSupported, isGranted, isDenied, requestPermission } = useBrowserNotifications();
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
   
@@ -366,7 +368,69 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
 
         <Separator />
 
-        {/* Bell Notification Preferences */}
+        {/* Desktop / Browser Notifications Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Monitor className="h-4 w-4 text-muted-foreground" />
+            <h3 className="font-medium">Desktop Notifications</h3>
+          </div>
+          
+          <div className="space-y-4 pl-6">
+            {!isSupported ? (
+              <p className="text-sm text-muted-foreground">
+                Desktop notifications are not supported in this browser.
+              </p>
+            ) : isGranted ? (
+              <>
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <span>Desktop notifications are enabled</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  You'll receive browser notifications for high-priority events like term sheet requests, NDA requests, and info requests even when the app is in the background.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    sendDesktopNotification('naitive', {
+                      body: 'Desktop notifications are working! 🎉',
+                    });
+                  }}
+                >
+                  <Bell className="h-4 w-4 mr-2" />
+                  Send Test Notification
+                </Button>
+              </>
+            ) : isDenied ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <XCircle className="h-4 w-4 text-destructive" />
+                  <span>Desktop notifications are blocked</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Notifications have been blocked for this site. To re-enable, click the lock icon in your browser's address bar and allow notifications.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Enable desktop notifications to get alerted about important events even when the app is in the background.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={requestPermission}
+                >
+                  <Bell className="h-4 w-4 mr-2" />
+                  Enable Desktop Notifications
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Separator />
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Bell className="h-4 w-4 text-muted-foreground" />
