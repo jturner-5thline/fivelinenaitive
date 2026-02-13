@@ -3125,10 +3125,9 @@ export default function DealDetail() {
                                 return (
                                   <SortableLenderItem key={lender.id} lender={lender}>
                                     <div className={cn(
-                                      index > 0 ? 'pt-3 border-t border-border' : '',
-                                      'pl-6',
-                                      shouldHighlight && staleStatus.isUrgent && 'bg-destructive/10 -ml-2 pl-8 pr-2 py-2 rounded-lg border border-destructive/20',
-                                      shouldHighlight && !staleStatus.isUrgent && 'bg-warning/10 -ml-2 pl-8 pr-2 py-2 rounded-lg border border-warning/20'
+                                      'rounded-lg border border-border/60 bg-card/50 p-4 transition-colors hover:border-border',
+                                      shouldHighlight && staleStatus.isUrgent && 'border-destructive/30 bg-destructive/5',
+                                      shouldHighlight && !staleStatus.isUrgent && 'border-warning/30 bg-warning/5'
                                     )}>
                                       <div className="grid grid-cols-[160px_160px_140px_auto_1fr] items-center gap-3">
                                   <div className="flex items-center gap-1 group/lender -ml-1">
@@ -3548,7 +3547,7 @@ export default function DealDetail() {
                                         : item.requestedBy === lender.name
                                     );
                                     return (
-                                      <div key={lender.id} className={`${index > 0 ? 'pt-3' : ''}`}>
+                                      <div key={lender.id} className="rounded-lg border border-border/60 bg-card/50 p-4 transition-colors hover:border-border">
                                         <div className="grid grid-cols-[160px_160px_140px_1fr] items-center gap-3">
                                           <div className="flex items-center gap-1 group/lender -ml-1">
                                             <AlertDialog>
