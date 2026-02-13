@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_ownership ADD COLUMN owner_url TEXT;

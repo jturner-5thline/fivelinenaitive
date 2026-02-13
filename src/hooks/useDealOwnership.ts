@@ -6,6 +6,7 @@ export interface DealOwner {
   id: string;
   owner_name: string;
   ownership_percentage: number;
+  owner_url: string | null;
   position: number;
 }
 
@@ -29,7 +30,7 @@ export function useDealOwnership(dealId: string | undefined) {
       // Fetch ownership data
       const { data, error } = await supabase
         .from('deal_ownership')
-        .select('id, owner_name, ownership_percentage, position')
+        .select('id, owner_name, ownership_percentage, owner_url, position')
         .eq('deal_id', dealId)
         .order('position', { ascending: true });
 
@@ -39,6 +40,7 @@ export function useDealOwnership(dealId: string | undefined) {
         id: d.id,
         owner_name: d.owner_name,
         ownership_percentage: Number(d.ownership_percentage),
+        owner_url: (d as any).owner_url || null,
         position: d.position,
       })) || []);
 
@@ -98,6 +100,7 @@ export function useDealOwnership(dealId: string | undefined) {
         id: data.id,
         owner_name: data.owner_name,
         ownership_percentage: Number(data.ownership_percentage),
+        owner_url: (data as any).owner_url || null,
         position: data.position,
       };
 
@@ -116,7 +119,7 @@ export function useDealOwnership(dealId: string | undefined) {
     }
   }, [dealId, owners.length]);
 
-  const updateOwner = useCallback(async (ownerId: string, updates: Partial<Pick<DealOwner, 'owner_name' | 'ownership_percentage'>>) => {
+  const updateOwner = useCallback(async (ownerId: string, updates: Partial<Pick<DealOwner, 'owner_name' | 'ownership_percentage' | 'owner_url'>>) => {
     setIsSaving(true);
     try {
       const { error } = await supabase
