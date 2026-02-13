@@ -56,16 +56,31 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
   });
   const [highlightsList, setHighlightsList] = useState<string[]>([]);
   const [newHighlight, setNewHighlight] = useState('');
-  const [hurdlesList, setHurdlesList] = useState<string[]>([]);
+  const [hurdlesList, setHurdlesList] = useState<{ hurdle: string; remedy: string }[]>([]);
   const [newHurdle, setNewHurdle] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [editingHighlight, setEditingHighlight] = useState<number | null>(null);
   const [editingHurdle, setEditingHurdle] = useState<number | null>(null);
+  const [editingRemedy, setEditingRemedy] = useState<number | null>(null);
 
   // Helper to convert list string to array
   const parseList = (str: string | null): string[] => {
     if (!str) return [];
     return str.split('\n').filter(h => h.trim() !== '');
+  };
+
+  // Parse hurdles with remedies (stored as "hurdle||remedy")
+  const parseHurdles = (str: string | null): { hurdle: string; remedy: string }[] => {
+    if (!str) return [];
+    return str.split('\n').filter(h => h.trim() !== '').map(line => {
+      const parts = line.split('||');
+      return { hurdle: parts[0] || '', remedy: parts[1] || '' };
+    });
+  };
+
+  // Stringify hurdles with remedies
+  const stringifyHurdles = (items: { hurdle: string; remedy: string }[]): string => {
+    return items.map(h => h.remedy ? `${h.hurdle}||${h.remedy}` : h.hurdle).join('\n');
   };
 
   // Helper to convert list array to string
@@ -85,7 +100,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
         other_notes: memo.other_notes || '',
       });
       setHighlightsList(parseList(memo.highlights));
-      setHurdlesList(parseList(memo.hurdles));
+      setHurdlesList(parseHurdles(memo.hurdles));
     } else {
       setLocalValues({
         narrative: '',
@@ -136,9 +151,9 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
 
   const handleAddHurdle = () => {
     if (newHurdle.trim()) {
-      const updated = [...hurdlesList, newHurdle.trim()];
+      const updated = [...hurdlesList, { hurdle: newHurdle.trim(), remedy: '' }];
       setHurdlesList(updated);
-      setLocalValues(prev => ({ ...prev, hurdles: stringifyList(updated) }));
+      setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
       setNewHurdle('');
       setHasChanges(true);
     }
@@ -147,16 +162,25 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
   const handleRemoveHurdle = (index: number) => {
     const updated = hurdlesList.filter((_, i) => i !== index);
     setHurdlesList(updated);
-    setLocalValues(prev => ({ ...prev, hurdles: stringifyList(updated) }));
+    setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
     setEditingHurdle(null);
+    setEditingRemedy(null);
     setHasChanges(true);
   };
 
   const handleEditHurdle = (index: number, value: string) => {
     const updated = [...hurdlesList];
-    updated[index] = value;
+    updated[index] = { ...updated[index], hurdle: value };
     setHurdlesList(updated);
-    setLocalValues(prev => ({ ...prev, hurdles: stringifyList(updated) }));
+    setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
+    setHasChanges(true);
+  };
+
+  const handleEditRemedy = (index: number, value: string) => {
+    const updated = [...hurdlesList];
+    updated[index] = { ...updated[index], remedy: value };
+    setHurdlesList(updated);
+    setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
     setHasChanges(true);
   };
 
@@ -207,7 +231,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
       if (field === 'highlights') {
         setHighlightsList(parseList(entry.old_value));
       } else if (field === 'hurdles') {
-        setHurdlesList(parseList(entry.old_value));
+        setHurdlesList(parseHurdles(entry.old_value));
       }
       setHasChanges(true);
     }
@@ -390,43 +414,69 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                 </div>
                 {hurdlesList.length > 0 ? (
                   <ol className="space-y-2">
-                    {hurdlesList.map((hurdle, index) => (
+                    {hurdlesList.map((item, index) => (
                       <li 
                         key={index}
-                        className="flex items-start gap-2 p-2 bg-muted/50 rounded-md group"
+                        className="p-2 bg-muted/50 rounded-md group"
                       >
-                        <span className="text-sm font-medium text-muted-foreground min-w-[20px] mt-0.5">
-                          {index + 1}.
-                        </span>
-                        {editingHurdle === index ? (
-                          <Input
-                            autoFocus
-                            value={hurdle}
-                            onChange={(e) => handleEditHurdle(index, e.target.value)}
-                            onBlur={() => setEditingHurdle(null)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') setEditingHurdle(null);
-                              if (e.key === 'Escape') setEditingHurdle(null);
-                            }}
-                            className="flex-1 h-7 text-sm"
-                          />
-                        ) : (
-                          <span
-                            className="flex-1 text-sm cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => setEditingHurdle(index)}
-                          >
-                            {hurdle}
+                        <div className="flex items-start gap-2">
+                          <span className="text-sm font-medium text-muted-foreground min-w-[20px] mt-0.5">
+                            {index + 1}.
                           </span>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRemoveHurdle(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                          <div className="flex-1 min-w-0">
+                            {editingHurdle === index ? (
+                              <Input
+                                autoFocus
+                                value={item.hurdle}
+                                onChange={(e) => handleEditHurdle(index, e.target.value)}
+                                onBlur={() => setEditingHurdle(null)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') setEditingHurdle(null);
+                                  if (e.key === 'Escape') setEditingHurdle(null);
+                                }}
+                                className="h-7 text-sm"
+                              />
+                            ) : (
+                              <span
+                                className="text-sm cursor-pointer hover:text-primary transition-colors block"
+                                onClick={() => setEditingHurdle(index)}
+                              >
+                                {item.hurdle}
+                              </span>
+                            )}
+                            {/* Remedy sub-field */}
+                            {editingRemedy === index ? (
+                              <Input
+                                autoFocus
+                                value={item.remedy}
+                                onChange={(e) => handleEditRemedy(index, e.target.value)}
+                                onBlur={() => setEditingRemedy(null)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') setEditingRemedy(null);
+                                  if (e.key === 'Escape') setEditingRemedy(null);
+                                }}
+                                placeholder="Add a remedy..."
+                                className="h-7 text-sm mt-1"
+                              />
+                            ) : (
+                              <span
+                                className="text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors block mt-1 italic"
+                                onClick={() => setEditingRemedy(index)}
+                              >
+                                {item.remedy ? `Remedy: ${item.remedy}` : '+ Add remedy'}
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveHurdle(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ol>
