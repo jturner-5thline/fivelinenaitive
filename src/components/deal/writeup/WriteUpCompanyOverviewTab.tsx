@@ -19,14 +19,95 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { DealWriteUpData, TeamMember } from '../DealWriteUp';
-import { Check, ChevronsUpDown, Loader2, Sparkles, Plus, Trash2, Linkedin } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Sparkles, Plus, Trash2, Linkedin, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { AutoFillReviewDialog, ExtractedField } from './AutoFillReviewDialog';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
+function SortableTeamMember({
+  member,
+  onUpdate,
+  onDelete,
+}: {
+  member: TeamMember;
+  onUpdate: (id: string, field: keyof Omit<TeamMember, 'id'>, value: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: member.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-start gap-2 p-3 border rounded-lg">
+      <div className="cursor-grab active:cursor-grabbing pt-1" {...attributes} {...listeners}>
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="flex-1 grid grid-cols-3 gap-2">
+        <Input
+          value={member.name}
+          onChange={(e) => onUpdate(member.id, 'name', e.target.value)}
+          placeholder="Name *"
+          className="h-8 text-sm"
+        />
+        <Input
+          value={member.title}
+          onChange={(e) => onUpdate(member.id, 'title', e.target.value)}
+          placeholder="Title *"
+          className="h-8 text-sm"
+        />
+        <div className="flex items-center gap-1">
+          <Linkedin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Input
+            value={member.linkedin}
+            onChange={(e) => onUpdate(member.id, 'linkedin', e.target.value)}
+            placeholder="LinkedIn URL"
+            className="h-8 text-sm"
+          />
+        </div>
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+        onClick={() => onDelete(member.id)}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
 
 const LOCATION_OPTIONS = [
   // US States
@@ -123,6 +204,10 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
+  const teamSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // Fixed industry options
   const industryOptions = INDUSTRY_OPTIONS as unknown as string[];
@@ -545,58 +630,39 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
         {(data.team || []).length === 0 ? (
           <p className="text-sm text-muted-foreground">No team members added yet.</p>
         ) : (
-          <div className="space-y-3">
-            {(data.team || []).map((member, index) => (
-              <div key={member.id} className="flex items-start gap-2 p-3 border rounded-lg">
-                <div className="flex-1 grid grid-cols-3 gap-2">
-                  <Input
-                    value={member.name}
-                    onChange={(e) => {
-                      const updated = [...(data.team || [])];
-                      updated[index] = { ...updated[index], name: e.target.value };
+          <DndContext
+            sensors={teamSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event: DragEndEvent) => {
+              const { active, over } = event;
+              if (over && active.id !== over.id) {
+                const team = data.team || [];
+                const oldIndex = team.findIndex(m => m.id === active.id);
+                const newIndex = team.findIndex(m => m.id === over.id);
+                updateField('team', arrayMove(team, oldIndex, newIndex));
+              }
+            }}
+          >
+            <SortableContext items={(data.team || []).map(m => m.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-3">
+                {(data.team || []).map((member) => (
+                  <SortableTeamMember
+                    key={member.id}
+                    member={member}
+                    onUpdate={(id, field, value) => {
+                      const updated = (data.team || []).map(m =>
+                        m.id === id ? { ...m, [field]: value } : m
+                      );
                       updateField('team', updated);
                     }}
-                    placeholder="Name *"
-                    className="h-8 text-sm"
-                  />
-                  <Input
-                    value={member.title}
-                    onChange={(e) => {
-                      const updated = [...(data.team || [])];
-                      updated[index] = { ...updated[index], title: e.target.value };
-                      updateField('team', updated);
+                    onDelete={(id) => {
+                      updateField('team', (data.team || []).filter(m => m.id !== id));
                     }}
-                    placeholder="Title *"
-                    className="h-8 text-sm"
                   />
-                  <div className="flex items-center gap-1">
-                    <Linkedin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <Input
-                      value={member.linkedin}
-                      onChange={(e) => {
-                        const updated = [...(data.team || [])];
-                        updated[index] = { ...updated[index], linkedin: e.target.value };
-                        updateField('team', updated);
-                      }}
-                      placeholder="LinkedIn URL"
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => {
-                    updateField('team', (data.team || []).filter((_, i) => i !== index));
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
