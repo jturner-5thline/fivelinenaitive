@@ -535,24 +535,24 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
                 title: '',
                 linkedin: '',
               };
-              updateField('team', [...data.team, newMember]);
+              updateField('team', [...(data.team || []), newMember]);
             }}
           >
             <Plus className="h-3 w-3" />
             Add Member
           </Button>
         </div>
-        {data.team.length === 0 ? (
+        {(data.team || []).length === 0 ? (
           <p className="text-sm text-muted-foreground">No team members added yet.</p>
         ) : (
           <div className="space-y-3">
-            {data.team.map((member, index) => (
+            {(data.team || []).map((member, index) => (
               <div key={member.id} className="flex items-start gap-2 p-3 border rounded-lg">
                 <div className="flex-1 grid grid-cols-3 gap-2">
                   <Input
                     value={member.name}
                     onChange={(e) => {
-                      const updated = [...data.team];
+                      const updated = [...(data.team || [])];
                       updated[index] = { ...updated[index], name: e.target.value };
                       updateField('team', updated);
                     }}
@@ -562,7 +562,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
                   <Input
                     value={member.title}
                     onChange={(e) => {
-                      const updated = [...data.team];
+                      const updated = [...(data.team || [])];
                       updated[index] = { ...updated[index], title: e.target.value };
                       updateField('team', updated);
                     }}
@@ -574,7 +574,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
                     <Input
                       value={member.linkedin}
                       onChange={(e) => {
-                        const updated = [...data.team];
+                        const updated = [...(data.team || [])];
                         updated[index] = { ...updated[index], linkedin: e.target.value };
                         updateField('team', updated);
                       }}
@@ -589,7 +589,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
                   size="sm"
                   className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                   onClick={() => {
-                    updateField('team', data.team.filter((_, i) => i !== index));
+                    updateField('team', (data.team || []).filter((_, i) => i !== index));
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
