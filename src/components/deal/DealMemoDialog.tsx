@@ -199,6 +199,20 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
     setHasChanges(false);
   };
 
+  const handleRevert = (entry: import('@/hooks/useDealMemoAuditLog').MemoAuditEntry) => {
+    if (entry.old_value !== null) {
+      const field = entry.field_changed;
+      setLocalValues(prev => ({ ...prev, [field]: entry.old_value || '' }));
+      // Update lists if highlights or hurdles
+      if (field === 'highlights') {
+        setHighlightsList(parseList(entry.old_value));
+      } else if (field === 'hurdles') {
+        setHurdlesList(parseList(entry.old_value));
+      }
+      setHasChanges(true);
+    }
+  };
+
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open && hasUnreadUpdates) {
@@ -240,7 +254,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <MemoAuditLogPopover entries={auditEntries} isLoading={auditLoading} />
+              <MemoAuditLogPopover entries={auditEntries} isLoading={auditLoading} onRevert={handleRevert} />
               <Button 
                 onClick={handleSave} 
                 disabled={!hasChanges || isSaving}
