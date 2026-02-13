@@ -13,7 +13,7 @@ function extractBaseUrl(dsn: string | undefined): string | undefined {
   if (!dsn) return undefined;
   const urlMatch = dsn.match(/--url\s+(https?:\/\/[^\s']+)/);
   if (urlMatch) return urlMatch[1].replace(/\/api\/.*$/, '');
-  if (dsn.match(/^https?:\/\//)) return dsn.replace(/\/+$/, '');
+  if (dsn.match(/^https?:\/\//)) return dsn.split(/\s/)[0].replace(/\/api\/.*$/, '').replace(/\/+$/, '');
   return `https://${dsn.replace(/\/+$/, '')}`;
 }
 

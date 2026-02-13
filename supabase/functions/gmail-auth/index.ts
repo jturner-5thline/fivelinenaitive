@@ -16,7 +16,7 @@ function extractBaseUrl(dsn: string | undefined): string | undefined {
   const urlMatch = dsn.match(/--url\s+(https?:\/\/[^\s']+)/);
   if (urlMatch) return urlMatch[1].replace(/\/api\/.*$/, '');
   // If it starts with https:// directly, use it
-  if (dsn.match(/^https?:\/\//)) return dsn.replace(/\/+$/, '');
+  if (dsn.match(/^https?:\/\//)) return dsn.split(/\s/)[0].replace(/\/api\/.*$/, '').replace(/\/+$/, '');
   return `https://${dsn.replace(/\/+$/, '')}`;
 }
 
