@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import {
   Mail,
   Inbox,
@@ -18,10 +19,13 @@ import {
 import { toast } from 'sonner';
 import {
   MockEmail,
+  EmailThread,
   mockEmails as initialMockEmails,
-  getUnreadCount,
+  groupEmailsByThread,
 } from './email/mockEmailData';
 import { EmailList, EmailDetail } from './email/EmailListAndDetail';
+import { EmailLayoutSelector, EmailLayout } from './email/EmailLayoutSelector';
+import { cn } from '@/lib/utils';
 
 interface DealEmailsTabProps {
   dealId: string;
@@ -29,10 +33,18 @@ interface DealEmailsTabProps {
 
 export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
   const [emails, setEmails] = useState<MockEmail[]>(initialMockEmails);
-  const [selectedEmail, setSelectedEmail] = useState<MockEmail | null>(null);
+  const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [activeFolder, setActiveFolder] = useState<string>('inbox');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [layout, setLayout] = useState<EmailLayout>(() => {
+    return (localStorage.getItem('email-layout') as EmailLayout) || 'split-even';
+  });
+
+  const handleLayoutChange = (newLayout: EmailLayout) => {
+    setLayout(newLayout);
+    localStorage.setItem('email-layout', newLayout);
+  };
 
   const filteredEmails = useMemo(() => {
     let filtered = emails;
@@ -57,14 +69,18 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
     return filtered;
   }, [emails, activeFolder, searchQuery]);
 
+  // Re-derive selected thread when emails change
+  const currentThread = useMemo(() => {
+    if (!selectedThread) return null;
+    const threads = groupEmailsByThread(emails);
+    return threads.find(t => t.threadId === selectedThread.threadId) || null;
+  }, [emails, selectedThread]);
+
   const handleToggleLink = (email: MockEmail) => {
     setEmails(prev =>
       prev.map(e =>
         e.id === email.id ? { ...e, is_linked_to_deal: !e.is_linked_to_deal } : e
       )
-    );
-    setSelectedEmail(prev =>
-      prev?.id === email.id ? { ...prev, is_linked_to_deal: !prev.is_linked_to_deal } : prev
     );
     toast.success(email.is_linked_to_deal ? 'Email unlinked from deal' : 'Email linked to deal');
   };
@@ -74,9 +90,6 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
       prev.map(e =>
         e.id === email.id ? { ...e, is_starred: !e.is_starred } : e
       )
-    );
-    setSelectedEmail(prev =>
-      prev?.id === email.id ? { ...prev, is_starred: !prev.is_starred } : prev
     );
   };
 
@@ -89,6 +102,31 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
 
   const inboxUnread = emails.filter(e => e.folder === 'inbox' && !e.is_read).length;
   const linkedCount = emails.filter(e => e.is_linked_to_deal).length;
+
+  const listContent = (
+    <EmailList
+      emails={filteredEmails}
+      selectedThread={currentThread}
+      onSelectThread={setSelectedThread}
+      onToggleLink={handleToggleLink}
+      onToggleStar={handleToggleStar}
+    />
+  );
+
+  const detailContent = currentThread ? (
+    <EmailDetail
+      thread={currentThread}
+      onBack={() => setSelectedThread(null)}
+      onToggleLink={handleToggleLink}
+      onToggleStar={handleToggleStar}
+    />
+  ) : (
+    <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+      <Mail className="h-10 w-10 text-muted-foreground/20 mb-3" />
+      <p className="text-sm text-muted-foreground">Select a conversation to view</p>
+      <p className="text-xs text-muted-foreground/60 mt-1">Use keyboard shortcuts: R (reply), F (forward), L (link)</p>
+    </div>
+  );
 
   return (
     <Card>
@@ -107,8 +145,9 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <EmailLayoutSelector layout={layout} onLayoutChange={handleLayoutChange} />
             <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
             </Button>
             <Button variant="outline" size="sm" onClick={() => toast.info('Compose feature coming soon')}>
               <PenSquare className="mr-2 h-4 w-4" />
@@ -121,7 +160,7 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
       <Separator />
 
       <CardContent className="p-0">
-        <Tabs value={activeFolder} onValueChange={(v) => { setActiveFolder(v); setSelectedEmail(null); }}>
+        <Tabs value={activeFolder} onValueChange={(v) => { setActiveFolder(v); setSelectedThread(null); }}>
           <div className="px-4 pt-3 pb-2 space-y-3">
             <TabsList className="w-full justify-start h-9">
               <TabsTrigger value="inbox" className="text-xs gap-1.5">
@@ -165,38 +204,56 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
 
           <Separator />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
-            <div className={`border-r ${selectedEmail ? 'hidden md:block' : ''}`}>
-              <TabsContent value="inbox" className="m-0">
-                <EmailList emails={filteredEmails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} onToggleLink={handleToggleLink} onToggleStar={handleToggleStar} />
-              </TabsContent>
-              <TabsContent value="sent" className="m-0">
-                <EmailList emails={filteredEmails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} onToggleLink={handleToggleLink} onToggleStar={handleToggleStar} />
-              </TabsContent>
-              <TabsContent value="drafts" className="m-0">
-                <EmailList emails={filteredEmails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} onToggleLink={handleToggleLink} onToggleStar={handleToggleStar} />
-              </TabsContent>
-              <TabsContent value="linked" className="m-0">
-                <EmailList emails={filteredEmails} selectedEmail={selectedEmail} onSelect={setSelectedEmail} onToggleLink={handleToggleLink} onToggleStar={handleToggleStar} />
-              </TabsContent>
+          {/* Layout: Split Even (50/50) */}
+          {layout === 'split-even' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
+              <div className={cn('border-r', currentThread ? 'hidden md:block' : '')}>
+                <TabsContent value={activeFolder} className="m-0 h-[500px]">
+                  {listContent}
+                </TabsContent>
+              </div>
+              <div className={cn(!currentThread ? 'hidden md:flex' : 'flex', 'flex-col h-[500px]')}>
+                {detailContent}
+              </div>
             </div>
+          )}
 
-            <div className={`${!selectedEmail ? 'hidden md:flex' : 'flex'} flex-col`}>
-              {selectedEmail ? (
-                <EmailDetail
-                  email={selectedEmail}
-                  onBack={() => setSelectedEmail(null)}
-                  onToggleLink={handleToggleLink}
-                  onToggleStar={handleToggleStar}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-                  <Mail className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                  <p className="text-sm text-muted-foreground">Select an email to view</p>
-                </div>
-              )}
+          {/* Layout: Split Wide (30/70) */}
+          {layout === 'split-wide' && (
+            <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] min-h-[500px]">
+              <div className={cn('border-r', currentThread ? 'hidden md:block' : '')}>
+                <TabsContent value={activeFolder} className="m-0 h-[500px]">
+                  {listContent}
+                </TabsContent>
+              </div>
+              <div className={cn(!currentThread ? 'hidden md:flex' : 'flex', 'flex-col h-[500px]')}>
+                {detailContent}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Layout: Slide-over */}
+          {layout === 'slide-over' && (
+            <>
+              <div className="min-h-[500px]">
+                <TabsContent value={activeFolder} className="m-0 h-[500px]">
+                  {listContent}
+                </TabsContent>
+              </div>
+              <Sheet open={!!currentThread} onOpenChange={(open) => { if (!open) setSelectedThread(null); }}>
+                <SheetContent side="right" className="w-full sm:w-[600px] sm:max-w-[600px] p-0">
+                  {currentThread && (
+                    <EmailDetail
+                      thread={currentThread}
+                      onBack={() => setSelectedThread(null)}
+                      onToggleLink={handleToggleLink}
+                      onToggleStar={handleToggleStar}
+                    />
+                  )}
+                </SheetContent>
+              </Sheet>
+            </>
+          )}
         </Tabs>
       </CardContent>
     </Card>
