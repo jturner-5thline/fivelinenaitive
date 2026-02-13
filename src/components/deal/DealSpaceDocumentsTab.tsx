@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useDealSpaceDocuments, DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
 import { DealSpaceDocumentPreview } from './DealSpaceDocumentPreview';
-import { CallTranscriptsSection } from './CallTranscriptsSection';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -251,9 +250,6 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
               </div>
             </Collapsible>
           )}
-
-          {/* Call Transcripts Section */}
-          <CallTranscriptsSection dealId={dealId} />
 
           {/* Upload Area */}
           <div
