@@ -965,6 +965,59 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_call_transcripts: {
+        Row: {
+          call_date: string | null
+          content_type: string | null
+          created_at: string
+          deal_id: string
+          file_path: string
+          id: string
+          name: string
+          notes: string | null
+          participants: string | null
+          size_bytes: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          call_date?: string | null
+          content_type?: string | null
+          created_at?: string
+          deal_id: string
+          file_path: string
+          id?: string
+          name: string
+          notes?: string | null
+          participants?: string | null
+          size_bytes?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          call_date?: string | null
+          content_type?: string | null
+          created_at?: string
+          deal_id?: string
+          file_path?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          participants?: string | null
+          size_bytes?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_call_transcripts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_checklist_items: {
         Row: {
           category: string | null
