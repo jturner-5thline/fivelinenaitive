@@ -362,9 +362,9 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
 
       {/* Over 100% warning banner */}
       {totalPercentage > 100 && (
-        <div className="flex items-center gap-2 rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-          <span>Total ownership is <strong>{totalPercentage.toFixed(2)}%</strong> — exceeds 100%.</span>
+        <div className="flex items-center gap-2 rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="font-medium">⚠ Total ownership is <strong>{totalPercentage.toFixed(2)}%</strong> — exceeds 100%. Please review before proceeding.</span>
         </div>
       )}
 
