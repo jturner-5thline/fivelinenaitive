@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Reply,
   Forward,
-  CornerUpLeft,
   Sparkles,
   AlertCircle,
   CheckCircle2,
@@ -48,7 +47,7 @@ function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }
 function AiSummaryStrip({ email }: { email: MockEmail }) {
   if (!email.ai_summary) return null;
   return (
-    <div className="flex items-start gap-2 px-4 py-2.5 bg-primary/5 border-b border-primary/10">
+    <div className="flex items-start gap-2 px-4 py-2.5 rounded-lg bg-primary/5 border border-primary/10">
       <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
       <div className="flex items-center gap-2 flex-wrap min-w-0">
         <p className="text-xs text-foreground/80 leading-relaxed">{email.ai_summary}</p>
@@ -61,7 +60,7 @@ function AiSummaryStrip({ email }: { email: MockEmail }) {
 // ─── Avatar ──────────────────────────────────────────────────
 function EmailAvatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
   const colorClass = getAvatarColor(name);
-  const sizeClass = size === 'sm' ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-xs';
+  const sizeClass = size === 'sm' ? 'h-8 w-8 text-[11px]' : 'h-10 w-10 text-xs';
   return (
     <div className={cn('rounded-full flex items-center justify-center font-semibold shrink-0', sizeClass, colorClass)}>
       {name.charAt(0).toUpperCase()}
@@ -69,7 +68,7 @@ function EmailAvatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }
   );
 }
 
-// ─── Thread List Item ────────────────────────────────────────
+// ─── Thread List Item (Card style) ───────────────────────────
 interface ThreadListItemProps {
   thread: EmailThread;
   isSelected: boolean;
@@ -87,15 +86,17 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   return (
     <div
       className={cn(
-        'group relative px-4 py-3 cursor-pointer transition-all duration-150',
-        isSelected ? 'bg-accent/80' : 'hover:bg-muted/60',
-        thread.hasUnread && !isSelected && 'bg-primary/[0.03]'
+        'group relative rounded-lg border cursor-pointer transition-all duration-150 mx-2 mb-2',
+        isSelected
+          ? 'bg-accent/60 border-primary/30 shadow-sm shadow-primary/5'
+          : 'bg-card/40 border-border/40 hover:bg-muted/40 hover:border-border/60',
+        thread.hasUnread && !isSelected && 'border-l-2 border-l-primary'
       )}
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 p-3">
         <EmailAvatar name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name} />
         
         <div className="min-w-0 flex-1">
@@ -121,7 +122,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           
           <p className="text-xs text-muted-foreground truncate mt-0.5">{latest.snippet}</p>
           
-          <div className="flex items-center gap-1.5 mt-1.5">
+          <div className="flex items-center gap-1.5 mt-2">
             {thread.isLinked && (
               <Badge variant="secondary" className="text-[10px] h-[18px] px-1.5 gap-0.5">
                 <Link2 className="h-2.5 w-2.5" /> Linked
@@ -139,13 +140,10 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
 
       {/* Hover actions */}
       {hovered && (
-        <div className="absolute right-3 top-3 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border rounded-md shadow-sm px-1 py-0.5">
+        <div className="absolute right-2 top-2 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border rounded-md shadow-md px-1 py-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                onClick={(e) => { e.stopPropagation(); onToggleStar(latest); }}
-                className="p-1 rounded hover:bg-muted transition-colors"
-              >
+              <button onClick={(e) => { e.stopPropagation(); onToggleStar(latest); }} className="p-1 rounded hover:bg-muted transition-colors">
                 <Star className={cn('h-3.5 w-3.5', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
               </button>
             </TooltipTrigger>
@@ -153,10 +151,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                onClick={(e) => { e.stopPropagation(); onToggleLink(latest); }}
-                className="p-1 rounded hover:bg-muted transition-colors"
-              >
+              <button onClick={(e) => { e.stopPropagation(); onToggleLink(latest); }} className="p-1 rounded hover:bg-muted transition-colors">
                 {thread.isLinked ? <Unlink className="h-3.5 w-3.5 text-muted-foreground" /> : <Link2 className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
             </TooltipTrigger>
@@ -164,10 +159,7 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                onClick={(e) => { e.stopPropagation(); toast.info('Archive coming soon'); }}
-                className="p-1 rounded hover:bg-muted transition-colors"
-              >
+              <button onClick={(e) => { e.stopPropagation(); toast.info('Archive coming soon'); }} className="p-1 rounded hover:bg-muted transition-colors">
                 <Archive className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
             </TooltipTrigger>
@@ -202,7 +194,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
 
   return (
     <ScrollArea className="h-full">
-      <div className="divide-y divide-border/50">
+      <div className="pt-2 pb-2">
         {threads.map((thread) => (
           <ThreadListItem
             key={thread.threadId}
@@ -218,13 +210,18 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
   );
 }
 
-// ─── Collapsible Thread Message ──────────────────────────────
+// ─── Thread Message Card ─────────────────────────────────────
 function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail; isLatest: boolean; defaultExpanded: boolean }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const displayName = email.from_name === 'You' ? 'You' : email.from_name;
 
   return (
-    <div className={cn('border-b border-border/30 last:border-0', expanded ? '' : 'hover:bg-muted/30')}>
+    <div className={cn(
+      'rounded-lg border transition-all duration-150 mx-4 mb-3',
+      expanded
+        ? 'bg-card/60 border-border/50 shadow-sm'
+        : 'bg-card/30 border-border/30 hover:bg-muted/30 hover:border-border/50'
+    )}>
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left"
@@ -247,7 +244,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail;
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 pl-[52px]">
+        <div className="px-4 pb-4 pl-[60px]">
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
@@ -257,7 +254,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail;
           </div>
           {email.has_attachments && (
             <div className="mt-3 flex gap-2">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/30 text-sm hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/20 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
                 <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-foreground/80">document.pdf</span>
                 <span className="text-[11px] text-muted-foreground">2.4 MB</span>
@@ -279,7 +276,6 @@ interface EmailDetailProps {
 }
 
 export function EmailDetail({ thread, onBack, onToggleLink, onToggleStar }: EmailDetailProps) {
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -293,8 +289,8 @@ export function EmailDetail({ thread, onBack, onToggleLink, onToggleStar }: Emai
 
   return (
     <div className="flex flex-col h-full">
-      {/* Sticky toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+      {/* Sticky header toolbar */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10">
         <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -354,12 +350,15 @@ export function EmailDetail({ thread, onBack, onToggleLink, onToggleStar }: Emai
         </div>
       </div>
 
-      {/* AI Summary */}
-      <AiSummaryStrip email={thread.latestEmail} />
-
-      {/* Thread messages */}
+      {/* Thread content */}
       <ScrollArea className="flex-1">
-        <div>
+        <div className="py-3 space-y-0">
+          {/* AI Summary as card */}
+          <div className="mx-4 mb-3">
+            <AiSummaryStrip email={thread.latestEmail} />
+          </div>
+
+          {/* Each message as its own card */}
           {thread.emails.map((email, idx) => (
             <ThreadMessage
               key={email.id}
