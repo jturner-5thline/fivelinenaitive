@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { sendDesktopNotification } from '@/hooks/useBrowserNotifications';
 
 interface LenderSyncRequest {
   id: string;
@@ -47,6 +48,11 @@ export function useLenderSyncRealtimeNotifications(
               title: `FLEx Sync: ${typeLabel}`,
               description: `"${lenderName}" requires your review`,
               duration: 8000,
+            });
+
+            sendDesktopNotification(`FLEx Sync: ${typeLabel}`, {
+              body: `"${lenderName}" requires your review`,
+              tag: `sync-${newRequest.id}`,
             });
 
             // Callback to refetch data
