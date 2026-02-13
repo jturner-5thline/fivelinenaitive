@@ -460,7 +460,7 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                               />
                             ) : (
                               <span
-                                className="text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors block mt-1 italic"
+                                className="text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors block mt-1"
                                 onClick={() => setEditingRemedy(index)}
                               >
                                 {item.remedy ? `Remedy: ${item.remedy}` : '+ Add remedy'}
