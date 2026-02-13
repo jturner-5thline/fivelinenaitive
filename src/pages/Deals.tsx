@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
@@ -9,6 +9,7 @@ import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
+import { PipelineSelector } from '@/components/deals/PipelineSelector';
 
 
 
@@ -27,6 +28,7 @@ import { useDeals } from '@/hooks/useDeals';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -58,6 +60,7 @@ export default function Dashboard() {
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
+  const { activePipelineId, pipelines } = usePipelineContext();
   
   const { preferences } = usePreferences();
   
@@ -70,7 +73,7 @@ export default function Dashboard() {
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
   
   const {
-    deals,
+    deals: allFilteredDeals,
     filters,
     sortField,
     sortDirection,
@@ -78,6 +81,12 @@ export default function Dashboard() {
     updateFilters,
     toggleSort,
   } = useDeals();
+
+  // Filter deals by active pipeline
+  const deals = useMemo(() => {
+    if (!activePipelineId) return allFilteredDeals;
+    return allFilteredDeals.filter(deal => deal.pipelineId === activePipelineId);
+  }, [allFilteredDeals, activePipelineId]);
 
   const handleMarkReviewed = async (dealId: string) => {
     try {
@@ -145,7 +154,10 @@ export default function Dashboard() {
                 className="flex items-center justify-between opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
               >
-                <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">5th Line</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">5th Line</h1>
+                  <PipelineSelector />
+                </div>
                 <div className="flex items-center gap-2">
                   <NotificationsDropdown />
                   <LatestUpdatesDropdown />

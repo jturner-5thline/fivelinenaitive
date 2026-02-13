@@ -296,6 +296,7 @@ export function useDealsDatabase() {
       updatedAt: dbDeal.updated_at,
       lenders: dealLenders,
       migratedFromPersonal: dbDeal.migrated_from_personal || false,
+      pipelineId: (dbDeal as any).pipeline_id || undefined,
     };
   }, []);
 
@@ -425,6 +426,7 @@ export function useDealsDatabase() {
           contact_info: dealData.contactInfo || null,
           user_id: userId,
           company_id: memberData?.company_id || null,
+          pipeline_id: dealData.pipelineId || null,
         })
         .select()
         .single();
@@ -464,6 +466,7 @@ export function useDealsDatabase() {
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         lenders: [],
+        pipelineId: (data as any).pipeline_id || undefined,
       };
 
       setDeals(prev => [newDeal, ...prev]);

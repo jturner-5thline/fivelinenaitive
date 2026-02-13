@@ -17,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -153,7 +154,9 @@ function DroppableStageColumn({
 }
 
 export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag }: DealsPipelineViewProps) {
-  const { stages } = useDealStages();
+  const { stages: globalStages } = useDealStages();
+  const { activePipeline } = usePipelineContext();
+  const stages = activePipeline?.stages?.length ? activePipeline.stages : globalStages;
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { data: flexEngagementScores } = useFlexEngagementScores(dealIds);
   

@@ -42,6 +42,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDefaultMilestones } from '@/contexts/DefaultMilestonesContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
 
@@ -60,6 +61,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
   const { stages: dealStages, defaultStageId } = useDealStages();
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { defaultMilestones } = useDefaultMilestones();
+  const { pipelines, activePipelineId, activePipeline } = usePipelineContext();
+  
+  // Use active pipeline's stages if available, otherwise use global stages
+  const effectiveStages = activePipeline?.stages && activePipeline.stages.length > 0 
+    ? activePipeline.stages 
+    : dealStages;
   
   const [internalOpen, setInternalOpen] = useState(false);
   const [confirmBlankOpen, setConfirmBlankOpen] = useState(false);
@@ -67,6 +74,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
   const [dealName, setDealName] = useState('');
   const [dealAmount, setDealAmount] = useState('');
   const [selectedDealTypes, setSelectedDealTypes] = useState<string[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState(activePipelineId || '');
   const [dealStage, setDealStage] = useState(defaultStageId || '');
   const [dealManager, setDealManager] = useState('');
   const [dealOwner, setDealOwner] = useState('');
@@ -169,6 +177,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
         stage: dealStage,
         dealTypes: selectedDealTypes.length > 0 ? selectedDealTypes : undefined,
         engagementType: 'guided',
+        pipelineId: selectedPipelineId || activePipelineId || undefined,
         referredBy: referralName.trim() ? {
           id: '',
           name: referralName.trim(),
@@ -194,6 +203,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
     setDealName('');
     setDealAmount('');
     setSelectedDealTypes([]);
+    setSelectedPipelineId(activePipelineId || '');
     setDealStage(defaultStageId || '');
     setDealManager('');
     setDealOwner('');
@@ -299,6 +309,28 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
                   </PopoverContent>
                 </Popover>
               </div>
+              {pipelines.length > 1 && (
+                <div className="grid gap-2">
+                  <Label>Pipeline</Label>
+                  <Select value={selectedPipelineId} onValueChange={(val) => {
+                    setSelectedPipelineId(val);
+                    // Update stages when pipeline changes
+                    const pipeline = pipelines.find(p => p.id === val);
+                    if (pipeline?.stages?.length && !pipeline.stages.find(s => s.id === dealStage)) {
+                      setDealStage(pipeline.stages[0]?.id || '');
+                    }
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select pipeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelines.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="dealStage">Deal Stage <span className="text-destructive">*</span></Label>
                 <Select value={dealStage} onValueChange={setDealStage} required>
@@ -306,11 +338,15 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
                     <SelectValue placeholder="Select stage" />
                   </SelectTrigger>
                   <SelectContent>
-                    {dealStages.map(stage => (
-                      <SelectItem key={stage.id} value={stage.id}>
-                        {stage.label}
-                      </SelectItem>
-                    ))}
+                    {(() => {
+                      const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
+                      const stages = selectedPipeline?.stages?.length ? selectedPipeline.stages : effectiveStages;
+                      return stages.map(stage => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          {stage.label}
+                        </SelectItem>
+                      ));
+                    })()}
                   </SelectContent>
                 </Select>
               </div>

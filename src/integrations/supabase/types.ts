@@ -1580,6 +1580,47 @@ export type Database = {
           },
         ]
       }
+      deal_pipelines: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          position: number
+          stages: Json
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          position?: number
+          stages?: Json
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          position?: number
+          stages?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_pipelines_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_space_conversations: {
         Row: {
           created_at: string
@@ -2109,6 +2150,7 @@ export type Database = {
           narrative: string | null
           notes: string | null
           notes_updated_at: string | null
+          pipeline_id: string | null
           post_signing_hours: number | null
           pre_signing_hours: number | null
           referred_by: string | null
@@ -2142,6 +2184,7 @@ export type Database = {
           narrative?: string | null
           notes?: string | null
           notes_updated_at?: string | null
+          pipeline_id?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
           referred_by?: string | null
@@ -2175,6 +2218,7 @@ export type Database = {
           narrative?: string | null
           notes?: string | null
           notes_updated_at?: string | null
+          pipeline_id?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
           referred_by?: string | null
@@ -2193,6 +2237,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipelines"
             referencedColumns: ["id"]
           },
         ]
