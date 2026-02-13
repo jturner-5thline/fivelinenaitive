@@ -1,9 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Loader2, DollarSign, Link } from 'lucide-react';
+import { Plus, Trash2, Loader2, DollarSign, Link, AlertTriangle } from 'lucide-react';
 import { useDealOwnership, DealOwner } from '@/hooks/useDealOwnership';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Table,
   TableBody,
@@ -38,6 +48,7 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
     maxOwners,
     totalEquityRaised,
     updateTotalEquityRaised,
+    totalPercentage,
   } = useDealOwnership(dealId);
 
   const [newOwnerName, setNewOwnerName] = useState('');
@@ -48,6 +59,8 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
   const [editPercentage, setEditPercentage] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const [equityInput, setEquityInput] = useState('');
+  const [showOverflowConfirm, setShowOverflowConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null);
   const equityDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize equity input from loaded data
@@ -69,7 +82,7 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
     }, 500);
   };
 
-  const handleAddOwner = async () => {
+  const doAddOwner = async () => {
     if (!newOwnerName.trim()) return;
     const percentage = parseFloat(newOwnerPercentage) || 0;
     if (percentage < 0 || percentage > 100) return;
@@ -83,6 +96,17 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
       setNewOwnerPercentage('');
       setNewOwnerUrl('');
     }
+  };
+
+  const handleAddOwner = async () => {
+    const percentage = parseFloat(newOwnerPercentage) || 0;
+    const newTotal = totalPercentage + percentage;
+    if (newTotal > 100) {
+      setPendingAction(() => doAddOwner);
+      setShowOverflowConfirm(true);
+      return;
+    }
+    await doAddOwner();
   };
 
   const startEditing = (owner: DealOwner) => {
@@ -99,7 +123,7 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
     setEditUrl('');
   };
 
-  const saveEditing = async () => {
+  const doSaveEditing = async () => {
     if (!editingId || !editName.trim()) return;
     const percentage = parseFloat(editPercentage) || 0;
     if (percentage < 0 || percentage > 100) return;
@@ -110,6 +134,20 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
       owner_url: editUrl.trim() || null,
     });
     cancelEditing();
+  };
+
+  const saveEditing = async () => {
+    if (!editingId) return;
+    const percentage = parseFloat(editPercentage) || 0;
+    const currentOwner = owners.find(o => o.id === editingId);
+    const diff = percentage - (currentOwner?.ownership_percentage || 0);
+    const newTotal = totalPercentage + diff;
+    if (newTotal > 100) {
+      setPendingAction(() => doSaveEditing);
+      setShowOverflowConfirm(true);
+      return;
+    }
+    await doSaveEditing();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, action: 'add' | 'edit') => {
@@ -322,6 +360,14 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
         </Table>
       </div>
 
+      {/* Over 100% warning banner */}
+      {totalPercentage > 100 && (
+        <div className="flex items-center gap-2 rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+          <span>Total ownership is <strong>{totalPercentage.toFixed(2)}%</strong> — exceeds 100%.</span>
+        </div>
+      )}
+
       {/* Total Equity Raised */}
       <div className="rounded-lg bg-muted/50 px-4 py-3">
         <Label htmlFor="total-equity" className="text-sm font-medium">
@@ -345,6 +391,35 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
           Maximum of {maxOwners} owners reached
         </p>
       )}
+
+      {/* Over 100% Confirmation Dialog */}
+      <AlertDialog open={showOverflowConfirm} onOpenChange={setShowOverflowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-warning">
+              <AlertTriangle className="h-5 w-5" />
+              Ownership Exceeds 100%
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Adding this entry will bring total ownership above 100%. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingAction(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (pendingAction) {
+                  await pendingAction();
+                  setPendingAction(null);
+                }
+                setShowOverflowConfirm(false);
+              }}
+            >
+              Proceed Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
