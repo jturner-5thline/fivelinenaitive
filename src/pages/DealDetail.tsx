@@ -3125,7 +3125,7 @@ export default function DealDetail() {
                                 return (
                                   <SortableLenderItem key={lender.id} lender={lender}>
                                     <div className={cn(
-                                      'rounded-xl border-2 border-border bg-accent/30 p-4 shadow-md hover:shadow-lg hover:bg-accent/50 transition-all',
+                                      'rounded-xl border-2 border-border bg-muted/40 p-4 shadow-md hover:shadow-lg transition-all',
                                       shouldHighlight && staleStatus.isUrgent && 'border-destructive/30 bg-destructive/5 shadow-destructive/10',
                                       shouldHighlight && !staleStatus.isUrgent && 'border-warning/30 bg-warning/5 shadow-warning/10'
                                     )}>
@@ -3547,7 +3547,7 @@ export default function DealDetail() {
                                         : item.requestedBy === lender.name
                                     );
                                     return (
-                                      <div key={lender.id} className="rounded-xl border-2 border-border bg-accent/30 p-4 shadow-md hover:shadow-lg hover:bg-accent/50 transition-all">
+                                      <div key={lender.id} className="rounded-xl border-2 border-border bg-muted/40 p-4 shadow-md hover:shadow-lg transition-all">
                                         <div className="grid grid-cols-[160px_160px_140px_1fr] items-center gap-3">
                                           <div className="flex items-center gap-1 group/lender -ml-1">
                                             <AlertDialog>
