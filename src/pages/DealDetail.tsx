@@ -425,8 +425,7 @@ export default function DealDetail() {
     deal?.lenders?.map(l => l.name) || [], 
     [deal?.lenders]
   );
-
-  const [lenderSort, setLenderSort] = useState<'updated-desc' | 'updated-asc' | 'stage'>('updated-desc');
+  const [lenderSort, setLenderSort] = useState<'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest'>('updated-desc');
 
   // Sort lenders based on selected sort option
   const sortedLenders = useMemo(() => {
@@ -446,7 +445,12 @@ export default function DealDetail() {
           const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
           return aTime - bTime;
         });
-      case 'stage': {
+      case 'stage-furthest': {
+        const stageOrder: Record<string, number> = {};
+        configuredStages.forEach((s, i) => { stageOrder[s.id] = i; });
+        return lenders.sort((a, b) => (stageOrder[b.stage] ?? -1) - (stageOrder[a.stage] ?? -1));
+      }
+      case 'stage-slowest': {
         const stageOrder: Record<string, number> = {};
         configuredStages.forEach((s, i) => { stageOrder[s.id] = i; });
         return lenders.sort((a, b) => (stageOrder[a.stage] ?? 999) - (stageOrder[b.stage] ?? 999));
@@ -3071,15 +3075,16 @@ export default function DealDetail() {
                             existingLenderNames={deal.lenders?.map(l => l.name) || []}
                             onAddLender={addLender}
                           />
-                          <Select value={lenderSort} onValueChange={(v) => setLenderSort(v as 'updated-desc' | 'updated-asc' | 'stage')}>
-                            <SelectTrigger className="h-8 w-[160px] text-xs">
+                          <Select value={lenderSort} onValueChange={(v) => setLenderSort(v as 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest')}>
+                            <SelectTrigger className="h-8 w-[200px] text-xs">
                               <ArrowDownUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                              <SelectValue />
+                              <SelectValue placeholder="Sort By" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="updated-desc">Newest Updated</SelectItem>
-                              <SelectItem value="updated-asc">Oldest Updated</SelectItem>
-                              <SelectItem value="stage">By Stage</SelectItem>
+                              <SelectItem value="updated-desc">Last Updated: Newest to Oldest</SelectItem>
+                              <SelectItem value="updated-asc">Last Updated: Oldest to Newest</SelectItem>
+                              <SelectItem value="stage-furthest">Stage: Furthest to Slowest</SelectItem>
+                              <SelectItem value="stage-slowest">Stage: Slowest to Furthest</SelectItem>
                             </SelectContent>
                           </Select>
                           <Button 
