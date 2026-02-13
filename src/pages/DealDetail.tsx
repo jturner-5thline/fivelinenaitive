@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles, Pencil } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles, Pencil, ArrowDownUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -425,6 +425,36 @@ export default function DealDetail() {
     deal?.lenders?.map(l => l.name) || [], 
     [deal?.lenders]
   );
+
+  const [lenderSort, setLenderSort] = useState<'updated-desc' | 'updated-asc' | 'stage'>('updated-desc');
+
+  // Sort lenders based on selected sort option
+  const sortedLenders = useMemo(() => {
+    const lenders = deal?.lenders ? [...deal.lenders] : [];
+    if (lenders.length === 0) return lenders;
+    
+    switch (lenderSort) {
+      case 'updated-desc':
+        return lenders.sort((a, b) => {
+          const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+          const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+          return bTime - aTime;
+        });
+      case 'updated-asc':
+        return lenders.sort((a, b) => {
+          const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+          const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+          return aTime - bTime;
+        });
+      case 'stage': {
+        const stageOrder: Record<string, number> = {};
+        configuredStages.forEach((s, i) => { stageOrder[s.id] = i; });
+        return lenders.sort((a, b) => (stageOrder[a.stage] ?? 999) - (stageOrder[b.stage] ?? 999));
+      }
+      default:
+        return lenders;
+    }
+  }, [deal?.lenders, lenderSort, configuredStages]);
   
   
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
@@ -3023,6 +3053,17 @@ export default function DealDetail() {
                             existingLenderNames={deal.lenders?.map(l => l.name) || []}
                             onAddLender={addLender}
                           />
+                          <Select value={lenderSort} onValueChange={(v) => setLenderSort(v as 'updated-desc' | 'updated-asc' | 'stage')}>
+                            <SelectTrigger className="h-8 w-[160px] text-xs">
+                              <ArrowDownUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="updated-desc">Newest Updated</SelectItem>
+                              <SelectItem value="updated-asc">Oldest Updated</SelectItem>
+                              <SelectItem value="stage">By Stage</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -3047,10 +3088,10 @@ export default function DealDetail() {
                             onDragEnd={handleLenderDragEnd}
                           >
                             <SortableContext
-                              items={deal.lenders.map(l => l.id)}
+                              items={sortedLenders.map(l => l.id)}
                               strategy={verticalListSortingStrategy}
                             >
-                              {deal.lenders.map((lender, index) => {
+                              {sortedLenders.map((lender, index) => {
                                 const lenderOutstandingItems = outstandingItems.filter(
                                   item => Array.isArray(item.requestedBy) 
                                     ? item.requestedBy.includes(lender.name)
@@ -3462,7 +3503,7 @@ export default function DealDetail() {
                           STAGE_GROUPS
                             .filter(group => lenderGroupFilters.has(group.id))
                             .map(group => {
-                              const groupLenders = deal.lenders?.filter(l => {
+                              const groupLenders = sortedLenders.filter(l => {
                                 const stage = configuredStages.find(s => s.id === l.stage);
                                 return stage?.group === group.id;
                               }) || [];
