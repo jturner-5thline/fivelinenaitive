@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
   Star,
@@ -10,160 +11,365 @@ import {
   Link2,
   Unlink,
   ChevronLeft,
+  ChevronDown,
+  ChevronRight,
+  Reply,
+  Forward,
+  CornerUpLeft,
+  Sparkles,
+  AlertCircle,
+  CheckCircle2,
+  MinusCircle,
+  MessageSquare,
+  Archive,
 } from 'lucide-react';
-import { MockEmail } from './mockEmailData';
+import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
-interface EmailListProps {
-  emails: MockEmail[];
-  selectedEmail: MockEmail | null;
-  onSelect: (email: MockEmail) => void;
+// ─── Sentiment badge ─────────────────────────────────────────
+function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }) {
+  if (!sentiment) return null;
+  const config = {
+    positive: { icon: CheckCircle2, label: 'Positive', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+    neutral: { icon: MinusCircle, label: 'Neutral', className: 'bg-muted text-muted-foreground border-border' },
+    needs_attention: { icon: AlertCircle, label: 'Needs Attention', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  }[sentiment];
+  const Icon = config.icon;
+  return (
+    <Badge variant="outline" className={cn('text-[10px] h-5 gap-1 font-normal', config.className)}>
+      <Icon className="h-3 w-3" />
+      {config.label}
+    </Badge>
+  );
+}
+
+// ─── AI Summary Strip ────────────────────────────────────────
+function AiSummaryStrip({ email }: { email: MockEmail }) {
+  if (!email.ai_summary) return null;
+  return (
+    <div className="flex items-start gap-2 px-4 py-2.5 bg-primary/5 border-b border-primary/10">
+      <Sparkles className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+      <div className="flex items-center gap-2 flex-wrap min-w-0">
+        <p className="text-xs text-foreground/80 leading-relaxed">{email.ai_summary}</p>
+        <SentimentBadge sentiment={email.ai_sentiment} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Avatar ──────────────────────────────────────────────────
+function EmailAvatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+  const colorClass = getAvatarColor(name);
+  const sizeClass = size === 'sm' ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-xs';
+  return (
+    <div className={cn('rounded-full flex items-center justify-center font-semibold shrink-0', sizeClass, colorClass)}>
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+// ─── Thread List Item ────────────────────────────────────────
+interface ThreadListItemProps {
+  thread: EmailThread;
+  isSelected: boolean;
+  onSelect: () => void;
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
 }
 
-export function EmailList({ emails, selectedEmail, onSelect, onToggleLink, onToggleStar }: EmailListProps) {
-  if (emails.length === 0) {
+function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleStar }: ThreadListItemProps) {
+  const [hovered, setHovered] = useState(false);
+  const latest = thread.latestEmail;
+  const displayName = latest.folder === 'sent' ? `To: ${latest.to_name || latest.to_email}` : latest.from_name;
+  const threadCount = thread.emails.length;
+
+  return (
+    <div
+      className={cn(
+        'group relative px-4 py-3 cursor-pointer transition-all duration-150',
+        isSelected ? 'bg-accent/80' : 'hover:bg-muted/60',
+        thread.hasUnread && !isSelected && 'bg-primary/[0.03]'
+      )}
+      onClick={onSelect}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="flex items-start gap-3">
+        <EmailAvatar name={latest.folder === 'sent' ? (latest.to_name || 'U') : latest.from_name} />
+        
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={cn('text-sm truncate', thread.hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/90')}>
+                {displayName}
+              </span>
+              {threadCount > 1 && (
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full font-medium shrink-0">
+                  {threadCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] text-muted-foreground shrink-0">
+              {formatDistanceToNow(new Date(latest.received_at), { addSuffix: false })}
+            </span>
+          </div>
+          
+          <p className={cn('text-[13px] truncate', thread.hasUnread ? 'text-foreground font-medium' : 'text-foreground/70')}>
+            {thread.subject}
+          </p>
+          
+          <p className="text-xs text-muted-foreground truncate mt-0.5">{latest.snippet}</p>
+          
+          <div className="flex items-center gap-1.5 mt-1.5">
+            {thread.isLinked && (
+              <Badge variant="secondary" className="text-[10px] h-[18px] px-1.5 gap-0.5">
+                <Link2 className="h-2.5 w-2.5" /> Linked
+              </Badge>
+            )}
+            {thread.hasAttachments && (
+              <Paperclip className="h-3 w-3 text-muted-foreground" />
+            )}
+            {latest.labels.slice(0, 2).map(l => (
+              <Badge key={l} variant="outline" className="text-[10px] h-[18px] px-1.5">{l}</Badge>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Hover actions */}
+      {hovered && (
+        <div className="absolute right-3 top-3 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border rounded-md shadow-sm px-1 py-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleStar(latest); }}
+                className="p-1 rounded hover:bg-muted transition-colors"
+              >
+                <Star className={cn('h-3.5 w-3.5', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleLink(latest); }}
+                className="p-1 rounded hover:bg-muted transition-colors"
+              >
+                {thread.isLinked ? <Unlink className="h-3.5 w-3.5 text-muted-foreground" /> : <Link2 className="h-3.5 w-3.5 text-muted-foreground" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink' : 'Link'}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => { e.stopPropagation(); toast.info('Archive coming soon'); }}
+                className="p-1 rounded hover:bg-muted transition-colors"
+              >
+                <Archive className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Archive</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Email List (threaded) ───────────────────────────────────
+interface EmailListProps {
+  emails: MockEmail[];
+  selectedThread: EmailThread | null;
+  onSelectThread: (thread: EmailThread) => void;
+  onToggleLink: (email: MockEmail) => void;
+  onToggleStar: (email: MockEmail) => void;
+}
+
+export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar }: EmailListProps) {
+  const threads = groupEmailsByThread(emails);
+
+  if (threads.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full py-12 text-center">
+      <div className="flex flex-col items-center justify-center h-full py-16 text-center">
+        <MessageSquare className="h-8 w-8 text-muted-foreground/30 mb-2" />
         <p className="text-sm text-muted-foreground">No emails in this folder</p>
       </div>
     );
   }
 
   return (
-    <ScrollArea className="h-[500px]">
-      <div className="divide-y divide-border">
-        {emails.map((email) => (
-          <div
-            key={email.id}
-            className={`p-3 cursor-pointer transition-colors hover:bg-muted/50 ${
-              selectedEmail?.id === email.id ? 'bg-muted' : ''
-            } ${!email.is_read ? 'bg-primary/5' : ''}`}
-            onClick={() => onSelect(email)}
-          >
-            <div className="flex items-start gap-2">
-              <button
-                onClick={(e) => { e.stopPropagation(); onToggleStar(email); }}
-                className="mt-0.5 shrink-0"
-              >
-                <Star className={`h-4 w-4 ${email.is_starred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/40 hover:text-muted-foreground'}`} />
-              </button>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`text-sm truncate ${!email.is_read ? 'font-semibold' : 'font-medium'}`}>
-                    {email.folder === 'sent' ? `To: ${email.to_name || email.to_email}` : email.from_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {formatDistanceToNow(new Date(email.received_at), { addSuffix: true })}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <p className={`text-sm truncate ${!email.is_read ? 'text-foreground font-medium' : 'text-foreground/80'}`}>
-                    {email.subject}
-                  </p>
-                  {email.has_attachments && <Paperclip className="h-3 w-3 text-muted-foreground shrink-0" />}
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{email.snippet}</p>
-                <div className="flex items-center gap-1.5 mt-1">
-                  {email.is_linked_to_deal && (
-                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
-                      <Link2 className="h-2.5 w-2.5 mr-0.5" />
-                      Linked
-                    </Badge>
-                  )}
-                  {email.labels.map(l => (
-                    <Badge key={l} variant="outline" className="text-[10px] h-4 px-1.5">{l}</Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+    <ScrollArea className="h-full">
+      <div className="divide-y divide-border/50">
+        {threads.map((thread) => (
+          <ThreadListItem
+            key={thread.threadId}
+            thread={thread}
+            isSelected={selectedThread?.threadId === thread.threadId}
+            onSelect={() => onSelectThread(thread)}
+            onToggleLink={onToggleLink}
+            onToggleStar={onToggleStar}
+          />
         ))}
       </div>
     </ScrollArea>
   );
 }
 
+// ─── Collapsible Thread Message ──────────────────────────────
+function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail; isLatest: boolean; defaultExpanded: boolean }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const displayName = email.from_name === 'You' ? 'You' : email.from_name;
+
+  return (
+    <div className={cn('border-b border-border/30 last:border-0', expanded ? '' : 'hover:bg-muted/30')}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left"
+      >
+        <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} size="sm" />
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span className={cn('text-sm truncate', isLatest ? 'font-semibold' : 'font-medium text-foreground/80')}>
+            {displayName}
+          </span>
+          {!expanded && (
+            <span className="text-xs text-muted-foreground truncate">{email.snippet}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[11px] text-muted-foreground">
+            {format(new Date(email.received_at), 'MMM d, h:mm a')}
+          </span>
+          {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 pl-[52px]">
+          <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+            <span>to {email.folder === 'sent' ? (email.to_name || email.to_email) : 'me'}</span>
+            {email.has_attachments && <Paperclip className="h-3 w-3" />}
+          </div>
+          <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
+            {email.body_preview}
+          </div>
+          {email.has_attachments && (
+            <div className="mt-3 flex gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/30 text-sm hover:bg-muted/50 transition-colors cursor-pointer">
+                <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-foreground/80">document.pdf</span>
+                <span className="text-[11px] text-muted-foreground">2.4 MB</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Email Detail (thread view with toolbar) ─────────────────
 interface EmailDetailProps {
-  email: MockEmail;
+  thread: EmailThread;
   onBack: () => void;
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
 }
 
-export function EmailDetail({ email, onBack, onToggleLink, onToggleStar }: EmailDetailProps) {
+export function EmailDetail({ thread, onBack, onToggleLink, onToggleStar }: EmailDetailProps) {
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'r' || e.key === 'R') { e.preventDefault(); toast.info('Reply coming soon'); }
+      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toast.info('Forward coming soon'); }
+      if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [thread, onToggleLink]);
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 p-3 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden">
+      {/* Sticky toolbar */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
           <ChevronLeft className="h-4 w-4" />
         </Button>
+        
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold truncate">{email.subject}</h3>
+          <h3 className="text-sm font-semibold truncate">{thread.subject}</h3>
+          <p className="text-[11px] text-muted-foreground">
+            {thread.emails.length} message{thread.emails.length !== 1 ? 's' : ''} · {thread.participants.join(', ') || 'You'}
+          </p>
         </div>
+
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => onToggleStar(email)}>
-            <Star className={`h-4 w-4 ${email.is_starred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
-          </Button>
-          <Button
-            variant={email.is_linked_to_deal ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => onToggleLink(email)}
-          >
-            {email.is_linked_to_deal ? (
-              <><Unlink className="h-3.5 w-3.5 mr-1.5" />Unlink</>
-            ) : (
-              <><Link2 className="h-3.5 w-3.5 mr-1.5" />Link to Deal</>
-            )}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Reply coming soon')}>
+                <Reply className="h-3.5 w-3.5" />
+                Reply
+                <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">R</kbd>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
+                <Forward className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Forward</span>
+                <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">F</kbd>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
+          </Tooltip>
+          <Separator orientation="vertical" className="h-5 mx-1" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
+                <Star className={cn('h-4 w-4', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={thread.isLinked ? 'secondary' : 'outline'}
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => onToggleLink(thread.latestEmail)}
+              >
+                {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">{thread.isLinked ? 'Unlink' : 'Link'}</span>
+                <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">L</kbd>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink from deal (L)' : 'Link to deal (L)'}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
-      <div className="p-4 space-y-4 flex-1">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                {(email.folder === 'sent' ? email.to_name : email.from_name).charAt(0)}
-              </div>
-              <div>
-                <p className="text-sm font-medium">
-                  {email.folder === 'sent' ? `To: ${email.to_name || email.to_email}` : email.from_name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {email.folder === 'sent' ? email.to_email : email.from_email}
-                </p>
-              </div>
-            </div>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {format(new Date(email.received_at), 'MMM d, yyyy h:mm a')}
-          </span>
+      {/* AI Summary */}
+      <AiSummaryStrip email={thread.latestEmail} />
+
+      {/* Thread messages */}
+      <ScrollArea className="flex-1">
+        <div>
+          {thread.emails.map((email, idx) => (
+            <ThreadMessage
+              key={email.id}
+              email={email}
+              isLatest={idx === 0}
+              defaultExpanded={idx === 0}
+            />
+          ))}
         </div>
-
-        <Separator />
-
-        <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
-          {email.body_preview}
-        </div>
-
-        {email.has_attachments && (
-          <>
-            <Separator />
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Attachments</p>
-              <div className="flex gap-2">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-muted/50 text-sm">
-                  <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>document.pdf</span>
-                  <span className="text-xs text-muted-foreground">2.4 MB</span>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }
