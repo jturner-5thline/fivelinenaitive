@@ -3336,22 +3336,21 @@ export default function DealDetail() {
                                     )}
                                     <div className="flex-1 relative">
                                       {/* Preview textarea - shows 2 lines */}
-                                      <MentionTextarea
+                                      <Textarea
+                                        placeholder="Add notes... (Click to expand)"
                                         value={lender.notes || ''}
-                                        onChange={(html) => updateLenderNotes(lender.id, html, committedNotes)}
-                                        onBlur={() => commitLenderNotes(lender.id)}
+                                        onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
                                             commitLenderNotes(lender.id);
                                           }
                                         }}
-                                        placeholder="Add notes... (Click to expand)"
-                                        mentionUsers={mentionUsers}
-                                        autoFocus={false}
                                         className={cn(
-                                          "text-xs min-h-[48px]",
+                                          "text-xs resize-none py-1.5 transition-all pr-8 min-h-[48px] h-12",
                                           savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                         )}
+                                        rows={2}
                                       />
                                       <div className="absolute right-2 top-1.5">
                                         <SaveIndicator 
@@ -3384,22 +3383,21 @@ export default function DealDetail() {
                                               </span>
                                             )}
                                           </div>
-                                          <MentionTextarea
+                                          <Textarea
+                                            placeholder="Add notes... (Press Enter to save)"
                                             value={lender.notes || ''}
-                                            onChange={(html) => updateLenderNotes(lender.id, html, committedNotes)}
-                                            onBlur={() => commitLenderNotes(lender.id)}
+                                            onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
                                             onKeyDown={(e) => {
                                               if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
                                                 commitLenderNotes(lender.id);
                                               }
                                             }}
-                                            placeholder="Add notes... (Press Enter to save)"
-                                            mentionUsers={mentionUsers}
-                                            autoFocus={false}
                                             className={cn(
-                                              "text-xs min-h-[120px]",
+                                              "text-xs resize-none min-h-[120px]",
                                               savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                             )}
+                                            rows={6}
                                           />
                                           <p className="text-[10px] text-muted-foreground">Press Enter to save</p>
                                         </div>
@@ -3710,23 +3708,22 @@ export default function DealDetail() {
                                               </span>
                                             )}
                                             <div className="flex-1 relative">
-                                              <MentionTextarea
+                                              <Textarea
+                                                placeholder="Add notes... (Press Enter to save)"
                                                 value={lender.notes || ''}
-                                                onChange={(html) => updateLenderNotes(lender.id, html, committedNotes)}
-                                                onBlur={() => commitLenderNotes(lender.id)}
+                                                onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
                                                 onKeyDown={(e) => {
                                                   if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
                                                     commitLenderNotes(lender.id);
                                                   }
                                                 }}
-                                                placeholder="Add notes... (Press Enter to save)"
-                                                mentionUsers={mentionUsers}
-                                                autoFocus={false}
                                                 className={cn(
-                                                  "text-xs",
-                                                  expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px]',
+                                                  "text-xs resize-none py-1.5 transition-all pr-8",
+                                                  expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
                                                   savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                                 )}
+                                                rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
                                               />
                                               <div className="absolute right-2 top-1.5">
                                                 <SaveIndicator 
