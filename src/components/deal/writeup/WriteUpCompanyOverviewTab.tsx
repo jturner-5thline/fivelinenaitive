@@ -18,8 +18,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { DealWriteUpData } from '../DealWriteUp';
-import { Check, ChevronsUpDown, Loader2, Sparkles } from 'lucide-react';
+import { DealWriteUpData, TeamMember } from '../DealWriteUp';
+import { Check, ChevronsUpDown, Loader2, Sparkles, Plus, Trash2, Linkedin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -517,6 +517,87 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
             pattern="[0-9]*"
           />
         </div>
+      </div>
+
+      {/* Team Members Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label>Team</Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1"
+            onClick={() => {
+              const newMember: TeamMember = {
+                id: crypto.randomUUID(),
+                name: '',
+                title: '',
+                linkedin: '',
+              };
+              updateField('team', [...data.team, newMember]);
+            }}
+          >
+            <Plus className="h-3 w-3" />
+            Add Member
+          </Button>
+        </div>
+        {data.team.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No team members added yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {data.team.map((member, index) => (
+              <div key={member.id} className="flex items-start gap-2 p-3 border rounded-lg">
+                <div className="flex-1 grid grid-cols-3 gap-2">
+                  <Input
+                    value={member.name}
+                    onChange={(e) => {
+                      const updated = [...data.team];
+                      updated[index] = { ...updated[index], name: e.target.value };
+                      updateField('team', updated);
+                    }}
+                    placeholder="Name *"
+                    className="h-8 text-sm"
+                  />
+                  <Input
+                    value={member.title}
+                    onChange={(e) => {
+                      const updated = [...data.team];
+                      updated[index] = { ...updated[index], title: e.target.value };
+                      updateField('team', updated);
+                    }}
+                    placeholder="Title *"
+                    className="h-8 text-sm"
+                  />
+                  <div className="flex items-center gap-1">
+                    <Linkedin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <Input
+                      value={member.linkedin}
+                      onChange={(e) => {
+                        const updated = [...data.team];
+                        updated[index] = { ...updated[index], linkedin: e.target.value };
+                        updateField('team', updated);
+                      }}
+                      placeholder="LinkedIn URL"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => {
+                    updateField('team', data.team.filter((_, i) => i !== index));
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Deal Type & Billing Model Row */}

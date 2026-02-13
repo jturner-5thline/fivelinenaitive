@@ -40,6 +40,7 @@ interface WriteUpData {
   ownership: OwnershipEntry[];
   totalEquityRaised: string;
   publishAsAnonymous: boolean;
+  team?: Array<{ name: string; title: string; linkedin?: string }>;
 }
 
 interface DataRoomFile {
@@ -359,6 +360,7 @@ serve(async (req) => {
         })) : undefined,
         total_equity_raised: writeUpData!.totalEquityRaised || undefined,
         is_published: !writeUpData!.publishAsAnonymous,
+        team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
       };
 
       flexPayload = {
