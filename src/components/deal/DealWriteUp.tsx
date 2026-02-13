@@ -242,6 +242,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const [isPendingPublish, setIsPendingPublish] = useState(false);
   const [publishCountdown, setPublishCountdown] = useState(0);
   const [showFlexConfirmDialog, setShowFlexConfirmDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [showUnpublishDialog, setShowUnpublishDialog] = useState(false);
   const [showEmptyFieldsWarning, setShowEmptyFieldsWarning] = useState(false);
   const publishTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1066,6 +1067,13 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             </div>
             <div className="flex gap-3 flex-wrap justify-end">
               <Button 
+                variant="outline" 
+                onClick={() => setShowPreviewDialog(true)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+              <Button 
                 variant="secondary" 
                 onClick={onSave} 
                 disabled={isSaving || autoSaveStatus === 'saving'}
@@ -1251,6 +1259,23 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   </div>
                 </div>
               )}
+              {/* Team */}
+              {(data.team || []).filter(m => m.name.trim()).length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <h4 className="font-semibold text-sm mb-3">Team ({(data.team || []).filter(m => m.name.trim()).length})</h4>
+                  <div className="space-y-2">
+                    {(data.team || []).filter(m => m.name.trim()).map((member, index) => (
+                      <div key={member.id || index} className="text-sm">
+                        <span className="font-medium">{member.name}</span>
+                        {member.title && <span className="text-muted-foreground"> — {member.title}</span>}
+                        {member.linkedin && (
+                          <span className="text-muted-foreground text-xs ml-2">({member.linkedin})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
 
@@ -1269,6 +1294,170 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 </>
               )}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Preview Dialog (view-only) */}
+      <AlertDialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Write-Up Preview
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Preview of how this deal write-up will appear in FLEx.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-4">
+              {/* Company Information */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <h4 className="font-semibold text-sm mb-3">Company Information</h4>
+                <div className="space-y-1">
+                  <DataPreviewRow label="Company Name" value={data.companyName} />
+                  <DataPreviewRow label="Website" value={data.companyUrl} />
+                  <DataPreviewRow label="LinkedIn" value={data.linkedinUrl} />
+                  <DataPreviewRow label="Industry" value={data.industries.join(', ') || '—'} />
+                  <DataPreviewRow label="Location" value={data.location} />
+                  <DataPreviewRow label="Year Founded" value={data.yearFounded || '—'} />
+                  <DataPreviewRow label="Headcount" value={data.headcount || '—'} />
+                </div>
+              </div>
+
+              {/* Deal Details */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <h4 className="font-semibold text-sm mb-3">Deal Details</h4>
+                <div className="space-y-1">
+                  <DataPreviewRow label="Deal Type" value={dealTypeIdsToLabels(data.dealTypes).join(', ') || '—'} />
+                  <DataPreviewRow label="Capital Ask" value={data.capitalAsk} />
+                  <DataPreviewRow label="Status" value={data.status} />
+                  <DataPreviewRow label="Billing Model" value={data.billingModels.join(', ') || '—'} />
+                  <DataPreviewRow label="Profitability" value={data.profitability} />
+                  <DataPreviewRow label="Gross Margins" value={data.grossMargins} />
+                </div>
+              </div>
+
+              {/* Financials */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <h4 className="font-semibold text-sm mb-3">Financials</h4>
+                <div className="space-y-1">
+                  <DataPreviewRow 
+                    label="Financial Data As Of" 
+                    value={data.financialDataAsOf ? format(data.financialDataAsOf, 'MMM d, yyyy') : undefined} 
+                  />
+                  <DataPreviewRow label="Accounting System" value={data.accountingSystem} />
+                </div>
+                {data.financialYears.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {data.financialYears.map((fy) => (
+                      <div key={fy.id} className="text-sm flex gap-4">
+                        <span className="font-medium w-12">{fy.year}</span>
+                        <span>Rev: {fy.revenue || '—'}</span>
+                        <span>GM: {fy.gross_margin || '—'}</span>
+                        <span>EBITDA: {fy.ebitda || '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {data.financialComments.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    <span className="text-xs text-muted-foreground font-medium">Comments</span>
+                    {data.financialComments.map((fc) => (
+                      <div key={fc.id} className="text-sm">
+                        <span className="font-medium">{fc.title}</span>
+                        {fc.description && <p className="text-muted-foreground text-xs">{fc.description}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Details */}
+              {(data.useOfFunds || data.existingDebtDetails || data.description) && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <h4 className="font-semibold text-sm mb-3">Additional Details</h4>
+                  <div className="space-y-3">
+                    {data.useOfFunds && (
+                      <div>
+                        <span className="text-muted-foreground text-sm">Use of Funds</span>
+                        <p className="text-sm mt-1">{data.useOfFunds}</p>
+                      </div>
+                    )}
+                    {data.existingDebtDetails && (
+                      <div>
+                        <span className="text-muted-foreground text-sm">Existing Debt</span>
+                        <p className="text-sm mt-1">{data.existingDebtDetails}</p>
+                      </div>
+                    )}
+                    {data.description && (
+                      <div>
+                        <span className="text-muted-foreground text-sm">Description</span>
+                        <p className="text-sm mt-1">{data.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Key Items */}
+              {data.keyItems.length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <h4 className="font-semibold text-sm mb-3">Key Items ({data.keyItems.length})</h4>
+                  <div className="space-y-2">
+                    {data.keyItems.map((item, index) => (
+                      <div key={item.id} className="text-sm">
+                        <span className="font-medium">{index + 1}. {item.title || 'Untitled'}</span>
+                        {item.description && (
+                          <p className="text-muted-foreground text-xs mt-0.5">{item.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Company Highlights */}
+              {data.companyHighlights.length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <h4 className="font-semibold text-sm mb-3">Company Highlights ({data.companyHighlights.length})</h4>
+                  <div className="space-y-2">
+                    {data.companyHighlights.map((item, index) => (
+                      <div key={item.id} className="text-sm">
+                        <span className="font-medium">{index + 1}. {item.title || 'Untitled'}</span>
+                        {item.description && (
+                          <p className="text-muted-foreground text-xs mt-0.5">{item.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Team */}
+              {(data.team || []).filter(m => m.name.trim()).length > 0 && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <h4 className="font-semibold text-sm mb-3">Team ({(data.team || []).filter(m => m.name.trim()).length})</h4>
+                  <div className="space-y-2">
+                    {(data.team || []).filter(m => m.name.trim()).map((member, index) => (
+                      <div key={member.id || index} className="text-sm">
+                        <span className="font-medium">{member.name}</span>
+                        {member.title && <span className="text-muted-foreground"> — {member.title}</span>}
+                        {member.linkedin && (
+                          <span className="text-muted-foreground text-xs ml-2">({member.linkedin})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
