@@ -1316,6 +1316,47 @@ export type Database = {
           },
         ]
       }
+      deal_memo_audit_logs: {
+        Row: {
+          created_at: string
+          deal_id: string
+          field_changed: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          user_display_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          field_changed: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          user_display_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          field_changed?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          user_display_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_memo_audit_logs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_memo_views: {
         Row: {
           deal_id: string

@@ -9,6 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDealMemo } from '@/hooks/useDealMemo';
 import { useDealMemoNotification } from '@/hooks/useDealMemoNotification';
+import { useDealMemoAuditLog } from '@/hooks/useDealMemoAuditLog';
+import { MemoAuditLogPopover } from '@/components/deal/MemoAuditLogPopover';
 
 interface DealMemoDialogProps {
   dealId: string;
@@ -42,6 +44,7 @@ const MEMO_SECTIONS: MemoSection[] = [
 export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
   const { memo, isLoading, isSaving, saveMemo } = useDealMemo(dealId);
   const { hasUnreadUpdates, markAsViewed } = useDealMemoNotification(dealId);
+  const { entries: auditEntries, isLoading: auditLoading, logChanges } = useDealMemoAuditLog(dealId);
   const [isOpen, setIsOpen] = useState(false);
   const [localValues, setLocalValues] = useState<Record<string, string>>({
     narrative: '',
@@ -152,14 +155,27 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
   };
 
   const handleSave = async () => {
-    await saveMemo({
+    const newValues = {
       narrative: localValues.narrative || null,
       highlights: localValues.highlights || null,
       hurdles: localValues.hurdles || null,
       lender_notes: localValues.lender_notes || null,
       analyst_notes: localValues.analyst_notes || null,
       other_notes: localValues.other_notes || null,
-    });
+    };
+
+    // Build old values from current memo
+    const oldValues: Record<string, string | null> = {
+      narrative: memo?.narrative || null,
+      highlights: memo?.highlights || null,
+      hurdles: memo?.hurdles || null,
+      lender_notes: memo?.lender_notes || null,
+      analyst_notes: memo?.analyst_notes || null,
+      other_notes: memo?.other_notes || null,
+    };
+
+    await saveMemo(newValues);
+    await logChanges(dealId, oldValues, newValues);
     setHasChanges(false);
   };
 
@@ -203,18 +219,21 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                 {companyName}
               </p>
             </div>
-            <Button 
-              onClick={handleSave} 
-              disabled={!hasChanges || isSaving}
-              size="sm"
-            >
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Save
-            </Button>
+            <div className="flex items-center gap-2">
+              <MemoAuditLogPopover entries={auditEntries} isLoading={auditLoading} />
+              <Button 
+                onClick={handleSave} 
+                disabled={!hasChanges || isSaving}
+                size="sm"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Save
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
