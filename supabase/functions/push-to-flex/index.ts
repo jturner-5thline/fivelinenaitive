@@ -12,6 +12,7 @@ interface OwnershipEntry {
   id: string;
   owner_name: string;
   ownership_percentage: number;
+  owner_url: string | null;
   position: number;
 }
 
@@ -357,6 +358,7 @@ serve(async (req) => {
         cap_table: writeUpData!.ownership?.length > 0 ? writeUpData!.ownership.map(o => ({
           name: o.owner_name,
           ownership: o.ownership_percentage,
+          url: o.owner_url || undefined,
         })) : undefined,
         total_equity_raised: writeUpData!.totalEquityRaised || undefined,
         is_published: !writeUpData!.publishAsAnonymous,
