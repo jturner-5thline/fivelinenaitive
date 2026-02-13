@@ -238,7 +238,7 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
 
           {/* ─── Middle: Email list ─── */}
           <div className={cn(
-            'border-r flex-shrink-0 flex flex-col min-w-0',
+            'border-r flex-shrink-0 flex flex-col min-w-0 overflow-hidden',
             currentThread ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
           )}>
             {/* List header */}
