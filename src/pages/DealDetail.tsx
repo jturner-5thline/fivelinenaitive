@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles, Pencil, ArrowDownUp } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles, Pencil, ArrowDownUp, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -2994,50 +2994,68 @@ export default function DealDetail() {
                       />
                       <div className="flex items-center gap-2 ml-auto">
                       {deal.lenders && deal.lenders.length > 0 && (
-                        <>
-                          <button
-                            onClick={() => setLenderGroupFilters(new Set())}
-                            className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                              lenderGroupFilters.size === 0
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            }`}
-                          >
-                            All
-                          </button>
-                          {STAGE_GROUPS.map((group) => {
-                            const count = deal.lenders?.filter(l => {
-                              const stage = configuredStages.find(s => s.id === l.stage);
-                              return stage?.group === group.id;
-                            }).length || 0;
-                            const isActive = lenderGroupFilters.has(group.id);
-                            return (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                              <Filter className="h-3.5 w-3.5" />
+                              Stage
+                              {lenderGroupFilters.size > 0 && (
+                                <span className="ml-1 rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-[10px] leading-none font-medium">
+                                  {lenderGroupFilters.size}
+                                </span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48 p-2" align="start">
+                            <div className="space-y-1">
                               <button
-                                key={group.id}
-                                onClick={() => {
-                                  setLenderGroupFilters(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(group.id)) {
-                                      next.delete(group.id);
-                                    } else {
-                                      next.add(group.id);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors ${
-                                  isActive
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                }`}
+                                onClick={() => setLenderGroupFilters(new Set())}
+                                className={cn(
+                                  "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors",
+                                  lenderGroupFilters.size === 0
+                                    ? "bg-accent text-accent-foreground"
+                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                )}
                               >
-                                <span className={`h-2 w-2 rounded-full ${group.color}`} />
-                                {group.label}
-                                {count > 0 && <span className="font-medium">({count})</span>}
+                                All
                               </button>
-                            );
-                          })}
-                        </>
+                              {STAGE_GROUPS.map((group) => {
+                                const count = deal.lenders?.filter(l => {
+                                  const stage = configuredStages.find(s => s.id === l.stage);
+                                  return stage?.group === group.id;
+                                }).length || 0;
+                                const isActive = lenderGroupFilters.has(group.id);
+                                return (
+                                  <button
+                                    key={group.id}
+                                    onClick={() => {
+                                      setLenderGroupFilters(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(group.id)) {
+                                          next.delete(group.id);
+                                        } else {
+                                          next.add(group.id);
+                                        }
+                                        return next;
+                                      });
+                                    }}
+                                    className={cn(
+                                      "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors",
+                                      isActive
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                    )}
+                                  >
+                                    <Checkbox checked={isActive} className="h-3.5 w-3.5 pointer-events-none" />
+                                    <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                                    {group.label}
+                                    {count > 0 && <span className="ml-auto font-medium">{count}</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       )}
                           <LenderSuggestionsPanel
                             dealId={id}
