@@ -7,7 +7,17 @@ const corsHeaders = {
 };
 
 const UNIPILE_API_KEY = Deno.env.get("UNIPILE_API_KEY");
-const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN");
+const RAW_UNIPILE_DSN = Deno.env.get("UNIPILE_DSN");
+
+function extractBaseUrl(dsn: string | undefined): string | undefined {
+  if (!dsn) return undefined;
+  const urlMatch = dsn.match(/--url\s+(https?:\/\/[^\s']+)/);
+  if (urlMatch) return urlMatch[1].replace(/\/api\/.*$/, '');
+  if (dsn.match(/^https?:\/\//)) return dsn.replace(/\/+$/, '');
+  return `https://${dsn.replace(/\/+$/, '')}`;
+}
+
+const UNIPILE_DSN = extractBaseUrl(RAW_UNIPILE_DSN);
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -37,7 +47,7 @@ serve(async (req: Request): Promise<Response> => {
 
     if (status === "CREATION_SUCCESS") {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      const unipileBaseUrl = UNIPILE_DSN?.startsWith("http") ? UNIPILE_DSN : `https://${UNIPILE_DSN}`;
+      const unipileBaseUrl = UNIPILE_DSN!;
 
       // Fetch account details to get email address
       let emailAddress = null;

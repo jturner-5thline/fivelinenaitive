@@ -7,7 +7,20 @@ const corsHeaders = {
 };
 
 const UNIPILE_API_KEY = Deno.env.get("UNIPILE_API_KEY");
-const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN");
+const RAW_UNIPILE_DSN = Deno.env.get("UNIPILE_DSN");
+
+// Extract the actual base URL from UNIPILE_DSN, even if it contains a full curl command
+function extractBaseUrl(dsn: string | undefined): string | undefined {
+  if (!dsn) return undefined;
+  // If it contains a curl command, extract the URL after --url
+  const urlMatch = dsn.match(/--url\s+(https?:\/\/[^\s']+)/);
+  if (urlMatch) return urlMatch[1].replace(/\/api\/.*$/, '');
+  // If it starts with https:// directly, use it
+  if (dsn.match(/^https?:\/\//)) return dsn.replace(/\/+$/, '');
+  return `https://${dsn.replace(/\/+$/, '')}`;
+}
+
+const UNIPILE_DSN = extractBaseUrl(RAW_UNIPILE_DSN);
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -53,7 +66,8 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const unipileBaseUrl = UNIPILE_DSN.startsWith("http") ? UNIPILE_DSN : `https://${UNIPILE_DSN}`;
+    const unipileBaseUrl = UNIPILE_DSN!;
+    console.log("Using Unipile base URL:", unipileBaseUrl);
 
     switch (action) {
       case "get_auth_url": {
