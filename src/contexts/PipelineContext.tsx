@@ -24,12 +24,18 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem('active-pipeline-id');
   });
 
-  // Auto-select default pipeline when pipelines load
+  // Track whether the user has made an explicit selection (including "All Deals" = null)
+  const [hasUserSelected, setHasUserSelected] = useState(() => {
+    return localStorage.getItem('active-pipeline-id') !== null || localStorage.getItem('pipeline-all-deals') === 'true';
+  });
+
+  // Auto-select default pipeline only on first load when no prior selection exists
   useEffect(() => {
-    if (pipelines.length > 0 && !activePipelineId) {
+    if (pipelines.length > 0 && !hasUserSelected && !activePipelineId) {
       const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0];
       setActivePipelineIdState(defaultPipeline.id);
       localStorage.setItem('active-pipeline-id', defaultPipeline.id);
+      setHasUserSelected(true);
     }
     // If active pipeline was deleted, reset
     if (activePipelineId && pipelines.length > 0 && !pipelines.find(p => p.id === activePipelineId)) {
@@ -37,14 +43,17 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
       setActivePipelineIdState(defaultPipeline.id);
       localStorage.setItem('active-pipeline-id', defaultPipeline.id);
     }
-  }, [pipelines, activePipelineId]);
+  }, [pipelines, activePipelineId, hasUserSelected]);
 
   const setActivePipelineId = useCallback((id: string | null) => {
     setActivePipelineIdState(id);
+    setHasUserSelected(true);
     if (id) {
       localStorage.setItem('active-pipeline-id', id);
+      localStorage.removeItem('pipeline-all-deals');
     } else {
       localStorage.removeItem('active-pipeline-id');
+      localStorage.setItem('pipeline-all-deals', 'true');
     }
   }, []);
 
