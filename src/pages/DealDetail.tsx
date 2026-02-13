@@ -40,6 +40,7 @@ import { useActivityLog } from '@/hooks/useActivityLog';
 import { useFlexActivityNotifications } from '@/hooks/useFlexActivityNotifications';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
+import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
@@ -3335,21 +3336,22 @@ export default function DealDetail() {
                                     )}
                                     <div className="flex-1 relative">
                                       {/* Preview textarea - shows 2 lines */}
-                                      <Textarea
-                                        placeholder="Add notes... (Click to expand)"
+                                      <MentionTextarea
                                         value={lender.notes || ''}
-                                        onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
+                                        onChange={(html) => updateLenderNotes(lender.id, html, committedNotes)}
+                                        onBlur={() => commitLenderNotes(lender.id)}
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
                                             commitLenderNotes(lender.id);
                                           }
                                         }}
+                                        placeholder="Add notes... (Click to expand)"
+                                        mentionUsers={mentionUsers}
+                                        autoFocus={false}
                                         className={cn(
-                                          "text-xs resize-none py-1.5 transition-all pr-8 min-h-[48px] h-12",
+                                          "text-xs min-h-[48px]",
                                           savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                         )}
-                                        rows={2}
                                       />
                                       <div className="absolute right-2 top-1.5">
                                         <SaveIndicator 
@@ -3382,21 +3384,22 @@ export default function DealDetail() {
                                               </span>
                                             )}
                                           </div>
-                                          <Textarea
-                                            placeholder="Add notes... (Press Enter to save)"
+                                          <MentionTextarea
                                             value={lender.notes || ''}
-                                            onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
+                                            onChange={(html) => updateLenderNotes(lender.id, html, committedNotes)}
+                                            onBlur={() => commitLenderNotes(lender.id)}
                                             onKeyDown={(e) => {
                                               if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
                                                 commitLenderNotes(lender.id);
                                               }
                                             }}
+                                            placeholder="Add notes... (Press Enter to save)"
+                                            mentionUsers={mentionUsers}
+                                            autoFocus={false}
                                             className={cn(
-                                              "text-xs resize-none min-h-[120px]",
+                                              "text-xs min-h-[120px]",
                                               savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                             )}
-                                            rows={6}
                                           />
                                           <p className="text-[10px] text-muted-foreground">Press Enter to save</p>
                                         </div>
@@ -3707,22 +3710,23 @@ export default function DealDetail() {
                                               </span>
                                             )}
                                             <div className="flex-1 relative">
-                                              <Textarea
-                                                placeholder="Add notes... (Press Enter to save)"
+                                              <MentionTextarea
                                                 value={lender.notes || ''}
-                                                onChange={(e) => updateLenderNotes(lender.id, e.target.value, committedNotes)}
+                                                onChange={(html) => updateLenderNotes(lender.id, html, committedNotes)}
+                                                onBlur={() => commitLenderNotes(lender.id)}
                                                 onKeyDown={(e) => {
                                                   if (e.key === 'Enter' && !e.shiftKey) {
-                                                    e.preventDefault();
                                                     commitLenderNotes(lender.id);
                                                   }
                                                 }}
+                                                placeholder="Add notes... (Press Enter to save)"
+                                                mentionUsers={mentionUsers}
+                                                autoFocus={false}
                                                 className={cn(
-                                                  "text-xs resize-none py-1.5 transition-all pr-8",
-                                                  expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px] h-8',
+                                                  "text-xs",
+                                                  expandedLenderNotes.has(lender.id) ? 'min-h-[100px]' : 'min-h-[32px]',
                                                   savedNotesFlash.has(lender.id) && 'ring-2 ring-success border-success'
                                                 )}
-                                                rows={expandedLenderNotes.has(lender.id) ? 4 : 1}
                                               />
                                               <div className="absolute right-2 top-1.5">
                                                 <SaveIndicator 
