@@ -19,7 +19,7 @@ interface WriteUpPreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   data: DealWriteUpData;
-  owners: Array<{ owner_name: string; ownership_percentage: number }>;
+  owners: Array<{ owner_name: string; ownership_percentage: number; owner_url?: string | null }>;
   totalEquityRaised: string;
 }
 
@@ -296,7 +296,13 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                         <tbody>
                           {owners.map((owner, i) => (
                             <tr key={i} className="border-b last:border-b-0">
-                              <td className="p-2.5 text-foreground">{owner.owner_name}</td>
+                              <td className="p-2.5 text-foreground">
+                                {owner.owner_url ? (
+                                  <a href={owner.owner_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                    {owner.owner_name}
+                                  </a>
+                                ) : owner.owner_name}
+                              </td>
                               <td className="p-2.5 text-right font-medium text-foreground">{owner.ownership_percentage}%</td>
                             </tr>
                           ))}

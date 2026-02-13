@@ -1492,6 +1492,7 @@ export type Database = {
           deal_id: string
           id: string
           owner_name: string
+          owner_url: string | null
           ownership_percentage: number
           position: number
           updated_at: string
@@ -1501,6 +1502,7 @@ export type Database = {
           deal_id: string
           id?: string
           owner_name: string
+          owner_url?: string | null
           ownership_percentage: number
           position?: number
           updated_at?: string
@@ -1510,6 +1512,7 @@ export type Database = {
           deal_id?: string
           id?: string
           owner_name?: string
+          owner_url?: string | null
           ownership_percentage?: number
           position?: number
           updated_at?: string

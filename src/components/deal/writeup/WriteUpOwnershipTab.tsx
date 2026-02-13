@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Loader2, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Loader2, DollarSign, Link } from 'lucide-react';
 import { useDealOwnership, DealOwner } from '@/hooks/useDealOwnership';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,9 +42,11 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
 
   const [newOwnerName, setNewOwnerName] = useState('');
   const [newOwnerPercentage, setNewOwnerPercentage] = useState('');
+  const [newOwnerUrl, setNewOwnerUrl] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPercentage, setEditPercentage] = useState('');
+  const [editUrl, setEditUrl] = useState('');
   const [equityInput, setEquityInput] = useState('');
   const equityDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -74,8 +76,12 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
 
     const result = await addOwner(newOwnerName.trim(), percentage);
     if (result) {
+      if (newOwnerUrl.trim()) {
+        await updateOwner(result.id, { owner_url: newOwnerUrl.trim() });
+      }
       setNewOwnerName('');
       setNewOwnerPercentage('');
+      setNewOwnerUrl('');
     }
   };
 
@@ -83,12 +89,14 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
     setEditingId(owner.id);
     setEditName(owner.owner_name);
     setEditPercentage(owner.ownership_percentage.toString());
+    setEditUrl(owner.owner_url || '');
   };
 
   const cancelEditing = () => {
     setEditingId(null);
     setEditName('');
     setEditPercentage('');
+    setEditUrl('');
   };
 
   const saveEditing = async () => {
@@ -99,6 +107,7 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
     await updateOwner(editingId, {
       owner_name: editName.trim(),
       ownership_percentage: percentage,
+      owner_url: editUrl.trim() || null,
     });
     cancelEditing();
   };
@@ -134,9 +143,10 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50%]">Owner Name</TableHead>
-              <TableHead className="w-[30%]">Ownership %</TableHead>
-              <TableHead className="w-[20%] text-right">Actions</TableHead>
+              <TableHead className="w-[40%]">Owner Name</TableHead>
+              <TableHead className="w-[25%]">URL (optional)</TableHead>
+              <TableHead className="w-[20%]">Ownership %</TableHead>
+              <TableHead className="w-[15%] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -158,6 +168,37 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
                     >
                       {owner.owner_name}
                     </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {editingId === owner.id ? (
+                    <Input
+                      value={editUrl}
+                      onChange={(e) => setEditUrl(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'edit')}
+                      placeholder="https://..."
+                      className="h-8"
+                    />
+                  ) : (
+                    owner.owner_url ? (
+                      <a
+                        href={owner.owner_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline text-sm truncate block max-w-[160px]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Link className="h-3 w-3 inline mr-1" />
+                        {owner.owner_url.replace(/^https?:\/\//, '').slice(0, 25)}
+                      </a>
+                    ) : (
+                      <span
+                        className="text-muted-foreground text-xs cursor-pointer hover:text-primary"
+                        onClick={() => startEditing(owner)}
+                      >
+                        —
+                      </span>
+                    )
                   )}
                 </TableCell>
                 <TableCell>
@@ -232,6 +273,15 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
                   />
                 </TableCell>
                 <TableCell>
+                  <Input
+                    placeholder="https://..."
+                    value={newOwnerUrl}
+                    onChange={(e) => setNewOwnerUrl(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 'add')}
+                    className="h-8"
+                  />
+                </TableCell>
+                <TableCell>
                   <div className="flex items-center gap-1">
                     <Input
                       type="number"
@@ -263,7 +313,7 @@ export function WriteUpOwnershipTab({ dealId }: WriteUpOwnershipTabProps) {
 
             {owners.length === 0 && !canAddMore && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                   No owners added yet
                 </TableCell>
               </TableRow>
