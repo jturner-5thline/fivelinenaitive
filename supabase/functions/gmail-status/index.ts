@@ -34,14 +34,16 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if user has a Nylas grant
+    // Check if user has a Unipile account
     const { data: tokenData, error: tokenError } = await supabase
       .from("gmail_tokens")
-      .select("id, grant_id, email_address, scope, created_at")
+      .select("id, account_id, grant_id, email_address, scope, created_at")
       .eq("user_id", user.id)
       .single();
 
-    if (tokenError || !tokenData || !tokenData.grant_id) {
+    const accountId = tokenData?.account_id || tokenData?.grant_id;
+
+    if (tokenError || !tokenData || !accountId) {
       return new Response(JSON.stringify({
         connected: false,
         message: "Gmail not connected",

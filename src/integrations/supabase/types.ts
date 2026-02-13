@@ -3054,6 +3054,7 @@ export type Database = {
       gmail_tokens: {
         Row: {
           access_token: string | null
+          account_id: string | null
           created_at: string
           email_address: string | null
           expires_at: string | null
@@ -3067,6 +3068,7 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
+          account_id?: string | null
           created_at?: string
           email_address?: string | null
           expires_at?: string | null
@@ -3080,6 +3082,7 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
+          account_id?: string | null
           created_at?: string
           email_address?: string | null
           expires_at?: string | null
