@@ -358,7 +358,7 @@ serve(async (req) => {
         cap_table: writeUpData!.ownership?.length > 0 ? writeUpData!.ownership.map(o => ({
           name: o.owner_name,
           ownership: o.ownership_percentage,
-          url: o.owner_url || undefined,
+          link: o.owner_url || undefined,
         })) : undefined,
         total_equity_raised: writeUpData!.totalEquityRaised || undefined,
         is_published: !writeUpData!.publishAsAnonymous,
