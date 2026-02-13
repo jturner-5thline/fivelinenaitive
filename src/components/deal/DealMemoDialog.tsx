@@ -59,6 +59,8 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
   const [hurdlesList, setHurdlesList] = useState<string[]>([]);
   const [newHurdle, setNewHurdle] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const [editingHighlight, setEditingHighlight] = useState<number | null>(null);
+  const [editingHurdle, setEditingHurdle] = useState<number | null>(null);
 
   // Helper to convert list string to array
   const parseList = (str: string | null): string[] => {
@@ -120,6 +122,15 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
     const updated = highlightsList.filter((_, i) => i !== index);
     setHighlightsList(updated);
     setLocalValues(prev => ({ ...prev, highlights: stringifyList(updated) }));
+    setEditingHighlight(null);
+    setHasChanges(true);
+  };
+
+  const handleEditHighlight = (index: number, value: string) => {
+    const updated = [...highlightsList];
+    updated[index] = value;
+    setHighlightsList(updated);
+    setLocalValues(prev => ({ ...prev, highlights: stringifyList(updated) }));
     setHasChanges(true);
   };
 
@@ -135,6 +146,15 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
 
   const handleRemoveHurdle = (index: number) => {
     const updated = hurdlesList.filter((_, i) => i !== index);
+    setHurdlesList(updated);
+    setLocalValues(prev => ({ ...prev, hurdles: stringifyList(updated) }));
+    setEditingHurdle(null);
+    setHasChanges(true);
+  };
+
+  const handleEditHurdle = (index: number, value: string) => {
+    const updated = [...hurdlesList];
+    updated[index] = value;
     setHurdlesList(updated);
     setLocalValues(prev => ({ ...prev, hurdles: stringifyList(updated) }));
     setHasChanges(true);
@@ -288,10 +308,29 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                         key={index}
                         className="flex items-start gap-2 p-2 bg-muted/50 rounded-md group"
                       >
-                        <span className="text-sm font-medium text-muted-foreground min-w-[20px]">
+                        <span className="text-sm font-medium text-muted-foreground min-w-[20px] mt-0.5">
                           {index + 1}.
                         </span>
-                        <span className="flex-1 text-sm">{highlight}</span>
+                        {editingHighlight === index ? (
+                          <Input
+                            autoFocus
+                            value={highlight}
+                            onChange={(e) => handleEditHighlight(index, e.target.value)}
+                            onBlur={() => setEditingHighlight(null)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') setEditingHighlight(null);
+                              if (e.key === 'Escape') setEditingHighlight(null);
+                            }}
+                            className="flex-1 h-7 text-sm"
+                          />
+                        ) : (
+                          <span
+                            className="flex-1 text-sm cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => setEditingHighlight(index)}
+                          >
+                            {highlight}
+                          </span>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
@@ -342,10 +381,29 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
                         key={index}
                         className="flex items-start gap-2 p-2 bg-muted/50 rounded-md group"
                       >
-                        <span className="text-sm font-medium text-muted-foreground min-w-[20px]">
+                        <span className="text-sm font-medium text-muted-foreground min-w-[20px] mt-0.5">
                           {index + 1}.
                         </span>
-                        <span className="flex-1 text-sm">{hurdle}</span>
+                        {editingHurdle === index ? (
+                          <Input
+                            autoFocus
+                            value={hurdle}
+                            onChange={(e) => handleEditHurdle(index, e.target.value)}
+                            onBlur={() => setEditingHurdle(null)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') setEditingHurdle(null);
+                              if (e.key === 'Escape') setEditingHurdle(null);
+                            }}
+                            className="flex-1 h-7 text-sm"
+                          />
+                        ) : (
+                          <span
+                            className="flex-1 text-sm cursor-pointer hover:text-primary transition-colors"
+                            onClick={() => setEditingHurdle(index)}
+                          >
+                            {hurdle}
+                          </span>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
