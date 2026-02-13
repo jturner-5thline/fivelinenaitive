@@ -238,8 +238,8 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
 
           {/* ─── Middle: Email list ─── */}
           <div className={cn(
-            'border-r flex-shrink-0 flex flex-col',
-            currentThread ? 'hidden md:flex w-[320px]' : 'flex-1 md:w-[320px]'
+            'border-r flex-shrink-0 flex flex-col min-w-0',
+            currentThread ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
           )}>
             {/* List header */}
             <div className="flex items-center justify-between px-3 py-2 border-b">
@@ -267,7 +267,7 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
             </div>
 
             {/* Email list */}
-            <div className="flex-1 overflow-hidden h-[500px]">
+            <div className="flex-1 h-[500px]">
               <EmailList
                 emails={filteredEmails}
                 selectedThread={currentThread}
