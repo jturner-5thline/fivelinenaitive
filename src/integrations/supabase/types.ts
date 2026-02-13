@@ -1933,6 +1933,7 @@ export type Database = {
           revenue_type: string | null
           sponsorship: string | null
           status: string | null
+          team: Json | null
           this_year_revenue: string | null
           total_equity_raised: string | null
           updated_at: string
@@ -1972,6 +1973,7 @@ export type Database = {
           revenue_type?: string | null
           sponsorship?: string | null
           status?: string | null
+          team?: Json | null
           this_year_revenue?: string | null
           total_equity_raised?: string | null
           updated_at?: string
@@ -2011,6 +2013,7 @@ export type Database = {
           revenue_type?: string | null
           sponsorship?: string | null
           status?: string | null
+          team?: Json | null
           this_year_revenue?: string | null
           total_equity_raised?: string | null
           updated_at?: string

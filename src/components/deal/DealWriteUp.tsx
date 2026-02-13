@@ -62,6 +62,13 @@ export interface FinancialComment {
   description: string;
 }
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  title: string;
+  linkedin: string;
+}
+
 export interface DealWriteUpData {
   companyName: string;
   companyUrl: string;
@@ -86,6 +93,7 @@ export interface DealWriteUpData {
   financialYears: FinancialYear[];
   financialComments: FinancialComment[];
   publishAsAnonymous: boolean;
+  team: TeamMember[];
 }
 
 export interface DealDataForWriteUp {
@@ -120,6 +128,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   financialYears: [],
   financialComments: [],
   publishAsAnonymous: false,
+  team: [],
 });
 
 interface DealWriteUpProps {
@@ -459,6 +468,11 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     ownership: owners,
     totalEquityRaised: totalEquityRaised,
     publishAsAnonymous: data.publishAsAnonymous,
+    team: data.team.filter(m => m.name.trim()).map(m => ({
+      name: m.name,
+      title: m.title,
+      linkedin: m.linkedin || undefined,
+    })),
   });
 
   const cancelPendingPublish = () => {
