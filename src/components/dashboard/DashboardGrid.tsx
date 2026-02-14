@@ -1,5 +1,5 @@
-import { Suspense, useCallback, useState } from 'react';
-import { X, GripVertical } from 'lucide-react';
+import { Suspense, useState, useRef, useCallback } from 'react';
+import { X, GripVertical, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WIDGET_REGISTRY } from './widgetRegistry';
@@ -25,9 +25,15 @@ function WidgetFallback() {
   );
 }
 
+const ROW_HEIGHT = 60;
+const GAP = 16;
+
 export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutChange, onRemoveWidget, onReorder }: DashboardGridProps) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [resizingId, setResizingId] = useState<string | null>(null);
+  const [resizePreview, setResizePreview] = useState<{ w: number; h: number } | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const handleDragStart = (index: number) => {
     if (!isEditing) return;
@@ -48,8 +54,60 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
     setDragOverIndex(null);
   };
 
+  const handleResizeStart = useCallback((e: React.MouseEvent, gridItem: GridItem) => {
+    if (!isEditing || !gridRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    setResizingId(gridItem.i);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = gridItem.w;
+    const startH = gridItem.h;
+
+    const gridRect = gridRef.current.getBoundingClientRect();
+    const colWidth = (gridRect.width - GAP * 11) / 12;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      const newW = Math.max(gridItem.minW || 3, Math.min(12, Math.round(startW + dx / (colWidth + GAP))));
+      const newH = Math.max(gridItem.minH || 2, Math.min(12, Math.round(startH + dy / (ROW_HEIGHT + GAP))));
+
+      setResizePreview({ w: newW, h: newH });
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+
+      setResizingId(null);
+      const preview = { w: startW, h: startH };
+
+      // Apply via a timeout so we capture the latest preview
+      setTimeout(() => {
+        const finalPreview = resizePreviewRef.current;
+        if (finalPreview) {
+          const updated = gridConfig.map(g =>
+            g.i === gridItem.i ? { ...g, w: finalPreview.w, h: finalPreview.h } : g
+          );
+          onLayoutChange(updated);
+        }
+        setResizePreview(null);
+      }, 0);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [isEditing, gridConfig, onLayoutChange]);
+
+  // Keep a ref to the latest resize preview for mouseup handler
+  const resizePreviewRef = useRef<{ w: number; h: number } | null>(null);
+  resizePreviewRef.current = resizePreview;
+
   // Map grid items to their widget configs in order
-  const orderedWidgets = gridConfig
+  const orderedWidgets = [...gridConfig]
     .sort((a, b) => (a.y * 12 + a.x) - (b.y * 12 + b.x))
     .map(g => {
       const widget = widgetsConfig.find(w => w.id === g.i);
@@ -58,14 +116,15 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
     .filter(Boolean) as { grid: GridItem; widget: WidgetConfig }[];
 
   return (
-    <div className="grid grid-cols-12 gap-4 auto-rows-[60px]">
+    <div ref={gridRef} className="grid grid-cols-12 gap-4 auto-rows-[60px]">
       {orderedWidgets.map(({ grid, widget }, index) => {
         const def = WIDGET_REGISTRY[widget.type];
         if (!def) return null;
         const WidgetComponent = def.component;
 
-        const colSpan = Math.min(grid.w, 12);
-        const rowSpan = grid.h;
+        const isResizing = resizingId === grid.i;
+        const colSpan = Math.min(isResizing && resizePreview ? resizePreview.w : grid.w, 12);
+        const rowSpan = isResizing && resizePreview ? resizePreview.h : grid.h;
 
         return (
           <div
@@ -75,12 +134,14 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
               isEditing && 'ring-1 ring-border/50 rounded-lg',
               isEditing && dragOverIndex === index && dragIndex !== index && 'ring-2 ring-primary',
               isEditing && dragIndex === index && 'opacity-50',
+              isResizing && 'ring-2 ring-primary z-10',
             )}
             style={{
               gridColumn: `span ${colSpan}`,
               gridRow: `span ${rowSpan}`,
+              transition: isResizing ? 'none' : 'all 0.15s ease',
             }}
-            draggable={isEditing}
+            draggable={isEditing && !resizingId}
             onDragStart={() => handleDragStart(index)}
             onDragOver={(e) => handleDragOver(e, index)}
             onDragLeave={() => setDragOverIndex(null)}
@@ -103,6 +164,23 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
+              </div>
+            )}
+
+            {/* Resize handle */}
+            {isEditing && (
+              <div
+                className="absolute bottom-0 right-0 z-10 w-5 h-5 cursor-se-resize flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                onMouseDown={(e) => handleResizeStart(e, grid)}
+              >
+                <Maximize2 className="h-3 w-3 text-muted-foreground rotate-90" />
+              </div>
+            )}
+
+            {/* Size indicator while resizing */}
+            {isResizing && resizePreview && (
+              <div className="absolute top-1 left-1 z-20 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded font-mono">
+                {resizePreview.w}×{resizePreview.h}
               </div>
             )}
 
