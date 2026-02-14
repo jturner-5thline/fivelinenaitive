@@ -115,7 +115,7 @@ export function SmartEmailPanel({ thread, dealId, onCreateNote }: SmartEmailPane
   const followUpResult = results.follow_up_check;
 
   return (
-    <div className="border-l flex flex-col w-[280px] bg-background overflow-y-auto overflow-x-hidden absolute right-0 top-0 bottom-0 z-20 shadow-lg">
+    <div className="flex flex-col bg-popover overflow-y-auto overflow-x-hidden max-h-[70vh]">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b">
         <Sparkles className="h-4 w-4 text-primary" />
