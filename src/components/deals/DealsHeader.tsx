@@ -3,7 +3,6 @@ import { GlobalSearchAI } from '@/components/GlobalSearchAI';
 import { useTheme } from 'next-themes';
 
 import { LenderSyncNotificationBell } from '@/components/lenders/LenderSyncNotificationBell';
-import { DealManagementNotificationBell } from '@/components/notifications/DealManagementNotificationBell';
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
@@ -111,7 +110,6 @@ export function DealsHeader() {
             <GlobalSearchAI />
           </div>
           <HeaderNotificationPreview />
-          <DealManagementNotificationBell />
           <LenderSyncNotificationBell />
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
