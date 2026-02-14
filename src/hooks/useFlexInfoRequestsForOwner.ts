@@ -27,11 +27,25 @@ export function useFlexInfoRequestsForOwner() {
     }
 
     try {
-      // First get the user's deal IDs
+      // Get the user's company ID first
+      const { data: membership, error: memberError } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (memberError || !membership) {
+        setNotifications([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get all deal IDs in the user's company
       const { data: deals, error: dealsError } = await supabase
         .from('deals')
         .select('id')
-        .eq('user_id', user.id);
+        .eq('company_id', membership.company_id);
 
       if (dealsError) throw dealsError;
 
@@ -42,12 +56,11 @@ export function useFlexInfoRequestsForOwner() {
         return;
       }
 
-      // Then get pending/read info notifications for those deals
+      // Get all info notifications for those deals
       const { data, error } = await supabase
         .from('flex_info_notifications')
         .select('*')
         .in('deal_id', dealIds)
-        .in('status', ['pending', 'read'])
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -90,7 +103,7 @@ export function useFlexInfoRequestsForOwner() {
     };
   }, [user, fetchNotifications]);
 
-  const pendingCount = notifications.filter(n => n.status === 'pending').length;
+  const pendingCount = notifications.filter(n => n.status === 'pending' || n.status === 'read').length;
 
   return {
     notifications,
