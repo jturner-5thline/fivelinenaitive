@@ -96,25 +96,25 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           }}
         >
           <div className="p-4 border-b border-primary/10 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, hsl(230 25% 10%) 0%, hsl(230 30% 14%) 50%, hsl(220 45% 20%) 100%)' }}>
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold flex items-center gap-2">
-                <img src={naitiveAiIcon} alt="AI" className="h-4 w-4" />
-                Deal Assistant
-              </h3>
+            <h3 className="font-semibold flex items-center gap-2">
+              <img src={naitiveAiIcon} alt="AI" className="h-4 w-4" />
+              Deal Assistant
+            </h3>
+            <div className="flex items-center gap-2">
               {dealName && (
-                <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[250px]">{dealName}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[150px]">{dealName}</p>
+              )}
+              {messages.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearMessages}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </Button>
               )}
             </div>
-            {messages.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearMessages}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                Clear
-              </Button>
-            )}
           </div>
           
           <ScrollArea className="h-72 p-4">
