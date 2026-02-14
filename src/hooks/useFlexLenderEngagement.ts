@@ -23,6 +23,7 @@ interface ActivityMetadata {
   lender_name?: string;
   lender_email?: string;
   file_name?: string;
+  notification_id?: string;
   [key: string]: unknown;
 }
 
@@ -78,7 +79,7 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
       const lenderMap = new Map<string, {
         lenderName: string;
         lenderEmail: string | null;
-        activities: { type: string; timestamp: string; fileName?: string }[];
+        activities: { type: string; timestamp: string; fileName?: string; notificationId?: string }[];
       }>();
 
       for (const activity of data || []) {
@@ -103,6 +104,7 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
           type: activity.activity_type,
           timestamp: activity.created_at,
           fileName: metadata.file_name,
+          notificationId: metadata.notification_id,
         });
       }
 
@@ -120,6 +122,7 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
         let termSheetRequests = 0;
         let engagementScore = 0;
         const downloadedFiles: string[] = [];
+        const seenInfoRequestIds = new Set<string>();
 
         for (const activity of activities) {
           engagementScore += SCORE_WEIGHTS[activity.type as keyof typeof SCORE_WEIGHTS] || 0;
@@ -137,7 +140,12 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
             case "flex_info_requested":
             case "flex_info_request_approved":
             case "flex_info_request_denied":
-              infoRequests++;
+              // Deduplicate by notification_id so the same request only counts once
+              const infoKey = activity.notificationId || activity.timestamp;
+              if (!seenInfoRequestIds.has(infoKey)) {
+                seenInfoRequestIds.add(infoKey);
+                infoRequests++;
+              }
               break;
             case "flex_deal_saved":
               saves++;
