@@ -31,6 +31,8 @@ const SCORE_WEIGHTS = {
   flex_term_sheet_requested: 100,
   flex_nda_requested: 50,
   flex_info_requested: 30,
+  flex_info_request_approved: 30,
+  flex_info_request_denied: 30,
   flex_deal_saved: 15,
   flex_file_downloaded: 10,
   flex_deal_shared: 8,
@@ -49,6 +51,8 @@ const VALID_ENGAGEMENT_TYPES = [
   'flex_deal_viewed',
   'flex_file_downloaded',
   'flex_info_requested',
+  'flex_info_request_approved',
+  'flex_info_request_denied',
   'flex_deal_saved',
   'flex_deal_shared',
   'flex_nda_requested',
@@ -131,6 +135,8 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
               }
               break;
             case "flex_info_requested":
+            case "flex_info_request_approved":
+            case "flex_info_request_denied":
               infoRequests++;
               break;
             case "flex_deal_saved":
