@@ -18,6 +18,7 @@ export interface DealFilters {
   referredBy: string[];
   staleOnly: boolean;
   flaggedOnly: boolean;
+  hasNotificationsOnly: boolean;
 }
 
 export function useDeals() {
@@ -34,6 +35,7 @@ export function useDeals() {
     referredBy: [],
     staleOnly: false,
     flaggedOnly: false,
+    hasNotificationsOnly: false,
   });
   const [sortField, setSortField] = useState<SortField>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');

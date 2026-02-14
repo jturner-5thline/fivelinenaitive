@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { DealsList } from '@/components/deals/DealsList';
@@ -48,7 +48,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
-
+import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
@@ -83,10 +83,20 @@ export default function Dashboard() {
   } = useDeals();
 
   // Filter deals by active pipeline
-  const deals = useMemo(() => {
+  const pipelineFilteredDeals = useMemo(() => {
     if (!activePipelineId) return allFilteredDeals;
     return allFilteredDeals.filter(deal => deal.pipelineId === activePipelineId);
   }, [allFilteredDeals, activePipelineId]);
+
+  // Get notification counts for filtering
+  const allDealIds = useMemo(() => pipelineFilteredDeals.map(d => d.id), [pipelineFilteredDeals]);
+  const notificationCounts = useDealNotificationCounts(allDealIds);
+
+  // Apply hasNotificationsOnly filter
+  const deals = useMemo(() => {
+    if (!filters.hasNotificationsOnly) return pipelineFilteredDeals;
+    return pipelineFilteredDeals.filter(deal => (notificationCounts[deal.id] || 0) > 0);
+  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, notificationCounts]);
 
   const handleMarkReviewed = async (dealId: string) => {
     try {
@@ -249,7 +259,7 @@ export default function Dashboard() {
                         pressed={filters.staleOnly}
                         onPressedChange={(pressed) => {
                           if (pressed) {
-                            updateFilters({ staleOnly: true, flaggedOnly: false });
+                            updateFilters({ staleOnly: true, flaggedOnly: false, hasNotificationsOnly: false });
                           } else {
                             updateFilters({ staleOnly: false });
                           }
@@ -274,7 +284,7 @@ export default function Dashboard() {
                         pressed={filters.flaggedOnly}
                         onPressedChange={(pressed) => {
                           if (pressed) {
-                            updateFilters({ flaggedOnly: true, staleOnly: false });
+                            updateFilters({ flaggedOnly: true, staleOnly: false, hasNotificationsOnly: false });
                             setFlaggedCarouselOpen(true);
                           } else {
                             updateFilters({ flaggedOnly: false });
@@ -289,6 +299,31 @@ export default function Dashboard() {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Show only flagged deals</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Toggle
+                        pressed={filters.hasNotificationsOnly}
+                        onPressedChange={(pressed) => {
+                          if (pressed) {
+                            updateFilters({ hasNotificationsOnly: true, staleOnly: false, flaggedOnly: false });
+                          } else {
+                            updateFilters({ hasNotificationsOnly: false });
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 w-8 p-0 ${filters.hasNotificationsOnly ? 'bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30' : ''}`}
+                      >
+                        <Bell className="h-4 w-4" />
+                      </Toggle>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Show only deals with notifications</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

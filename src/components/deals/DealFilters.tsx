@@ -74,6 +74,7 @@ export function DealFilters({
     filters.referredBy.length > 0,
     filters.staleOnly,
     filters.flaggedOnly,
+    filters.hasNotificationsOnly,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -87,6 +88,7 @@ export function DealFilters({
       referredBy: [],
       staleOnly: false,
       flaggedOnly: false,
+      hasNotificationsOnly: false,
     });
   };
 
