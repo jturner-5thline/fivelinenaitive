@@ -18,16 +18,29 @@ import {
   Star,
   Trash2,
   Archive,
+  Settings2,
+  Clock,
+  AlertTriangle,
+  Target,
+  Landmark,
+  Newspaper,
+  Calendar,
+  Handshake,
+  CheckCircle2,
+  XCircle,
+  Package,
+  BarChart3,
+  Users,
+  Briefcase,
+  Paperclip,
   ChevronDown,
   ChevronRight,
-  Filter,
-  ArrowUpDown,
-  Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   MockEmail,
   EmailThread,
+  EmailCategory,
   mockEmails as initialMockEmails,
   groupEmailsByThread,
 } from './email/mockEmailData';
@@ -39,30 +52,140 @@ interface DealEmailsTabProps {
   dealId: string;
 }
 
-interface FolderItem {
+type ViewFilter = 'all' | 'unread' | 'needs_response';
+type ChipFilter = 'recent' | 'important' | 'attachments' | null;
+
+interface SidebarSection {
+  title: string;
+  items: SidebarItem[];
+  defaultOpen?: boolean;
+}
+
+interface SidebarItem {
   id: string;
   label: string;
-  icon: typeof Inbox;
+  icon: any;
+  emoji?: string;
   count?: number;
-  indent?: boolean;
+  indicatorColor?: string;
+  filterFn: (e: MockEmail) => boolean;
 }
 
 export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
   const [emails, setEmails] = useState<MockEmail[]>(initialMockEmails);
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
-  const [activeFolder, setActiveFolder] = useState<string>('inbox');
+  const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
+  const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
+  const [chipFilter, setChipFilter] = useState<ChipFilter>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
-  const filteredEmails = useMemo(() => {
-    let filtered = emails;
-    if (activeFolder === 'linked') {
-      filtered = filtered.filter(e => e.is_linked_to_deal);
-    } else {
-      filtered = filtered.filter(e => e.folder === activeFolder);
+  // Counts
+  const needsResponseCount = emails.filter(e => e.needs_response && e.folder === 'inbox').length;
+  const starredCount = emails.filter(e => e.is_starred).length;
+  const followUpCount = emails.filter(e => e.is_follow_up && e.folder === 'inbox').length;
+  const unreadCount = emails.filter(e => !e.is_read && e.folder === 'inbox').length;
+
+  const countByCategory = (cat: EmailCategory) => emails.filter(e => e.category === cat).length;
+  const countByDeal = (dealName: string) => emails.filter(e => e.deal_name === dealName).length;
+
+  // Get unique deal names
+  const activeDealNames = useMemo(() => {
+    const names = new Set<string>();
+    emails.forEach(e => {
+      if (e.deal_name && e.category === 'deal') names.add(e.deal_name);
+    });
+    return Array.from(names);
+  }, [emails]);
+
+  const dealIndicatorColors: Record<string, string> = {
+    'CloudSync Inc': 'bg-emerald-500',
+    'TechFlow Solutions': 'bg-amber-500',
+    'NextWave Wireless': 'bg-destructive',
+    'DataCore Systems': 'bg-primary',
+    'VelocityPay': 'bg-purple-500',
+  };
+
+  const sidebarSections: SidebarSection[] = [
+    {
+      title: 'Views',
+      defaultOpen: true,
+      items: [
+        { id: 'all_inbox', label: 'All Inbox', icon: Inbox, count: emails.filter(e => e.folder === 'inbox').length, filterFn: e => e.folder === 'inbox' },
+        { id: 'needs_response', label: 'Needs Response', icon: AlertTriangle, count: needsResponseCount || undefined, filterFn: e => e.needs_response && e.folder === 'inbox' },
+        { id: 'starred', label: 'Starred', icon: Star, count: starredCount || undefined, filterFn: e => e.is_starred },
+        { id: 'follow_up', label: 'Follow Up', icon: Clock, count: followUpCount || undefined, filterFn: e => e.is_follow_up && e.folder === 'inbox' },
+        { id: 'drafts', label: 'Drafts', icon: FileEdit, count: emails.filter(e => e.folder === 'drafts').length || undefined, filterFn: e => e.folder === 'drafts' },
+        { id: 'sent', label: 'Sent Items', icon: Send, count: emails.filter(e => e.folder === 'sent').length || undefined, filterFn: e => e.folder === 'sent' },
+      ],
+    },
+    {
+      title: 'Active Deals',
+      defaultOpen: true,
+      items: activeDealNames.map(name => ({
+        id: `deal_${name}`,
+        label: name,
+        icon: Briefcase,
+        count: countByDeal(name) || undefined,
+        indicatorColor: dealIndicatorColors[name] || 'bg-primary',
+        filterFn: (e: MockEmail) => e.deal_name === name,
+      })),
+    },
+    {
+      title: 'Other',
+      defaultOpen: false,
+      items: [
+        { id: 'cat_prospect', label: 'Prospects', emoji: '🎯', icon: Target, count: countByCategory('prospect') || undefined, filterFn: e => e.category === 'prospect' },
+        { id: 'cat_lender', label: 'Lenders', emoji: '🏦', icon: Landmark, count: countByCategory('lender') || undefined, filterFn: e => e.category === 'lender' },
+        { id: 'cat_newsletter', label: 'Newsletters', emoji: '📰', icon: Newspaper, count: countByCategory('newsletter') || undefined, filterFn: e => e.category === 'newsletter' },
+        { id: 'cat_conference', label: 'Conferences/Events', emoji: '🎪', icon: Calendar, count: countByCategory('conference') || undefined, filterFn: e => e.category === 'conference' },
+        { id: 'cat_partnership', label: 'Partnerships', emoji: '🤝', icon: Handshake, count: countByCategory('partnership') || undefined, filterFn: e => e.category === 'partnership' },
+      ],
+    },
+    {
+      title: 'Internal Process',
+      defaultOpen: false,
+      items: [
+        { id: 'cat_internal_deal', label: 'Deal Management', emoji: '📋', icon: BarChart3, count: emails.filter(e => e.category === 'internal' && e.deal_name).length || undefined, filterFn: e => e.category === 'internal' && !!e.deal_name },
+        { id: 'cat_internal_all', label: 'All Hands', emoji: '👥', icon: Users, count: emails.filter(e => e.category === 'internal' && !e.deal_name).length || undefined, filterFn: e => e.category === 'internal' && !e.deal_name },
+      ],
+    },
+    {
+      title: 'Closed Deals / Archived',
+      defaultOpen: false,
+      items: [
+        { id: 'cat_closed_won', label: 'Successfully Closed', emoji: '✅', icon: CheckCircle2, count: countByCategory('closed_won') || undefined, filterFn: e => e.category === 'closed_won' },
+        { id: 'cat_closed_lost', label: 'Closed Lost', emoji: '❌', icon: XCircle, count: countByCategory('closed_lost') || undefined, filterFn: e => e.category === 'closed_lost' },
+        { id: 'cat_archive', label: 'Archive', emoji: '📦', icon: Package, count: countByCategory('archive') || undefined, filterFn: e => e.category === 'archive' },
+      ],
+    },
+  ];
+
+  // Find active sidebar item
+  const activeItem = useMemo(() => {
+    for (const section of sidebarSections) {
+      const found = section.items.find(i => i.id === activeItemId);
+      if (found) return found;
     }
+    return sidebarSections[0].items[0];
+  }, [activeItemId, sidebarSections]);
+
+  // Filter emails
+  const filteredEmails = useMemo(() => {
+    let filtered = emails.filter(activeItem.filterFn);
+
+    // View filter
+    if (viewFilter === 'unread') filtered = filtered.filter(e => !e.is_read);
+    if (viewFilter === 'needs_response') filtered = filtered.filter(e => e.needs_response);
+
+    // Chip filter
+    if (chipFilter === 'recent') filtered = filtered.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+    if (chipFilter === 'important') filtered = filtered.filter(e => e.is_starred || e.labels.includes('Important'));
+    if (chipFilter === 'attachments') filtered = filtered.filter(e => e.has_attachments);
+
+    // Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -74,7 +197,7 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
       );
     }
     return filtered;
-  }, [emails, activeFolder, searchQuery]);
+  }, [emails, activeItem, viewFilter, chipFilter, searchQuery]);
 
   const currentThread = useMemo(() => {
     if (!selectedThread) return null;
@@ -106,26 +229,21 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
     toast.success('Inbox refreshed');
   };
 
-  const inboxCount = emails.filter(e => e.folder === 'inbox').length;
-  const inboxUnread = emails.filter(e => e.folder === 'inbox' && !e.is_read).length;
-  const sentCount = emails.filter(e => e.folder === 'sent').length;
-  const draftsCount = emails.filter(e => e.folder === 'drafts').length;
-  const linkedCount = emails.filter(e => e.is_linked_to_deal).length;
-  const starredCount = emails.filter(e => e.is_starred).length;
+  const toggleSection = (title: string) => {
+    setCollapsedSections(prev => ({ ...prev, [title]: !prev[title] }));
+  };
 
-  const folders: FolderItem[] = [
-    { id: 'inbox', label: 'Inbox', icon: Inbox, count: inboxUnread || undefined },
-    { id: 'drafts', label: 'Drafts', icon: FileEdit, count: draftsCount || undefined },
-    { id: 'sent', label: 'Sent Items', icon: Send, count: sentCount || undefined },
-    { id: 'linked', label: 'Linked to Deal', icon: Link2, count: linkedCount || undefined },
-    { id: 'starred', label: 'Starred', icon: Star, count: starredCount || undefined },
-    { id: 'archive', label: 'Archive', icon: Archive },
-    { id: 'trash', label: 'Deleted Items', icon: Trash2 },
-  ];
+  const isSectionOpen = (section: SidebarSection) => {
+    if (collapsedSections[section.title] !== undefined) return !collapsedSections[section.title];
+    return section.defaultOpen ?? false;
+  };
+
+  // Active label
+  const activeLabel = activeItem?.label || 'Inbox';
 
   return (
     <Card className="overflow-hidden w-full max-w-full">
-      {/* Top toolbar — Outlook style */}
+      {/* Top toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/20">
         <Button variant="gradient" size="sm" className="gap-1.5 text-xs h-8 px-3" onClick={() => toast.info('Compose coming soon')}>
           <PenSquare className="h-3.5 w-3.5" />
@@ -156,15 +274,6 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">Archive</TooltipContent>
         </Tooltip>
-        <Separator orientation="vertical" className="h-5 mx-1" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => toast.info('Flag coming soon')}>
-              Flag / Unflag
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">Flag</TooltipContent>
-        </Tooltip>
         <div className="flex-1" />
         <Tooltip>
           <TooltipTrigger asChild>
@@ -184,103 +293,136 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
 
       <CardContent className="p-0">
         <div className="flex min-h-[560px] overflow-hidden max-w-full">
-          {/* ─── Left: Folder sidebar ─── */}
-          <div className={cn(
-            'border-r flex-shrink-0 transition-all duration-200',
-            sidebarCollapsed ? 'w-12' : 'w-[180px]'
-          )}>
+          {/* ─── Left: Grouped sidebar ─── */}
+          <div className="border-r flex-shrink-0 w-[220px] flex flex-col">
             <div className="p-2">
-              {!sidebarCollapsed && (
-                <div className="relative mb-2">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                  <Input
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-7 h-7 text-xs bg-muted/30 border-border/50"
-                  />
-                </div>
-              )}
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                <Input
+                  placeholder="Search emails..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-7 h-7 text-xs bg-muted/30 border-border/50"
+                />
+              </div>
             </div>
-            <ScrollArea className="h-[500px]">
-              <div className="px-1 space-y-0.5">
-                {folders.map(folder => {
-                  const Icon = folder.icon;
-                  const isActive = activeFolder === folder.id;
-                  const isDisabled = folder.id === 'archive' || folder.id === 'trash' || folder.id === 'starred';
-                  return (
+            <ScrollArea className="flex-1">
+              <div className="px-1 pb-2">
+                {sidebarSections.map((section) => (
+                  <div key={section.title} className="mb-1">
                     <button
-                      key={folder.id}
-                      onClick={() => {
-                        if (!isDisabled) {
-                          setActiveFolder(folder.id);
-                          setSelectedThread(null);
-                        } else {
-                          toast.info(`${folder.label} coming soon`);
-                        }
-                      }}
-                      className={cn(
-                        'w-full flex items-center gap-2 rounded-md text-left transition-colors',
-                        sidebarCollapsed ? 'px-2 py-2 justify-center' : 'px-2.5 py-1.5',
-                        isActive
-                          ? 'bg-accent text-accent-foreground'
-                          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-                        isDisabled && 'opacity-50'
-                      )}
+                      onClick={() => toggleSection(section.title)}
+                      className="w-full flex items-center gap-1 px-2 py-1.5 text-left"
                     >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {!sidebarCollapsed && (
-                        <>
-                          <span className="text-xs flex-1 truncate">{folder.label}</span>
-                          {folder.count != null && folder.count > 0 && (
-                            <span className={cn(
-                              'text-[10px] font-medium tabular-nums',
-                              isActive ? 'text-accent-foreground' : 'text-muted-foreground'
-                            )}>
-                              {folder.count}
-                            </span>
-                          )}
-                        </>
+                      {isSectionOpen(section) ? (
+                        <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
                       )}
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                        {section.title}
+                      </span>
                     </button>
-                  );
-                })}
+                    {isSectionOpen(section) && (
+                      <div className="space-y-0.5 mt-0.5">
+                        {section.items.map(item => {
+                          const isActive = activeItemId === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setActiveItemId(item.id);
+                                setSelectedThread(null);
+                                setViewFilter('all');
+                                setChipFilter(null);
+                              }}
+                              className={cn(
+                                'w-full flex items-center gap-2 rounded-md text-left transition-colors px-2.5 py-1.5',
+                                isActive
+                                  ? 'bg-accent text-accent-foreground'
+                                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                              )}
+                            >
+                              {item.indicatorColor ? (
+                                <span className={cn('w-2 h-2 rounded-full shrink-0', item.indicatorColor)} />
+                              ) : item.emoji ? (
+                                <span className="text-xs shrink-0">{item.emoji}</span>
+                              ) : (
+                                <item.icon className="h-3.5 w-3.5 shrink-0" />
+                              )}
+                              <span className="text-xs flex-1 truncate">{item.label}</span>
+                              {item.count != null && item.count > 0 && (
+                                <span className={cn(
+                                  'text-[10px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 min-w-[20px] text-center',
+                                  item.id === 'needs_response' && item.count > 0
+                                    ? 'bg-destructive text-destructive-foreground'
+                                    : 'bg-muted text-muted-foreground'
+                                )}>
+                                  {item.count}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </ScrollArea>
           </div>
 
-          {/* ─── Middle: Email list ─── */}
+          {/* ─── Middle: Email list with view tabs ─── */}
           <div className={cn(
             'border-r flex-shrink-0 flex flex-col min-w-0',
             currentThread ? 'hidden md:flex md:w-[380px]' : 'flex-1 md:w-[380px]'
           )}>
-            {/* List header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold capitalize">
-                  {activeFolder === 'linked' ? 'Linked' : activeFolder}
-                </span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="text-muted-foreground hover:text-foreground">
-                      <Filter className="h-3.5 w-3.5" />
+            {/* View controls */}
+            <div className="border-b">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-sm font-semibold truncate">{activeLabel}</span>
+                <div className="flex gap-1">
+                  {(['all', 'unread', 'needs_response'] as ViewFilter[]).map(vf => (
+                    <button
+                      key={vf}
+                      onClick={() => setViewFilter(vf)}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+                        viewFilter === vf
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      )}
+                    >
+                      {vf === 'all' ? 'All' : vf === 'unread' ? 'Unread' : 'Needs Response'}
                     </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">Filter</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="text-muted-foreground hover:text-foreground">
-                      <ArrowUpDown className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">Sort</TooltipContent>
-                </Tooltip>
+                  ))}
+                </div>
+              </div>
+              {/* Filter chips */}
+              <div className="flex gap-1.5 px-3 pb-2">
+                {([
+                  { id: 'recent' as ChipFilter, label: '🕐 Recent' },
+                  { id: 'important' as ChipFilter, label: '⭐ Important' },
+                  { id: 'attachments' as ChipFilter, label: '📎 Attachments' },
+                ]).map(chip => (
+                  <button
+                    key={chip.id}
+                    onClick={() => setChipFilter(chipFilter === chip.id ? null : chip.id)}
+                    className={cn(
+                      'px-2 py-0.5 rounded-md text-[10px] font-medium border transition-colors',
+                      chipFilter === chip.id
+                        ? 'bg-primary/10 border-primary/30 text-primary'
+                        : 'bg-transparent border-border/50 text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                    )}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Email list */}
-            <div className="flex-1 h-[500px] overflow-hidden">
+            <div className="flex-1 h-[440px] overflow-hidden">
               <EmailList
                 emails={filteredEmails}
                 selectedThread={currentThread}
@@ -288,6 +430,19 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
               />
+            </div>
+
+            {/* Stats bar */}
+            <div className="flex items-center gap-4 px-3 py-2 border-t bg-muted/10 text-[11px]">
+              <span className="text-muted-foreground">
+                📧 Total: <span className="font-semibold text-foreground tabular-nums">{filteredEmails.length}</span>
+              </span>
+              <span className="text-muted-foreground">
+                ⚠️ Response: <span className="font-semibold text-foreground tabular-nums">{filteredEmails.filter(e => e.needs_response).length}</span>
+              </span>
+              <span className="text-muted-foreground">
+                📬 Unread: <span className="font-semibold text-foreground tabular-nums">{filteredEmails.filter(e => !e.is_read).length}</span>
+              </span>
             </div>
           </div>
 

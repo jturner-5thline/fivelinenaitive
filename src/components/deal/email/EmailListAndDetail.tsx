@@ -92,7 +92,8 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
         isSelected
           ? 'bg-accent/60 border-primary/30 shadow-sm shadow-primary/5'
           : 'bg-card/40 border-border/40 hover:bg-muted/40 hover:border-border/60',
-        thread.hasUnread && !isSelected && 'border-l-2 border-l-primary'
+        thread.hasUnread && !isSelected && 'border-l-2 border-l-primary',
+        thread.needsResponse && !isSelected && !thread.hasUnread && 'border-l-2 border-l-amber-500'
       )}
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
@@ -116,6 +117,25 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             <span className="text-[11px] text-muted-foreground shrink-0">
               {formatDistanceToNow(new Date(latest.received_at), { addSuffix: false })}
             </span>
+          </div>
+
+          {/* Deal tag + response badge row */}
+          <div className="flex items-center gap-1.5 mb-0.5">
+            {thread.dealName && (
+              <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-primary/10 text-primary border-primary/20">
+                💼 {thread.dealName}
+              </Badge>
+            )}
+            {!thread.dealName && thread.category === 'prospect' && (
+              <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                🎯 Prospect
+              </Badge>
+            )}
+            {thread.needsResponse && (
+              <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-amber-500/10 text-amber-400 border-amber-500/20">
+                ⏰ Response Due
+              </Badge>
+            )}
           </div>
           
           <p className={cn('text-[13px] truncate', thread.hasUnread ? 'text-foreground font-medium' : 'text-foreground/70')}>
