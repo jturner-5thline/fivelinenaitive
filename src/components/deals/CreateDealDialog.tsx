@@ -228,7 +228,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
         <DialogTrigger asChild>
           {trigger || defaultTrigger}
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Deal</DialogTitle>
             <DialogDescription>
@@ -236,85 +236,112 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="dealName">Deal Name</Label>
-                <Input
-                  id="dealName"
-                  value={dealName}
-                  onChange={(e) => setDealName(e.target.value)}
-                  placeholder="Enter deal name"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="dealAmount">Deal Amount</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <div className="grid gap-3 py-3">
+              {/* Row 1: Deal Name + Deal Amount */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="dealName">Deal Name <span className="text-destructive">*</span></Label>
                   <Input
-                    id="dealAmount"
-                    type="text"
-                    inputMode="numeric"
-                    value={dealAmount}
-                    onChange={handleAmountChange}
-                    placeholder="0"
-                    className="pl-7"
+                    id="dealName"
+                    value={dealName}
+                    onChange={(e) => setDealName(e.target.value)}
+                    placeholder="Enter deal name"
                   />
                 </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="dealAmount">Deal Amount <span className="text-destructive">*</span></Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      id="dealAmount"
+                      type="text"
+                      inputMode="numeric"
+                      value={dealAmount}
+                      onChange={handleAmountChange}
+                      placeholder="0"
+                      className="pl-7"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label>Deal Type</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between font-normal">
-                      {selectedDealTypes.length > 0 ? (
-                        <span className="flex flex-wrap gap-1">
-                          {selectedDealTypes.map(typeId => {
-                            const typeConfig = availableDealTypes.find(t => t.id === typeId);
-                            return typeConfig ? (
-                              <Badge key={typeId} variant="secondary" className="text-xs">
-                                {typeConfig.label}
-                              </Badge>
-                            ) : null;
-                          })}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Select types</span>
-                      )}
-                      <ChevronDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-2" align="start">
-                    <div className="space-y-1">
-                      {availableDealTypes.map((type) => {
-                        const isSelected = selectedDealTypes.includes(type.id);
-                        return (
-                          <button
-                            key={type.id}
-                            type="button"
-                            className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
-                            onClick={() => {
-                              setSelectedDealTypes(prev => 
-                                isSelected
-                                  ? prev.filter(t => t !== type.id)
-                                  : [...prev, type.id]
-                              );
-                            }}
-                          >
-                            <Checkbox checked={isSelected} className="pointer-events-none" />
-                            {type.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+
+              {/* Row 2: Deal Type + Deal Stage */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label>Deal Type</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between font-normal h-9">
+                        {selectedDealTypes.length > 0 ? (
+                          <span className="flex flex-wrap gap-1 overflow-hidden">
+                            {selectedDealTypes.map(typeId => {
+                              const typeConfig = availableDealTypes.find(t => t.id === typeId);
+                              return typeConfig ? (
+                                <Badge key={typeId} variant="secondary" className="text-xs">
+                                  {typeConfig.label}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Select types</span>
+                        )}
+                        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-2" align="start">
+                      <div className="space-y-1">
+                        {availableDealTypes.map((type) => {
+                          const isSelected = selectedDealTypes.includes(type.id);
+                          return (
+                            <button
+                              key={type.id}
+                              type="button"
+                              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
+                              onClick={() => {
+                                setSelectedDealTypes(prev => 
+                                  isSelected
+                                    ? prev.filter(t => t !== type.id)
+                                    : [...prev, type.id]
+                                );
+                              }}
+                            >
+                              <Checkbox checked={isSelected} className="pointer-events-none" />
+                              {type.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="dealStage">Deal Stage <span className="text-destructive">*</span></Label>
+                  <Select value={dealStage} onValueChange={setDealStage} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(() => {
+                        const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
+                        const stages = selectedPipeline?.stages?.length ? selectedPipeline.stages : effectiveStages;
+                        return stages.map(stage => (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            {stage.label}
+                          </SelectItem>
+                        ));
+                      })()}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              {/* Pipeline (conditional) */}
               {pipelines.length > 1 && (
-                <div className="grid gap-2">
+                <div className="grid gap-1.5">
                   <Label>Pipeline</Label>
                   <Select value={selectedPipelineId} onValueChange={(val) => {
                     setSelectedPipelineId(val);
-                    // Update stages when pipeline changes
                     const pipeline = pipelines.find(p => p.id === val);
                     if (pipeline?.stages?.length && !pipeline.stages.find(s => s.id === dealStage)) {
                       setDealStage(pipeline.stages[0]?.id || '');
@@ -331,27 +358,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
                   </Select>
                 </div>
               )}
-              <div className="grid gap-2">
-                <Label htmlFor="dealStage">Deal Stage <span className="text-destructive">*</span></Label>
-                <Select value={dealStage} onValueChange={setDealStage} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select stage" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(() => {
-                      const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
-                      const stages = selectedPipeline?.stages?.length ? selectedPipeline.stages : effectiveStages;
-                      return stages.map(stage => (
-                        <SelectItem key={stage.id} value={stage.id}>
-                          {stage.label}
-                        </SelectItem>
-                      ));
-                    })()}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
+
+              {/* Row 3: Deal Manager + Deal Owner */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
                   <Label htmlFor="dealManager">Deal Manager</Label>
                   <Select value={dealManager} onValueChange={setDealManager}>
                     <SelectTrigger>
@@ -366,7 +376,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-2">
+                <div className="grid gap-1.5">
                   <Label htmlFor="dealOwner">Deal Owner</Label>
                   <Select value={dealOwner} onValueChange={setDealOwner}>
                     <SelectTrigger>
@@ -382,27 +392,33 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
                   </Select>
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="contactName">Contact Name <span className="text-destructive">*</span></Label>
-                <Input
-                  id="contactName"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  placeholder="Enter contact name"
-                  required
-                />
+
+              {/* Row 4: Contact Name + Contact Info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="contactName">Contact Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="contactName"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Enter contact name"
+                    required
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="contactInfo">Contact Info <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="contactInfo"
+                    value={contactInfo}
+                    onChange={(e) => setContactInfo(e.target.value)}
+                    placeholder="Email or phone number"
+                    required
+                  />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="contactInfo">Contact Info <span className="text-destructive">*</span></Label>
-                <Input
-                  id="contactInfo"
-                  value={contactInfo}
-                  onChange={(e) => setContactInfo(e.target.value)}
-                  placeholder="Email or phone number"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
+
+              {/* Row 5: Deal Status (full width) */}
+              <div className="grid gap-1.5">
                 <Label htmlFor="dealStatusNote">Deal Status <span className="text-destructive">*</span></Label>
                 <Input
                   id="dealStatusNote"
@@ -412,8 +428,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
+
+              {/* Row 6: Referral Source Name + Email */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
                   <Label htmlFor="referralName">Referral Source Name</Label>
                   <Input
                     id="referralName"
@@ -422,7 +440,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
                     placeholder="e.g., John Smith"
                   />
                 </div>
-                <div className="grid gap-2">
+                <div className="grid gap-1.5">
                   <Label htmlFor="referralEmail">Referral Source Email</Label>
                   <Input
                     id="referralEmail"
