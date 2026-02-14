@@ -120,100 +120,97 @@ export function ChecklistLinkDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
             Link to Checklist Item
           </DialogTitle>
-          <DialogDescription className="space-y-2">
-            <div>
-              You're uploading to <span className="font-medium">{categoryLabel}</span>.
-              Select which checklist item this supports, or choose N/A if none apply.
-            </div>
-            <div className="bg-muted/50 rounded-md p-2 text-xs">
-              <div className="font-medium text-foreground mb-1">{files.length} file{files.length > 1 ? 's' : ''}:</div>
-              <ul className="flex flex-wrap gap-x-4 gap-y-0.5 text-muted-foreground">
-                {files.slice(0, 5).map((file, i) => (
-                  <li key={i} className="flex items-center gap-1.5">
-                    <File className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate max-w-[200px]">{file.name}</span>
-                  </li>
-                ))}
-                {files.length > 5 && (
-                  <li className="text-muted-foreground/70">+{files.length - 5} more...</li>
-                )}
-              </ul>
+          <DialogDescription>
+            <div className="flex items-center justify-between gap-4">
+              <span>
+                Uploading to <span className="font-medium">{categoryLabel}</span> — select checklist items to link, or N/A.
+              </span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {files.length} file{files.length > 1 ? 's' : ''}: {files.slice(0, 3).map(f => f.name).join(', ')}{files.length > 3 ? ` +${files.length - 3} more` : ''}
+              </span>
             </div>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-          {/* N/A Option */}
-          <div
-            className={cn(
-              "flex items-center space-x-3 p-2.5 rounded-lg border cursor-pointer transition-colors mb-3",
-              isNaSelected
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-muted-foreground/50"
-            )}
-            onClick={(e) => {
-              if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
-              handleToggleNa();
-            }}
-          >
-            <Checkbox 
-              checked={isNaSelected} 
-              onCheckedChange={handleToggleNa}
-            />
-            <div className="flex-1 cursor-pointer">
-              <div className="flex items-center gap-2">
-                <X className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-sm">N/A - Not applicable</span>
+        <div className="flex-1 overflow-y-auto">
+          {/* Kanban-style columns */}
+          <div className="flex gap-3 min-h-[200px]">
+            {/* N/A column */}
+            <div className="flex-shrink-0 w-36">
+              <div
+                className={cn(
+                  "flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors h-full",
+                  isNaSelected
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/50"
+                )}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
+                  handleToggleNa();
+                }}
+              >
+                <Checkbox 
+                  checked={isNaSelected} 
+                  onCheckedChange={handleToggleNa}
+                />
+                <div className="flex items-center gap-1.5">
+                  <X className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium text-sm">N/A</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Grid of category columns */}
-          <div className={cn(
-            "grid gap-4",
-            categoryKeys.length === 1 ? "grid-cols-1" :
-            categoryKeys.length === 2 ? "grid-cols-2" :
-            "grid-cols-2 lg:grid-cols-3"
-          )}>
+            {/* Category columns */}
             {categoryKeys.map((categoryName) => (
-              <div key={categoryName} className="space-y-1.5">
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 pb-1 border-b border-border">
-                  {categoryName}
+              <div
+                key={categoryName}
+                className="flex-1 min-w-[160px] flex flex-col rounded-lg border border-border bg-muted/20 overflow-hidden"
+              >
+                <div className="px-3 py-2 border-b border-border bg-muted/40">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {categoryName}
+                  </h3>
+                  <span className="text-[10px] text-muted-foreground/70">
+                    {groupedItems[categoryName].length} item{groupedItems[categoryName].length !== 1 ? 's' : ''}
+                  </span>
                 </div>
-                {groupedItems[categoryName].map((item) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-colors text-sm",
-                      selectedItemIds.has(item.id)
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground/50",
-                      isNaSelected && "opacity-50 pointer-events-none"
-                    )}
-                    onClick={(e) => {
-                      // Prevent double-toggle if clicking the checkbox itself
-                      if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
-                      handleToggleItem(item.id);
-                    }}
-                  >
-                    <Checkbox 
-                      checked={selectedItemIds.has(item.id)} 
-                      onCheckedChange={() => handleToggleItem(item.id)}
-                      disabled={isNaSelected}
-                      className="flex-shrink-0"
-                    />
-                    <span className="font-medium leading-tight">{item.name}</span>
-                    {item.is_required && (
-                      <span className="text-xs text-destructive">*</span>
-                    )}
-                  </div>
-                ))}
+                <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
+                  {groupedItems[categoryName].map((item) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "flex items-start gap-2 p-2 rounded-md border cursor-pointer transition-colors text-sm",
+                        selectedItemIds.has(item.id)
+                          ? "border-primary bg-primary/10 shadow-sm"
+                          : "border-transparent bg-background hover:border-border hover:bg-muted/30",
+                        isNaSelected && "opacity-40 pointer-events-none"
+                      )}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
+                        handleToggleItem(item.id);
+                      }}
+                    >
+                      <Checkbox 
+                        checked={selectedItemIds.has(item.id)} 
+                        onCheckedChange={() => handleToggleItem(item.id)}
+                        disabled={isNaSelected}
+                        className="flex-shrink-0 mt-0.5"
+                      />
+                      <span className="font-medium leading-tight">
+                        {item.name}
+                        {item.is_required && (
+                          <span className="text-xs text-destructive ml-1">*</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
