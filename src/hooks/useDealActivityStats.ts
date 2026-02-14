@@ -54,7 +54,6 @@ const INTERNAL_ACTIVITY_TYPES = [
   'milestone_completed',
   'milestone_deleted',
   'value_updated',
-  'flex_push',
 ];
 
 export function useDealActivityStats(dealId: string | undefined) {
