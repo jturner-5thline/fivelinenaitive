@@ -51,7 +51,7 @@ export function useGmail() {
     }
   }, [user]);
 
-  // Get Unipile Hosted Auth URL and redirect
+  // Get Nylas Hosted OAuth URL and redirect
   const connect = useCallback(async () => {
     if (!user) return;
 
@@ -68,7 +68,7 @@ export function useGmail() {
 
       if (error) throw error;
       
-      // Redirect to Unipile Hosted Auth
+      // Redirect to Nylas Hosted OAuth
       window.location.href = data.auth_url;
     } catch (err: any) {
       console.error('Gmail connect error:', err);
@@ -77,33 +77,25 @@ export function useGmail() {
     }
   }, [user]);
 
-  // Exchange account_id (from Unipile callback) or just re-check status
+  // Exchange Nylas authorization code for grant
   const exchangeCode = useCallback(async (code: string) => {
     if (!user) return false;
 
     setIsConnecting(true);
     try {
-      // With Unipile, the notify_url callback auto-stores the account.
-      // Just re-check status after redirect back.
-      // If an account_id was passed as query param, exchange it.
-      if (code && code.length > 0) {
-        const { data, error } = await supabase.functions.invoke('gmail-auth', {
-          body: {
-            action: 'exchange_code',
-            account_id: code,
-          },
-        });
-        if (error) throw error;
-      }
+      const redirectUri = `${window.location.origin}/integrations?gmail_callback=true`;
       
-      // Poll for connection status (callback may take a moment)
-      let attempts = 0;
-      while (attempts < 5) {
-        await new Promise(r => setTimeout(r, 2000));
-        await checkStatus();
-        if (status.connected) break;
-        attempts++;
-      }
+      const { data, error } = await supabase.functions.invoke('gmail-auth', {
+        body: {
+          action: 'exchange_code',
+          code: code,
+          redirect_uri: redirectUri,
+        },
+      });
+      if (error) throw error;
+      
+      // Refresh status
+      await checkStatus();
       
       setError(null);
       return true;
@@ -114,7 +106,7 @@ export function useGmail() {
     } finally {
       setIsConnecting(false);
     }
-  }, [user, checkStatus, status.connected]);
+  }, [user, checkStatus]);
 
   // Disconnect Gmail
   const disconnect = useCallback(async () => {

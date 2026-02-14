@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -34,16 +36,16 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check if user has a Unipile account
+    // Check if user has a Nylas grant
     const { data: tokenData, error: tokenError } = await supabase
       .from("gmail_tokens")
       .select("id, account_id, grant_id, email_address, scope, created_at")
       .eq("user_id", user.id)
       .single();
 
-    const accountId = tokenData?.account_id || tokenData?.grant_id;
+    const grantId = tokenData?.grant_id || tokenData?.account_id;
 
-    if (tokenError || !tokenData || !accountId) {
+    if (tokenError || !tokenData || !grantId) {
       return new Response(JSON.stringify({
         connected: false,
         message: "Gmail not connected",
@@ -53,9 +55,33 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
+    // Optionally verify grant is still valid with Nylas
+    let isExpired = false;
+    if (NYLAS_API_KEY) {
+      try {
+        const grantResponse = await fetch(`${NYLAS_API_URI}/v3/grants/${grantId}`, {
+          headers: {
+            "Authorization": `Bearer ${NYLAS_API_KEY}`,
+            "Accept": "application/json",
+          },
+        });
+        if (!grantResponse.ok) {
+          const errData = await grantResponse.json().catch(() => ({}));
+          console.error("Nylas grant check failed:", errData);
+          if (grantResponse.status === 404 || grantResponse.status === 401) {
+            isExpired = true;
+          }
+        } else {
+          await grantResponse.text(); // consume body
+        }
+      } catch (e) {
+        console.error("Failed to verify Nylas grant:", e);
+      }
+    }
+
     return new Response(JSON.stringify({
       connected: true,
-      is_expired: false,
+      is_expired: isExpired,
       scope: tokenData.scope,
       connected_at: tokenData.created_at,
       email_address: tokenData.email_address,
