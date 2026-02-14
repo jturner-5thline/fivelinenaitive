@@ -296,22 +296,30 @@ interface EmailDetailProps {
   onBack: () => void;
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
+  onCompose?: (replyTo: { subject: string; to_email: string; to_name: string; threadId: string }) => void;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar }: EmailDetailProps) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onCompose }: EmailDetailProps) {
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === 'r' || e.key === 'R') { e.preventDefault(); toast.info('Reply coming soon'); }
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        const latest = thread.latestEmail;
+        const replyTarget = latest.from_name === 'You'
+          ? { subject: thread.subject, to_email: latest.to_email, to_name: latest.to_name, threadId: thread.threadId }
+          : { subject: thread.subject, to_email: latest.from_email, to_name: latest.from_name, threadId: thread.threadId };
+        onCompose?.(replyTarget);
+      }
       if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toast.info('Forward coming soon'); }
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [thread, onToggleLink]);
+  }, [thread, onToggleLink, onCompose]);
 
   return (
     <div className="flex h-full relative overflow-hidden">
@@ -353,7 +361,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             </Popover>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Reply coming soon')}>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => {
+                  const latest = thread.latestEmail;
+                  const replyTarget = latest.from_name === 'You'
+                    ? { subject: thread.subject, to_email: latest.to_email, to_name: latest.to_name, threadId: thread.threadId }
+                    : { subject: thread.subject, to_email: latest.from_email, to_name: latest.from_name, threadId: thread.threadId };
+                  onCompose?.(replyTarget);
+                }}>
                   <Reply className="h-3.5 w-3.5" />
                   Reply
                   <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">R</kbd>
