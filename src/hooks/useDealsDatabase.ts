@@ -115,6 +115,7 @@ interface DbDeal {
   referred_by: string | null;
   manager: string | null;
   deal_owner: string | null;
+  analyst: string | null;
   is_flagged: boolean;
   flag_notes: string | null;
   notes: string | null;
@@ -274,6 +275,7 @@ export function useDealsDatabase() {
       dealTypes: parseDealTypes(dbDeal.deal_type),
       manager: dbDeal.manager || '',
       dealOwner: dbDeal.deal_owner || undefined,
+      analyst: (dbDeal as any).analyst || undefined,
       isFlagged: dbDeal.is_flagged || false,
       flagNotes: dbDeal.flag_notes || undefined,
       referredBy: toReferrer(dbDeal.referred_by),
@@ -450,6 +452,7 @@ export function useDealsDatabase() {
         engagementType: (data.engagement_type || 'guided') as EngagementType,
         manager: data.manager || '',
         dealOwner: data.deal_owner || undefined,
+        analyst: (data as any).analyst || undefined,
         referredBy: toReferrer(data.referred_by),
         lender: '',
         value: Number(data.value),
@@ -523,6 +526,7 @@ export function useDealsDatabase() {
       if (updates.exclusivity !== undefined) dbUpdates.exclusivity = updates.exclusivity;
       if (updates.manager !== undefined) dbUpdates.manager = updates.manager;
       if (updates.dealOwner !== undefined) dbUpdates.deal_owner = updates.dealOwner;
+      if (updates.analyst !== undefined) dbUpdates.analyst = updates.analyst;
       if (updates.isFlagged !== undefined) dbUpdates.is_flagged = updates.isFlagged;
       if (updates.flagNotes !== undefined) dbUpdates.flag_notes = updates.flagNotes;
       if (Object.prototype.hasOwnProperty.call(updates, 'referredBy')) {

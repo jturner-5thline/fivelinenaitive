@@ -2130,6 +2130,7 @@ export type Database = {
       }
       deals: {
         Row: {
+          analyst: string | null
           business_model: string | null
           company: string
           company_id: string | null
@@ -2164,6 +2165,7 @@ export type Database = {
           value: number
         }
         Insert: {
+          analyst?: string | null
           business_model?: string | null
           company: string
           company_id?: string | null
@@ -2198,6 +2200,7 @@ export type Database = {
           value?: number
         }
         Update: {
+          analyst?: string | null
           business_model?: string | null
           company?: string
           company_id?: string | null
