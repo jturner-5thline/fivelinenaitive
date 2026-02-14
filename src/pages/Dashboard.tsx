@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Zap, Briefcase, LayoutTemplate } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { useProfile } from '@/hooks/useProfile';
 import { useDashboardPresets, WidgetConfig, GridItem } from '@/hooks/useDashboardPresets';
 import { WIDGET_REGISTRY } from '@/components/dashboard/widgetRegistry';
@@ -34,6 +36,7 @@ export default function Dashboard() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const firstName = profile?.first_name || profile?.display_name?.split(' ')[0] || 'there';
 
@@ -135,7 +138,7 @@ export default function Dashboard() {
               </div>
             </Card>
             <FullCalendarView open={calendarOpen} onOpenChange={setCalendarOpen} />
-            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setEmailOpen(true)}>
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="h-12 w-12 rounded-xl bg-accent/50 flex items-center justify-center">
                   <Mail className="h-6 w-6 text-accent-foreground" />
@@ -143,6 +146,11 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">Email</span>
               </div>
             </Card>
+            <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+              <DialogContent className="max-w-6xl w-[95vw] h-[85vh] p-0 overflow-hidden">
+                <DealEmailsTab dealId="" />
+              </DialogContent>
+            </Dialog>
             <QuickPromptsDialog
               trigger={
                 <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
