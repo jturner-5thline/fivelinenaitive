@@ -157,19 +157,21 @@ export function ChecklistLinkDialog({
                 ? "border-primary bg-primary/5"
                 : "border-border hover:border-muted-foreground/50"
             )}
-            onClick={handleToggleNa}
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
+              handleToggleNa();
+            }}
           >
             <Checkbox 
               checked={isNaSelected} 
               onCheckedChange={handleToggleNa}
-              id="na"
             />
-            <Label htmlFor="na" className="flex-1 cursor-pointer">
+            <div className="flex-1 cursor-pointer">
               <div className="flex items-center gap-2">
                 <X className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium text-sm">N/A - Not applicable</span>
               </div>
-            </Label>
+            </div>
           </div>
 
           {/* Grid of category columns */}
@@ -194,12 +196,15 @@ export function ChecklistLinkDialog({
                         : "border-border hover:border-muted-foreground/50",
                       isNaSelected && "opacity-50 pointer-events-none"
                     )}
-                    onClick={() => handleToggleItem(item.id)}
+                    onClick={(e) => {
+                      // Prevent double-toggle if clicking the checkbox itself
+                      if ((e.target as HTMLElement).closest('button[role="checkbox"]')) return;
+                      handleToggleItem(item.id);
+                    }}
                   >
                     <Checkbox 
                       checked={selectedItemIds.has(item.id)} 
                       onCheckedChange={() => handleToggleItem(item.id)}
-                      id={item.id}
                       disabled={isNaSelected}
                       className="flex-shrink-0"
                     />
