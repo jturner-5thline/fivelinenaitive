@@ -67,6 +67,7 @@ export interface Deal {
   dealTypes?: string[]; // Array of deal type IDs
   manager: string;
   dealOwner?: string;
+  analyst?: string;
   isFlagged?: boolean;
   flagNotes?: string;
   lender: string;

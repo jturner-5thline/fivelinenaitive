@@ -2709,6 +2709,25 @@ export default function DealDetail() {
                                         </SelectContent>
                                       </Select>
                                     </div>
+                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                      <span className="text-muted-foreground text-sm">Analyst</span>
+                                      <Select
+                                        value={deal.analyst || ''}
+                                        onValueChange={(value: string) => updateDeal('analyst', value === '__none__' ? '' : value)}
+                                      >
+                                        <SelectTrigger className="w-full h-8 text-sm">
+                                          <SelectValue placeholder="Select analyst..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="__none__">None</SelectItem>
+                                          {members.map((member) => (
+                                            <SelectItem key={member.id} value={member.display_name || member.user_id}>
+                                              {member.display_name || 'Unknown'}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                   </div>
                                   
                                   {/* Right Column - Company Info */}
