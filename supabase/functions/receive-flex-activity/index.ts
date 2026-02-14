@@ -298,6 +298,46 @@ Deno.serve(async (req) => {
 
       console.log(`Info request stored for deal ${company_name} from ${user_email || user_name}`);
 
+      // Auto-add lender to deal_lenders if we can resolve the internal deal_id
+      if (user_name && deal_id) {
+        // Try to resolve internal deal_id from flex_sync_history
+        const { data: syncRecord } = await supabase
+          .from('flex_sync_history')
+          .select('deal_id')
+          .eq('flex_deal_id', deal_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (syncRecord?.deal_id) {
+          const lenderName = user_name.trim();
+          const { data: existingLender } = await supabase
+            .from('deal_lenders')
+            .select('id')
+            .eq('deal_id', syncRecord.deal_id)
+            .ilike('name', lenderName)
+            .limit(1)
+            .maybeSingle();
+
+          if (!existingLender) {
+            const { error: lenderErr } = await supabase
+              .from('deal_lenders')
+              .insert({
+                deal_id: syncRecord.deal_id,
+                name: lenderName,
+                stage: 'identified',
+                notes: `Auto-added from FLEx info request${user_email ? ` (${user_email})` : ''}`,
+              });
+
+            if (lenderErr) {
+              console.error('Failed to auto-add lender from info request:', lenderErr);
+            } else {
+              console.log(`Auto-added lender "${lenderName}" to deal ${syncRecord.deal_id} from FLEx info request`);
+            }
+          }
+        }
+      }
+
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -438,6 +478,39 @@ Deno.serve(async (req) => {
         }
 
         console.log(`Logged FLEx activity: ${activityType} for deal ${dealId}`);
+
+        // Auto-add lender to deal_lenders on info_request if not already present
+        if (event.event_type === 'info_request' && event.lender_name) {
+          const lenderName = event.lender_name.trim();
+          
+          // Check if this lender already exists on this deal (case-insensitive)
+          const { data: existingLender } = await supabase
+            .from('deal_lenders')
+            .select('id')
+            .eq('deal_id', dealId)
+            .ilike('name', lenderName)
+            .limit(1)
+            .maybeSingle();
+
+          if (!existingLender) {
+            const { error: lenderInsertError } = await supabase
+              .from('deal_lenders')
+              .insert({
+                deal_id: dealId,
+                name: lenderName,
+                stage: 'identified',
+                notes: `Auto-added from FLEx info request${event.lender_email ? ` (${event.lender_email})` : ''}`,
+              });
+
+            if (lenderInsertError) {
+              console.error('Failed to auto-add lender:', lenderInsertError);
+            } else {
+              console.log(`Auto-added lender "${lenderName}" to deal ${dealId} from FLEx info request`);
+            }
+          } else {
+            console.log(`Lender "${lenderName}" already exists on deal ${dealId}, skipping auto-add`);
+          }
+        }
         
         let alertSent = false;
 
