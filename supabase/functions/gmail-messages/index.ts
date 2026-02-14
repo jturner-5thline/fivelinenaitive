@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const UNIPILE_API_KEY = Deno.env.get("UNIPILE_API_KEY");
-const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN");
+const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -25,26 +25,23 @@ interface MessageRequest {
   query?: string;
 }
 
-function getUnipileBaseUrl(): string {
-  return UNIPILE_DSN?.startsWith("http") ? UNIPILE_DSN : `https://${UNIPILE_DSN}`;
-}
-
-function unipileHeaders() {
+function nylasHeaders() {
   return {
-    "X-API-KEY": UNIPILE_API_KEY!,
+    "Authorization": `Bearer ${NYLAS_API_KEY}`,
     "Accept": "application/json",
+    "Content-Type": "application/json",
   };
 }
 
-async function getAccountId(supabase: any, userId: string): Promise<string | null> {
+async function getGrantId(supabase: any, userId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from("gmail_tokens")
-    .select("account_id, grant_id")
+    .select("grant_id, account_id")
     .eq("user_id", userId)
     .single();
 
   if (error || !data) return null;
-  return data.account_id || data.grant_id || null;
+  return data.grant_id || data.account_id || null;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -61,8 +58,8 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    if (!UNIPILE_API_KEY || !UNIPILE_DSN) {
-      return new Response(JSON.stringify({ error: "Unipile not configured" }), {
+    if (!NYLAS_API_KEY) {
+      return new Response(JSON.stringify({ error: "Nylas not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -79,8 +76,8 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const accountId = await getAccountId(supabase, user.id);
-    if (!accountId) {
+    const grantId = await getGrantId(supabase, user.id);
+    if (!grantId) {
       return new Response(JSON.stringify({ error: "Gmail not connected. Please connect your Gmail account." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -89,55 +86,54 @@ serve(async (req: Request): Promise<Response> => {
 
     const requestData: MessageRequest = await req.json();
     const { action } = requestData;
-    console.log(`Unipile messages action: ${action} for user: ${user.id}`);
+    console.log(`Nylas messages action: ${action} for user: ${user.id}`);
 
-    const baseUrl = getUnipileBaseUrl();
-    const headers = unipileHeaders();
+    const headers = nylasHeaders();
+    const baseUrl = `${NYLAS_API_URI}/v3/grants/${grantId}`;
 
     switch (action) {
       case "list": {
         const { max_results = 20, page_token, query } = requestData;
 
         const params = new URLSearchParams({
-          account_id: accountId,
           limit: String(max_results),
         });
-        if (page_token) params.set("cursor", page_token);
-        if (query) params.set("q", query);
+        if (page_token) params.set("page_token", page_token);
+        if (query) params.set("search_query_native", query);
 
         const listResponse = await fetch(
-          `${baseUrl}/api/v1/emails?${params}`,
+          `${baseUrl}/messages?${params}`,
           { headers }
         );
 
         const listData = await listResponse.json();
 
         if (!listResponse.ok) {
-          console.error("Unipile list error:", listData);
+          console.error("Nylas list error:", listData);
           return new Response(JSON.stringify({ error: listData.message || "Failed to list messages" }), {
             status: listResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const items = listData.items || listData.data || listData || [];
-        const messages = (Array.isArray(items) ? items : []).map((msg: any) => ({
+        const items = listData.data || [];
+        const messages = items.map((msg: any) => ({
           id: msg.id,
           thread_id: msg.thread_id || msg.id,
           subject: msg.subject || "",
-          from_email: msg.from?.identifier || msg.from?.email || msg.from_attendee?.identifier || "",
-          from_name: msg.from?.display_name || msg.from?.name || msg.from_attendee?.display_name || "",
-          to_emails: (msg.to || msg.to_attendees || []).map((t: any) => t.identifier || t.email || ""),
-          snippet: msg.body_plain?.substring(0, 200) || msg.snippet || "",
-          is_read: msg.read !== undefined ? msg.read : !msg.unread,
+          from_email: msg.from?.[0]?.email || "",
+          from_name: msg.from?.[0]?.name || "",
+          to_emails: (msg.to || []).map((t: any) => t.email || ""),
+          snippet: msg.snippet || "",
+          is_read: !msg.unread,
           is_starred: msg.starred || false,
           labels: msg.folders || msg.labels || [],
-          received_at: msg.date || msg.received_at || msg.created_at || null,
+          received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
         }));
 
         return new Response(JSON.stringify({
           messages,
-          next_page_token: listData.cursor || listData.next_cursor || null,
+          next_page_token: listData.next_cursor || null,
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -154,34 +150,35 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const msgResponse = await fetch(
-          `${baseUrl}/api/v1/emails/${message_id}`,
+          `${baseUrl}/messages/${message_id}`,
           { headers }
         );
 
-        const msg = await msgResponse.json();
+        const msgData = await msgResponse.json();
 
         if (!msgResponse.ok) {
-          return new Response(JSON.stringify({ error: msg.message || "Failed to get message" }), {
+          return new Response(JSON.stringify({ error: msgData.message || "Failed to get message" }), {
             status: msgResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
+        const msg = msgData.data || msgData;
         const message = {
           id: msg.id,
           thread_id: msg.thread_id || msg.id,
           subject: msg.subject || "",
-          from_email: msg.from?.identifier || msg.from?.email || msg.from_attendee?.identifier || "",
-          from_name: msg.from?.display_name || msg.from?.name || msg.from_attendee?.display_name || "",
-          to_emails: (msg.to || msg.to_attendees || []).map((t: any) => t.identifier || t.email || ""),
-          cc_emails: (msg.cc || msg.cc_attendees || []).map((c: any) => c.identifier || c.email || ""),
-          snippet: msg.body_plain?.substring(0, 200) || msg.snippet || "",
-          body_text: msg.body_plain || msg.body || "",
-          body_html: msg.body || msg.body_html || "",
-          is_read: msg.read !== undefined ? msg.read : !msg.unread,
+          from_email: msg.from?.[0]?.email || "",
+          from_name: msg.from?.[0]?.name || "",
+          to_emails: (msg.to || []).map((t: any) => t.email || ""),
+          cc_emails: (msg.cc || []).map((c: any) => c.email || ""),
+          snippet: msg.snippet || "",
+          body_text: msg.body || "",
+          body_html: msg.body || "",
+          is_read: !msg.unread,
           is_starred: msg.starred || false,
           labels: msg.folders || msg.labels || [],
-          received_at: msg.date || msg.received_at || msg.created_at || null,
+          received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
         };
 
         return new Response(JSON.stringify({ message }), {
@@ -200,29 +197,24 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        // Unipile send uses multipart/form-data or JSON
         const sendBody: any = {
-          account_id: accountId,
-          to: to.map(email => ({ identifier: email, display_name: email })),
+          to: to.map(email => ({ email, name: email })),
           subject,
           body: body_html || body || "",
         };
 
         if (cc && cc.length > 0) {
-          sendBody.cc = cc.map(email => ({ identifier: email, display_name: email }));
+          sendBody.cc = cc.map(email => ({ email, name: email }));
         }
         if (bcc && bcc.length > 0) {
-          sendBody.bcc = bcc.map(email => ({ identifier: email, display_name: email }));
+          sendBody.bcc = bcc.map(email => ({ email, name: email }));
         }
 
         const sendResponse = await fetch(
-          `${baseUrl}/api/v1/emails`,
+          `${baseUrl}/messages/send`,
           {
             method: "POST",
-            headers: {
-              ...headers,
-              "Content-Type": "application/json",
-            },
+            headers,
             body: JSON.stringify(sendBody),
           }
         );
@@ -230,19 +222,21 @@ serve(async (req: Request): Promise<Response> => {
         const sendData = await sendResponse.json();
 
         if (!sendResponse.ok) {
-          console.error("Unipile send error:", sendData);
+          console.error("Nylas send error:", sendData);
           return new Response(JSON.stringify({ error: sendData.message || "Failed to send" }), {
             status: sendResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
+        const sentMsg = sendData.data || sendData;
+
         // Store sent message
         await supabase
           .from("gmail_sent_messages")
           .insert({
             user_id: user.id,
-            gmail_message_id: sendData.id || sendData.message_id || "unknown",
+            gmail_message_id: sentMsg.id || "unknown",
             to_emails: to,
             cc_emails: cc || [],
             bcc_emails: bcc || [],
@@ -253,8 +247,8 @@ serve(async (req: Request): Promise<Response> => {
             sent_at: new Date().toISOString(),
           });
 
-        console.log(`Email sent via Unipile: ${sendData.id}`);
-        return new Response(JSON.stringify({ success: true, message_id: sendData.id }), {
+        console.log(`Email sent via Nylas: ${sentMsg.id}`);
+        return new Response(JSON.stringify({ success: true, message_id: sentMsg.id }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -271,13 +265,10 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const updateResponse = await fetch(
-          `${baseUrl}/api/v1/emails/${message_id}`,
+          `${baseUrl}/messages/${message_id}`,
           {
             method: "PUT",
-            headers: {
-              ...headers,
-              "Content-Type": "application/json",
-            },
+            headers,
             body: JSON.stringify({ unread: action === "mark_unread" }),
           }
         );
@@ -308,13 +299,10 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const updateResponse = await fetch(
-          `${baseUrl}/api/v1/emails/${message_id}`,
+          `${baseUrl}/messages/${message_id}`,
           {
             method: "PUT",
-            headers: {
-              ...headers,
-              "Content-Type": "application/json",
-            },
+            headers,
             body: JSON.stringify({ starred: action === "star" }),
           }
         );
@@ -343,11 +331,13 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
+        // Nylas v3: Move to trash by updating folders
         const trashResponse = await fetch(
-          `${baseUrl}/api/v1/emails/${message_id}`,
+          `${baseUrl}/messages/${message_id}`,
           {
-            method: "DELETE",
+            method: "PUT",
             headers,
+            body: JSON.stringify({ folders: ["TRASH"] }),
           }
         );
 
@@ -358,6 +348,7 @@ serve(async (req: Request): Promise<Response> => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+        await trashResponse.text();
 
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
@@ -375,7 +366,7 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const deleteResponse = await fetch(
-          `${baseUrl}/api/v1/emails/${message_id}`,
+          `${baseUrl}/messages/${message_id}`,
           {
             method: "DELETE",
             headers,
@@ -403,7 +394,7 @@ serve(async (req: Request): Promise<Response> => {
         });
     }
   } catch (error: any) {
-    console.error("Unipile messages error:", error);
+    console.error("Nylas messages error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
