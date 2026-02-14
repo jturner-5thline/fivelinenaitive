@@ -123,7 +123,7 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
   return (
     <Card>
       <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
-        <CardHeader className="pb-3">
+        <CardHeader className={cn("pb-3", !isOpen && "pb-0")}>
           <CollapsibleTrigger asChild>
             <button className="w-full flex items-center justify-between text-left hover:bg-muted/50 -mx-2 px-2 py-1 rounded-md transition-colors">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
