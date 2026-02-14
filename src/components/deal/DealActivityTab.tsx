@@ -30,23 +30,21 @@ interface FlexStatCardProps {
 
 const FlexStatCard = ({ icon, label, value, highlight, isLoading, onClick }: FlexStatCardProps) => (
   <div 
-    className={`flex items-center gap-3 p-3 border rounded-lg ${highlight && value > 0 ? 'border-green-500/30 bg-green-500/5' : 'bg-card'} ${onClick ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+    className={`flex flex-col items-center justify-center gap-1.5 p-3 border rounded-lg text-center ${highlight && value > 0 ? 'border-green-500/30 bg-green-500/5' : 'bg-card'} ${onClick ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
     onClick={onClick}
     role={onClick ? 'button' : undefined}
     tabIndex={onClick ? 0 : undefined}
     onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
   >
-    <div className={`flex items-center justify-center h-10 w-10 rounded-lg ${highlight && value > 0 ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+    <div className={`flex items-center justify-center h-8 w-8 rounded-lg ${highlight && value > 0 ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
       {icon}
     </div>
-    <div>
-      {isLoading ? (
-        <Skeleton className="h-6 w-8 mb-1" />
-      ) : (
-        <span className={`text-xl font-semibold ${highlight && value > 0 ? 'text-green-600' : ''}`}>{value}</span>
-      )}
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
+    {isLoading ? (
+      <Skeleton className="h-6 w-8" />
+    ) : (
+      <span className={`text-xl font-semibold ${highlight && value > 0 ? 'text-green-600' : ''}`}>{value}</span>
+    )}
+    <p className="text-xs text-muted-foreground">{label}</p>
   </div>
 );
 
