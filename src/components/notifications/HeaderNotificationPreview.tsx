@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 
 interface NotificationPreview {
   id: string;
   message: string;
   timestamp: number;
+  link?: string;
 }
 
 export function HeaderNotificationPreview() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [preview, setPreview] = useState<NotificationPreview | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -25,16 +28,23 @@ export function HeaderNotificationPreview() {
     }, 400);
   }, []);
 
-  const showPreview = useCallback((message: string, id: string) => {
+  const showPreview = useCallback((message: string, id: string, link?: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setIsLeaving(false);
-    setPreview({ id, message, timestamp: Date.now() });
+    setPreview({ id, message, timestamp: Date.now(), link });
     setIsVisible(true);
 
     timeoutRef.current = setTimeout(() => {
       dismiss();
     }, 5000);
   }, [dismiss]);
+
+  const handleClick = useCallback(() => {
+    if (preview?.link) {
+      dismiss();
+      navigate(preview.link);
+    }
+  }, [preview, dismiss, navigate]);
 
   // Listen for flex_notifications (engagement alerts)
   useEffect(() => {
@@ -52,7 +62,7 @@ export function HeaderNotificationPreview() {
         },
         (payload) => {
           const n = payload.new as any;
-          showPreview(n.title || n.message || 'New notification', n.id);
+          showPreview(n.title || n.message || 'New notification', n.id, n.deal_id ? `/deals/${n.deal_id}` : '/deals');
         }
       )
       .on(
@@ -65,7 +75,7 @@ export function HeaderNotificationPreview() {
         (payload) => {
           const n = payload.new as any;
           const msg = n.message || `${n.lender_name || 'A lender'} requested access`;
-          showPreview(msg, n.id);
+          showPreview(msg, n.id, '/lenders');
         }
       )
       .on(
@@ -80,7 +90,7 @@ export function HeaderNotificationPreview() {
           if (n.status === 'pending') {
             const lenderName = n.existing_lender_name || 
               (n.incoming_data as any)?.name || 'Unknown lender';
-            showPreview(`FLEx Sync: "${lenderName}" requires review`, n.id);
+            showPreview(`FLEx Sync: "${lenderName}" requires review`, n.id, '/lenders');
           }
         }
       )
@@ -109,7 +119,10 @@ export function HeaderNotificationPreview() {
       `}</style>
       <div key={preview.id} className="overflow-hidden">
         <div
+          onClick={handleClick}
           className={`w-full flex items-center gap-3 px-5 py-4 bg-[hsl(220,80%,55%)] text-white text-sm font-medium transition-all duration-300 ease-out ${
+            preview.link ? 'cursor-pointer hover:bg-[hsl(220,80%,60%)]' : ''
+          } ${
             isLeaving
               ? 'opacity-0 -translate-y-full'
               : 'opacity-100 translate-y-0'
