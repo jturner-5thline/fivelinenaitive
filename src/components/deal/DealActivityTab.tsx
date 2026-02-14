@@ -203,7 +203,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium">External Activity (Last 14 Days)</CardTitle>
+            <CardTitle className="text-base font-medium">Lender Activity (Last 14 Days)</CardTitle>
             {selectedDate && (
               <Button
                 variant="ghost"
@@ -227,10 +227,10 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
             <div className="h-[250px] flex flex-col items-center justify-center">
               <TrendingUp className="h-8 w-8 text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground text-center">
-                No external activity recorded in the last 14 days.
+                No lender activity recorded in the last 14 days.
               </p>
               <p className="text-xs text-muted-foreground text-center mt-1">
-                FLEx engagement and external views will appear here.
+                Lender engagement and views will appear here.
               </p>
             </div>
           ) : (
@@ -267,7 +267,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
                   />
                   <Bar 
                     dataKey="views" 
-                    name="External Activity"
+                    name="Lender Activity"
                     fill="hsl(var(--primary))" 
                     radius={[4, 4, 0, 0]}
                   />
