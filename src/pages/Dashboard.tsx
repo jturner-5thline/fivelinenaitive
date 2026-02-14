@@ -7,8 +7,6 @@ import { WIDGET_REGISTRY } from '@/components/dashboard/widgetRegistry';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PresetManager } from '@/components/dashboard/PresetManager';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
@@ -16,8 +14,7 @@ import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { FullCalendarView } from '@/components/dashboard/FullCalendarView';
 
 export default function Dashboard() {
   const { profile } = useProfile();
@@ -36,7 +33,7 @@ export default function Dashboard() {
   } = useDashboardPresets();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [calendarDate, setCalendarDate] = useState<Date | undefined>(new Date());
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const firstName = profile?.first_name || profile?.display_name?.split(' ')[0] || 'there';
 
@@ -129,27 +126,15 @@ export default function Dashboard() {
           <DashboardAIInput />
 
           <div className="grid grid-cols-4 gap-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <CalendarIcon className="h-6 w-6 text-primary" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">Calendar</span>
-                  </div>
-                </Card>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={calendarDate}
-                  onSelect={setCalendarDate}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setCalendarOpen(true)}>
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <CalendarIcon className="h-6 w-6 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Calendar</span>
+              </div>
+            </Card>
+            <FullCalendarView open={calendarOpen} onOpenChange={setCalendarOpen} />
             <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="h-12 w-12 rounded-xl bg-accent/50 flex items-center justify-center">
