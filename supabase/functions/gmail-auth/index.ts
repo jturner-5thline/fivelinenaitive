@@ -68,7 +68,6 @@ serve(async (req: Request): Promise<Response> => {
           redirect_uri: redirect_uri,
           response_type: "code",
           provider: "google",
-          access_type: "online",
           state: user.id,
         });
 
