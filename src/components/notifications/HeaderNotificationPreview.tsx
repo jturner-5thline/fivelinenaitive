@@ -83,12 +83,18 @@ export function HeaderNotificationPreview() {
   return (
     <div
       key={preview.id}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm text-foreground max-w-xs truncate transition-all duration-300 ${
+      className={`w-full flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20 text-sm text-foreground transition-all duration-300 ${
         isVisible ? 'animate-fade-in opacity-100' : 'opacity-0'
       }`}
     >
       <Bell className="h-3.5 w-3.5 text-primary shrink-0" />
-      <span className="truncate">{preview.message}</span>
+      <span className="truncate flex-1">{preview.message}</span>
+      <button
+        onClick={() => setIsVisible(false)}
+        className="text-muted-foreground hover:text-foreground ml-2 shrink-0"
+      >
+        ✕
+      </button>
     </div>
   );
 }

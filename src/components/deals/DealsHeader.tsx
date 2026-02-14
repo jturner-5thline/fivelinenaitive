@@ -109,7 +109,6 @@ export function DealsHeader() {
           <div className="w-52">
             <GlobalSearchAI />
           </div>
-          <HeaderNotificationPreview />
           <LenderSyncNotificationBell />
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
@@ -244,6 +243,7 @@ export function DealsHeader() {
           </HintTooltip>
         </div>
       </div>
+      <HeaderNotificationPreview />
     </header>
   );
 }
