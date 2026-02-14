@@ -402,10 +402,20 @@ export function DataRoomChecklistPanel({
               </p>
             )}
             {itemsMissingUploads.length > 0 && (
-              <p className="text-xs text-amber-600 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {itemsMissingUploads.length} items missing uploads
-              </p>
+              <div className="text-xs text-amber-600">
+                <p className="flex items-center gap-1 font-medium">
+                  <AlertCircle className="h-3 w-3" />
+                  {itemsMissingUploads.length} items missing uploads:
+                </p>
+                <ul className="ml-4 mt-0.5 space-y-0.5 list-disc text-amber-500">
+                  {itemsMissingUploads.slice(0, 8).map(item => (
+                    <li key={item.id} className="leading-tight">{item.name}</li>
+                  ))}
+                  {itemsMissingUploads.length > 8 && (
+                    <li className="text-muted-foreground">+{itemsMissingUploads.length - 8} more</li>
+                  )}
+                </ul>
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
