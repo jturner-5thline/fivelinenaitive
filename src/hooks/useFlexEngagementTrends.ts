@@ -21,13 +21,15 @@ const FLEX_ACTIVITY_TYPES = [
   'flex_data_room_push',
   'flex_info_request_approved',
   'flex_info_request_denied',
-  // Future webhook-sourced types (when FLEx pushes them)
   'flex_deal_viewed',
   'flex_file_downloaded',
   'flex_info_requested',
   'flex_nda_requested',
   'flex_term_sheet_requested',
   'flex_deal_saved',
+  'flex_writeup_viewed',
+  'flex_writeup_downloaded',
+  'flex_writeup_scrolled',
 ];
 
 const SCORE_WEIGHTS: Record<string, number> = {
@@ -42,6 +44,9 @@ const SCORE_WEIGHTS: Record<string, number> = {
   'flex_nda_requested': 10,
   'flex_term_sheet_requested': 15,
   'flex_deal_saved': 4,
+  'flex_writeup_viewed': 3,
+  'flex_writeup_downloaded': 5,
+  'flex_writeup_scrolled': 4,
 };
 
 export function useFlexEngagementTrends(dealId: string | undefined, days: number = 30) {

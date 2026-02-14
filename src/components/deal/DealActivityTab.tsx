@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck } from 'lucide-react';
+import { Eye, FileText, TrendingUp, Loader2, ExternalLink, Download, FileSignature, HelpCircle, X, Bookmark, FileCheck, ScrollText, ArrowDownToLine } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActivityStats';
@@ -53,6 +53,9 @@ const ACTIVITY_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNod
   flex_nda_requested: { label: 'Requested NDA', icon: <FileText className="h-3.5 w-3.5" /> },
   flex_term_sheet_requested: { label: 'Requested term sheet', icon: <FileSignature className="h-3.5 w-3.5" /> },
   flex_deal_saved: { label: 'Saved deal', icon: <Bookmark className="h-3.5 w-3.5" /> },
+  flex_writeup_viewed: { label: 'Viewed write-up', icon: <ScrollText className="h-3.5 w-3.5" /> },
+  flex_writeup_downloaded: { label: 'Downloaded write-up', icon: <ArrowDownToLine className="h-3.5 w-3.5" /> },
+  flex_writeup_scrolled: { label: 'Read full write-up', icon: <FileCheck className="h-3.5 w-3.5" /> },
   deal_viewed: { label: 'Viewed deal', icon: <Eye className="h-3.5 w-3.5" /> },
   writeup_viewed: { label: 'Viewed writeup', icon: <FileCheck className="h-3.5 w-3.5" /> },
 };
@@ -377,6 +380,110 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
               highlight
               isLoading={isLoadingStats}
             />
+
+            {/* Write-Up Engagement */}
+            <div className="border-t pt-3 mt-1">
+              <p className="text-xs font-medium text-muted-foreground mb-3 text-center">Write-Up Activity</p>
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <div>
+                  <FlexStatCard
+                    icon={<ScrollText className="h-4 w-4" />}
+                    label="Write-Up Views"
+                    value={lenderEngagement?.reduce((sum, l) => sum + l.writeupViews, 0) ?? 0}
+                    isLoading={isLoadingStats}
+                    onClick={() => {}}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3" align="end">
+                <h4 className="text-sm font-medium mb-2">Lenders who viewed write-up</h4>
+                {(() => {
+                  const viewers = lenderEngagement?.filter(l => l.writeupViews > 0) || [];
+                  if (viewers.length === 0) return <p className="text-xs text-muted-foreground">No write-up views yet.</p>;
+                  return (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {viewers.map((l, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{l.lenderName}</p>
+                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
+                          </div>
+                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.writeupViews}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <div>
+                  <FlexStatCard
+                    icon={<ArrowDownToLine className="h-4 w-4" />}
+                    label="Write-Up Downloads"
+                    value={lenderEngagement?.reduce((sum, l) => sum + l.writeupDownloads, 0) ?? 0}
+                    isLoading={isLoadingStats}
+                    onClick={() => {}}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3" align="end">
+                <h4 className="text-sm font-medium mb-2">Lenders who downloaded write-up</h4>
+                {(() => {
+                  const downloaders = lenderEngagement?.filter(l => l.writeupDownloads > 0) || [];
+                  if (downloaders.length === 0) return <p className="text-xs text-muted-foreground">No write-up downloads yet.</p>;
+                  return (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {downloaders.map((l, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{l.lenderName}</p>
+                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
+                          </div>
+                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.writeupDownloads}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <div>
+                  <FlexStatCard
+                    icon={<FileCheck className="h-4 w-4" />}
+                    label="Read Full Write-Up"
+                    value={lenderEngagement?.reduce((sum, l) => sum + l.writeupFullScrolls, 0) ?? 0}
+                    isLoading={isLoadingStats}
+                    onClick={() => {}}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3" align="end">
+                <h4 className="text-sm font-medium mb-2">Lenders who read full write-up</h4>
+                {(() => {
+                  const scrollers = lenderEngagement?.filter(l => l.writeupFullScrolls > 0) || [];
+                  if (scrollers.length === 0) return <p className="text-xs text-muted-foreground">No full reads yet.</p>;
+                  return (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {scrollers.map((l, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{l.lenderName}</p>
+                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
+                          </div>
+                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.writeupFullScrolls}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </PopoverContent>
+            </Popover>
           </div>
         </CardContent>
       </Card>
