@@ -184,7 +184,7 @@ export function DashboardGrid({ gridConfig, widgetsConfig, isEditing, onLayoutCh
               </div>
             )}
 
-            <div className="h-full overflow-hidden rounded-lg">
+            <div className="h-full w-full overflow-auto rounded-lg [&>*]:h-full [&>*]:w-full">
               <Suspense fallback={<WidgetFallback />}>
                 <WidgetComponent config={widget.config} />
               </Suspense>
