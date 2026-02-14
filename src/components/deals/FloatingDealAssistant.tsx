@@ -129,29 +129,28 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
             </div>
           </div>
           
-          <ScrollArea className="h-72 p-4">
-            {messages.length === 0 ? (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground text-center py-2">
-                  Ask questions about this deal
-                </p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {suggestedQuestions.map((q, i) => (
-                    <Button
-                      key={i}
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-7"
-                      onClick={() => {
-                        setQuestion(q);
-                      }}
-                    >
-                      {q}
-                    </Button>
-                  ))}
-                </div>
+          {messages.length === 0 && (
+            <div className="px-4 pt-3 pb-1 overflow-x-auto">
+              <div className="flex gap-2 min-w-max">
+                {suggestedQuestions.map((q, i) => (
+                  <Button
+                    key={i}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7 whitespace-nowrap shrink-0"
+                    onClick={() => {
+                      setQuestion(q);
+                    }}
+                  >
+                    {q}
+                  </Button>
+                ))}
               </div>
-            ) : (
+            </div>
+          )}
+
+          <ScrollArea className="h-72 p-4">
+            {messages.length > 0 && (
               <div className="space-y-4">
                 {messages.map((message, index) => (
                   <div
