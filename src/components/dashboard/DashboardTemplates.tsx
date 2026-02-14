@@ -159,7 +159,7 @@ export function DashboardTemplatesDialog({ onSelectTemplate, trigger }: Dashboar
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[720px] flex flex-col">
+      <DialogContent className="sm:max-w-[750px] flex flex-col">
         <DialogHeader>
           <DialogTitle>Choose a Dashboard Template</DialogTitle>
           <DialogDescription>
@@ -167,12 +167,12 @@ export function DashboardTemplatesDialog({ onSelectTemplate, trigger }: Dashboar
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative">
+        <div className="relative px-6">
           {/* Left arrow */}
           <Button
             variant="outline"
             size="icon"
-            className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-md bg-background"
+            className="absolute -left-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-md bg-background"
             onClick={() => scroll('left')}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -181,7 +181,7 @@ export function DashboardTemplatesDialog({ onSelectTemplate, trigger }: Dashboar
           {/* Carousel */}
           <div
             ref={scrollRef}
-            className="flex gap-3 overflow-x-auto scrollbar-hide px-2 py-1 snap-x snap-mandatory"
+            className="flex gap-3 overflow-x-auto scrollbar-hide py-1 snap-x snap-mandatory"
           >
             {DASHBOARD_TEMPLATES.map(template => {
               const Icon = template.icon;
@@ -190,15 +190,15 @@ export function DashboardTemplatesDialog({ onSelectTemplate, trigger }: Dashboar
                 <Card
                   key={template.id}
                   className={cn(
-                    'cursor-pointer transition-all border-border/50 shrink-0 w-[240px] snap-start',
+                    'cursor-pointer transition-all border-border/50 shrink-0 w-[220px] snap-start',
                     isSelected
                       ? 'border-primary ring-1 ring-primary/20 bg-primary/5'
                       : 'hover:border-border hover:bg-muted/30'
                   )}
                   onClick={() => setSelectedId(template.id)}
                 >
-                  <CardContent className="p-4 flex flex-col gap-3 h-full">
-                    <div className="flex items-center gap-3">
+                  <CardContent className="p-3.5 flex flex-col gap-2.5 h-full">
+                    <div className="flex items-center justify-between">
                       <div className={cn(
                         'p-2 rounded-lg shrink-0 transition-colors',
                         isSelected ? 'bg-primary/10' : 'bg-muted'
@@ -208,13 +208,11 @@ export function DashboardTemplatesDialog({ onSelectTemplate, trigger }: Dashboar
                           isSelected ? 'text-primary' : 'text-foreground'
                         )} />
                       </div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{template.name}</p>
-                        {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
-                      </div>
+                      {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
                     </div>
+                    <p className="text-sm font-medium text-foreground">{template.name}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{template.description}</p>
-                    <div className="flex flex-wrap gap-1 mt-auto">
+                    <div className="flex flex-wrap gap-1 mt-auto pt-1">
                       {template.tags.map(tag => (
                         <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
                           {tag}
@@ -234,10 +232,17 @@ export function DashboardTemplatesDialog({ onSelectTemplate, trigger }: Dashboar
           <Button
             variant="outline"
             size="icon"
-            className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-md bg-background"
+            className="absolute -right-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-md bg-background"
             onClick={() => scroll('right')}
           >
             <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-border">
+          <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button size="sm" disabled={!selectedId} onClick={handleApply}>
+            Use Template
           </Button>
         </div>
 
