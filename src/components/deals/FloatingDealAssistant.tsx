@@ -200,6 +200,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                 disabled={isLoading}
               />
               <Button
+                variant="gradient"
                 size="sm"
                 onClick={handleSendQuestion}
                 disabled={!question.trim() || isLoading}
