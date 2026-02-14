@@ -157,10 +157,10 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="absolute -top-2 -left-2 z-10">
-                  <div className="flex items-center justify-center h-6 min-w-6 px-1 rounded-full bg-primary shadow-md">
-                    <Bell className="h-3 w-3 text-primary-foreground" />
-                    <span className="text-[10px] font-bold text-primary-foreground ml-0.5">{notificationCount}</span>
+                <div className="absolute -top-2 -right-2 z-10">
+                  <div className="flex items-center justify-center h-6 min-w-6 px-1 rounded-full bg-destructive shadow-md">
+                    <Bell className="h-3 w-3 text-destructive-foreground" />
+                    <span className="text-[10px] font-bold text-destructive-foreground ml-0.5">{notificationCount}</span>
                   </div>
                 </div>
               </TooltipTrigger>
@@ -174,7 +174,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="absolute -top-2 -right-2 z-10">
+                <div className="absolute -top-2 -left-2 z-10">
                   <div className={`flex items-center justify-center h-6 w-6 rounded-full ${timeAgoData.days >= 30 ? 'bg-destructive' : 'bg-warning'} shadow-md`}>
                     <AlertTriangle className="h-3.5 w-3.5 text-white" />
                   </div>
