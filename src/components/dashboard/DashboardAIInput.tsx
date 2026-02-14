@@ -25,6 +25,14 @@ export function DashboardAIInput() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-focus the input when the component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Debounced search - trigger faster for better UX
   useEffect(() => {
     if (inputValue.length >= 5) {
