@@ -102,7 +102,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
             </h3>
             <div className="flex items-center gap-2">
               {dealName && (
-                <p className="text-xs text-muted-foreground truncate max-w-[150px]">{dealName}</p>
+                <p className="text-xs text-foreground truncate max-w-[150px]">{dealName}</p>
               )}
               {messages.length > 0 && (
                 <Button
