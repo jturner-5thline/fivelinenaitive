@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
+import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { DealListRow } from './DealListRow';
 import { FileX, ChevronDown, ChevronRight, GripVertical, Settings2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -78,6 +79,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   // Fetch FLEx engagement scores for all visible deals
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { data: flexEngagementScores } = useFlexEngagementScores(dealIds);
+  const flexNotificationCounts = useDealNotificationCounts(dealIds);
 
   // Apply FLEx engagement sorting if selected (done here since we have access to engagement scores)
   const sortedDeals = useMemo(() => {
@@ -225,6 +227,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                   onMarkReviewed={onMarkReviewed} 
                   onToggleFlag={onToggleFlag} 
                   flexEngagement={flexEngagementScores?.get(deal.id)}
+                  flexNotificationCount={flexNotificationCounts[deal.id] || 0}
                 />
               </div>
             </HintTooltip>
@@ -236,6 +239,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
               onMarkReviewed={onMarkReviewed} 
               onToggleFlag={onToggleFlag} 
               flexEngagement={flexEngagementScores?.get(deal.id)}
+              flexNotificationCount={flexNotificationCounts[deal.id] || 0}
             />
           )
         ))}
@@ -303,6 +307,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                             onMarkReviewed={onMarkReviewed} 
                             onToggleFlag={onToggleFlag} 
                             flexEngagement={flexEngagementScores?.get(deal.id)}
+                            flexNotificationCount={flexNotificationCounts[deal.id] || 0}
                           />
                         </div>
                       </HintTooltip>
@@ -317,6 +322,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                       onMarkReviewed={onMarkReviewed} 
                       onToggleFlag={onToggleFlag} 
                       flexEngagement={flexEngagementScores?.get(deal.id)}
+                      flexNotificationCount={flexNotificationCounts[deal.id] || 0}
                     />
                   );
                 })}

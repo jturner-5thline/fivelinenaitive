@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import {
   DndContext,
   DragOverlay,
@@ -37,10 +38,11 @@ interface DraggableDealCardProps {
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: any;
+  flexNotificationCount?: number;
   isDragging?: boolean;
 }
 
-function DraggableDealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, isDragging }: DraggableDealCardProps) {
+function DraggableDealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount, isDragging }: DraggableDealCardProps) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: deal.id,
     data: { deal },
@@ -65,6 +67,7 @@ function DraggableDealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag,
         onMarkReviewed={onMarkReviewed}
         onToggleFlag={onToggleFlag}
         flexEngagement={flexEngagement}
+        flexNotificationCount={flexNotificationCount}
         compact
       />
     </div>
@@ -80,6 +83,7 @@ interface DroppableStageColumnProps {
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagementScores?: Map<string, any>;
+  flexNotificationCounts?: Record<string, number>;
   activeDealId: string | null;
   isOver: boolean;
 }
@@ -93,6 +97,7 @@ function DroppableStageColumn({
   onMarkReviewed,
   onToggleFlag,
   flexEngagementScores,
+  flexNotificationCounts,
   activeDealId,
   isOver,
 }: DroppableStageColumnProps) {
@@ -143,6 +148,7 @@ function DroppableStageColumn({
                 onMarkReviewed={onMarkReviewed}
                 onToggleFlag={onToggleFlag}
                 flexEngagement={flexEngagementScores?.get(deal.id)}
+                flexNotificationCount={flexNotificationCounts?.[deal.id] || 0}
                 isDragging={activeDealId === deal.id}
               />
             ))
@@ -159,7 +165,8 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
   const stages = activePipeline?.stages?.length ? activePipeline.stages : globalStages;
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { data: flexEngagementScores } = useFlexEngagementScores(dealIds);
-  
+  const flexNotificationCounts = useDealNotificationCounts(dealIds);
+
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -273,6 +280,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
                 onMarkReviewed={onMarkReviewed}
                 onToggleFlag={onToggleFlag}
                 flexEngagementScores={flexEngagementScores}
+                flexNotificationCounts={flexNotificationCounts}
                 activeDealId={activeDealId}
                 isOver={overId === stage.id}
               />
