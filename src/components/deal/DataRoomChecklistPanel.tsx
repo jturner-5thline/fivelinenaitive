@@ -402,20 +402,20 @@ export function DataRoomChecklistPanel({
               </p>
             )}
             {itemsMissingUploads.length > 0 && (
-              <div className="text-xs text-amber-600">
-                <p className="flex items-center gap-1 font-medium">
+              <Collapsible>
+                <CollapsibleTrigger className="text-xs text-amber-600 flex items-center gap-1 font-medium hover:underline cursor-pointer">
                   <AlertCircle className="h-3 w-3" />
-                  {itemsMissingUploads.length} items missing uploads:
-                </p>
-                <ul className="ml-4 mt-0.5 space-y-0.5 list-disc text-amber-500">
-                  {itemsMissingUploads.slice(0, 8).map(item => (
-                    <li key={item.id} className="leading-tight">{item.name}</li>
-                  ))}
-                  {itemsMissingUploads.length > 8 && (
-                    <li className="text-muted-foreground">+{itemsMissingUploads.length - 8} more</li>
-                  )}
-                </ul>
-              </div>
+                  {itemsMissingUploads.length} items missing uploads
+                  <ChevronDown className="h-3 w-3 transition-transform [[data-state=open]>&]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <ul className="ml-4 mt-1 space-y-0.5 list-disc text-xs text-amber-500">
+                    {itemsMissingUploads.map(item => (
+                      <li key={item.id} className="leading-tight">{item.name}</li>
+                    ))}
+                  </ul>
+                </CollapsibleContent>
+              </Collapsible>
             )}
           </div>
           <div className="flex items-center gap-2">
