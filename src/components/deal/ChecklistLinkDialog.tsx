@@ -50,27 +50,10 @@ export function ChecklistLinkDialog({
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [isNaSelected, setIsNaSelected] = useState(false);
 
-  // Filter checklist items based on the upload category
+  // Show all checklist items so users can link uploads to any item
   const filteredItems = useMemo(() => {
-    const categoryLower = category.toLowerCase();
-    
-    // First try to match by the exact category name (for dynamic categories)
-    const exactMatches = checklistItems.filter(item => {
-      if (!item.category) return false;
-      return item.category.toLowerCase() === categoryLower;
-    });
-    
-    if (exactMatches.length > 0) return exactMatches;
-    
-    // Fall back to keyword-based matching for legacy categories
-    const keywords = LEGACY_CATEGORY_MAPPINGS[categoryLower] || [categoryLower];
-    
-    return checklistItems.filter(item => {
-      if (!item.category) return false;
-      const itemCategoryLower = item.category.toLowerCase();
-      return keywords.some(keyword => itemCategoryLower.includes(keyword));
-    });
-  }, [checklistItems, category]);
+    return checklistItems;
+  }, [checklistItems]);
 
   const handleToggleItem = (itemId: string) => {
     if (isNaSelected) {
