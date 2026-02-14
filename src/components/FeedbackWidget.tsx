@@ -164,6 +164,7 @@ export function FeedbackWidget() {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            variant="gradient"
             size="icon"
             className="h-12 w-12 rounded-full shadow-lg"
           >
