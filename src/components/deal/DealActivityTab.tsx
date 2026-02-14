@@ -142,7 +142,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
   return (
     <div className="w-full overflow-hidden space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6">
       {/* Charts column */}
       <div className="space-y-6 min-w-0">
       {/* FLEx Engagement Trends Chart */}
