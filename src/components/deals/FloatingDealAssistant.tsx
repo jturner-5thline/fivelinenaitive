@@ -92,10 +92,10 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           className="w-96 p-0 animate-scale-in border-primary/20 overflow-hidden"
           sideOffset={8}
           style={{
-            background: 'linear-gradient(145deg, hsl(230 25% 12%) 0%, hsl(230 25% 10%) 60%, hsl(250 30% 18%) 100%)',
+            background: 'linear-gradient(145deg, hsl(230 25% 10%) 0%, hsl(235 28% 13%) 50%, hsl(245 35% 18%) 80%, hsl(220 50% 22%) 100%)',
           }}
         >
-          <div className="p-4 border-b border-primary/10 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, hsl(250 30% 20%) 0%, hsl(230 25% 12%) 70%)' }}>
+          <div className="p-4 border-b border-primary/10 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, hsl(230 25% 10%) 0%, hsl(230 30% 14%) 50%, hsl(220 45% 20%) 100%)' }}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2">
                 <img src={naitiveAiIcon} alt="AI" className="h-4 w-4" />
