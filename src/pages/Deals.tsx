@@ -32,6 +32,7 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Toggle } from '@/components/ui/toggle';
 import {
   Tooltip,
@@ -91,6 +92,15 @@ export default function Dashboard() {
   // Get notification counts for filtering
   const allDealIds = useMemo(() => pipelineFilteredDeals.map(d => d.id), [pipelineFilteredDeals]);
   const notificationCounts = useDealNotificationCounts(allDealIds);
+
+  // Count stale deals
+  const staleDealCount = useMemo(() => {
+    return pipelineFilteredDeals.filter(deal => {
+      if (deal.status === 'archived') return false;
+      const days = Math.floor((Date.now() - new Date(deal.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+      return days >= preferences.staleDealsDays;
+    }).length;
+  }, [pipelineFilteredDeals, preferences.staleDealsDays]);
 
   // Apply hasNotificationsOnly filter
   const deals = useMemo(() => {
@@ -266,9 +276,17 @@ export default function Dashboard() {
                         }}
                         variant="outline"
                         size="sm"
-                        className={`h-8 w-8 p-0 ${filters.staleOnly ? 'bg-warning/20 border-warning text-warning hover:bg-warning/30' : ''}`}
+                        className={`h-8 w-8 p-0 relative ${filters.staleOnly ? 'bg-warning/20 border-warning text-warning hover:bg-warning/30' : ''}`}
                       >
                         <AlertTriangle className="h-4 w-4" />
+                        {staleDealCount > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute -top-2 -right-2 h-5 min-w-5 px-1.5 text-xs rounded-full"
+                          >
+                            {staleDealCount}
+                          </Badge>
+                        )}
                       </Toggle>
                     </TooltipTrigger>
                     <TooltipContent>
