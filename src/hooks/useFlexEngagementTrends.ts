@@ -14,38 +14,34 @@ export interface FlexDailyEngagement {
   engagementScore: number;
 }
 
+// Activity types that actually exist in the local DB
 const FLEX_ACTIVITY_TYPES = [
-  'flex_deal_view',
+  'flex_push',
+  'flex_data_room',
+  'flex_data_room_push',
+  'flex_info_request_approved',
+  'flex_info_request_denied',
+  // Future webhook-sourced types (when FLEx pushes them)
   'flex_deal_viewed',
-  'flex_dataroom_access',
-  'flex_info_request',
-  'flex_info_requested',
-  'flex_term_sheet_request',
-  'flex_term_sheet_requested',
-  'flex_nda_request',
-  'flex_nda_requested',
-  'flex_document_download',
   'flex_file_downloaded',
-  'flex_interest_expressed',
-  'flex_meeting_scheduled',
-  'flex_follow_up',
+  'flex_info_requested',
+  'flex_nda_requested',
+  'flex_term_sheet_requested',
+  'flex_deal_saved',
 ];
 
 const SCORE_WEIGHTS: Record<string, number> = {
-  'flex_deal_view': 1,
+  'flex_push': 1,
+  'flex_data_room': 3,
+  'flex_data_room_push': 3,
+  'flex_info_request_approved': 5,
+  'flex_info_request_denied': 2,
   'flex_deal_viewed': 1,
-  'flex_dataroom_access': 3,
-  'flex_info_request': 5,
-  'flex_info_requested': 5,
-  'flex_document_download': 2,
   'flex_file_downloaded': 2,
-  'flex_interest_expressed': 8,
-  'flex_term_sheet_request': 15,
-  'flex_term_sheet_requested': 15,
-  'flex_nda_request': 10,
+  'flex_info_requested': 5,
   'flex_nda_requested': 10,
-  'flex_meeting_scheduled': 12,
-  'flex_follow_up': 4,
+  'flex_term_sheet_requested': 15,
+  'flex_deal_saved': 4,
 };
 
 export function useFlexEngagementTrends(dealId: string | undefined, days: number = 30) {
@@ -113,16 +109,19 @@ export function useFlexEngagementTrends(dealId: string | undefined, days: number
           existing.engagementScore += SCORE_WEIGHTS[type] || 1;
 
           // Count by type
-          if (type === 'flex_deal_view' || type === 'flex_deal_viewed') {
+          if (type === 'flex_deal_viewed') {
             existing.views++;
-          } else if (type === 'flex_document_download' || type === 'flex_file_downloaded' || type === 'flex_dataroom_access') {
+          } else if (type === 'flex_file_downloaded' || type === 'flex_data_room' || type === 'flex_data_room_push') {
             existing.downloads++;
-          } else if (type === 'flex_info_request' || type === 'flex_info_requested') {
+          } else if (type === 'flex_info_requested' || type === 'flex_info_request_approved' || type === 'flex_info_request_denied') {
             existing.infoRequests++;
-          } else if (type === 'flex_nda_request' || type === 'flex_nda_requested') {
+          } else if (type === 'flex_nda_requested') {
             existing.ndaRequests++;
-          } else if (type === 'flex_term_sheet_request' || type === 'flex_term_sheet_requested') {
+          } else if (type === 'flex_term_sheet_requested') {
             existing.termSheetRequests++;
+          } else if (type === 'flex_push') {
+            // Count deal syncs as general activity (views category)
+            existing.views++;
           }
         }
       });
