@@ -281,6 +281,31 @@ export default function Dashboard() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Toggle
+                        pressed={filters.flaggedOnly}
+                        onPressedChange={(pressed) => {
+                          if (pressed) {
+                            updateFilters({ flaggedOnly: true, staleOnly: false, hasNotificationsOnly: false });
+                          } else {
+                            updateFilters({ flaggedOnly: false });
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 w-8 p-0 ${filters.flaggedOnly ? 'bg-destructive/20 border-destructive text-destructive hover:bg-destructive/30' : ''}`}
+                      >
+                        <Flag className="h-4 w-4" />
+                      </Toggle>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Show only flagged deals</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Toggle
                         pressed={filters.hasNotificationsOnly}
                         onPressedChange={(pressed) => {
                           if (pressed) {
