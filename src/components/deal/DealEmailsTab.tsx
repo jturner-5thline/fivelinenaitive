@@ -47,6 +47,7 @@ import {
 import { EmailList, EmailDetail } from './email/EmailListAndDetail';
 import { cn } from '@/lib/utils';
 import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
+import { ComposeEmailDialog } from './email/ComposeEmailDialog';
 
 interface DealEmailsTabProps {
   dealId: string;
@@ -80,6 +81,8 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeReplyTo, setComposeReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
   // Counts
@@ -245,7 +248,7 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
     <Card className="overflow-hidden w-full max-w-full">
       {/* Top toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/20">
-        <Button variant="gradient" size="sm" className="gap-1.5 text-xs h-8 px-3" onClick={() => toast.info('Compose coming soon')}>
+        <Button variant="gradient" size="sm" className="gap-1.5 text-xs h-8 px-3" onClick={() => setComposeOpen(true)}>
           <PenSquare className="h-3.5 w-3.5" />
           New mail
         </Button>
@@ -290,6 +293,19 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
       </div>
 
       <EmailIntelligenceDialog open={intelligenceOpen} onOpenChange={setIntelligenceOpen} />
+      <ComposeEmailDialog
+        open={composeOpen}
+        onOpenChange={(v) => { setComposeOpen(v); if (!v) setComposeReplyTo(null); }}
+        onSend={(emailData) => {
+          const newEmail: MockEmail = {
+            ...emailData,
+            id: `mock-sent-${Date.now()}`,
+            threadId: composeReplyTo?.threadId || `thread-sent-${Date.now()}`,
+          };
+          setEmails(prev => [newEmail, ...prev]);
+        }}
+        replyTo={composeReplyTo}
+      />
 
       <CardContent className="p-0">
         <div className="flex min-h-[560px] overflow-hidden max-w-full">
@@ -458,6 +474,10 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
                 onBack={() => setSelectedThread(null)}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
+                onCompose={(replyTo) => {
+                  setComposeReplyTo(replyTo);
+                  setComposeOpen(true);
+                }}
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full py-16 text-center">
