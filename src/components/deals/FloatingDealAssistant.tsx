@@ -54,7 +54,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
   ];
 
   return (
-    <div className="fixed bottom-6 right-14 z-50 group transition-all duration-300">
+    <div className="fixed bottom-6 right-20 z-50 group transition-all duration-300">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="relative">
