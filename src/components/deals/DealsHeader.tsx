@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes';
 
 import { LenderSyncNotificationBell } from '@/components/lenders/LenderSyncNotificationBell';
 import { DealManagementNotificationBell } from '@/components/notifications/DealManagementNotificationBell';
+import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -109,6 +110,7 @@ export function DealsHeader() {
           <div className="w-52">
             <GlobalSearchAI />
           </div>
+          <HeaderNotificationPreview />
           <DealManagementNotificationBell />
           <LenderSyncNotificationBell />
           <HintTooltip
