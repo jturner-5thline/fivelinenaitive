@@ -1,14 +1,18 @@
 import { useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Settings2, Pencil, Check } from 'lucide-react';
+import { Settings2, Pencil, Check, Calendar, Mail, Zap, Briefcase } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useDashboardPresets, WidgetConfig, GridItem } from '@/hooks/useDashboardPresets';
 import { WIDGET_REGISTRY } from '@/components/dashboard/widgetRegistry';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
 import { PresetManager } from '@/components/dashboard/PresetManager';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
+import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
+import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
+import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 
 export default function Dashboard() {
   const { profile } = useProfile();
@@ -106,12 +110,60 @@ export default function Dashboard() {
 
       <div className="bg-transparent flex flex-col items-center px-4 py-8">
         <div className="w-full max-w-6xl space-y-6">
-          {/* Header */}
+          {/* Hero: Greeting + AI Input + Quick Actions */}
+          <div className="text-center space-y-2 pt-2">
+            <p className="text-lg text-muted-foreground">{getTimeBasedGreeting()}, {firstName}</p>
+            <h1 className="text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
+          </div>
+
+          <DashboardAIInput />
+
+          <div className="grid grid-cols-4 gap-4">
+            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Calendar</span>
+              </div>
+            </Card>
+            <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="h-12 w-12 rounded-xl bg-accent/50 flex items-center justify-center">
+                  <Mail className="h-6 w-6 text-accent-foreground" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Email</span>
+              </div>
+            </Card>
+            <QuickPromptsDialog
+              trigger={
+                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center">
+                      <Zap className="h-6 w-6 text-success" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">Quick Prompts</span>
+                  </div>
+                </Card>
+              }
+            />
+            <CreateDealDialog
+              trigger={
+                <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                      <Briefcase className="h-6 w-6 text-primary-foreground" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">Create New Deal</span>
+                  </div>
+                </Card>
+              }
+            />
+          </div>
+
+          {/* Header row: Edit button */}
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">{getTimeBasedGreeting()}, {firstName}</p>
-              <h1 className="text-2xl font-serif text-foreground">Dashboard</h1>
-            </div>
+            <div />
             <div className="flex items-center gap-2">
               {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
               <Button
