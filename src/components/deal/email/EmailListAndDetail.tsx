@@ -294,7 +294,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, [thread, onToggleLink]);
 
   return (
-    <div className="flex h-full relative">
+    <div className="flex h-full relative overflow-hidden">
       {/* Main thread view */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Sticky header toolbar */}
