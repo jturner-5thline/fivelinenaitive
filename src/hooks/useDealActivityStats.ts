@@ -58,12 +58,39 @@ const INTERNAL_ACTIVITY_TYPES = [
 ];
 
 export function useDealActivityStats(dealId: string | undefined) {
-  const query = useQuery({
-    queryKey: ["deal-activity-stats", dealId],
+  // Fetch FLEx engagement stats from the API
+  const flexQuery = useQuery({
+    queryKey: ["deal-flex-engagement", dealId],
     queryFn: async () => {
       if (!dealId) return null;
 
-      // Fetch all activities for this deal
+      try {
+        const { data, error } = await supabase.functions.invoke("fetch-flex-engagement", {
+          body: { deal_id: dealId },
+        });
+
+        if (error) {
+          console.error("Error fetching FLEx engagement:", error);
+          return null;
+        }
+
+        return data?.engagement || null;
+      } catch (err) {
+        console.error("Failed to call fetch-flex-engagement:", err);
+        return null;
+      }
+    },
+    enabled: !!dealId,
+    staleTime: 60_000, // Cache for 1 minute
+    retry: 1,
+  });
+
+  // Fetch local activity stats (non-FLEx)
+  const localQuery = useQuery({
+    queryKey: ["deal-activity-stats-local", dealId],
+    queryFn: async () => {
+      if (!dealId) return null;
+
       const { data: activities, error } = await supabase
         .from("activity_logs")
         .select("activity_type, user_id, created_at, metadata")
@@ -74,87 +101,67 @@ export function useDealActivityStats(dealId: string | undefined) {
         throw error;
       }
 
-      // Calculate stats
-      const stats: DealActivityStats = {
+      const stats = {
         views: 0,
         dataRoomAccess: 0,
         infoRequests: 0,
         uniqueUsers: 0,
-        // FLEx stats
-        flexViews: 0,
-        flexDownloads: 0,
-        flexInfoRequests: 0,
-        flexNdaRequests: 0,
-        flexTermSheetRequests: 0,
-        flexUniqueLenders: 0,
       };
 
       const uniqueUserIds = new Set<string>();
-      const uniqueFlexLenders = new Set<string>();
 
-      // Filter out internal activity for external-facing stats
       const externalActivities = activities?.filter(
         (a) => !INTERNAL_ACTIVITY_TYPES.includes(a.activity_type)
       );
 
       externalActivities?.forEach((activity) => {
         const type = activity.activity_type;
-        const metadata = activity.metadata as { lender_name?: string; lender_email?: string } | null;
-        
-        // Count views (external only)
-        if (ACTIVITY_TYPE_MAPPINGS.views.includes(type)) {
-          stats.views++;
-        }
-        
-        // Count data room access
-        if (ACTIVITY_TYPE_MAPPINGS.dataRoomAccess.includes(type)) {
-          stats.dataRoomAccess++;
-        }
-        
-        // Count info requests
-        if (ACTIVITY_TYPE_MAPPINGS.infoRequests.includes(type)) {
-          stats.infoRequests++;
-        }
 
-        // Track unique users
-        if (activity.user_id) {
-          uniqueUserIds.add(activity.user_id);
-        }
-
-        // FLEx-specific activity tracking
-        if (type.startsWith('flex_')) {
-          const lenderKey = metadata?.lender_name || metadata?.lender_email;
-          if (lenderKey) {
-            uniqueFlexLenders.add(lenderKey);
-          }
-          
-          switch (type) {
-            case 'flex_deal_viewed':
-              stats.flexViews++;
-              break;
-            case 'flex_file_downloaded':
-              stats.flexDownloads++;
-              break;
-            case 'flex_info_requested':
-              stats.flexInfoRequests++;
-              break;
-            case 'flex_nda_requested':
-              stats.flexNdaRequests++;
-              break;
-            case 'flex_term_sheet_requested':
-              stats.flexTermSheetRequests++;
-              break;
-          }
-        }
+        if (ACTIVITY_TYPE_MAPPINGS.views.includes(type)) stats.views++;
+        if (ACTIVITY_TYPE_MAPPINGS.dataRoomAccess.includes(type)) stats.dataRoomAccess++;
+        if (ACTIVITY_TYPE_MAPPINGS.infoRequests.includes(type)) stats.infoRequests++;
+        if (activity.user_id) uniqueUserIds.add(activity.user_id);
       });
 
       stats.uniqueUsers = uniqueUserIds.size;
-      stats.flexUniqueLenders = uniqueFlexLenders.size;
-
       return stats;
     },
     enabled: !!dealId,
   });
+
+  // Combine FLEx API stats with local stats
+  const combinedData = useMemo(() => {
+    const local = localQuery.data;
+    const flex = flexQuery.data;
+
+    if (!local && !flex) return null;
+
+    const stats: DealActivityStats = {
+      views: local?.views ?? 0,
+      dataRoomAccess: local?.dataRoomAccess ?? 0,
+      infoRequests: local?.infoRequests ?? 0,
+      uniqueUsers: local?.uniqueUsers ?? 0,
+      flexViews: flex?.views ?? 0,
+      flexDownloads: flex?.downloads ?? 0,
+      flexInfoRequests: flex?.info_requests ?? 0,
+      flexNdaRequests: flex?.nda_requests ?? 0,
+      flexTermSheetRequests: flex?.term_sheet_requests ?? 0,
+      flexUniqueLenders: flex?.unique_lenders ?? 0,
+    };
+
+    return stats;
+  }, [localQuery.data, flexQuery.data]);
+
+  const query = {
+    data: combinedData,
+    isLoading: localQuery.isLoading || flexQuery.isLoading,
+    isError: localQuery.isError,
+    error: localQuery.error,
+    refetch: async () => {
+      await Promise.all([localQuery.refetch(), flexQuery.refetch()]);
+      return localQuery;
+    },
+  };
 
   // Set up real-time subscription
   useEffect(() => {
