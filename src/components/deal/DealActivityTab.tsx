@@ -6,11 +6,13 @@ import { useDealActivityStats, useDealActivityChart } from '@/hooks/useDealActiv
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FlexLenderInterestPanel } from './FlexLenderInterestPanel';
 import { FlexEngagementTrendsChart } from './FlexEngagementTrendsChart';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { useFlexLenderEngagement } from '@/hooks/useFlexLenderEngagement';
+import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface DealActivityTabProps {
@@ -97,6 +99,7 @@ function useActivityDetailsForDate(dealId: string | undefined, date: string | nu
 export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const { data: stats, isLoading: isLoadingStats } = useDealActivityStats(dealId);
   const { data: chartData, isLoading: isLoadingChart } = useDealActivityChart(dealId, 14);
+  const { data: lenderEngagement } = useFlexLenderEngagement(dealId);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Reverse-map display label (e.g. "Feb 1") back to ISO date
@@ -156,28 +159,79 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <FlexStatCard
-              icon={<Eye className="h-4 w-4" />}
-              label="Views"
-              value={stats?.flexViews ?? 0}
-              isLoading={isLoadingStats}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <div>
+                  <FlexStatCard
+                    icon={<Eye className="h-4 w-4" />}
+                    label="Views"
+                    value={stats?.flexViews ?? 0}
+                    isLoading={isLoadingStats}
+                    onClick={() => {}}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3" align="start">
+                <h4 className="text-sm font-medium mb-2">Lenders who viewed</h4>
+                {(() => {
+                  const viewers = lenderEngagement?.filter(l => l.views > 0) || [];
+                  if (viewers.length === 0) return <p className="text-xs text-muted-foreground">No lender views yet.</p>;
+                  return (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {viewers.map((l, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{l.lenderName}</p>
+                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
+                          </div>
+                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.views} view{l.views !== 1 ? 's' : ''}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </PopoverContent>
+            </Popover>
             <FlexStatCard
               icon={<Download className="h-4 w-4" />}
               label="Downloads"
               value={stats?.flexDownloads ?? 0}
               isLoading={isLoadingStats}
             />
-            <FlexStatCard
-              icon={<HelpCircle className="h-4 w-4" />}
-              label="Info Requests"
-              value={stats?.flexInfoRequests ?? 0}
-              highlight
-              isLoading={isLoadingStats}
-              onClick={() => {
-                document.getElementById('info-requests-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <div>
+                  <FlexStatCard
+                    icon={<HelpCircle className="h-4 w-4" />}
+                    label="Info Requests"
+                    value={stats?.flexInfoRequests ?? 0}
+                    highlight
+                    isLoading={isLoadingStats}
+                    onClick={() => {}}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3" align="start">
+                <h4 className="text-sm font-medium mb-2">Lenders who requested info</h4>
+                {(() => {
+                  const requesters = lenderEngagement?.filter(l => l.infoRequests > 0) || [];
+                  if (requesters.length === 0) return <p className="text-xs text-muted-foreground">No info requests yet.</p>;
+                  return (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {requesters.map((l, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{l.lenderName}</p>
+                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
+                          </div>
+                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.infoRequests} req{l.infoRequests !== 1 ? 's' : ''}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </PopoverContent>
+            </Popover>
             <FlexStatCard
               icon={<FileText className="h-4 w-4" />}
               label="NDA Requests"
