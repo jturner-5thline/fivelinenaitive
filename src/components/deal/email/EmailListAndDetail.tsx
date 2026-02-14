@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { SmartEmailPanel } from './SmartEmailPanel';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -270,12 +271,15 @@ function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail;
 // ─── Email Detail (thread view with toolbar) ─────────────────
 interface EmailDetailProps {
   thread: EmailThread;
+  dealId?: string;
   onBack: () => void;
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
 }
 
-export function EmailDetail({ thread, onBack, onToggleLink, onToggleStar }: EmailDetailProps) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar }: EmailDetailProps) {
+  const [showSmartPanel, setShowSmartPanel] = useState(false);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -288,87 +292,112 @@ export function EmailDetail({ thread, onBack, onToggleLink, onToggleStar }: Emai
   }, [thread, onToggleLink]);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Sticky header toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10">
-        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold truncate">{thread.subject}</h3>
-          <p className="text-[11px] text-muted-foreground">
-            {thread.emails.length} message{thread.emails.length !== 1 ? 's' : ''} · {thread.participants.join(', ') || 'You'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Reply coming soon')}>
-                <Reply className="h-3.5 w-3.5" />
-                Reply
-                <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">R</kbd>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
-                <Forward className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Forward</span>
-                <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">F</kbd>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
-          </Tooltip>
-          <Separator orientation="vertical" className="h-5 mx-1" />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
-                <Star className={cn('h-4 w-4', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={thread.isLinked ? 'secondary' : 'outline'}
-                size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => onToggleLink(thread.latestEmail)}
-              >
-                {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">{thread.isLinked ? 'Unlink' : 'Link'}</span>
-                <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">L</kbd>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink from deal (L)' : 'Link to deal (L)'}</TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
-      {/* Thread content */}
-      <ScrollArea className="flex-1">
-        <div className="py-3 space-y-0">
-          {/* AI Summary as card */}
-          <div className="mx-4 mb-3">
-            <AiSummaryStrip email={thread.latestEmail} />
+    <div className="flex h-full relative">
+      {/* Main thread view */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Sticky header toolbar */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10">
+          <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold truncate">{thread.subject}</h3>
+            <p className="text-[11px] text-muted-foreground">
+              {thread.emails.length} message{thread.emails.length !== 1 ? 's' : ''} · {thread.participants.join(', ') || 'You'}
+            </p>
           </div>
 
-          {/* Each message as its own card */}
-          {thread.emails.map((email, idx) => (
-            <ThreadMessage
-              key={email.id}
-              email={email}
-              isLatest={idx === 0}
-              defaultExpanded={idx === 0}
-            />
-          ))}
+          <div className="flex items-center gap-1 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={showSmartPanel ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={() => setShowSmartPanel(!showSmartPanel)}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Smart</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Toggle Smart Actions panel</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Reply coming soon')}>
+                  <Reply className="h-3.5 w-3.5" />
+                  Reply
+                  <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">R</kbd>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
+                  <Forward className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Forward</span>
+                  <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">F</kbd>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
+            </Tooltip>
+            <Separator orientation="vertical" className="h-5 mx-1" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
+                  <Star className={cn('h-4 w-4', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={thread.isLinked ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={() => onToggleLink(thread.latestEmail)}
+                >
+                  {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                  <span className="hidden sm:inline">{thread.isLinked ? 'Unlink' : 'Link'}</span>
+                  <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">L</kbd>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink from deal (L)' : 'Link to deal (L)'}</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
-      </ScrollArea>
+
+        {/* Thread content */}
+        <ScrollArea className="flex-1">
+          <div className="py-3 space-y-0">
+            {/* AI Summary as card */}
+            <div className="mx-4 mb-3">
+              <AiSummaryStrip email={thread.latestEmail} />
+            </div>
+
+            {/* Each message as its own card */}
+            {thread.emails.map((email, idx) => (
+              <ThreadMessage
+                key={email.id}
+                email={email}
+                isLatest={idx === 0}
+                defaultExpanded={idx === 0}
+              />
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Smart Actions Panel */}
+      {showSmartPanel && dealId && (
+        <SmartEmailPanel
+          thread={thread}
+          dealId={dealId}
+        />
+      )}
     </div>
   );
 }

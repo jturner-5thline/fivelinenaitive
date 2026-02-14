@@ -121,7 +121,7 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
   ];
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden w-full">
       {/* Top toolbar — Outlook style */}
       <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/20">
         <Button variant="gradient" size="sm" className="gap-1.5 text-xs h-8 px-3" onClick={() => toast.info('Compose coming soon')}>
@@ -170,7 +170,7 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
       </div>
 
       <CardContent className="p-0">
-        <div className="flex min-h-[560px]">
+        <div className="flex min-h-[560px] overflow-hidden">
           {/* ─── Left: Folder sidebar ─── */}
           <div className={cn(
             'border-r flex-shrink-0 transition-all duration-200',
@@ -280,12 +280,13 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
 
           {/* ─── Right: Reading pane ─── */}
           <div className={cn(
-            'flex-1 flex flex-col min-w-0',
+            'flex-1 flex flex-col min-w-0 overflow-hidden',
             !currentThread ? 'hidden md:flex' : 'flex'
           )}>
             {currentThread ? (
               <EmailDetail
                 thread={currentThread}
+                dealId={dealId}
                 onBack={() => setSelectedThread(null)}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
