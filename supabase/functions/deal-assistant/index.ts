@@ -119,6 +119,17 @@ Deno.serve(async (req) => {
     contextString += `- Identifying potential risks or blockers\n`;
     contextString += `- Checking for missing deal information or unchecked data room items\n`;
     contextString += `- Drafting communications or updates\n`;
+    contextString += `\nLINKING RULES — when you identify missing or incomplete fields:\n`;
+    contextString += `- Link to the relevant section using markdown links with these exact URLs:\n`;
+    contextString += `  - Deal Info tab: [Go to Deal Info](#tab-deal-info)\n`;
+    contextString += `  - Deal Write Up tab: [Go to Write Up](#tab-deal-writeup)\n`;
+    contextString += `  - Data Room tab: [Go to Data Room](#tab-data-room)\n`;
+    contextString += `  - Deal Space tab: [Go to Deal Space](#tab-deal-space)\n`;
+    contextString += `  - Lenders tab: [Go to Lenders](#tab-lenders)\n`;
+    contextString += `  - Deal Management tab: [Go to Deal Management](#tab-deal-management)\n`;
+    contextString += `  - Deal Memo: [Open Deal Memo](#open-deal-memo)\n`;
+    contextString += `- Place the link right after mentioning the missing field so the user can navigate directly\n`;
+    contextString += `- Example: "• **Capital Ask** is not filled in — [Go to Write Up](#tab-deal-writeup)"\n`;
 
     const systemMessage: Message = {
       role: 'system',

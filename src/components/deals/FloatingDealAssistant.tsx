@@ -195,7 +195,44 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                     >
                       {message.role === 'assistant' ? (
                         <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                          <ReactMarkdown
+                            components={{
+                              a: ({ href, children }) => {
+                                if (href?.startsWith('#tab-')) {
+                                  const tab = href.replace('#tab-', '');
+                                  return (
+                                    <button
+                                      className="text-primary underline hover:text-primary/80 transition-colors font-medium"
+                                      onClick={() => {
+                                        setIsOpen(false);
+                                        const tabTrigger = document.querySelector(`[data-state][value="${tab}"]`) as HTMLElement;
+                                        tabTrigger?.click();
+                                      }}
+                                    >
+                                      {children}
+                                    </button>
+                                  );
+                                }
+                                if (href === '#open-deal-memo') {
+                                  return (
+                                    <button
+                                      className="text-primary underline hover:text-primary/80 transition-colors font-medium"
+                                      onClick={() => {
+                                        setIsOpen(false);
+                                        const memoBtn = document.querySelector('[data-deal-memo-trigger]') as HTMLElement;
+                                        memoBtn?.click();
+                                      }}
+                                    >
+                                      {children}
+                                    </button>
+                                  );
+                                }
+                                return <a href={href} className="text-primary underline">{children}</a>;
+                              }
+                            }}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
                         </div>
                       ) : (
                         message.content
