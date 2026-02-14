@@ -149,7 +149,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
             </div>
           )}
 
-          <ScrollArea className="h-72 p-4">
+          <ScrollArea className="h-[22.5rem] p-4">
             {messages.length > 0 && (
               <div className="space-y-4">
                 {messages.map((message, index) => (
