@@ -18,6 +18,7 @@ import { ChartsProvider } from "@/contexts/ChartsContext";
 import { AnalyticsWidgetsProvider } from "@/contexts/AnalyticsWidgetsContext";
 import { MetricsWidgetsProvider } from "@/contexts/MetricsWidgetsContext";
 import { DashboardWidgetsProvider } from "@/contexts/DashboardWidgetsContext";
+import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
@@ -86,6 +87,7 @@ const App = () => (
                     <MetricsWidgetsProvider>
                     <WidgetsProvider>
                     <DashboardWidgetsProvider>
+                    <DashboardLayoutProvider>
                     <TooltipProvider>
                       <CopyProtection>
                       <WelcomeScreenWrapper />
@@ -202,6 +204,7 @@ const App = () => (
                       </BrowserRouter>
                       </CopyProtection>
                     </TooltipProvider>
+                    </DashboardLayoutProvider>
                     </DashboardWidgetsProvider>
                     </WidgetsProvider>
                     </MetricsWidgetsProvider>
