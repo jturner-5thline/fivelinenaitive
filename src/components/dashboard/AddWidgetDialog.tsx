@@ -110,7 +110,7 @@ export function AddWidgetDialog({ existingWidgetIds, onAddBuiltIn, onAddCustom }
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 shrink-0">
+          <TabsList className="grid w-full grid-cols-2 shrink-0 rounded-sm">
             <TabsTrigger value="built-in">Built-in Widgets</TabsTrigger>
             <TabsTrigger value="custom">Create Custom</TabsTrigger>
           </TabsList>
