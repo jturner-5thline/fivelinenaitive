@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bell } from 'lucide-react';
@@ -13,15 +13,28 @@ export function HeaderNotificationPreview() {
   const { user } = useAuth();
   const [preview, setPreview] = useState<NotificationPreview | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const dismiss = useCallback(() => {
+    setIsLeaving(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      setIsLeaving(false);
+      setPreview(null);
+    }, 400);
+  }, []);
 
   const showPreview = useCallback((message: string, id: string) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsLeaving(false);
     setPreview({ id, message, timestamp: Date.now() });
     setIsVisible(true);
 
-    setTimeout(() => {
-      setIsVisible(false);
+    timeoutRef.current = setTimeout(() => {
+      dismiss();
     }, 5000);
-  }, []);
+  }, [dismiss]);
 
   // Listen for flex_notifications (engagement alerts)
   useEffect(() => {
@@ -78,23 +91,41 @@ export function HeaderNotificationPreview() {
     };
   }, [user, showPreview]);
 
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
   if (!preview || !isVisible) return null;
 
   return (
-    <div
-      key={preview.id}
-      className={`w-full flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20 text-sm text-foreground transition-all duration-300 ${
-        isVisible ? 'animate-fade-in opacity-100' : 'opacity-0'
-      }`}
-    >
-      <Bell className="h-3.5 w-3.5 text-primary shrink-0" />
-      <span className="truncate flex-1">{preview.message}</span>
-      <button
-        onClick={() => setIsVisible(false)}
-        className="text-muted-foreground hover:text-foreground ml-2 shrink-0"
-      >
-        ✕
-      </button>
-    </div>
+    <>
+      <style>{`
+        @keyframes notif-slide-down {
+          from { transform: translateY(-100%); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
+      <div key={preview.id} className="overflow-hidden">
+        <div
+          className={`w-full flex items-center gap-3 px-5 py-4 bg-[hsl(220,80%,55%)] text-white text-sm font-medium transition-all duration-300 ease-out ${
+            isLeaving
+              ? 'opacity-0 -translate-y-full'
+              : 'opacity-100 translate-y-0'
+          }`}
+          style={!isLeaving ? { animation: 'notif-slide-down 0.4s ease-out' } : undefined}
+        >
+          <Bell className="h-5 w-5 shrink-0" />
+          <span className="truncate flex-1">{preview.message}</span>
+          <button
+            onClick={dismiss}
+            className="text-white/70 hover:text-white ml-2 shrink-0 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
