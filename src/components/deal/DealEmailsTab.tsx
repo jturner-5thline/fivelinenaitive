@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Filter,
   ArrowUpDown,
+  Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -32,6 +33,7 @@ import {
 } from './email/mockEmailData';
 import { EmailList, EmailDetail } from './email/EmailListAndDetail';
 import { cn } from '@/lib/utils';
+import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
 
 interface DealEmailsTabProps {
   dealId: string;
@@ -52,6 +54,7 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [intelligenceOpen, setIntelligenceOpen] = useState(false);
 
   const filteredEmails = useMemo(() => {
     let filtered = emails;
@@ -163,11 +166,21 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
           <TooltipContent side="bottom" className="text-xs">Flag</TooltipContent>
         </Tooltip>
         <div className="flex-1" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIntelligenceOpen(true)}>
+              <Settings2 className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">Email Intelligence Settings</TooltipContent>
+        </Tooltip>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={isRefreshing}>
           <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
         </Button>
         <Badge variant="secondary" className="text-[10px] h-5">Mock</Badge>
       </div>
+
+      <EmailIntelligenceDialog open={intelligenceOpen} onOpenChange={setIntelligenceOpen} />
 
       <CardContent className="p-0">
         <div className="flex min-h-[560px] overflow-hidden max-w-full">
