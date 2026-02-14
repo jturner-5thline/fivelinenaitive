@@ -54,7 +54,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
   ];
 
   return (
-    <div className="fixed bottom-6 right-10 z-50 group transition-all duration-300">
+    <div className="fixed bottom-6 right-14 z-50 group transition-all duration-300">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <div className="relative">
@@ -204,7 +204,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                 size="sm"
                 onClick={handleSendQuestion}
                 disabled={!question.trim() || isLoading}
-                className="h-9 w-9 p-0"
+                className={cn("h-9 w-9 p-0 relative overflow-hidden", question.trim() && !isLoading && "animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]")}
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
