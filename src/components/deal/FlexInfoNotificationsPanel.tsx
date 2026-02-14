@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Check, Mail, Building2, User, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, Check, Mail, Building2, User, X, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -207,33 +207,36 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
                         </div>
                         <div className="flex-shrink-0 flex items-center gap-2">
                           {notification.status === 'approved' ? (
-                            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                              <Check className="h-3 w-3 mr-1" />
-                              Approved
-                            </Badge>
-                          ) : notification.status === 'denied' ? (
-                            <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-                              <X className="h-3 w-3 mr-1" />
-                              Denied
-                            </Badge>
-                          ) : notification.status === 'read' ? (
                             <>
+                              <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                <Check className="h-3 w-3 mr-1" />
+                                Approved
+                              </Badge>
                               <Button
                                 size="sm"
-                                variant="outline"
+                                variant="ghost"
                                 onClick={() => handleDeny(notification.id)}
-                                className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                                title="Change to Denied"
                               >
-                                <X className="h-3.5 w-3.5 mr-1" />
+                                <RotateCcw className="h-3 w-3 mr-1" />
                                 Deny
                               </Button>
+                            </>
+                          ) : notification.status === 'denied' ? (
+                            <>
+                              <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+                                <X className="h-3 w-3 mr-1" />
+                                Denied
+                              </Badge>
                               <Button
                                 size="sm"
-                                variant="outline"
+                                variant="ghost"
                                 onClick={() => handleApprove(notification.id)}
-                                className="h-8"
+                                className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                                title="Change to Approved"
                               >
-                                <Check className="h-3.5 w-3.5 mr-1" />
+                                <RotateCcw className="h-3 w-3 mr-1" />
                                 Approve
                               </Button>
                             </>
