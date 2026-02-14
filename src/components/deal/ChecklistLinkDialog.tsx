@@ -116,9 +116,11 @@ export function ChecklistLinkDialog({
 
   const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
 
+  const categoryKeys = Object.keys(groupedItems);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -131,11 +133,11 @@ export function ChecklistLinkDialog({
             </div>
             <div className="bg-muted/50 rounded-md p-2 text-xs">
               <div className="font-medium text-foreground mb-1">{files.length} file{files.length > 1 ? 's' : ''}:</div>
-              <ul className="space-y-0.5 text-muted-foreground">
+              <ul className="flex flex-wrap gap-x-4 gap-y-0.5 text-muted-foreground">
                 {files.slice(0, 5).map((file, i) => (
-                  <li key={i} className="flex items-center gap-2">
+                  <li key={i} className="flex items-center gap-1.5">
                     <File className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate">{file.name}</span>
+                    <span className="truncate max-w-[200px]">{file.name}</span>
                   </li>
                 ))}
                 {files.length > 5 && (
@@ -147,44 +149,46 @@ export function ChecklistLinkDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-          <div className="space-y-2">
-            {/* N/A Option at the top */}
-            <div
-              className={cn(
-                "flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors",
-                isNaSelected
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-muted-foreground/50"
-              )}
-              onClick={handleToggleNa}
-            >
-              <Checkbox 
-                checked={isNaSelected} 
-                onCheckedChange={handleToggleNa}
-                id="na"
-              />
-              <Label htmlFor="na" className="flex-1 cursor-pointer">
-                <div className="flex items-center gap-2">
-                  <X className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">N/A - Not applicable</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {files.length > 1 ? "These files don't" : "This file doesn't"} match any checklist item
-                </p>
-              </Label>
-            </div>
+          {/* N/A Option */}
+          <div
+            className={cn(
+              "flex items-center space-x-3 p-2.5 rounded-lg border cursor-pointer transition-colors mb-3",
+              isNaSelected
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-muted-foreground/50"
+            )}
+            onClick={handleToggleNa}
+          >
+            <Checkbox 
+              checked={isNaSelected} 
+              onCheckedChange={handleToggleNa}
+              id="na"
+            />
+            <Label htmlFor="na" className="flex-1 cursor-pointer">
+              <div className="flex items-center gap-2">
+                <X className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium text-sm">N/A - Not applicable</span>
+              </div>
+            </Label>
+          </div>
 
-            {/* Grouped checklist items */}
-            {Object.entries(groupedItems).map(([categoryName, items]) => (
-              <div key={categoryName} className="space-y-2">
-                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1 pt-2">
+          {/* Grid of category columns */}
+          <div className={cn(
+            "grid gap-4",
+            categoryKeys.length === 1 ? "grid-cols-1" :
+            categoryKeys.length === 2 ? "grid-cols-2" :
+            "grid-cols-2 lg:grid-cols-3"
+          )}>
+            {categoryKeys.map((categoryName) => (
+              <div key={categoryName} className="space-y-1.5">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 pb-1 border-b border-border">
                   {categoryName}
                 </div>
-                {items.map((item) => (
+                {groupedItems[categoryName].map((item) => (
                   <div
                     key={item.id}
                     className={cn(
-                      "flex items-center space-x-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                      "flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-colors text-sm",
                       selectedItemIds.has(item.id)
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-muted-foreground/50",
@@ -197,28 +201,24 @@ export function ChecklistLinkDialog({
                       onCheckedChange={() => handleToggleItem(item.id)}
                       id={item.id}
                       disabled={isNaSelected}
+                      className="flex-shrink-0"
                     />
-                    <Label htmlFor={item.id} className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <Check className="h-4 w-4 text-primary" />
-                        <span className="font-medium">{item.name}</span>
-                        {item.is_required && (
-                          <span className="text-xs text-destructive">*</span>
-                        )}
-                      </div>
-                    </Label>
+                    <span className="font-medium leading-tight">{item.name}</span>
+                    {item.is_required && (
+                      <span className="text-xs text-destructive">*</span>
+                    )}
                   </div>
                 ))}
               </div>
             ))}
-
-            {filteredItems.length === 0 && (
-              <div className="text-center py-6 text-muted-foreground">
-                <p className="text-sm">No matching checklist items for {categoryLabel}</p>
-                <p className="text-xs mt-1">Select N/A to upload without linking</p>
-              </div>
-            )}
           </div>
+
+          {filteredItems.length === 0 && (
+            <div className="text-center py-6 text-muted-foreground">
+              <p className="text-sm">No checklist items found</p>
+              <p className="text-xs mt-1">Select N/A to upload without linking</p>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
