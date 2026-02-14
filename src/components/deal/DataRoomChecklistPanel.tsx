@@ -150,12 +150,12 @@ export function DataRoomChecklistPanel({
     return map;
   }, [statuses]);
 
-  // Items missing uploads (not complete OR complete but no attachment linked)
+  // Items missing uploads (not complete and no attachment linked)
   const itemsMissingUploads = useMemo(() => {
     return checklistItems.filter(item => {
       const status = statusMap.get(item.id);
-      // Missing upload = not complete OR complete without an attachment
-      return !status?.isComplete || !status?.attachmentId;
+      // Missing = not checked off AND no attachment linked
+      return !status?.isComplete && !status?.attachmentId;
     });
   }, [checklistItems, statusMap]);
 
