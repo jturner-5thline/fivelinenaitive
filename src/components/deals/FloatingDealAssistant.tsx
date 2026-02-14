@@ -215,14 +215,25 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                 size="sm"
                 onClick={handleSendQuestion}
                 disabled={!question.trim() || isLoading}
-                className={cn("h-9 w-9 p-0 relative overflow-hidden transition-opacity", question.trim() && !isLoading && "animate-[pulse_4s_cubic-bezier(0.4,0,0.6,1)_infinite]")}
-                style={question.trim() && !isLoading ? { ['--tw-pulse-opacity' as string]: '0.92' } : undefined}
+                className="h-9 w-9 p-0 relative overflow-hidden"
               >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
+                {question.trim() && !isLoading && (
+                  <span className="absolute inset-0 rounded overflow-hidden pointer-events-none">
+                    <span
+                      className="absolute -inset-full animate-[shimmer_5s_ease-in-out_infinite]"
+                      style={{
+                        background: 'linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%)',
+                      }}
+                    />
+                  </span>
                 )}
+                <span className="relative z-10">
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </span>
               </Button>
             </div>
           </div>
