@@ -34,10 +34,11 @@ interface DealCardProps {
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;
+  flexNotificationCount?: number;
   compact?: boolean;
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, compact = false }: DealCardProps) {
+export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
@@ -134,7 +135,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
   const notificationCount = useMemo(() => {
-    let count = 0;
+    let count = flexNotificationCount;
     // Count stale lenders
     deal.lenders?.forEach(lender => {
       if (lender.trackingStatus === 'active' && lender.updatedAt) {
@@ -147,7 +148,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
       if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
     });
     return count;
-  }, [deal.lenders, deal.milestones, preferences.staleDealsDays]);
+  }, [deal.lenders, deal.milestones, preferences.staleDealsDays, flexNotificationCount]);
 
   return (
     <Link to={`/deal/${deal.id}`} className="block h-full">
