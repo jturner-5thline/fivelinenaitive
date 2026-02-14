@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FlexLenderInterestPanel } from './FlexLenderInterestPanel';
+
 import { FlexEngagementTrendsChart } from './FlexEngagementTrendsChart';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -141,9 +141,9 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
   const hasActivity = chartData && chartData.some(d => d.views > 0);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full overflow-hidden">
+    <div className="w-full overflow-hidden space-y-6">
       {/* Main activity section */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="space-y-6">
       {/* FLEx Engagement Stats */}
       <Card id="flex-engagement-section">
         <CardHeader className="pb-3">
@@ -385,11 +385,6 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
           )}
         </CardContent>
       </Card>
-      </div>
-
-      {/* Sidebar - Lender Interest */}
-      <div className="lg:col-span-1 space-y-6">
-        <FlexLenderInterestPanel dealId={dealId} />
       </div>
     </div>
   );
