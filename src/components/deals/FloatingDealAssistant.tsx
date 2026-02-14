@@ -61,7 +61,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
             <Button
               variant="gradient"
               size="sm"
-              className="relative rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-visible flex items-center justify-center"
+              className={cn("relative rounded-full h-12 min-w-12 shadow-lg animate-fade-in transition-all duration-300 overflow-visible flex items-center justify-center", isOpen ? "px-4" : "px-0 group-hover:px-4")}
             >
               <span 
                 className="absolute inset-0 rounded-full overflow-hidden pointer-events-none"
@@ -79,7 +79,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                   alt="AI" 
                   className="h-7 w-7 shrink-0 brightness-0 invert"
                 />
-                <span className="max-w-0 group-hover:max-w-32 group-hover:ml-2 overflow-hidden whitespace-nowrap transition-all duration-300">
+                <span className={cn("overflow-hidden whitespace-nowrap transition-all duration-300", isOpen ? "max-w-32 ml-2" : "max-w-0 group-hover:max-w-32 group-hover:ml-2")}>
                   Ask AI
                 </span>
               </div>
