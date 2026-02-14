@@ -20,7 +20,7 @@ interface CalendarEvent {
 
 interface CalendarTimeGridProps {
   days: { date: Date; events: CalendarEvent[] }[];
-  onEventUpdate: (eventId: string, newStart: Date, newEnd: Date) => Promise<void>;
+  onEventUpdate?: (eventId: string, newStart: Date, newEnd: Date) => Promise<void>;
   onEventEdit: (event: CalendarEvent) => void;
   isUpdating?: boolean;
 }
@@ -89,7 +89,7 @@ export function CalendarTimeGrid({ days, onEventUpdate, onEventEdit, isUpdating 
       const newStart = setMinutes(setHours(dropData.date, dropData.hour), originalStart.getMinutes());
       const newEnd = addMinutes(newStart, duration);
 
-      await onEventUpdate(draggedEvent.id, newStart, newEnd);
+      await onEventUpdate?.(draggedEvent.id, newStart, newEnd);
     } catch (error) {
       console.error('Failed to update event:', error);
     }
