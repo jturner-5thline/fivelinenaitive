@@ -89,10 +89,11 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
         <PopoverContent 
           side="top" 
           align="end" 
-          className="w-96 p-0 animate-scale-in border-primary/20 overflow-hidden"
+          className="w-96 p-0 animate-scale-in border-primary/20 overflow-hidden shadow-[0_8px_40px_-8px_hsl(var(--primary)/0.35),0_0_60px_-15px_hsl(var(--primary)/0.2)]"
           sideOffset={8}
           style={{
             background: 'linear-gradient(145deg, hsl(230 25% 10%) 0%, hsl(235 28% 13%) 50%, hsl(245 35% 18%) 80%, hsl(220 50% 22%) 100%)',
+            backdropFilter: 'blur(20px)',
           }}
         >
           <div className="p-4 border-b border-primary/10 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, hsl(230 25% 10%) 0%, hsl(230 30% 14%) 50%, hsl(220 45% 20%) 100%)' }}>
