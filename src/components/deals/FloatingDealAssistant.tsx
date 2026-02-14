@@ -130,7 +130,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           </div>
           
           {messages.length === 0 && (
-            <div className="px-4 pt-3 pb-1 overflow-x-auto">
+            <div className="px-4 pt-3 pb-1 overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               <div className="flex gap-2 min-w-max">
                 {suggestedQuestions.map((q, i) => (
                   <Button
