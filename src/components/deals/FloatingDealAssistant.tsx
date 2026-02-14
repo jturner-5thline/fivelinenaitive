@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -130,22 +130,46 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           </div>
           
           {messages.length === 0 && (
-            <div className="px-4 pt-3 pb-1 overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              <div className="flex gap-2 min-w-max">
-                {suggestedQuestions.map((q, i) => (
-                  <Button
-                    key={i}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-7 whitespace-nowrap shrink-0"
-                    onClick={() => {
-                      setQuestion(q);
-                    }}
-                  >
-                    {q}
-                  </Button>
-                ))}
+            <div className="relative px-4 pt-3 pb-1">
+              <button
+                onClick={() => {
+                  const el = document.getElementById('prompt-carousel');
+                  if (el) el.scrollBy({ left: -120, behavior: 'smooth' });
+                }}
+                className="absolute left-1 top-1/2 -translate-y-1/2 z-10 h-6 w-6 flex items-center justify-center rounded-full bg-background/60 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <div
+                id="prompt-carousel"
+                className="overflow-x-auto scrollbar-none mx-5"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                <div className="flex gap-2 min-w-max">
+                  {suggestedQuestions.map((q, i) => (
+                    <Button
+                      key={i}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 whitespace-nowrap shrink-0"
+                      onClick={() => {
+                        setQuestion(q);
+                      }}
+                    >
+                      {q}
+                    </Button>
+                  ))}
+                </div>
               </div>
+              <button
+                onClick={() => {
+                  const el = document.getElementById('prompt-carousel');
+                  if (el) el.scrollBy({ left: 120, behavior: 'smooth' });
+                }}
+                className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-6 w-6 flex items-center justify-center rounded-full bg-background/60 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
 
