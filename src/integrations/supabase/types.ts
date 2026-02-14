@@ -835,6 +835,48 @@ export type Database = {
           },
         ]
       }
+      dashboard_layouts: {
+        Row: {
+          created_at: string
+          description: string | null
+          grid_config: Json
+          id: string
+          is_active: boolean
+          name: string
+          position: number
+          settings: Json
+          updated_at: string
+          user_id: string
+          widgets_config: Json
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          grid_config?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          position?: number
+          settings?: Json
+          updated_at?: string
+          user_id: string
+          widgets_config?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          grid_config?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          position?: number
+          settings?: Json
+          updated_at?: string
+          user_id?: string
+          widgets_config?: Json
+        }
+        Relationships: []
+      }
       data_room_checklist_categories: {
         Row: {
           color: string | null
