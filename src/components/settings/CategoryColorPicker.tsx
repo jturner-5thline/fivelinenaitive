@@ -18,15 +18,15 @@ export function CategoryColorPicker({ value, onChange }: CategoryColorPickerProp
             type="button"
             onClick={() => onChange(colorOption.value)}
             className={cn(
-              "flex items-center justify-center gap-2 p-2 rounded-lg border transition-all",
+              "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
               colorOption.bgClass,
               isSelected
                 ? "ring-2 ring-primary ring-offset-2"
                 : "hover:ring-1 hover:ring-border"
             )}
           >
-            <div className={cn("w-4 h-4 rounded-full", colorOption.textClass, "bg-current")} />
-            <span className={cn("text-xs font-medium", colorOption.textClass)}>{colorOption.label}</span>
+            <div className={cn("w-4 h-4 rounded-full shrink-0", colorOption.textClass, "bg-current")} />
+            <span className={cn("text-[10px] font-medium leading-tight", colorOption.textClass)}>{colorOption.label}</span>
           </button>
         );
       })}
