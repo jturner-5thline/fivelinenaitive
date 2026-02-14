@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -133,9 +133,42 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   const timeAgoData = getTimeAgoData(deal.updatedAt);
 
+  const notificationCount = useMemo(() => {
+    let count = 0;
+    // Count stale lenders
+    deal.lenders?.forEach(lender => {
+      if (lender.trackingStatus === 'active' && lender.updatedAt) {
+        const days = differenceInDays(new Date(), new Date(lender.updatedAt));
+        if (days >= preferences.staleDealsDays) count++;
+      }
+    });
+    // Count overdue milestones
+    deal.milestones?.forEach(m => {
+      if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
+    });
+    return count;
+  }, [deal.lenders, deal.milestones, preferences.staleDealsDays]);
+
   return (
     <Link to={`/deal/${deal.id}`} className="block h-full">
       <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+        {notificationCount > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="absolute -top-2 -left-2 z-10">
+                  <div className="flex items-center justify-center h-6 min-w-6 px-1 rounded-full bg-primary shadow-md">
+                    <Bell className="h-3 w-3 text-primary-foreground" />
+                    <span className="text-[10px] font-bold text-primary-foreground ml-0.5">{notificationCount}</span>
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{notificationCount} item{notificationCount !== 1 ? 's' : ''} need attention</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         {timeAgoData.isStale && (
           <TooltipProvider>
             <Tooltip>
