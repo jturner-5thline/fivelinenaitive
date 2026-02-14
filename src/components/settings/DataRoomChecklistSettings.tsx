@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, FileCheck } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, FileCheck, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,10 +38,12 @@ import { CategoryIconPicker, getCategoryIcon } from './CategoryIconPicker';
 import { CategoryColorPicker } from './CategoryColorPicker';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useCompany } from '@/hooks/useCompany';
 
 export function DataRoomChecklistSettings() {
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, reorderItems } = useDataRoomChecklist();
   const { categories, categoryNames, loading: categoriesLoading, addCategory, updateCategory, deleteCategory, reorderCategories, getCategoryByName } = useChecklistCategories();
+  const { isAdmin } = useCompany();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
@@ -232,6 +234,9 @@ export function DataRoomChecklistSettings() {
             </CardTitle>
             <CardDescription className="mt-1">
               Define the standard information required for all deals. {items.length} items ({requiredCount} required)
+              {!isAdmin && (
+                <span className="block text-xs mt-1 text-muted-foreground/80">Only company admins can edit the default checklist.</span>
+              )}
             </CardDescription>
           </div>
         </div>
@@ -245,10 +250,12 @@ export function DataRoomChecklistSettings() {
 
           <TabsContent value="items">
             <div className="flex justify-end mb-4">
-              <Button onClick={handleOpenAdd} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Item
-              </Button>
+              {isAdmin && (
+                <Button onClick={handleOpenAdd} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </Button>
+              )}
             </div>
             
             {loading ? (
@@ -260,10 +267,12 @@ export function DataRoomChecklistSettings() {
                 <p className="text-muted-foreground mb-4">
                   Add items that should be collected for every deal's data room.
                 </p>
-                <Button onClick={handleOpenAdd} variant="outline" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Your First Item
-                </Button>
+                {isAdmin && (
+                  <Button onClick={handleOpenAdd} variant="outline" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Your First Item
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-6">
@@ -282,13 +291,13 @@ export function DataRoomChecklistSettings() {
                         {groupedItems[categoryName].map((item) => (
                           <div
                             key={item.id}
-                            draggable
-                            onDragStart={() => handleDragStart(items.indexOf(item))}
-                            onDragOver={(e) => handleDragOver(e, items.indexOf(item))}
-                            onDragEnd={handleDragEnd}
-                            className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors cursor-move"
+                            draggable={isAdmin}
+                            onDragStart={() => isAdmin && handleDragStart(items.indexOf(item))}
+                            onDragOver={(e) => isAdmin && handleDragOver(e, items.indexOf(item))}
+                            onDragEnd={() => isAdmin && handleDragEnd()}
+                            className={cn("flex items-center gap-3 p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors", isAdmin && "cursor-move")}
                           >
-                            <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                            {isAdmin && <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{item.name}</span>
@@ -300,23 +309,25 @@ export function DataRoomChecklistSettings() {
                                 <p className="text-sm text-muted-foreground truncate">{item.description}</p>
                               )}
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleOpenEdit(item)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-muted-foreground hover:text-destructive"
-                                onClick={() => setDeleteConfirmId(item.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            {isAdmin && (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpenEdit(item)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-muted-foreground hover:text-destructive"
+                                  onClick={() => setDeleteConfirmId(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -329,10 +340,12 @@ export function DataRoomChecklistSettings() {
 
           <TabsContent value="categories">
             <div className="flex justify-end mb-4">
-              <Button onClick={handleOpenAddCategory} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Category
-              </Button>
+              {isAdmin && (
+                <Button onClick={handleOpenAddCategory} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Category
+                </Button>
+              )}
             </div>
 
             {loading ? (
@@ -344,10 +357,12 @@ export function DataRoomChecklistSettings() {
                 <p className="text-muted-foreground mb-4">
                   Add categories to organize your checklist items.
                 </p>
-                <Button onClick={handleOpenAddCategory} variant="outline" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Your First Category
-                </Button>
+                {isAdmin && (
+                  <Button onClick={handleOpenAddCategory} variant="outline" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Your First Category
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -358,37 +373,40 @@ export function DataRoomChecklistSettings() {
                   return (
                     <div
                       key={category.id}
-                      draggable
-                      onDragStart={() => handleCategoryDragStart(index)}
-                      onDragOver={(e) => handleCategoryDragOver(e, index)}
-                      onDragEnd={handleCategoryDragEnd}
+                      draggable={isAdmin}
+                      onDragStart={() => isAdmin && handleCategoryDragStart(index)}
+                      onDragOver={(e) => isAdmin && handleCategoryDragOver(e, index)}
+                      onDragEnd={() => isAdmin && handleCategoryDragEnd()}
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border hover:opacity-80 transition-all cursor-move",
+                        "flex items-center gap-3 p-3 rounded-lg border hover:opacity-80 transition-all",
+                        isAdmin && "cursor-move",
                         colorClasses.bgClass
                       )}
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                      {isAdmin && <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />}
                       <IconComponent className={cn("h-5 w-5 shrink-0", colorClasses.textClass)} />
                       <div className="flex-1 min-w-0">
                         <span className={cn("font-medium", colorClasses.textClass)}>{category.name}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEditCategory(category)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={() => setDeleteCategoryConfirmId(category.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenEditCategory(category)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeleteCategoryConfirmId(category.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
