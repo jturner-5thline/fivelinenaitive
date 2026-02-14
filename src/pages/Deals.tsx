@@ -171,7 +171,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <NotificationsDropdown />
                   <LatestUpdatesDropdown />
-                  <FlaggedDealsPanel deals={allDeals} />
+                  
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-2">
