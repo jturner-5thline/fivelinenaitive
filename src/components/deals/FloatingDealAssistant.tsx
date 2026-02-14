@@ -89,11 +89,14 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
         <PopoverContent 
           side="top" 
           align="end" 
-          className="w-96 p-0 animate-scale-in"
+          className="w-96 p-0 animate-scale-in border-primary/20 overflow-hidden"
           sideOffset={8}
+          style={{
+            background: 'linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--card)) 60%, hsl(var(--primary) / 0.06) 100%)',
+          }}
         >
-          <div className="p-4 border-b flex items-center justify-between">
-            <div>
+          <div className="p-4 border-b border-primary/10 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, hsl(var(--primary) / 0.08) 0%, transparent 70%)' }}>
+            <div className="flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2">
                 <img src={naitiveAiIcon} alt="AI" className="h-4 w-4" />
                 Deal Assistant
@@ -186,14 +189,14 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
             )}
           </ScrollArea>
 
-          <div className="p-3 border-t">
+          <div className="p-3 border-t border-primary/10">
             <div className="flex gap-2">
               <Input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about this deal..."
-                className="flex-1 h-9 text-sm"
+                className="flex-1 h-9 text-sm border-primary/20 bg-background/80 focus-visible:ring-primary/30"
                 disabled={isLoading}
               />
               <Button
