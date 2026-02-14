@@ -100,7 +100,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
         <PopoverContent 
           side="top" 
           align="end" 
-          className="w-96 p-0 border-primary/20 overflow-hidden shadow-[0_8px_40px_-8px_hsl(var(--primary)/0.35),0_0_60px_-15px_hsl(var(--primary)/0.2)] data-[state=open]:animate-[slide-up-fade_0.35s_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[slide-down-fade_0.2s_ease-in]"
+          className="w-96 p-0 border-primary/20 overflow-hidden shadow-[0_6px_30px_-10px_hsl(var(--primary)/0.2),0_0_40px_-20px_hsl(var(--primary)/0.1)] data-[state=open]:animate-[slide-up-fade_0.35s_cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:animate-[slide-down-fade_0.2s_ease-in]"
           sideOffset={8}
           style={{
             background: 'linear-gradient(145deg, hsl(230 25% 10%) 0%, hsl(235 28% 13%) 50%, hsl(245 35% 18%) 80%, hsl(220 50% 22%) 100%)',
