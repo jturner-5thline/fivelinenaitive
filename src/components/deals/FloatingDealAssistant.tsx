@@ -48,6 +48,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
   }, [handleSendQuestion]);
 
   const suggestedQuestions = [
+    "Are we missing anything?",
     "What are the key terms?",
     "Summarize main risks",
     "Financial highlights?",
