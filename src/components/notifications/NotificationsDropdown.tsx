@@ -280,7 +280,7 @@ export function NotificationsDropdown() {
               </div>
               <div className="divide-y">
                 {infoRequestNotifications.map((notification) => {
-                  const isPending = notification.status === 'pending';
+                  const isPending = notification.status === 'pending' || notification.status === 'read';
                   return (
                     <Link
                       key={notification.id}
