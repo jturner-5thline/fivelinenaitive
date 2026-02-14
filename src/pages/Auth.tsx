@@ -11,6 +11,7 @@ import { SpinningGlobe } from "@/components/SpinningGlobe";
 import { Helmet } from "react-helmet-async";
 import { Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { z } from "zod";
+import { isBlockedEmailDomain, BLOCKED_DOMAIN_ERROR } from "@/lib/blocked-email-domains";
 
 const authSchema = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }),
@@ -112,6 +113,12 @@ const Auth = () => {
           return;
         }
 
+        if (isBlockedEmailDomain(email)) {
+          toast.error(BLOCKED_DOMAIN_ERROR);
+          setLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: `${window.location.origin}/login`,
         });
@@ -133,6 +140,12 @@ const Auth = () => {
         const validation = authSchema.safeParse({ email, password });
         if (!validation.success) {
           toast.error(validation.error.errors[0].message);
+          setLoading(false);
+          return;
+        }
+
+        if (isBlockedEmailDomain(email)) {
+          toast.error(BLOCKED_DOMAIN_ERROR);
           setLoading(false);
           return;
         }

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { isBlockedEmailDomain } from '@/lib/blocked-email-domains';
 
 interface AuthContextType {
   user: User | null;
@@ -126,8 +127,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Mark session as active
           sessionStorage.setItem('naitive_session_active', 'true');
           
-          // Check if this is a new user who needs approval (non-5thline.co)
+          // Block personal email domains (including Google SSO with personal emails)
           const userEmail = session.user.email;
+          if (userEmail && isBlockedEmailDomain(userEmail)) {
+            // Sign out the user immediately
+            await supabase.auth.signOut();
+            return;
+          }
+
+          // Check if this is a new user who needs approval (non-5thline.co)
           if (userEmail && !userEmail.endsWith('@5thline.co')) {
             // Check if user was just created (within last minute) - indicates new signup
             const createdAt = new Date(session.user.created_at);
