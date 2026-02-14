@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+
+let instanceCounter = 0;
 
 export function useDealNotificationCounts(dealIds: string[]) {
   const [flexCounts, setFlexCounts] = useState<Record<string, number>>({});
   const dealIdsKey = dealIds.join(',');
+  const instanceId = useRef(++instanceCounter);
 
   const fetchCounts = useCallback(async () => {
     if (dealIds.length === 0) return;
@@ -34,12 +37,12 @@ export function useDealNotificationCounts(dealIds: string[]) {
     fetchCounts();
   }, [fetchCounts]);
 
-  // Real-time subscription for instant updates
+  // Real-time subscription with unique channel name per instance
   useEffect(() => {
     if (dealIds.length === 0) return;
 
     const channel = supabase
-      .channel('deal-notification-counts-realtime')
+      .channel(`deal-notif-counts-${instanceId.current}`)
       .on(
         'postgres_changes',
         {
@@ -56,6 +59,14 @@ export function useDealNotificationCounts(dealIds: string[]) {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [fetchCounts, dealIdsKey]);
+
+  // Fallback polling every 10s to catch missed realtime events
+  useEffect(() => {
+    if (dealIds.length === 0) return;
+
+    const interval = setInterval(fetchCounts, 10000);
+    return () => clearInterval(interval);
   }, [fetchCounts, dealIdsKey]);
 
   return flexCounts;
