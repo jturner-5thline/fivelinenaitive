@@ -41,7 +41,16 @@ import {
   AlertTriangle,
   Lightbulb,
   Loader2,
+  Search,
+  Timer,
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -271,28 +280,58 @@ function TimeGridEvent({
   const durationMin = differenceInMinutes(end, start);
   const hasVideo = !!(event.hangout_link || event.conference_data);
 
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'absolute left-1 right-1 rounded-md px-2 py-1 text-left overflow-hidden cursor-pointer transition-all hover:brightness-110 hover:shadow-lg z-[2]',
-        colorClass,
+  const tooltipContent = (
+    <div className="space-y-1 max-w-[220px]">
+      <p className="font-semibold text-xs">{event.summary}</p>
+      <p className="text-[10px] text-muted-foreground">
+        {format(start, 'h:mm a')} – {format(end, 'h:mm a')}
+      </p>
+      {event.location && (
+        <p className="text-[10px] text-muted-foreground flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{event.location}</p>
       )}
-      style={style}
-    >
-      <p className="text-[11px] font-semibold leading-tight truncate">{event.summary}</p>
-      {durationMin >= 45 && (
-        <p className="text-[10px] opacity-80 leading-tight mt-0.5">
-          {format(start, 'h:mm')} – {format(end, 'h:mm a')}
+      {event.attendees && event.attendees.filter(a => !a.self).length > 0 && (
+        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <Users className="h-2.5 w-2.5" />{event.attendees.filter(a => !a.self).map(a => a.display_name || a.email).slice(0, 3).join(', ')}
+          {event.attendees.filter(a => !a.self).length > 3 && ` +${event.attendees.filter(a => !a.self).length - 3}`}
         </p>
       )}
-      {durationMin >= 60 && hasVideo && (
-        <div className="flex items-center gap-1 mt-0.5">
-          <Video className="h-2.5 w-2.5 opacity-70" />
-          <span className="text-[9px] opacity-70">Video call</span>
-        </div>
+      {hasVideo && (
+        <p className="text-[10px] text-primary flex items-center gap-1"><Video className="h-2.5 w-2.5" />Video call</p>
       )}
-    </button>
+    </div>
+  );
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onClick}
+            className={cn(
+              'absolute left-1 right-1 rounded-md px-2 py-1 text-left overflow-hidden cursor-pointer transition-all hover:brightness-110 hover:shadow-lg z-[2]',
+              colorClass,
+            )}
+            style={style}
+          >
+            <p className="text-[11px] font-semibold leading-tight truncate">{event.summary}</p>
+            {durationMin >= 45 && (
+              <p className="text-[10px] opacity-80 leading-tight mt-0.5">
+                {format(start, 'h:mm')} – {format(end, 'h:mm a')}
+              </p>
+            )}
+            {durationMin >= 60 && hasVideo && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <Video className="h-2.5 w-2.5 opacity-70" />
+                <span className="text-[9px] opacity-70">Video call</span>
+              </div>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="p-2.5">
+          {tooltipContent}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -771,8 +810,31 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   const [view, setView] = useState<CalendarViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   const allEvents = calendarStatus?.connected && liveEvents.length > 0 ? liveEvents : mockEvents;
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return allEvents.filter(e =>
+      e.summary.toLowerCase().includes(q) ||
+      e.location?.toLowerCase().includes(q) ||
+      e.description?.toLowerCase().includes(q) ||
+      e.attendees?.some(a => a.display_name?.toLowerCase().includes(q) || a.email.toLowerCase().includes(q))
+    ).sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime()).slice(0, 10);
+  }, [allEvents, searchQuery]);
+
+  // Upcoming events (next 3 from now)
+  const upcomingEvents = useMemo(() => {
+    const nowDate = new Date();
+    return allEvents
+      .filter(e => !e.all_day && isAfter(parseISO(e.start), nowDate))
+      .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())
+      .slice(0, 3);
+  }, [allEvents]);
 
   const navigate = useCallback((direction: 'prev' | 'next' | 'today') => {
     if (direction === 'today') { setCurrentDate(new Date()); return; }
@@ -855,6 +917,54 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
 
           <div className="flex-1" />
 
+          {/* Search */}
+          {showSearch ? (
+            <div className="relative">
+              <Input
+                placeholder="Search events..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="h-8 w-48 text-xs pr-7"
+                autoFocus
+                onBlur={() => { if (!searchQuery) setShowSearch(false); }}
+              />
+              <Button variant="ghost" size="icon" className="h-6 w-6 absolute right-1 top-1" onClick={() => { setSearchQuery(''); setShowSearch(false); }}>
+                <X className="h-3 w-3" />
+              </Button>
+              {searchQuery && searchResults.length > 0 && (
+                <div className="absolute top-full right-0 mt-1 w-72 bg-popover border border-border rounded-lg shadow-xl z-50 max-h-[300px] overflow-y-auto">
+                  {searchResults.map((event, idx) => {
+                    const start = parseISO(event.start);
+                    const ci = getColorIndex(event, idx);
+                    return (
+                      <button
+                        key={event.id}
+                        className="w-full flex items-start gap-2 p-2.5 hover:bg-muted/50 text-left border-b border-border/50 last:border-b-0"
+                        onClick={() => { setCurrentDate(start); setView('day'); setSelectedEvent(event); setSearchQuery(''); setShowSearch(false); }}
+                      >
+                        <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', EVENT_PALETTE[ci].dot)} />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{event.summary}</p>
+                          <p className="text-[10px] text-muted-foreground">{format(start, 'EEE, MMM d · h:mm a')}</p>
+                          {event.location && <p className="text-[10px] text-muted-foreground truncate">{event.location}</p>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {searchQuery && searchResults.length === 0 && (
+                <div className="absolute top-full right-0 mt-1 w-72 bg-popover border border-border rounded-lg shadow-xl z-50 p-4 text-center">
+                  <p className="text-xs text-muted-foreground">No events found</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowSearch(true)}>
+              <Search className="h-4 w-4" />
+            </Button>
+          )}
+
           {!calendarStatus?.connected && <Badge variant="secondary" className="text-[10px] h-5 mr-2">Demo Data</Badge>}
 
           <div className="flex items-center bg-muted rounded-lg p-0.5">
@@ -876,8 +986,50 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
         {/* ─── Body with sidebar ─── */}
         <div className="flex-1 min-h-0 overflow-hidden flex">
           {/* Mini calendar sidebar */}
-          <div className="w-52 shrink-0 border-r bg-background/50 p-3 overflow-y-auto hidden md:block">
+          <div className="w-56 shrink-0 border-r bg-background/50 p-3 overflow-y-auto hidden md:block">
             <MiniCalendar currentDate={currentDate} onDateSelect={handleMiniDateSelect} events={allEvents} />
+
+            {/* Upcoming Events Widget */}
+            {upcomingEvents.length > 0 && (
+              <>
+                <Separator className="my-3" />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Timer className="h-3.5 w-3.5 text-primary" />
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Coming Up</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {upcomingEvents.map((event, idx) => {
+                      const start = parseISO(event.start);
+                      const end = parseISO(event.end);
+                      const ci = getColorIndex(event, idx);
+                      const minutesUntil = differenceInMinutes(start, new Date());
+                      const timeLabel = minutesUntil <= 0 ? 'Now' : minutesUntil < 60 ? `in ${minutesUntil}m` : `in ${Math.floor(minutesUntil / 60)}h`;
+
+                      return (
+                        <button
+                          key={event.id}
+                          onClick={() => { setCurrentDate(start); setView('day'); setSelectedEvent(event); }}
+                          className="w-full flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <div className={cn('h-2 w-2 rounded-full mt-1.5 shrink-0', EVENT_PALETTE[ci].dot)} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-medium text-foreground truncate">{event.summary}</p>
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="text-[10px] text-muted-foreground">{format(start, 'h:mm a')}</p>
+                              <Badge variant={minutesUntil <= 15 ? 'destructive' : 'secondary'} className="text-[9px] h-4 px-1">
+                                {timeLabel}
+                              </Badge>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
             <Separator className="my-3" />
             <CalendarAIPanel events={viewEvents} currentDate={currentDate} />
           </div>
