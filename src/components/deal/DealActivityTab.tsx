@@ -142,9 +142,9 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
   return (
     <div className="w-full overflow-hidden space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-6">
       {/* Charts column */}
-      <div className="space-y-6 min-w-0">
+      <div className="space-y-6 min-w-0 lg:order-2">
       {/* FLEx Engagement Trends Chart */}
       <FlexEngagementTrendsChart dealId={dealId} />
 
@@ -283,7 +283,7 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
       </div>
 
       {/* Engagement Stats Sidebar */}
-      <Card id="flex-engagement-section" className="h-fit">
+      <Card id="flex-engagement-section" className="h-fit lg:order-1">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <ExternalLink className="h-4 w-4" />
