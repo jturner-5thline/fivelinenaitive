@@ -4003,37 +4003,40 @@ export default function DealDetail() {
                                 <History className="h-4 w-4" />
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent side="bottom" align="start" className="w-80 p-0">
+                            <PopoverContent side="bottom" align="start" className="w-96 p-0">
                               <div className="p-3 border-b bg-muted/30">
                                 <h4 className="font-semibold text-sm flex items-center gap-2">
                                   <History className="h-3.5 w-3.5" />
                                   Data Room Activity
                                 </h4>
+                                <p className="text-xs text-muted-foreground mt-0.5">All activity since deal creation</p>
                               </div>
-                              <div className="p-3 max-h-60 overflow-y-auto">
+                              <div className="p-3 max-h-80 overflow-y-auto">
                                 {(() => {
-                                  const dataRoomTypes = ['flex_data_room', 'flex_data_room_push', 'flex_file_downloaded', 'data_room_viewed', 'data_room_downloaded'];
+                                  const dataRoomTypes = ['flex_data_room', 'flex_data_room_push', 'flex_file_downloaded', 'data_room_viewed', 'data_room_downloaded', 'flex_data_room_push'];
                                   const dataRoomActivities = activityLogs
-                                    .filter(a => dataRoomTypes.includes(a.activity_type) || a.description.toLowerCase().includes('data room') || a.description.toLowerCase().includes('file upload') || a.description.toLowerCase().includes('attachment'))
-                                    .slice(0, 15);
+                                    .filter(a => dataRoomTypes.includes(a.activity_type) || a.description.toLowerCase().includes('data room') || a.description.toLowerCase().includes('file upload') || a.description.toLowerCase().includes('attachment') || a.description.toLowerCase().includes('pushed to flex'));
                                   if (dataRoomActivities.length === 0) {
                                     return <p className="text-xs text-muted-foreground text-center py-3">No data room activity yet</p>;
                                   }
                                   return (
-                                    <div className="space-y-2.5">
-                                      {dataRoomActivities.map(a => (
-                                        <div key={a.id} className="flex items-start gap-2 text-xs">
-                                          <Clock className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
-                                          <div className="min-w-0">
-                                            <p className="text-foreground">{a.description}</p>
-                                            <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground">
-                                              {a.user_display_name && <span className="text-primary font-medium">{a.user_display_name}</span>}
-                                              <span>{format(new Date(a.created_at), 'MMM d, h:mm a')}</span>
+                                    <>
+                                      <p className="text-[10px] text-muted-foreground mb-2">{dataRoomActivities.length} event{dataRoomActivities.length !== 1 ? 's' : ''}</p>
+                                      <div className="space-y-2.5">
+                                        {dataRoomActivities.map(a => (
+                                          <div key={a.id} className="flex items-start gap-2 text-xs">
+                                            <Clock className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+                                            <div className="min-w-0">
+                                              <p className="text-foreground">{a.description}</p>
+                                              <div className="flex items-center gap-1.5 mt-0.5 text-muted-foreground">
+                                                {a.user_display_name && <span className="text-primary font-medium">{a.user_display_name}</span>}
+                                                <span>{format(new Date(a.created_at), 'MMM d, h:mm a')}</span>
+                                              </div>
                                             </div>
                                           </div>
-                                        </div>
-                                      ))}
-                                    </div>
+                                        ))}
+                                      </div>
+                                    </>
                                   );
                                 })()}
                               </div>
