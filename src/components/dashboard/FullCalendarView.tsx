@@ -35,6 +35,12 @@ import {
   X,
   Clock,
   List,
+  Sparkles,
+  Brain,
+  FileText,
+  AlertTriangle,
+  Lightbulb,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +51,10 @@ import {
   DialogContent,
 } from '@/components/ui/dialog';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
 
 // ─── Types ───────────────────────────────────────────────────
 type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda';
@@ -661,6 +670,101 @@ function AllDayBar({
   );
 }
 
+// ─── AI Insights Panel ──────────────────────────────────────
+type AIAction = 'daily_summary' | 'meeting_prep' | 'smart_schedule' | 'conflict_check';
+
+const AI_ACTIONS: { id: AIAction; label: string; icon: React.ReactNode; description: string }[] = [
+  { id: 'daily_summary', label: 'Day Summary', icon: <FileText className="h-3.5 w-3.5" />, description: 'AI overview of your day' },
+  { id: 'meeting_prep', label: 'Meeting Prep', icon: <Brain className="h-3.5 w-3.5" />, description: 'Briefings for meetings' },
+  { id: 'smart_schedule', label: 'Schedule Tips', icon: <Lightbulb className="h-3.5 w-3.5" />, description: 'Optimization suggestions' },
+  { id: 'conflict_check', label: 'Conflicts', icon: <AlertTriangle className="h-3.5 w-3.5" />, description: 'Detect scheduling issues' },
+];
+
+function CalendarAIPanel({
+  events,
+  currentDate,
+}: {
+  events: CalendarEvent[];
+  currentDate: Date;
+}) {
+  const [activeAction, setActiveAction] = useState<AIAction | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const runAI = async (action: AIAction) => {
+    setActiveAction(action);
+    setIsLoading(true);
+    setResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-ai', {
+        body: {
+          action,
+          events: events.map(e => ({
+            summary: e.summary,
+            start: e.start,
+            end: e.end,
+            location: e.location,
+            all_day: e.all_day,
+            attendees: e.attendees?.map(a => ({ name: a.display_name, email: a.email, status: a.response_status })),
+            has_video: !!(e.hangout_link || e.conference_data),
+            description: e.description,
+          })),
+          current_date: format(currentDate, 'yyyy-MM-dd'),
+        },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+        setResult(null);
+      } else {
+        setResult(data.result);
+      }
+    } catch (err: any) {
+      console.error('Calendar AI error:', err);
+      toast.error('Failed to generate insights');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">AI Insights</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1.5">
+        {AI_ACTIONS.map(a => (
+          <button
+            key={a.id}
+            onClick={() => runAI(a.id)}
+            disabled={isLoading}
+            className={cn(
+              'flex flex-col items-center gap-1 p-2 rounded-lg text-center transition-colors',
+              activeAction === a.id && result ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground',
+              isLoading && activeAction === a.id && 'opacity-70',
+            )}
+          >
+            {isLoading && activeAction === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : a.icon}
+            <span className="text-[10px] font-medium leading-tight">{a.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {result && (
+        <div className="mt-2 p-2.5 rounded-lg bg-muted/50 border border-border/50">
+          <ScrollArea className="max-h-[280px]">
+            <div className="prose prose-xs prose-invert max-w-none text-[11px] leading-relaxed text-foreground/90 [&_h2]:text-xs [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:mt-1.5 [&_h3]:mb-0.5 [&_ul]:my-0.5 [&_ul]:pl-3 [&_li]:my-0 [&_p]:my-0.5 [&_strong]:text-foreground">
+              <ReactMarkdown>{result}</ReactMarkdown>
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────
 export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) {
   const { events: liveEvents, status: calendarStatus } = useGoogleCalendar();
@@ -774,6 +878,8 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           {/* Mini calendar sidebar */}
           <div className="w-52 shrink-0 border-r bg-background/50 p-3 overflow-y-auto hidden md:block">
             <MiniCalendar currentDate={currentDate} onDateSelect={handleMiniDateSelect} events={allEvents} />
+            <Separator className="my-3" />
+            <CalendarAIPanel events={viewEvents} currentDate={currentDate} />
           </div>
 
           {/* Main content */}

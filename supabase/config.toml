@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.validate-gate]
 verify_jwt = false
+
+[functions.calendar-ai]
+verify_jwt = false
