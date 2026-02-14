@@ -62,7 +62,7 @@ export function HeaderNotificationPreview() {
         },
         (payload) => {
           const n = payload.new as any;
-          showPreview(n.title || n.message || 'New notification', n.id, n.deal_id ? `/deals/${n.deal_id}` : '/deals');
+          showPreview(n.title || n.message || 'New notification', n.id, n.deal_id ? `/deal/${n.deal_id}?tab=deal-management` : '/deals');
         }
       )
       .on(
@@ -75,7 +75,7 @@ export function HeaderNotificationPreview() {
         (payload) => {
           const n = payload.new as any;
           const msg = n.message || `${n.lender_name || 'A lender'} requested access`;
-          const link = n.deal_id ? `/deals/${n.deal_id}?tab=deal-management` : '/deals';
+          const link = n.deal_id ? `/deal/${n.deal_id}?tab=deal-management` : '/deals';
           showPreview(msg, n.id, link);
         }
       )
