@@ -152,17 +152,6 @@ export function useDealActivityStats(dealId: string | undefined) {
     return stats;
   }, [localQuery.data, flexQuery.data]);
 
-  const query = {
-    data: combinedData,
-    isLoading: localQuery.isLoading || flexQuery.isLoading,
-    isError: localQuery.isError,
-    error: localQuery.error,
-    refetch: async () => {
-      await Promise.all([localQuery.refetch(), flexQuery.refetch()]);
-      return localQuery;
-    },
-  };
-
   // Set up real-time subscription
   useEffect(() => {
     if (!dealId) return;
@@ -177,16 +166,28 @@ export function useDealActivityStats(dealId: string | undefined) {
           table: 'activity_logs',
           filter: `deal_id=eq.${dealId}`
         },
-        () => query.refetch()
+        () => {
+          localQuery.refetch();
+          flexQuery.refetch();
+        }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [dealId, query]);
+  }, [dealId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return query;
+  return {
+    data: combinedData,
+    isLoading: localQuery.isLoading || flexQuery.isLoading,
+    isError: localQuery.isError,
+    error: localQuery.error,
+    refetch: async () => {
+      await Promise.all([localQuery.refetch(), flexQuery.refetch()]);
+      return localQuery;
+    },
+  };
 }
 
 export function useDealActivityChart(dealId: string | undefined, days: number = 14) {
