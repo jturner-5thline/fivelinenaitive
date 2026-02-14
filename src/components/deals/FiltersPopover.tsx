@@ -107,6 +107,7 @@ export function FiltersPopover({
       referredBy: [],
       staleOnly: false,
       flaggedOnly: false,
+      hasNotificationsOnly: false,
     });
   };
 
