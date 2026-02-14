@@ -31,14 +31,14 @@ export function CategoryIconPicker({ value, onChange }: CategoryIconPickerProps)
             type="button"
             onClick={() => onChange(iconOption.value)}
             className={cn(
-              "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
+              "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all overflow-hidden",
               isSelected
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border hover:bg-muted"
             )}
           >
-            <IconComponent className="h-5 w-5" />
-            <span className="text-xs">{iconOption.label}</span>
+            <IconComponent className="h-4 w-4 shrink-0" />
+            <span className="text-[10px] leading-tight truncate w-full text-center">{iconOption.label}</span>
           </button>
         );
       })}
