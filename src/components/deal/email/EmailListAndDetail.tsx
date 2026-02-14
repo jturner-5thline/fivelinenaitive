@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
   Star,
@@ -279,6 +280,7 @@ interface EmailDetailProps {
 
 export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar }: EmailDetailProps) {
   const [showSmartPanel, setShowSmartPanel] = useState(false);
+  const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -309,20 +311,26 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <Popover open={smartPopoverOpen} onOpenChange={setSmartPopoverOpen}>
+              <PopoverTrigger asChild>
                 <Button
-                  variant={showSmartPanel ? 'secondary' : 'ghost'}
+                  variant={smartPopoverOpen ? 'secondary' : 'ghost'}
                   size="sm"
                   className="h-8 gap-1.5 text-xs"
-                  onClick={() => setShowSmartPanel(!showSmartPanel)}
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Smart</span>
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Toggle Smart Actions panel</TooltipContent>
-            </Tooltip>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-[320px] p-0 max-h-[70vh] overflow-hidden">
+                {dealId && (
+                  <SmartEmailPanel
+                    thread={thread}
+                    dealId={dealId}
+                  />
+                )}
+              </PopoverContent>
+            </Popover>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Reply coming soon')}>
@@ -391,13 +399,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         </ScrollArea>
       </div>
 
-      {/* Smart Actions Panel */}
-      {showSmartPanel && dealId && (
-        <SmartEmailPanel
-          thread={thread}
-          dealId={dealId}
-        />
-      )}
     </div>
   );
 }
