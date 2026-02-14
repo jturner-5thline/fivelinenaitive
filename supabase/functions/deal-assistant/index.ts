@@ -104,12 +104,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    contextString += `\n\nHelp the user with questions about this deal. Be concise and actionable. You can:\n`;
-    contextString += `- Summarize deal status and progress\n`;
-    contextString += `- Suggest next steps or actions\n`;
-    contextString += `- Analyze lender engagement\n`;
-    contextString += `- Identify potential risks or blockers\n`;
-    contextString += `- Draft communications or updates\n`;
+    contextString += `\n\nIMPORTANT FORMATTING RULES — follow these strictly:\n`;
+    contextString += `- Always structure your responses with clear **headings** (##) for each section\n`;
+    contextString += `- Use bullet points (•) for key items under each heading\n`;
+    contextString += `- Use indented sub-bullets (  -) for supporting details under main bullets\n`;
+    contextString += `- Keep each bullet concise — one key insight per line\n`;
+    contextString += `- Use bold (**text**) to highlight critical terms, names, or numbers\n`;
+    contextString += `- Format like an executive memo: scannable, hierarchical, and action-oriented\n`;
+    contextString += `- Never write long paragraphs — break everything into structured bullet points\n`;
+    contextString += `\nYou can help with:\n`;
+    contextString += `- Summarizing deal status and progress\n`;
+    contextString += `- Suggesting next steps or actions\n`;
+    contextString += `- Analyzing lender engagement\n`;
+    contextString += `- Identifying potential risks or blockers\n`;
+    contextString += `- Checking for missing deal information or unchecked data room items\n`;
+    contextString += `- Drafting communications or updates\n`;
 
     const systemMessage: Message = {
       role: 'system',
