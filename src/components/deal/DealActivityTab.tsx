@@ -142,114 +142,9 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
 
   return (
     <div className="w-full overflow-hidden space-y-6">
-      {/* Main activity section */}
-      <div className="space-y-6">
-      {/* FLEx Engagement Stats */}
-      <Card id="flex-engagement-section">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium flex items-center gap-2">
-              <ExternalLink className="h-4 w-4" />
-              Engagement
-            </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              {stats?.flexUniqueLenders ?? 0} lender{(stats?.flexUniqueLenders ?? 0) !== 1 ? 's' : ''} engaged
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Popover>
-              <PopoverTrigger asChild>
-                <div>
-                  <FlexStatCard
-                    icon={<Eye className="h-4 w-4" />}
-                    label="Views"
-                    value={stats?.flexViews ?? 0}
-                    isLoading={isLoadingStats}
-                    onClick={() => {}}
-                  />
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-3" align="start">
-                <h4 className="text-sm font-medium mb-2">Lenders who viewed</h4>
-                {(() => {
-                  const viewers = lenderEngagement?.filter(l => l.views > 0) || [];
-                  if (viewers.length === 0) return <p className="text-xs text-muted-foreground">No lender views yet.</p>;
-                  return (
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                      {viewers.map((l, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{l.lenderName}</p>
-                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
-                          </div>
-                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.views} view{l.views !== 1 ? 's' : ''}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </PopoverContent>
-            </Popover>
-            <FlexStatCard
-              icon={<Download className="h-4 w-4" />}
-              label="Downloads"
-              value={stats?.flexDownloads ?? 0}
-              isLoading={isLoadingStats}
-            />
-            <Popover>
-              <PopoverTrigger asChild>
-                <div>
-                  <FlexStatCard
-                    icon={<HelpCircle className="h-4 w-4" />}
-                    label="Info Requests"
-                    value={stats?.flexInfoRequests ?? 0}
-                    highlight
-                    isLoading={isLoadingStats}
-                    onClick={() => {}}
-                  />
-                </div>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-3" align="start">
-                <h4 className="text-sm font-medium mb-2">Lenders who requested info</h4>
-                {(() => {
-                  const requesters = lenderEngagement?.filter(l => l.infoRequests > 0) || [];
-                  if (requesters.length === 0) return <p className="text-xs text-muted-foreground">No info requests yet.</p>;
-                  return (
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                      {requesters.map((l, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{l.lenderName}</p>
-                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
-                          </div>
-                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.infoRequests} req{l.infoRequests !== 1 ? 's' : ''}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </PopoverContent>
-            </Popover>
-            <FlexStatCard
-              icon={<FileText className="h-4 w-4" />}
-              label="NDA Requests"
-              value={stats?.flexNdaRequests ?? 0}
-              highlight
-              isLoading={isLoadingStats}
-            />
-            <FlexStatCard
-              icon={<FileSignature className="h-4 w-4" />}
-              label="Term Sheets"
-              value={stats?.flexTermSheetRequests ?? 0}
-              highlight
-              isLoading={isLoadingStats}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-6">
+      {/* Charts column */}
+      <div className="space-y-6 min-w-0">
       {/* FLEx Engagement Trends Chart */}
       <FlexEngagementTrendsChart dealId={dealId} />
 
@@ -383,6 +278,111 @@ export function DealActivityTab({ dealId }: DealActivityTabProps) {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+      </div>
+
+      {/* Engagement Stats Sidebar */}
+      <Card id="flex-engagement-section" className="h-fit">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <ExternalLink className="h-4 w-4" />
+            Engagement
+          </CardTitle>
+          <Badge variant="outline" className="text-xs w-fit">
+            {stats?.flexUniqueLenders ?? 0} lender{(stats?.flexUniqueLenders ?? 0) !== 1 ? 's' : ''} engaged
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3">
+            <Popover>
+              <PopoverTrigger asChild>
+                <div>
+                  <FlexStatCard
+                    icon={<Eye className="h-4 w-4" />}
+                    label="Views"
+                    value={stats?.flexViews ?? 0}
+                    isLoading={isLoadingStats}
+                    onClick={() => {}}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3" align="end">
+                <h4 className="text-sm font-medium mb-2">Lenders who viewed</h4>
+                {(() => {
+                  const viewers = lenderEngagement?.filter(l => l.views > 0) || [];
+                  if (viewers.length === 0) return <p className="text-xs text-muted-foreground">No lender views yet.</p>;
+                  return (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {viewers.map((l, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{l.lenderName}</p>
+                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
+                          </div>
+                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.views}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </PopoverContent>
+            </Popover>
+            <FlexStatCard
+              icon={<Download className="h-4 w-4" />}
+              label="Downloads"
+              value={stats?.flexDownloads ?? 0}
+              isLoading={isLoadingStats}
+            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <div>
+                  <FlexStatCard
+                    icon={<HelpCircle className="h-4 w-4" />}
+                    label="Info Requests"
+                    value={stats?.flexInfoRequests ?? 0}
+                    highlight
+                    isLoading={isLoadingStats}
+                    onClick={() => {}}
+                  />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-3" align="end">
+                <h4 className="text-sm font-medium mb-2">Lenders who requested info</h4>
+                {(() => {
+                  const requesters = lenderEngagement?.filter(l => l.infoRequests > 0) || [];
+                  if (requesters.length === 0) return <p className="text-xs text-muted-foreground">No info requests yet.</p>;
+                  return (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {requesters.map((l, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{l.lenderName}</p>
+                            {l.lenderEmail && <p className="text-xs text-muted-foreground truncate">{l.lenderEmail}</p>}
+                          </div>
+                          <Badge variant="secondary" className="text-xs shrink-0 ml-2">{l.infoRequests}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </PopoverContent>
+            </Popover>
+            <FlexStatCard
+              icon={<FileText className="h-4 w-4" />}
+              label="NDA Requests"
+              value={stats?.flexNdaRequests ?? 0}
+              highlight
+              isLoading={isLoadingStats}
+            />
+            <FlexStatCard
+              icon={<FileSignature className="h-4 w-4" />}
+              label="Term Sheets"
+              value={stats?.flexTermSheetRequests ?? 0}
+              highlight
+              isLoading={isLoadingStats}
+            />
+          </div>
         </CardContent>
       </Card>
       </div>
