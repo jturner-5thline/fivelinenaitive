@@ -55,7 +55,9 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const scopes = [
-          "https://www.googleapis.com/auth/calendar.events",
+          "https://www.googleapis.com/auth/calendar.readonly",
+          "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+          "https://www.googleapis.com/auth/calendar.settings.readonly",
         ].join(" ");
 
         const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
