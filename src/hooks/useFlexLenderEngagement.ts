@@ -12,6 +12,9 @@ export interface LenderEngagement {
   saves: number;
   ndaRequests: number;
   termSheetRequests: number;
+  writeupViews: number;
+  writeupDownloads: number;
+  writeupFullScrolls: number;
   lastActivity: string;
   engagementScore: number;
   engagementLevel: "hot" | "warm" | "cold";
@@ -35,8 +38,11 @@ const SCORE_WEIGHTS = {
   flex_info_request_approved: 30,
   flex_info_request_denied: 30,
   flex_deal_saved: 15,
+  flex_writeup_downloaded: 12,
+  flex_writeup_scrolled: 10,
   flex_file_downloaded: 10,
   flex_deal_shared: 8,
+  flex_writeup_viewed: 3,
   flex_deal_viewed: 1,
 };
 
@@ -58,6 +64,9 @@ const VALID_ENGAGEMENT_TYPES = [
   'flex_deal_shared',
   'flex_nda_requested',
   'flex_term_sheet_requested',
+  'flex_writeup_viewed',
+  'flex_writeup_downloaded',
+  'flex_writeup_scrolled',
 ];
 
 export function useFlexLenderEngagement(dealId: string | undefined) {
@@ -120,6 +129,9 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
         let saves = 0;
         let ndaRequests = 0;
         let termSheetRequests = 0;
+        let writeupViews = 0;
+        let writeupDownloads = 0;
+        let writeupFullScrolls = 0;
         let engagementScore = 0;
         const downloadedFiles: string[] = [];
         const seenInfoRequestIds = new Set<string>();
@@ -139,7 +151,7 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
               break;
             case "flex_info_requested":
             case "flex_info_request_approved":
-            case "flex_info_request_denied":
+            case "flex_info_request_denied": {
               // Deduplicate by notification_id so the same request only counts once
               const infoKey = activity.notificationId || activity.timestamp;
               if (!seenInfoRequestIds.has(infoKey)) {
@@ -147,6 +159,7 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
                 infoRequests++;
               }
               break;
+            }
             case "flex_deal_saved":
               saves++;
               break;
@@ -155,6 +168,15 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
               break;
             case "flex_term_sheet_requested":
               termSheetRequests++;
+              break;
+            case "flex_writeup_viewed":
+              writeupViews++;
+              break;
+            case "flex_writeup_downloaded":
+              writeupDownloads++;
+              break;
+            case "flex_writeup_scrolled":
+              writeupFullScrolls++;
               break;
           }
         }
@@ -169,6 +191,9 @@ export function useFlexLenderEngagement(dealId: string | undefined) {
           saves,
           ndaRequests,
           termSheetRequests,
+          writeupViews,
+          writeupDownloads,
+          writeupFullScrolls,
           lastActivity: activities[0]?.timestamp || "",
           engagementScore,
           engagementLevel: calculateEngagementLevel(engagementScore),
