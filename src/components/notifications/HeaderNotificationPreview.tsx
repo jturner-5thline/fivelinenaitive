@@ -75,7 +75,8 @@ export function HeaderNotificationPreview() {
         (payload) => {
           const n = payload.new as any;
           const msg = n.message || `${n.lender_name || 'A lender'} requested access`;
-          showPreview(msg, n.id, '/lenders');
+          const link = n.deal_id ? `/deals/${n.deal_id}?tab=flex-requests` : '/deals';
+          showPreview(msg, n.id, link);
         }
       )
       .on(
