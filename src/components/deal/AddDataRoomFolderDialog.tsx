@@ -80,7 +80,7 @@ export function AddDataRoomFolderDialog({ onAdd, existingFolderNames }: AddDataR
           Add Folder
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>Create Data Room Folder</DialogTitle>
           <DialogDescription>
