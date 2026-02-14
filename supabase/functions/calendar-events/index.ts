@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
@@ -11,25 +11,68 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-interface EventData {
-  summary: string;
-  description?: string;
-  location?: string;
-  start: string;
-  end: string;
-  all_day?: boolean;
-  attendees?: string[];
-}
-
 interface EventsRequest {
-  action: "list" | "get" | "list_calendars" | "create" | "update" | "delete";
+  action: "list" | "get" | "list_calendars" | "sync_all";
   calendar_id?: string;
   event_id?: string;
   time_min?: string;
   time_max?: string;
   max_results?: number;
   page_token?: string;
-  event_data?: EventData;
+}
+
+interface NormalizedEvent {
+  id: string;
+  calendar_id: string;
+  summary: string;
+  description: string | null;
+  location: string | null;
+  start: string;
+  end: string;
+  all_day: boolean;
+  status: string;
+  updated: string | null;
+  created: string | null;
+  html_link: string | null;
+  hangout_link: string | null;
+  conference_data: any | null;
+  attendees: {
+    email: string;
+    display_name: string | null;
+    response_status: string;
+    organizer: boolean;
+    self: boolean;
+  }[] | null;
+  organizer: { email: string; displayName?: string } | null;
+  color_id: string | null;
+}
+
+function normalizeEvent(event: any, calendarId: string): NormalizedEvent {
+  return {
+    id: event.id,
+    calendar_id: calendarId,
+    summary: event.summary || "(No title)",
+    description: event.description || null,
+    location: event.location || null,
+    start: event.start?.dateTime || event.start?.date,
+    end: event.end?.dateTime || event.end?.date,
+    all_day: !event.start?.dateTime,
+    status: event.status,
+    updated: event.updated || null,
+    created: event.created || null,
+    html_link: event.htmlLink || null,
+    hangout_link: event.hangoutLink || null,
+    conference_data: event.conferenceData || null,
+    attendees: event.attendees?.map((a: any) => ({
+      email: a.email,
+      display_name: a.displayName || null,
+      response_status: a.responseStatus,
+      organizer: a.organizer || false,
+      self: a.self || false,
+    })) || null,
+    organizer: event.organizer || null,
+    color_id: event.colorId || null,
+  };
 }
 
 async function getValidAccessToken(supabase: any, userId: string): Promise<string | null> {
@@ -39,22 +82,13 @@ async function getValidAccessToken(supabase: any, userId: string): Promise<strin
     .eq("user_id", userId)
     .single();
 
-  if (error || !tokenRecord) {
-    console.error("No calendar tokens found for user");
-    return null;
-  }
+  if (error || !tokenRecord) return null;
 
-  const expiresAt = new Date(tokenRecord.expires_at);
-  const now = new Date();
-
-  // If token is not expired, return it
-  if (expiresAt > now) {
+  if (new Date(tokenRecord.expires_at) > new Date()) {
     return tokenRecord.access_token;
   }
 
-  // Token is expired, refresh it
-  console.log("Calendar token expired, refreshing...");
-  
+  // Refresh expired token
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -67,24 +101,60 @@ async function getValidAccessToken(supabase: any, userId: string): Promise<strin
   });
 
   const tokenData = await tokenResponse.json();
-
   if (tokenData.error) {
     console.error("Token refresh failed:", tokenData);
     return null;
   }
 
-  const newExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-
   await supabase
     .from("calendar_tokens")
     .update({
       access_token: tokenData.access_token,
-      expires_at: newExpiresAt,
+      expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId);
 
   return tokenData.access_token;
+}
+
+async function fetchAllEvents(
+  accessToken: string,
+  calendarId: string,
+  timeMin: string,
+  timeMax: string,
+  maxResults: number
+): Promise<NormalizedEvent[]> {
+  const allEvents: NormalizedEvent[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
+    url.searchParams.set("timeMin", timeMin);
+    url.searchParams.set("timeMax", timeMax);
+    url.searchParams.set("maxResults", String(Math.min(maxResults, 2500)));
+    url.searchParams.set("singleEvents", "true");
+    url.searchParams.set("orderBy", "startTime");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await response.json();
+
+    if (data.error) {
+      console.error(`Events fetch error for ${calendarId}:`, data.error);
+      break;
+    }
+
+    for (const item of data.items || []) {
+      allEvents.push(normalizeEvent(item, calendarId));
+    }
+
+    pageToken = data.nextPageToken;
+  } while (pageToken && allEvents.length < maxResults);
+
+  return allEvents;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -103,7 +173,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
+
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
@@ -128,11 +198,9 @@ serve(async (req: Request): Promise<Response> => {
         const response = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-
         const data = await response.json();
 
         if (data.error) {
-          console.error("Calendar list error:", data.error);
           return new Response(JSON.stringify({ error: data.error.message }), {
             status: data.error.code || 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -147,6 +215,7 @@ serve(async (req: Request): Promise<Response> => {
           background_color: cal.backgroundColor,
           foreground_color: cal.foregroundColor,
           access_role: cal.accessRole,
+          time_zone: cal.timeZone,
         }));
 
         return new Response(JSON.stringify({ calendars }), {
@@ -156,60 +225,33 @@ serve(async (req: Request): Promise<Response> => {
 
       case "list": {
         const calendarId = body.calendar_id || "primary";
-        const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
-        
-        // Default to next 7 days if no time range specified
         const now = new Date();
         const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        
-        url.searchParams.set("timeMin", body.time_min || now.toISOString());
-        url.searchParams.set("timeMax", body.time_max || weekFromNow.toISOString());
-        url.searchParams.set("maxResults", String(body.max_results || 50));
+        const timeMin = body.time_min || now.toISOString();
+        const timeMax = body.time_max || weekFromNow.toISOString();
+        const maxResults = body.max_results || 50;
+
+        const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
+        url.searchParams.set("timeMin", timeMin);
+        url.searchParams.set("timeMax", timeMax);
+        url.searchParams.set("maxResults", String(maxResults));
         url.searchParams.set("singleEvents", "true");
         url.searchParams.set("orderBy", "startTime");
-        
-        if (body.page_token) {
-          url.searchParams.set("pageToken", body.page_token);
-        }
+        if (body.page_token) url.searchParams.set("pageToken", body.page_token);
 
         const response = await fetch(url.toString(), {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-
         const data = await response.json();
 
         if (data.error) {
-          console.error("Events list error:", data.error);
           return new Response(JSON.stringify({ error: data.error.message }), {
             status: data.error.code || 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const events = (data.items || []).map((event: any) => ({
-          id: event.id,
-          summary: event.summary || "(No title)",
-          description: event.description,
-          location: event.location,
-          start: event.start?.dateTime || event.start?.date,
-          end: event.end?.dateTime || event.end?.date,
-          all_day: !event.start?.dateTime,
-          status: event.status,
-          html_link: event.htmlLink,
-          hangout_link: event.hangoutLink,
-          conference_data: event.conferenceData,
-          attendees: event.attendees?.map((a: any) => ({
-            email: a.email,
-            display_name: a.displayName,
-            response_status: a.responseStatus,
-            organizer: a.organizer,
-            self: a.self,
-          })),
-          organizer: event.organizer,
-          created: event.created,
-          updated: event.updated,
-          color_id: event.colorId,
-        }));
+        const events = (data.items || []).map((e: any) => normalizeEvent(e, calendarId));
 
         return new Response(JSON.stringify({
           events,
@@ -233,193 +275,71 @@ serve(async (req: Request): Promise<Response> => {
           `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(body.event_id)}`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
-
         const event = await response.json();
 
         if (event.error) {
-          console.error("Event get error:", event.error);
           return new Response(JSON.stringify({ error: event.error.message }), {
             status: event.error.code || 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        return new Response(JSON.stringify({
-          event: {
-            id: event.id,
-            summary: event.summary || "(No title)",
-            description: event.description,
-            location: event.location,
-            start: event.start?.dateTime || event.start?.date,
-            end: event.end?.dateTime || event.end?.date,
-            all_day: !event.start?.dateTime,
-            status: event.status,
-            html_link: event.htmlLink,
-            hangout_link: event.hangoutLink,
-            conference_data: event.conferenceData,
-            attendees: event.attendees,
-            organizer: event.organizer,
-            created: event.created,
-            updated: event.updated,
-          },
-        }), {
+        return new Response(JSON.stringify({ event: normalizeEvent(event, calendarId) }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      case "create": {
-        if (!body.event_data) {
-          return new Response(JSON.stringify({ error: "event_data required" }), {
-            status: 400,
+      case "sync_all": {
+        // Fetch all calendars, then all events from each
+        const calResponse = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const calData = await calResponse.json();
+
+        if (calData.error) {
+          return new Response(JSON.stringify({ error: calData.error.message }), {
+            status: calData.error.code || 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const calendarId = body.calendar_id || "primary";
-        const eventPayload: any = {
-          summary: body.event_data.summary,
-          description: body.event_data.description,
-          location: body.event_data.location,
-        };
+        const calendars = (calData.items || []).map((cal: any) => ({
+          id: cal.id,
+          summary: cal.summary,
+          description: cal.description,
+          primary: cal.primary || false,
+          background_color: cal.backgroundColor,
+          foreground_color: cal.foregroundColor,
+          access_role: cal.accessRole,
+          time_zone: cal.timeZone,
+        }));
 
-        if (body.event_data.all_day) {
-          eventPayload.start = { date: body.event_data.start.split('T')[0] };
-          eventPayload.end = { date: body.event_data.end.split('T')[0] };
-        } else {
-          eventPayload.start = { dateTime: body.event_data.start, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
-          eventPayload.end = { dateTime: body.event_data.end, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+        const now = new Date();
+        const threeMonthsOut = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+        const timeMin = body.time_min || now.toISOString();
+        const timeMax = body.time_max || threeMonthsOut.toISOString();
+        const maxResults = body.max_results || 500;
+
+        const allEvents: NormalizedEvent[] = [];
+        for (const cal of calendars) {
+          const events = await fetchAllEvents(accessToken, cal.id, timeMin, timeMax, maxResults);
+          allEvents.push(...events);
         }
 
-        if (body.event_data.attendees && body.event_data.attendees.length > 0) {
-          eventPayload.attendees = body.event_data.attendees.map(email => ({ email }));
-        }
-
-        const createResponse = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(eventPayload),
-          }
-        );
-
-        const createdEvent = await createResponse.json();
-
-        if (createdEvent.error) {
-          console.error("Event create error:", createdEvent.error);
-          return new Response(JSON.stringify({ error: createdEvent.error.message }), {
-            status: createdEvent.error.code || 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
+        // Sort all events by start time
+        allEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
         return new Response(JSON.stringify({
-          event: {
-            id: createdEvent.id,
-            summary: createdEvent.summary,
-            html_link: createdEvent.htmlLink,
-          },
+          calendars,
+          events: allEvents,
+          synced_at: new Date().toISOString(),
         }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "update": {
-        if (!body.event_id || !body.event_data) {
-          return new Response(JSON.stringify({ error: "event_id and event_data required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const calendarId = body.calendar_id || "primary";
-        const updatePayload: any = {
-          summary: body.event_data.summary,
-          description: body.event_data.description,
-          location: body.event_data.location,
-        };
-
-        if (body.event_data.all_day) {
-          updatePayload.start = { date: body.event_data.start.split('T')[0] };
-          updatePayload.end = { date: body.event_data.end.split('T')[0] };
-        } else {
-          updatePayload.start = { dateTime: body.event_data.start, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
-          updatePayload.end = { dateTime: body.event_data.end, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
-        }
-
-        if (body.event_data.attendees && body.event_data.attendees.length > 0) {
-          updatePayload.attendees = body.event_data.attendees.map(email => ({ email }));
-        }
-
-        const updateResponse = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(body.event_id)}`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updatePayload),
-          }
-        );
-
-        const updatedEvent = await updateResponse.json();
-
-        if (updatedEvent.error) {
-          console.error("Event update error:", updatedEvent.error);
-          return new Response(JSON.stringify({ error: updatedEvent.error.message }), {
-            status: updatedEvent.error.code || 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        return new Response(JSON.stringify({
-          event: {
-            id: updatedEvent.id,
-            summary: updatedEvent.summary,
-            html_link: updatedEvent.htmlLink,
-          },
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      case "delete": {
-        if (!body.event_id) {
-          return new Response(JSON.stringify({ error: "event_id required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        const calendarId = body.calendar_id || "primary";
-        const deleteResponse = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(body.event_id)}`,
-          {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }
-        );
-
-        if (!deleteResponse.ok && deleteResponse.status !== 204) {
-          const errorData = await deleteResponse.json().catch(() => ({}));
-          console.error("Event delete error:", errorData);
-          return new Response(JSON.stringify({ error: errorData.error?.message || "Failed to delete event" }), {
-            status: deleteResponse.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       default:
-        return new Response(JSON.stringify({ error: "Invalid action" }), {
+        return new Response(JSON.stringify({ error: "Invalid action. Allowed: list, get, list_calendars, sync_all" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

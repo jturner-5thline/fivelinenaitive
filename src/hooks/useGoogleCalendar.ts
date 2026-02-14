@@ -2,32 +2,33 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string;
+  calendar_id: string;
   summary: string;
-  description?: string;
-  location?: string;
+  description: string | null;
+  location: string | null;
   start: string;
   end: string;
   all_day: boolean;
   status: string;
-  html_link?: string;
-  hangout_link?: string;
+  updated: string | null;
+  created: string | null;
+  html_link: string | null;
+  hangout_link: string | null;
   conference_data?: any;
-  attendees?: {
+  attendees: {
     email: string;
-    display_name?: string;
+    display_name: string | null;
     response_status: string;
-    organizer?: boolean;
-    self?: boolean;
-  }[];
-  organizer?: { email: string; displayName?: string };
-  created?: string;
-  updated?: string;
-  color_id?: string;
+    organizer: boolean;
+    self: boolean;
+  }[] | null;
+  organizer: { email: string; displayName?: string } | null;
+  color_id: string | null;
 }
 
-interface Calendar {
+export interface Calendar {
   id: string;
   summary: string;
   description?: string;
@@ -35,6 +36,7 @@ interface Calendar {
   background_color?: string;
   foreground_color?: string;
   access_role: string;
+  time_zone?: string;
 }
 
 interface CalendarStatus {
@@ -54,13 +56,10 @@ export function useGoogleCalendar() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check connection status
   const checkStatus = useCallback(async () => {
     if (!user) return;
-
     try {
       const { data, error } = await supabase.functions.invoke('calendar-status');
-      
       if (error) throw error;
       setStatus(data);
       setError(null);
@@ -70,23 +69,15 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
-  // Get OAuth URL and redirect to Google
   const connect = useCallback(async () => {
     if (!user) return;
-
     setIsConnecting(true);
     try {
       const redirectUri = `${window.location.origin}/integrations?calendar_callback=true`;
-      
       const { data, error } = await supabase.functions.invoke('calendar-auth', {
-        body: {
-          action: 'get_auth_url',
-          redirect_uri: redirectUri,
-        },
+        body: { action: 'get_auth_url', redirect_uri: redirectUri },
       });
-
       if (error) throw error;
-      
       sessionStorage.setItem('calendar_redirect_uri', redirectUri);
       window.location.href = data.auth_url;
     } catch (err: any) {
@@ -96,25 +87,16 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
-  // Exchange authorization code for tokens
   const exchangeCode = useCallback(async (code: string) => {
     if (!user) return false;
-
     setIsConnecting(true);
     try {
-      const redirectUri = sessionStorage.getItem('calendar_redirect_uri') || 
+      const redirectUri = sessionStorage.getItem('calendar_redirect_uri') ||
         `${window.location.origin}/integrations?calendar_callback=true`;
-      
-      const { data, error } = await supabase.functions.invoke('calendar-auth', {
-        body: {
-          action: 'exchange_code',
-          code,
-          redirect_uri: redirectUri,
-        },
+      const { error } = await supabase.functions.invoke('calendar-auth', {
+        body: { action: 'exchange_code', code, redirect_uri: redirectUri },
       });
-
       if (error) throw error;
-      
       sessionStorage.removeItem('calendar_redirect_uri');
       await checkStatus();
       setError(null);
@@ -128,17 +110,13 @@ export function useGoogleCalendar() {
     }
   }, [user, checkStatus]);
 
-  // Disconnect Calendar
   const disconnect = useCallback(async () => {
     if (!user) return;
-
     try {
       const { error } = await supabase.functions.invoke('calendar-auth', {
         body: { action: 'disconnect' },
       });
-
       if (error) throw error;
-      
       setStatus({ connected: false });
       setCalendars([]);
       setEvents([]);
@@ -149,18 +127,14 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
-  // List calendars
   const listCalendars = useCallback(async () => {
     if (!user) return null;
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: { action: 'list_calendars' },
       });
-
       if (error) throw error;
-      
       setCalendars(data.calendars || []);
       setError(null);
       return data.calendars;
@@ -173,7 +147,6 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
-  // List events
   const listEvents = useCallback(async (options?: {
     calendarId?: string;
     timeMin?: string;
@@ -182,7 +155,6 @@ export function useGoogleCalendar() {
     pageToken?: string;
   }) => {
     if (!user) return null;
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('calendar-events', {
@@ -195,9 +167,7 @@ export function useGoogleCalendar() {
           page_token: options?.pageToken,
         },
       });
-
       if (error) throw error;
-      
       setEvents(data.events || []);
       setError(null);
       return data;
@@ -210,21 +180,14 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
-  // Get single event
   const getEvent = useCallback(async (eventId: string, calendarId?: string) => {
     if (!user) return null;
-
     try {
       const { data, error } = await supabase.functions.invoke('calendar-events', {
-        body: {
-          action: 'get',
-          event_id: eventId,
-          calendar_id: calendarId,
-        },
+        body: { action: 'get', event_id: eventId, calendar_id: calendarId },
       });
-
       if (error) throw error;
-      return data.event;
+      return data.event as CalendarEvent;
     } catch (err: any) {
       console.error('Event get error:', err);
       setError(err.message);
@@ -232,41 +195,30 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
-  // Create event
-  const createEvent = useCallback(async (eventData: {
-    summary: string;
-    description?: string;
-    location?: string;
-    start: string;
-    end: string;
-    allDay?: boolean;
-    attendees?: string[];
-  }, calendarId?: string) => {
+  /** Fetch all calendars and all events across them in one call */
+  const syncAllCalendars = useCallback(async (options?: {
+    timeMin?: string;
+    timeMax?: string;
+    maxResults?: number;
+  }) => {
     if (!user) return null;
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
-          action: 'create',
-          calendar_id: calendarId,
-          event_data: {
-            summary: eventData.summary,
-            description: eventData.description,
-            location: eventData.location,
-            start: eventData.start,
-            end: eventData.end,
-            all_day: eventData.allDay,
-            attendees: eventData.attendees,
-          },
+          action: 'sync_all',
+          time_min: options?.timeMin,
+          time_max: options?.timeMax,
+          max_results: options?.maxResults,
         },
       });
-
       if (error) throw error;
+      setCalendars(data.calendars || []);
+      setEvents(data.events || []);
       setError(null);
-      return data.event;
+      return data;
     } catch (err: any) {
-      console.error('Event create error:', err);
+      console.error('Sync all error:', err);
       setError(err.message);
       return null;
     } finally {
@@ -274,80 +226,8 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
-  // Update event
-  const updateEvent = useCallback(async (eventId: string, eventData: {
-    summary: string;
-    description?: string;
-    location?: string;
-    start: string;
-    end: string;
-    allDay?: boolean;
-    attendees?: string[];
-  }, calendarId?: string) => {
-    if (!user) return null;
-
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('calendar-events', {
-        body: {
-          action: 'update',
-          event_id: eventId,
-          calendar_id: calendarId,
-          event_data: {
-            summary: eventData.summary,
-            description: eventData.description,
-            location: eventData.location,
-            start: eventData.start,
-            end: eventData.end,
-            all_day: eventData.allDay,
-            attendees: eventData.attendees,
-          },
-        },
-      });
-
-      if (error) throw error;
-      setError(null);
-      return data.event;
-    } catch (err: any) {
-      console.error('Event update error:', err);
-      setError(err.message);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  // Delete event
-  const deleteEvent = useCallback(async (eventId: string, calendarId?: string) => {
-    if (!user) return false;
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.functions.invoke('calendar-events', {
-        body: {
-          action: 'delete',
-          event_id: eventId,
-          calendar_id: calendarId,
-        },
-      });
-
-      if (error) throw error;
-      setError(null);
-      return true;
-    } catch (err: any) {
-      console.error('Event delete error:', err);
-      setError(err.message);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  // Check status on mount
   useEffect(() => {
-    if (user) {
-      checkStatus();
-    }
+    if (user) checkStatus();
   }, [user, checkStatus]);
 
   return {
@@ -364,8 +244,6 @@ export function useGoogleCalendar() {
     listCalendars,
     listEvents,
     getEvent,
-    createEvent,
-    updateEvent,
-    deleteEvent,
+    syncAllCalendars,
   };
 }
