@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Settings2, Pencil, Check, Calendar, Mail, Zap, Briefcase } from 'lucide-react';
+import { Settings2, Pencil, Check, Calendar, Mail, Zap, Briefcase, LayoutTemplate } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useDashboardPresets, WidgetConfig, GridItem } from '@/hooks/useDashboardPresets';
 import { WIDGET_REGISTRY } from '@/components/dashboard/widgetRegistry';
@@ -13,6 +13,7 @@ import { AddWidgetDialog } from '@/components/dashboard/AddWidgetDialog';
 import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { QuickPromptsDialog } from '@/components/dashboard/QuickPromptsDialog';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
+import { DashboardTemplatesDialog } from '@/components/dashboard/DashboardTemplates';
 
 export default function Dashboard() {
   const { profile } = useProfile();
@@ -82,6 +83,10 @@ export default function Dashboard() {
 
   const handleCreatePreset = useCallback((name: string) => {
     createPreset(name, [], [], true);
+  }, [createPreset]);
+
+  const handleCreateFromTemplate = useCallback((name: string, grid: GridItem[], widgets: WidgetConfig[]) => {
+    createPreset(name, grid, widgets, true);
   }, [createPreset]);
 
   const handleRenamePreset = useCallback((presetId: string, name: string) => {
@@ -189,13 +194,16 @@ export default function Dashboard() {
               onDelete={deletePreset}
               onRename={handleRenamePreset}
             />
-            {isEditing && activePreset && (
-              <AddWidgetDialog
-                existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
-                onAddBuiltIn={handleAddBuiltIn}
-                onAddCustom={handleAddCustom}
-              />
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              <DashboardTemplatesDialog onSelectTemplate={handleCreateFromTemplate} />
+              {isEditing && activePreset && (
+                <AddWidgetDialog
+                  existingWidgetIds={activePreset.widgets_config.map(w => w.id)}
+                  onAddBuiltIn={handleAddBuiltIn}
+                  onAddCustom={handleAddCustom}
+                />
+              )}
+            </div>
           </div>
 
           {/* Grid */}
@@ -216,16 +224,27 @@ export default function Dashboard() {
               <Settings2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-1">No widgets yet</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Click "Edit" then "Add Widget" to start building your dashboard.
+                Start with a template or click "Edit" to add widgets manually.
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-              >
-                <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                Start Editing
-              </Button>
+              <div className="flex items-center gap-2">
+                <DashboardTemplatesDialog
+                  onSelectTemplate={handleCreateFromTemplate}
+                  trigger={
+                    <Button variant="default" size="sm">
+                      <LayoutTemplate className="h-3.5 w-3.5 mr-1.5" />
+                      Browse Templates
+                    </Button>
+                  }
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Start Editing
+                </Button>
+              </div>
             </div>
           )}
         </div>
