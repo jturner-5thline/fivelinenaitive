@@ -66,7 +66,7 @@ export function PipelineSelector() {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2 max-w-[200px]">
             <Layers className="h-4 w-4 shrink-0" />
