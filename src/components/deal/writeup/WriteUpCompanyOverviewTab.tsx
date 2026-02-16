@@ -207,47 +207,11 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
-  const [dealManager, setDealManager] = useState('');
-  const [localManager, setLocalManager] = useState('');
-  const [showManagerConfirm, setShowManagerConfirm] = useState(false);
   const teamSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Fetch deal manager
-  useEffect(() => {
-    const fetchMgr = async () => {
-      const { data: row } = await supabase.from('deals').select('manager').eq('id', dealId).single();
-      const mgr = row?.manager || '';
-      setDealManager(mgr);
-      setLocalManager(mgr);
-    };
-    fetchMgr();
-  }, [dealId]);
-
-  const handleManagerBlur = () => {
-    if (localManager.trim() !== dealManager.trim()) {
-      setShowManagerConfirm(true);
-    }
-  };
-
-  const confirmManagerChange = async () => {
-    const { error } = await supabase.from('deals').update({ manager: localManager }).eq('id', dealId);
-    if (error) {
-      toast.error('Failed to update deal manager');
-      setLocalManager(dealManager); // revert
-    } else {
-      setDealManager(localManager);
-      toast.success('Deal manager updated in Deal Information');
-    }
-    setShowManagerConfirm(false);
-  };
-
-  const cancelManagerChange = () => {
-    setLocalManager(dealManager); // revert
-    setShowManagerConfirm(false);
-  };
 
   // Fixed industry options
   const industryOptions = INDUSTRY_OPTIONS as unknown as string[];
@@ -484,18 +448,8 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
         />
       </FlexChangedFieldWrapper>
 
-      {/* Deal Manager + LinkedIn + Location Row */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="dealManager">Deal Manager</Label>
-          <Input
-            id="dealManager"
-            value={localManager}
-            onChange={(e) => setLocalManager(e.target.value)}
-            onBlur={handleManagerBlur}
-            placeholder="Deal manager name"
-          />
-        </div>
+      {/* LinkedIn + Location Row */}
+      <div className="grid grid-cols-2 gap-4">
         <FlexChangedFieldWrapper fieldKey="linkedinUrl" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
           <Input
@@ -821,21 +775,6 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
         companyName={extractedCompanyName}
       />
 
-      {/* Deal Manager change confirmation */}
-      {showManagerConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-background border rounded-lg p-6 max-w-sm w-full space-y-4 shadow-lg">
-            <h3 className="text-base font-semibold">Update Deal Manager?</h3>
-            <p className="text-sm text-muted-foreground">
-              This will also update the Deal Manager in the Deal Information tab.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={cancelManagerChange}>Cancel</Button>
-              <Button size="sm" onClick={confirmManagerChange}>Confirm</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
