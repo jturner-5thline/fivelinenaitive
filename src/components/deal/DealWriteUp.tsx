@@ -915,6 +915,14 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
             <CardDescription className="hidden sm:block">Create, edit, and manage deal listings</CardDescription>
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreviewDialog(true)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
+            </Button>
             <FlexSyncStatusBadge dealId={dealId} />
             <AutoSaveIndicator status={autoSaveStatus} />
           </div>
@@ -1083,13 +1091,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               Changes are saved automatically
             </div>
             <div className="flex gap-3 flex-wrap justify-end">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowPreviewDialog(true)}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
               <Button 
                 variant="secondary" 
                 onClick={onSave} 
