@@ -133,7 +133,7 @@ const SectionDivider: React.FC<{ title: string }> = ({ title }) => (
 export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEquityRaised }: WriteUpPreviewDialogProps) {
   const dealTypeLabels = dealTypeIdsToLabels(data.dealTypes);
   const filteredTeam = (data.team || []).filter(m => m.name.trim());
-  const filteredKeyItems = data.keyItems.filter(i => i.title.trim());
+  const filteredKeyItems = (data.keyItems || []).filter(i => i.title?.trim());
   const filteredHighlights = data.companyHighlights.filter(i => i.title.trim());
 
   // Parse financial data for charts
