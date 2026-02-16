@@ -51,6 +51,14 @@ Deno.serve(async (req) => {
 
     const { industry, subSegment, geography }: MarketSizingRequest = await req.json();
 
+    // Input length validation
+    if ((industry?.length || 0) > 500 || (subSegment?.length || 0) > 500 || (geography?.length || 0) > 500) {
+      return new Response(
+        JSON.stringify({ error: 'Input too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const prompt = `Provide a market sizing analysis for the ${industry} industry${subSegment ? `, specifically the ${subSegment} segment` : ''}${geography ? ` in ${geography}` : ' globally'}.
 
 Include:

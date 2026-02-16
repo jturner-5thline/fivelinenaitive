@@ -74,6 +74,15 @@ serve(async (req) => {
       );
     }
 
+    // Input length validation - limit total message content
+    const totalLength = messages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+    if (totalLength > 50000) {
+      return new Response(
+        JSON.stringify({ error: "Message content too long" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");

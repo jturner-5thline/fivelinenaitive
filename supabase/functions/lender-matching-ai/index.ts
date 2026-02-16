@@ -55,6 +55,14 @@ Deno.serve(async (req) => {
 
     const { companyName, industry, dealValue, dealType, location, revenueRange, existingLenders }: LenderMatchingRequest = await req.json();
 
+    // Input length validation
+    if ((companyName?.length || 0) > 500 || (industry?.length || 0) > 500 || (dealType?.length || 0) > 500) {
+      return new Response(
+        JSON.stringify({ error: 'Input too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const dealSizeLabel = dealValue >= 1000000 
       ? `$${(dealValue / 1000000).toFixed(1)}M` 
       : `$${(dealValue / 1000).toFixed(0)}K`;

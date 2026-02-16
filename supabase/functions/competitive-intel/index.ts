@@ -51,6 +51,14 @@ Deno.serve(async (req) => {
 
     const { companyName, industry, competitors }: CompetitiveIntelRequest = await req.json();
 
+    // Input length validation
+    if ((companyName?.length || 0) > 500 || (industry?.length || 0) > 500) {
+      return new Response(
+        JSON.stringify({ error: 'Input too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const prompt = `Provide competitive intelligence analysis for "${companyName}" in the ${industry || 'technology'} industry.
 
 ${competitors?.length ? `Known competitors: ${competitors.join(', ')}` : 'Identify their main competitors.'}
