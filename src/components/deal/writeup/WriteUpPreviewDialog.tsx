@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
   Eye, Target, Shield, Building2, Users, TrendingUp, PieChart as PieChartIcon,
-  ExternalLink, Linkedin, Globe,
+  ExternalLink, Linkedin, Globe, Download, Loader2,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -135,6 +137,47 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
   const filteredTeam = (data.team || []).filter(m => m.name.trim());
   const filteredKeyItems = (data.keyItems || []).filter(i => i.title?.trim());
   const filteredHighlights = data.companyHighlights.filter(i => i.title.trim());
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!contentRef.current || isExporting) return;
+    setIsExporting(true);
+    try {
+      const el = contentRef.current;
+      const scrollParent = el.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+      const prevOverflow = scrollParent?.style.overflow;
+      const prevMaxHeight = scrollParent?.style.maxHeight;
+      if (scrollParent) {
+        scrollParent.style.overflow = 'visible';
+        scrollParent.style.maxHeight = 'none';
+      }
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: T.bg, logging: false });
+      if (scrollParent) {
+        scrollParent.style.overflow = prevOverflow || '';
+        scrollParent.style.maxHeight = prevMaxHeight || '';
+      }
+      const imgData = canvas.toDataURL('image/png');
+      const pdfW = 210;
+      const pdfH = (canvas.height * pdfW) / canvas.width;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageH = 297;
+      let remaining = pdfH;
+      let yOff = 0;
+      while (remaining > 0) {
+        if (yOff > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, -yOff, pdfW, pdfH);
+        remaining -= pageH;
+        yOff += pageH;
+      }
+      const name = data.publishAsAnonymous ? 'Anonymous' : (data.companyName || 'Deal');
+      pdf.save(`${name.replace(/[^a-zA-Z0-9]/g, '_')}_WriteUp.pdf`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [data.companyName, data.publishAsAnonymous, isExporting]);
 
   // Parse financial data for charts
   const chartData = useMemo(() => {
@@ -185,7 +228,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
         </DialogHeader>
 
         <ScrollArea className="flex-1 max-h-[78vh]">
-          <div style={{ maxWidth: 896, margin: '0 auto', padding: '32px 24px', background: T.bg, fontFamily: T.font }}>
+          <div ref={contentRef} style={{ maxWidth: 896, margin: '0 auto', padding: '32px 24px', background: T.bg, fontFamily: T.font }}>
 
             {/* ── 1. Header Area ── */}
             <div style={{ marginBottom: 28 }}>
@@ -690,7 +733,16 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 py-4 border-t" style={{ fontFamily: T.font }}>
+        <DialogFooter className="px-6 py-4 border-t" style={{ fontFamily: T.font, display: 'flex', justifyContent: 'space-between' }}>
+          <button onClick={handleDownloadPdf} disabled={isExporting}
+            style={{
+              padding: '8px 20px', fontSize: 14, fontWeight: 500, borderRadius: T.radius,
+              border: `1px solid ${T.primary20}`, background: T.primary10, color: T.primary, cursor: isExporting ? 'not-allowed' : 'pointer',
+              fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8, opacity: isExporting ? 0.6 : 1,
+            }}>
+            {isExporting ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Download style={{ width: 14, height: 14 }} />}
+            {isExporting ? 'Exporting…' : 'Download PDF'}
+          </button>
           <button onClick={() => onOpenChange(false)}
             style={{
               padding: '8px 20px', fontSize: 14, fontWeight: 500, borderRadius: T.radius,
