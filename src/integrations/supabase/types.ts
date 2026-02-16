@@ -3400,6 +3400,53 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          field_changed: string | null
+          id: string
+          lender_id: string
+          metadata: Json | null
+          new_value: string | null
+          old_value: string | null
+          user_display_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          lender_id: string
+          metadata?: Json | null
+          new_value?: string | null
+          old_value?: string | null
+          user_display_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          lender_id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          old_value?: string | null
+          user_display_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_audit_logs_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_contacts: {
         Row: {
           created_at: string
