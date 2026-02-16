@@ -10,6 +10,8 @@ import { useDealOwnership } from '@/hooks/useDealOwnership';
 import { useDealSpaceAutoFill, ExtractedWriteUpField } from '@/hooks/useDealSpaceAutoFill';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -95,6 +97,14 @@ export interface DealWriteUpData {
   financialComments: FinancialComment[];
   publishAsAnonymous: boolean;
   team: TeamMember[];
+  visibleMetrics: VisibleMetrics;
+}
+
+export interface VisibleMetrics {
+  yoy_growth: boolean;
+  this_year_revenue: boolean;
+  last_year_revenue: boolean;
+  gross_margins: boolean;
 }
 
 export interface DealDataForWriteUp {
@@ -130,6 +140,7 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   financialComments: [],
   publishAsAnonymous: false,
   team: [],
+  visibleMetrics: { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true },
 });
 
 interface DealWriteUpProps {
@@ -475,6 +486,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       title: m.title,
       linkedin: m.linkedin || undefined,
     })),
+    visibleMetrics: data.visibleMetrics,
   });
 
   const cancelPendingPublish = () => {
@@ -1243,6 +1255,31 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   </div>
                 </div>
               )}
+
+              {/* Visible Metrics */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <h4 className="font-semibold text-sm mb-3">Visible Metrics on FLEx</h4>
+                <p className="text-xs text-muted-foreground mb-3">Toggle which key metrics appear on the FLEx deal detail page.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { key: 'yoy_growth' as const, label: 'YoY Growth' },
+                    { key: 'this_year_revenue' as const, label: 'Current Year Revenue' },
+                    { key: 'last_year_revenue' as const, label: 'Prior Year Revenue' },
+                    { key: 'gross_margins' as const, label: 'Gross Margins' },
+                  ]).map(({ key, label }) => (
+                    <div key={key} className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
+                      <Label htmlFor={`metric-${key}`} className="text-sm font-normal cursor-pointer">{label}</Label>
+                      <Switch
+                        id={`metric-${key}`}
+                        checked={data.visibleMetrics[key]}
+                        onCheckedChange={(checked) => {
+                          updateField('visibleMetrics', { ...data.visibleMetrics, [key]: checked });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Key Items */}
               {data.keyItems.length > 0 && (

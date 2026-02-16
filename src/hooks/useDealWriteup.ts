@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear, FinancialComment, TeamMember } from '@/components/deal/DealWriteUp';
+import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear, FinancialComment, TeamMember, VisibleMetrics } from '@/components/deal/DealWriteUp';
 import { Json } from '@/integrations/supabase/types';
 
 interface DealWriteupRow {
@@ -100,6 +100,7 @@ export function useDealWriteup(dealId: string | undefined) {
         financial_comments: data.financialComments as unknown as Json,
         publish_as_anonymous: data.publishAsAnonymous,
         team: data.team as unknown as Json,
+        visible_metrics: data.visibleMetrics as unknown as Json,
       };
 
       if (writeup) {
@@ -202,6 +203,7 @@ export function useDealWriteup(dealId: string | undefined) {
       financialComments,
       publishAsAnonymous: row.publish_as_anonymous || false,
       team,
+      visibleMetrics: ((row as any).visible_metrics as VisibleMetrics) || { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true },
     };
   }, []);
 

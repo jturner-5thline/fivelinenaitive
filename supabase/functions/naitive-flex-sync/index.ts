@@ -76,6 +76,8 @@ interface DealPayload {
   keyItems?: KeyItem[];
   company_highlights?: CompanyHighlight[];
   companyHighlights?: CompanyHighlight[];
+  visible_metrics?: Record<string, boolean>;
+  visibleMetrics?: Record<string, boolean>;
 }
 
 interface SyncPayload {
@@ -127,6 +129,7 @@ function mapDealToWriteup(deal: DealPayload, userId: string, dealId: string) {
     key_items: getValue<KeyItem[]>(deal, 'key_items', 'keyItems') || null,
     company_highlights: getValue<CompanyHighlight[]>(deal, 'company_highlights', 'companyHighlights') || null,
     financial_years: getValue<FinancialYear[]>(deal, 'financial_years', 'financialYears') || null,
+    visible_metrics: getValue<Record<string, boolean>>(deal, 'visible_metrics', 'visibleMetrics') || null,
     status: getValue<boolean>(deal, 'is_published', 'isPublished') ? 'Published' : 'Draft',
     updated_at: new Date().toISOString(),
   };

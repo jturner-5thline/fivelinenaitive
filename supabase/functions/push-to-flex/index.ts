@@ -42,6 +42,7 @@ interface WriteUpData {
   totalEquityRaised: string;
   publishAsAnonymous: boolean;
   team?: Array<{ name: string; title: string; linkedin?: string }>;
+  visibleMetrics?: { yoy_growth: boolean; this_year_revenue: boolean; last_year_revenue: boolean; gross_margins: boolean };
 }
 
 interface DataRoomFile {
@@ -370,6 +371,7 @@ serve(async (req) => {
         total_equity_raised: writeUpData!.totalEquityRaised || undefined,
         is_published: !writeUpData!.publishAsAnonymous,
         team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
+        visible_metrics: writeUpData!.visibleMetrics || undefined,
       };
 
       flexPayload = {
