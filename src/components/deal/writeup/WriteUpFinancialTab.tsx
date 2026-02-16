@@ -766,7 +766,16 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
               <div key={key} className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Label htmlFor={`fin-metric-${key}`} className="text-sm font-normal cursor-pointer whitespace-nowrap">{label}</Label>
-                  {value && <span className="text-xs text-muted-foreground font-medium truncate">{value}</span>}
+                  {value && (
+                    <span className={cn(
+                      "text-sm font-semibold truncate",
+                      key === 'yoy_growth' && value.startsWith('+') && "text-emerald-600 dark:text-emerald-400",
+                      key === 'yoy_growth' && value.startsWith('-') && "text-red-600 dark:text-red-400",
+                      key !== 'yoy_growth' && "text-foreground"
+                    )}>
+                      {value}
+                    </span>
+                  )}
                 </div>
                 <Switch
                   id={`fin-metric-${key}`}
