@@ -655,8 +655,12 @@ export function DataRoomChecklistPanel({
                       const isUploading = uploadingItems.has(item.id);
 
                       return (
-                        <div
+                        <ChecklistItemDropzone
                           key={item.id}
+                          onFileDrop={(files) => handleFileDrop(item.id, files)}
+                          disabled={isUploading}
+                        >
+                        <div
                           className={cn(
                             "flex items-start gap-3 p-3 rounded-lg border transition-colors",
                             isComplete 
@@ -773,6 +777,7 @@ export function DataRoomChecklistPanel({
                             )}
                           </div>
                         </div>
+                        </ChecklistItemDropzone>
                       );
                     })}
                   </CollapsibleContent>
