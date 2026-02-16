@@ -216,8 +216,8 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] p-0 gap-0 overflow-hidden" style={{ fontFamily: T.font }}>
-        <DialogHeader className="px-6 pt-5 pb-3">
+      <DialogContent className="max-w-5xl max-h-[92vh] p-0 gap-0 overflow-hidden flex flex-col" style={{ fontFamily: T.font }}>
+        <DialogHeader className="px-6 pt-5 pb-3 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg" style={{ fontFamily: T.font }}>
             <Eye className="h-5 w-5" style={{ color: T.primary }} />
             Write-Up Preview
@@ -227,7 +227,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[78vh]">
+        <ScrollArea className="flex-1 min-h-0">
           <div ref={contentRef} style={{ maxWidth: 896, margin: '0 auto', padding: '32px 24px', background: T.bg, fontFamily: T.font }}>
 
             {/* ── 1. Header Area ── */}
@@ -733,7 +733,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 py-4 border-t" style={{ fontFamily: T.font, display: 'flex', justifyContent: 'space-between' }}>
+        <DialogFooter className="px-6 py-4 border-t shrink-0" style={{ fontFamily: T.font, display: 'flex', justifyContent: 'space-between' }}>
           <button onClick={handleDownloadPdf} disabled={isExporting}
             style={{
               padding: '8px 20px', fontSize: 14, fontWeight: 500, borderRadius: T.radius,
