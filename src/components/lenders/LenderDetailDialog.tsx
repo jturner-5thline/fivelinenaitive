@@ -562,7 +562,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <Settings2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Customize layout</TooltipContent>
+                    <TooltipContent side="bottom">Customize layout</TooltipContent>
                   </Tooltip>
                   {onSave && (
                     <Tooltip>
@@ -576,7 +576,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Edit lender</TooltipContent>
+                      <TooltipContent side="bottom">Edit lender</TooltipContent>
                     </Tooltip>
                   )}
                   {onDelete && (
@@ -594,7 +594,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Delete lender</TooltipContent>
+                      <TooltipContent side="bottom">Delete lender</TooltipContent>
                     </Tooltip>
                   )}
                 </>
