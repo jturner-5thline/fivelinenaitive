@@ -733,17 +733,41 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
           <p className="text-xs text-muted-foreground mt-1">Toggle which key metrics appear on the FLEx deal detail page.</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {([
-            { key: 'yoy_growth' as const, label: 'YoY Growth' },
-            { key: 'this_year_revenue' as const, label: 'Current Year Revenue' },
-            { key: 'last_year_revenue' as const, label: 'Prior Year Revenue' },
-            { key: 'gross_margins' as const, label: 'Gross Margins' },
-          ]).map(({ key, label }) => {
+          {(() => {
+            // Calculate YoY growth from last two financial years
+            const sortedYears = [...data.financialYears].filter(y => y.revenue && y.year);
+            let yoyValue: string | null = null;
+            if (sortedYears.length >= 2) {
+              const last = sortedYears[sortedYears.length - 1];
+              const prev = sortedYears[sortedYears.length - 2];
+              const lastRev = parseCurrencyToNumber(last.revenue);
+              const prevRev = parseCurrencyToNumber(prev.revenue);
+              if (lastRev !== null && prevRev !== null && prevRev !== 0) {
+                const growth = ((lastRev - prevRev) / Math.abs(prevRev)) * 100;
+                yoyValue = growth > 0 ? `+${growth.toFixed(1)}%` : `${growth.toFixed(1)}%`;
+              }
+            }
+
+            // Get current/prior year revenue from sorted financial years
+            const lastYear = sortedYears.length >= 1 ? sortedYears[sortedYears.length - 1] : null;
+            const priorYear = sortedYears.length >= 2 ? sortedYears[sortedYears.length - 2] : null;
+
+            const metricItems = [
+              { key: 'yoy_growth' as const, label: 'YoY Growth', value: yoyValue },
+              { key: 'this_year_revenue' as const, label: 'Current Year Revenue', value: lastYear?.revenue || null },
+              { key: 'last_year_revenue' as const, label: 'Prior Year Revenue', value: priorYear?.revenue || null },
+              { key: 'gross_margins' as const, label: 'Gross Margins', value: data.grossMargins || null },
+            ];
+
             const defaults = { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true };
             const metrics = data.visibleMetrics ?? defaults;
-            return (
+
+            return metricItems.map(({ key, label, value }) => (
               <div key={key} className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
-                <Label htmlFor={`fin-metric-${key}`} className="text-sm font-normal cursor-pointer">{label}</Label>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Label htmlFor={`fin-metric-${key}`} className="text-sm font-normal cursor-pointer whitespace-nowrap">{label}</Label>
+                  {value && <span className="text-xs text-muted-foreground font-medium truncate">{value}</span>}
+                </div>
                 <Switch
                   id={`fin-metric-${key}`}
                   checked={metrics[key]}
@@ -752,8 +776,8 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
                   }}
                 />
               </div>
-            );
-          })}
+            ));
+          })()}
         </div>
       </div>
     </div>
