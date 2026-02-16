@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Save, Loader2, Plus, X } from 'lucide-react';
+import { FileText, Save, Loader2, Plus, X, FolderOpen } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,7 @@ import { MemoAuditLogPopover } from '@/components/deal/MemoAuditLogPopover';
 interface DealMemoDialogProps {
   dealId: string;
   companyName: string;
+  onGoToDataRoom?: () => void;
 }
 
 interface MemoSection {
@@ -41,7 +42,7 @@ const MEMO_SECTIONS: MemoSection[] = [
   },
 ];
 
-export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
+export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemoDialogProps) {
   const { memo, isLoading, isSaving, saveMemo } = useDealMemo(dealId);
   const { hasUnreadUpdates, markAsViewed } = useDealMemoNotification(dealId);
   const { entries: auditEntries, isLoading: auditLoading, logChanges } = useDealMemoAuditLog(dealId);
@@ -278,6 +279,19 @@ export function DealMemoDialog({ dealId, companyName }: DealMemoDialogProps) {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {onGoToDataRoom && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onGoToDataRoom();
+                  }}
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Data Room
+                </Button>
+              )}
               <MemoAuditLogPopover entries={auditEntries} isLoading={auditLoading} onRevert={handleRevert} />
               <Button 
                 onClick={handleSave} 
