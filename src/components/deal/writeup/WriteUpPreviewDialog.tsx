@@ -318,7 +318,6 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                 {[
                   { label: 'Customer Base', value: data.billingModels.length > 0 ? data.billingModels.join(', ') : null },
                   { label: 'Headquarters', value: data.location },
-                  { label: 'Deal Manager', value: dealManager || null },
                   { label: 'Industry', value: data.industries.join(', ') },
                   { label: 'Year Founded', value: data.yearFounded },
                   { label: 'Headcount', value: data.headcount },
@@ -338,6 +337,12 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                       style={{ fontSize: 16, color: T.primary, textDecoration: 'none', marginTop: 2, display: 'block' }}>
                       {data.companyUrl} <ExternalLink style={{ width: 12, height: 12, display: 'inline', verticalAlign: 'middle' }} />
                     </a>
+                  </div>
+                )}
+                {dealManager && (
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: T.fg }}>Deal Manager</div>
+                    <div style={{ fontSize: 16, color: T.mutedFg, marginTop: 2 }}>{dealManager}</div>
                   </div>
                 )}
                 {data.linkedinUrl && (
