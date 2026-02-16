@@ -218,10 +218,21 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[92vh] p-0 gap-0 overflow-hidden flex flex-col" style={{ fontFamily: T.font }}>
         <DialogHeader className="px-6 pt-5 pb-3 shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-lg" style={{ fontFamily: T.font }}>
-            <Eye className="h-5 w-5" style={{ color: T.primary }} />
-            Write-Up Preview
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2 text-lg" style={{ fontFamily: T.font }}>
+              <Eye className="h-5 w-5" style={{ color: T.primary }} />
+              Write-Up Preview
+            </DialogTitle>
+            <button onClick={handleDownloadPdf} disabled={isExporting}
+              style={{
+                padding: '6px 16px', fontSize: 13, fontWeight: 500, borderRadius: T.radius,
+                border: `1px solid ${T.primary20}`, background: T.primary10, color: T.primary, cursor: isExporting ? 'not-allowed' : 'pointer',
+                fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 6, opacity: isExporting ? 0.6 : 1, marginRight: 24,
+              }}>
+              {isExporting ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Download style={{ width: 14, height: 14 }} />}
+              {isExporting ? 'Exporting…' : 'Download PDF'}
+            </button>
+          </div>
           <DialogDescription className="text-xs">
             Preview of how this deal write-up will appear on FLEx.
           </DialogDescription>
@@ -733,16 +744,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 py-4 border-t shrink-0" style={{ fontFamily: T.font, display: 'flex', justifyContent: 'space-between' }}>
-          <button onClick={handleDownloadPdf} disabled={isExporting}
-            style={{
-              padding: '8px 20px', fontSize: 14, fontWeight: 500, borderRadius: T.radius,
-              border: `1px solid ${T.primary20}`, background: T.primary10, color: T.primary, cursor: isExporting ? 'not-allowed' : 'pointer',
-              fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 8, opacity: isExporting ? 0.6 : 1,
-            }}>
-            {isExporting ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Download style={{ width: 14, height: 14 }} />}
-            {isExporting ? 'Exporting…' : 'Download PDF'}
-          </button>
+        <DialogFooter className="px-6 py-4 border-t shrink-0" style={{ fontFamily: T.font }}>
           <button onClick={() => onOpenChange(false)}
             style={{
               padding: '8px 20px', fontSize: 14, fontWeight: 500, borderRadius: T.radius,
