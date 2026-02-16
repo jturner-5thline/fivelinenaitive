@@ -1271,9 +1271,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                       <Label htmlFor={`metric-${key}`} className="text-sm font-normal cursor-pointer">{label}</Label>
                       <Switch
                         id={`metric-${key}`}
-                        checked={data.visibleMetrics[key]}
+                        checked={(data.visibleMetrics ?? { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true })[key]}
                         onCheckedChange={(checked) => {
-                          updateField('visibleMetrics', { ...data.visibleMetrics, [key]: checked });
+                          const current = data.visibleMetrics ?? { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true };
+                          updateField('visibleMetrics', { ...current, [key]: checked });
                         }}
                       />
                     </div>
