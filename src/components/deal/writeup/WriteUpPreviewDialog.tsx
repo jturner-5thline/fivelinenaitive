@@ -318,10 +318,10 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                 {[
                   { label: 'Customer Base', value: data.billingModels.length > 0 ? data.billingModels.join(', ') : null },
                   { label: 'Headquarters', value: data.location },
+                  { label: 'Deal Manager', value: dealManager || null },
                   { label: 'Industry', value: data.industries.join(', ') },
                   { label: 'Year Founded', value: data.yearFounded },
                   { label: 'Headcount', value: data.headcount },
-                  { label: 'Deal Manager', value: dealManager || null },
                   { label: 'Business Model', value: data.billingModels.join(', ') },
                   { label: 'Profitability', value: data.profitability },
                   { label: 'Accounting System', value: data.accountingSystem },
