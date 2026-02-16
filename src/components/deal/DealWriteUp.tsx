@@ -1256,31 +1256,6 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 </div>
               )}
 
-              {/* Visible Metrics */}
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <h4 className="font-semibold text-sm mb-3">Visible Metrics on FLEx</h4>
-                <p className="text-xs text-muted-foreground mb-3">Toggle which key metrics appear on the FLEx deal detail page.</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {([
-                    { key: 'yoy_growth' as const, label: 'YoY Growth' },
-                    { key: 'this_year_revenue' as const, label: 'Current Year Revenue' },
-                    { key: 'last_year_revenue' as const, label: 'Prior Year Revenue' },
-                    { key: 'gross_margins' as const, label: 'Gross Margins' },
-                  ]).map(({ key, label }) => (
-                    <div key={key} className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
-                      <Label htmlFor={`metric-${key}`} className="text-sm font-normal cursor-pointer">{label}</Label>
-                      <Switch
-                        id={`metric-${key}`}
-                        checked={(data.visibleMetrics ?? { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true })[key]}
-                        onCheckedChange={(checked) => {
-                          const current = data.visibleMetrics ?? { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true };
-                          updateField('visibleMetrics', { ...current, [key]: checked });
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               {/* Key Items */}
               {data.keyItems.length > 0 && (
