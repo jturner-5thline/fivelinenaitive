@@ -226,7 +226,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
             <button onClick={handleDownloadPdf} disabled={isExporting}
               style={{
                 padding: '6px 16px', fontSize: 13, fontWeight: 500, borderRadius: T.radius,
-                border: `1px solid ${T.primary20}`, background: T.primary10, color: T.primary, cursor: isExporting ? 'not-allowed' : 'pointer',
+                border: `1px solid ${T.primary}`, background: T.primary, color: '#ffffff', cursor: isExporting ? 'not-allowed' : 'pointer',
                 fontFamily: T.font, display: 'inline-flex', alignItems: 'center', gap: 6, opacity: isExporting ? 0.6 : 1, marginRight: 24,
               }}>
               {isExporting ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Download style={{ width: 14, height: 14 }} />}
