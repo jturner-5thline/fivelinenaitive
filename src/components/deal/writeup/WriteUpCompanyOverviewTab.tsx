@@ -207,10 +207,20 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([]);
   const [extractedCompanyName, setExtractedCompanyName] = useState<string>();
+  const [dealManager, setDealManager] = useState('');
   const teamSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  // Fetch deal manager (read-only)
+  useEffect(() => {
+    const fetchMgr = async () => {
+      const { data: row } = await supabase.from('deals').select('manager').eq('id', dealId).single();
+      setDealManager(row?.manager || '');
+    };
+    fetchMgr();
+  }, [dealId]);
 
 
   // Fixed industry options
@@ -448,8 +458,19 @@ export function WriteUpCompanyOverviewTab({ dealId, data, updateField, onChange,
         />
       </FlexChangedFieldWrapper>
 
-      {/* LinkedIn + Location Row */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Deal Manager + LinkedIn + Location Row */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="dealManager">Deal Manager</Label>
+          <Input
+            id="dealManager"
+            value={dealManager}
+            readOnly
+            disabled
+            placeholder="Set in Deal Information"
+            className="bg-muted"
+          />
+        </div>
         <FlexChangedFieldWrapper fieldKey="linkedinUrl" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
           <Input
