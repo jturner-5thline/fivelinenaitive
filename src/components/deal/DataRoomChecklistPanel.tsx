@@ -120,8 +120,16 @@ export function DataRoomChecklistPanel({
     return [...templates, ...dealSpecificItems];
   }, [templateItems, dealSpecificItems]);
   
-  // View mode state
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  // View mode state - persisted across sessions
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const stored = localStorage.getItem('dataroom-view-mode');
+    return (stored === 'grid' || stored === 'list') ? stored : 'list';
+  });
+
+  const handleSetViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem('dataroom-view-mode', mode);
+  };
   
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -495,7 +503,7 @@ export function DataRoomChecklistPanel({
         <div className="flex-1" />
 
         {/* View Mode Toggle */}
-        <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as ViewMode)} className="border rounded-md">
+        <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && handleSetViewMode(v as ViewMode)} className="border rounded-md">
           <ToggleGroupItem value="list" aria-label="List view" className="h-8 w-8 p-0">
             <List className="h-4 w-4" />
           </ToggleGroupItem>
