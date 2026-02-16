@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -723,6 +724,37 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
             </div>
           ))
         )}
+      </div>
+
+      {/* Visible Metrics on FLEx */}
+      <div className="space-y-3">
+        <div>
+          <Label className="text-sm font-semibold">Visible Metrics on FLEx</Label>
+          <p className="text-xs text-muted-foreground mt-1">Toggle which key metrics appear on the FLEx deal detail page.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { key: 'yoy_growth' as const, label: 'YoY Growth' },
+            { key: 'this_year_revenue' as const, label: 'Current Year Revenue' },
+            { key: 'last_year_revenue' as const, label: 'Prior Year Revenue' },
+            { key: 'gross_margins' as const, label: 'Gross Margins' },
+          ]).map(({ key, label }) => {
+            const defaults = { yoy_growth: true, this_year_revenue: true, last_year_revenue: true, gross_margins: true };
+            const metrics = data.visibleMetrics ?? defaults;
+            return (
+              <div key={key} className="flex items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
+                <Label htmlFor={`fin-metric-${key}`} className="text-sm font-normal cursor-pointer">{label}</Label>
+                <Switch
+                  id={`fin-metric-${key}`}
+                  checked={metrics[key]}
+                  onCheckedChange={(checked) => {
+                    updateField('visibleMetrics', { ...metrics, [key]: checked });
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
