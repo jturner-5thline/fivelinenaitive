@@ -114,6 +114,14 @@ Deno.serve(async (req) => {
 
     const { query }: SearchRequest = await req.json();
 
+    // Input length validation
+    if ((query?.length || 0) > 5000) {
+      return new Response(
+        JSON.stringify({ error: 'Query too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!query) {
       return new Response(
         JSON.stringify({ error: 'Query is required' }),

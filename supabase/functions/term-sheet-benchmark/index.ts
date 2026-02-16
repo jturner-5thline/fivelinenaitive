@@ -54,6 +54,14 @@ Deno.serve(async (req) => {
 
     const { dealType, dealSize, industry, proposedRate, proposedTerm, covenants }: TermSheetBenchmarkRequest = await req.json();
 
+    // Input length validation
+    if ((dealType?.length || 0) > 500 || (industry?.length || 0) > 500 || (proposedTerm?.length || 0) > 500) {
+      return new Response(
+        JSON.stringify({ error: 'Input too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const dealSizeLabel = dealSize >= 1000000 
       ? `$${(dealSize / 1000000).toFixed(1)}M` 
       : `$${(dealSize / 1000).toFixed(0)}K`;
