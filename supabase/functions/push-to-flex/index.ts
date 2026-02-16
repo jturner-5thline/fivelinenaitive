@@ -133,7 +133,8 @@ serve(async (req) => {
           data_room_url,
           key_items,
           publish_as_anonymous,
-          status
+          status,
+          deals!inner(manager)
         `)
         .eq("status", "published");
       
@@ -154,7 +155,7 @@ serve(async (req) => {
       
       // Transform deals for Flex format - include the deal_id as id
       const flexDeals = allDeals.map(d => ({
-        id: d.deal_id, // Original Naitive deal UUID
+        id: d.deal_id,
         company_name: d.company_name,
         industry: d.industry,
         state: d.location,
@@ -171,6 +172,7 @@ serve(async (req) => {
         data_room_url: d.data_room_url || undefined,
         key_items: d.key_items || undefined,
         is_published: !d.publish_as_anonymous,
+        deal_manager_name: (d as any).deals?.manager || undefined,
       }));
       
       const bulkPayload = {
@@ -379,7 +381,7 @@ serve(async (req) => {
         is_published: !writeUpData!.publishAsAnonymous,
         team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
         visible_metrics: writeUpData!.visibleMetrics || undefined,
-        deal_manager: deal.manager || undefined,
+        deal_manager_name: deal.manager || undefined,
       };
 
       flexPayload = {
