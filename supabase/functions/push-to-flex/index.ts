@@ -256,7 +256,7 @@ serve(async (req) => {
     // Verify user has access to this deal
     const { data: deal, error: dealError } = await supabase
       .from("deals")
-      .select("id, company, user_id, company_id")
+      .select("id, company, user_id, company_id, manager")
       .eq("id", dealId)
       .single();
 
@@ -379,6 +379,7 @@ serve(async (req) => {
         is_published: !writeUpData!.publishAsAnonymous,
         team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
         visible_metrics: writeUpData!.visibleMetrics || undefined,
+        deal_manager: deal.manager || undefined,
       };
 
       flexPayload = {
