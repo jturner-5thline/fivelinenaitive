@@ -56,7 +56,7 @@ import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
-import { FileDropzoneOverlay } from '@/components/deal/FileDropzoneOverlay';
+
 import { DataRoomBulkActions } from '@/components/deal/DataRoomBulkActions';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
@@ -792,7 +792,6 @@ export default function DealDetail() {
   // Deal attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategory, setUploadCategory] = useState<DealAttachmentCategory>('materials');
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [showUploadProgress, setShowUploadProgress] = useState(false);
@@ -3938,60 +3937,7 @@ export default function DealDetail() {
                 <TabsContent value="data-room" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
                   <Card 
                     className="transition-all duration-200 relative"
-                    onDragEnter={(e) => {
-                      // Only set dragging if it contains files
-                      if (e.dataTransfer.types.includes('Files')) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsDraggingOver(true);
-                      }
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onDragLeave={(e) => {
-                      // Only reset if leaving the card entirely
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const { clientX, clientY } = e;
-                      if (
-                        clientX < rect.left ||
-                        clientX > rect.right ||
-                        clientY < rect.top ||
-                        clientY > rect.bottom
-                      ) {
-                        setIsDraggingOver(false);
-                      }
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDraggingOver(false);
-                      // Don't handle drop here - let the overlay handle it
-                    }}
                   >
-                    {/* File Drop Overlay - shown when dragging files over */}
-                    {isDraggingOver && checklistCategories.length > 0 && (
-                      <FileDropzoneOverlay
-                        categories={checklistCategories}
-                        checklistItems={allChecklistItems}
-                        onDropToCategory={async (category, files, assignments) => {
-                          // Map category name to closest DealAttachmentCategory value for storage
-                          const categoryLower = category.toLowerCase();
-                          let mappedCategory: DealAttachmentCategory = 'materials';
-                          if (categoryLower.includes('financial') || categoryLower.includes('kpi')) {
-                            mappedCategory = 'financials';
-                          } else if (categoryLower.includes('agreement') || categoryLower.includes('legal') || categoryLower.includes('contract')) {
-                            mappedCategory = 'agreements';
-                          } else if (categoryLower === 'other') {
-                            mappedCategory = 'other';
-                          }
-                          
-                          await handleFileDrop(files, mappedCategory, assignments);
-                        }}
-                        onDragEnd={() => setIsDraggingOver(false)}
-                      />
-                    )}
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg flex items-center gap-2">
