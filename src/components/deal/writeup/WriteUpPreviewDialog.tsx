@@ -238,7 +238,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div ref={contentRef} style={{ maxWidth: 896, margin: '0 auto', padding: '32px 24px', background: T.bg, fontFamily: T.font }}>
 
             {/* ── 1. Header Area ── */}
@@ -742,7 +742,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
             )}
 
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="px-6 py-4 border-t shrink-0" style={{ fontFamily: T.font }}>
           <button onClick={() => onOpenChange(false)}
