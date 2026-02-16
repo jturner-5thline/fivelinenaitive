@@ -47,12 +47,8 @@ interface LenderListCardProps {
 }
 
 // Helper to format currency - moved outside component for stability
-function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return '';
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-  return `$${value}`;
-}
+import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
+const formatCurrency = (v: number | null | undefined) => formatLenderCurrency(v);
 
 export const LenderListCard = memo(function LenderListCard({
   lender,

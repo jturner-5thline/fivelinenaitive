@@ -89,7 +89,8 @@ function formatCellValue(lender: MasterLender, key: ColumnKey): string {
   // Handle numbers - format as currency for deal amounts
   if (typeof value === 'number') {
     if (key === 'min_deal' || key === 'max_deal' || key === 'min_revenue' || key === 'ebitda_min') {
-      if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+      if (value >= 1000000000) return `$${(value / 1000000000).toFixed(value % 1000000000 === 0 ? 0 : 1)}B`;
+      if (value >= 1000000) return `$${(value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1)}MM`;
       if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
       return `$${value}`;
     }
