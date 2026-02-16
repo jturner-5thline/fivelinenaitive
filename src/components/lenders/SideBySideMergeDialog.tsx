@@ -43,12 +43,8 @@ function normalizeNameForComparison(name: string): string {
     .trim();
 }
 
-function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return '-';
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-  return `$${value}`;
-}
+import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
+const formatCurrency = (v: number | null | undefined) => formatLenderCurrency(v, '-');
 
 function formatArray(arr: string[] | null | undefined): string {
   if (!arr || arr.length === 0) return '-';

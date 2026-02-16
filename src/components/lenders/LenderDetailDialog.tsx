@@ -44,6 +44,7 @@ import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { useLenderAuditLog } from '@/hooks/useLenderAuditLog';
 import { format } from 'date-fns';
+import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
 
 const LENDER_TYPE_OPTIONS = [
   'Alternative',
@@ -1080,10 +1081,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                     <span className="text-sm font-medium">Deal Size: </span>
                                     <span className="text-sm">
                                       {lender.minDeal && lender.maxDeal
-                                        ? `$${lender.minDeal.toLocaleString()} - $${lender.maxDeal.toLocaleString()}`
+                                        ? `${formatLenderCurrency(lender.minDeal)} - ${formatLenderCurrency(lender.maxDeal)}`
                                         : lender.minDeal
-                                        ? `$${lender.minDeal.toLocaleString()}+`
-                                        : `Up to $${lender.maxDeal!.toLocaleString()}`}
+                                        ? `${formatLenderCurrency(lender.minDeal)}+`
+                                        : `Up to ${formatLenderCurrency(lender.maxDeal)}`}
                                     </span>
                                   </div>
                                 </div>
@@ -1149,7 +1150,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
                                     <span className="text-sm font-medium">Min Revenue: </span>
-                                    <span className="text-sm">${lender.minRevenue.toLocaleString()}</span>
+                                    <span className="text-sm">{formatLenderCurrency(lender.minRevenue)}</span>
                                   </div>
                                 </div>
                               )}
@@ -1158,7 +1159,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                   <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
                                   <div>
                                     <span className="text-sm font-medium">Min EBITDA: </span>
-                                    <span className="text-sm">${lender.ebitdaMin.toLocaleString()}</span>
+                                    <span className="text-sm">{formatLenderCurrency(lender.ebitdaMin)}</span>
                                   </div>
                                 </div>
                               )}
