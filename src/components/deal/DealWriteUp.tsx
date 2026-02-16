@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FlexSyncStatusBadge, FlexSyncHistory } from '@/components/deal/FlexSyncHistory';
 import { useLatestFlexSync } from '@/hooks/useFlexSyncHistory';
+import { useFlexChangedFields } from '@/hooks/useFlexChangedFields';
 import { useDealOwnership } from '@/hooks/useDealOwnership';
 import { useDealSpaceAutoFill, ExtractedWriteUpField } from '@/hooks/useDealSpaceAutoFill';
 import { Button } from '@/components/ui/button';
@@ -294,6 +295,9 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const isPublishedOnFlex = latestSync?.status === 'success';
   // Check if deal was unpublished (can be re-published)
   const isUnpublishedFromFlex = latestSync?.status === 'unpublished';
+
+  // Track fields changed since last FLEx sync
+  const changedFields = useFlexChangedFields(data, latestSync, isPublishedOnFlex);
 
   // Detect empty fields across all tabs for FLEx warning
   const emptyFields = useMemo(() => {
@@ -1008,19 +1012,19 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
               </TabsList>
               
               <TabsContent value="company-overview" className="mt-6">
-                <WriteUpCompanyOverviewTab data={data} updateField={updateField} onChange={onChange} />
+                <WriteUpCompanyOverviewTab data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} />
               </TabsContent>
               
               <TabsContent value="financial" className="mt-6">
-                <WriteUpFinancialTab data={data} updateField={updateField} />
+                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} />
               </TabsContent>
               
               <TabsContent value="highlights" className="mt-6">
-                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} />
+                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} />
               </TabsContent>
               
               <TabsContent value="key-items" className="mt-6">
-                <WriteUpKeyItemsTab data={data} updateField={updateField} />
+                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} />
               </TabsContent>
 
               <TabsContent value="ownership" className="mt-6">
@@ -1036,7 +1040,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Company Overview</h4>
                 </div>
-                <WriteUpCompanyOverviewTab data={data} updateField={updateField} onChange={onChange} />
+                <WriteUpCompanyOverviewTab data={data} updateField={updateField} onChange={onChange} changedFields={changedFields} />
               </div>
               
               {/* Financial Section */}
@@ -1044,7 +1048,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Financial</h4>
                 </div>
-                <WriteUpFinancialTab data={data} updateField={updateField} />
+                <WriteUpFinancialTab data={data} updateField={updateField} changedFields={changedFields} />
               </div>
               
               {/* Company Highlights Section */}
@@ -1052,7 +1056,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Company Highlights</h4>
                 </div>
-                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} />
+                <WriteUpCompanyHighlightsTab data={data} updateField={updateField} changedFields={changedFields} />
               </div>
               
               {/* Key Items Section */}
@@ -1060,7 +1064,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                 <div className="border-b pb-2">
                   <h4 className="text-base font-semibold text-foreground">Key Items</h4>
                 </div>
-                <WriteUpKeyItemsTab data={data} updateField={updateField} />
+                <WriteUpKeyItemsTab data={data} updateField={updateField} changedFields={changedFields} />
               </div>
 
               {/* Ownership Section */}

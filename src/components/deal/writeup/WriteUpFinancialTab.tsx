@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { DealWriteUpData, FinancialYear, FinancialComment } from '../DealWriteUp';
+import { FlexChangedFieldWrapper } from './FlexChangedFieldWrapper';
 
 const PROFITABILITY_OPTIONS = [
   'Profitable',
@@ -43,6 +44,7 @@ const ACCOUNTING_SYSTEM_OPTIONS = [
 interface WriteUpFinancialTabProps {
   data: DealWriteUpData;
   updateField: <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => void;
+  changedFields?: Set<string>;
 }
 
 // Format currency value
@@ -153,7 +155,7 @@ const parseYearToNumber = (yearStr: string): number | null => {
   return match ? parseInt(match[1], 10) : null;
 };
 
-export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabProps) {
+export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteUpFinancialTabProps) {
   const [grossMarginErrors, setGrossMarginErrors] = useState<Record<string, string | null>>({});
   
   // Column visibility toggles
@@ -350,7 +352,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
     <div className="space-y-6 min-w-0">
       {/* Profitability & Gross Margins Row */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <FlexChangedFieldWrapper fieldKey="profitability" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="profitability">Profitability *</Label>
           <Select value={data.profitability} onValueChange={(v) => updateField('profitability', v)}>
             <SelectTrigger>
@@ -362,8 +364,8 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-2">
+        </FlexChangedFieldWrapper>
+        <FlexChangedFieldWrapper fieldKey="grossMargins" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="grossMargins">Gross Margins *</Label>
           <Input
             id="grossMargins"
@@ -380,12 +382,12 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
           {grossMarginErrors.main && (
             <p className="text-xs text-destructive mt-1">{grossMarginErrors.main}</p>
           )}
-        </div>
+        </FlexChangedFieldWrapper>
       </div>
 
       {/* Capital Ask & Financial Data As Of Row */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <FlexChangedFieldWrapper fieldKey="capitalAsk" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="capitalAsk">Capital Ask *</Label>
           <Input
             id="capitalAsk"
@@ -394,7 +396,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
             onBlur={(e) => updateField('capitalAsk', formatCurrency(e.target.value))}
             placeholder="$2.5M"
           />
-        </div>
+        </FlexChangedFieldWrapper>
         <div className="space-y-2">
           <Label htmlFor="financialDataAsOf">Financial Data As Of</Label>
           <div className="flex gap-2">
@@ -455,7 +457,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
       </div>
 
       {/* Use of Funds */}
-      <div className="space-y-2">
+      <FlexChangedFieldWrapper fieldKey="useOfFunds" changedFields={changedFields} className="space-y-2">
         <Label htmlFor="useOfFunds">Use of Funds</Label>
         <Textarea
           id="useOfFunds"
@@ -464,10 +466,10 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
           placeholder="Expand sales team and accelerate product development for enterprise features."
           className="min-h-[80px]"
         />
-      </div>
+      </FlexChangedFieldWrapper>
 
       {/* Existing Debt Details */}
-      <div className="space-y-2">
+      <FlexChangedFieldWrapper fieldKey="existingDebtDetails" changedFields={changedFields} className="space-y-2">
         <Label htmlFor="existingDebtDetails">Existing Debt Details</Label>
         <Textarea
           id="existingDebtDetails"
@@ -476,7 +478,7 @@ export function WriteUpFinancialTab({ data, updateField }: WriteUpFinancialTabPr
           placeholder="Lender: Silicon Valley Bank&#10;Amount: $500,000&#10;Terms: 3-year term loan at 8.5% APR&#10;Maturity: March 2024"
           className="min-h-[100px]"
         />
-      </div>
+      </FlexChangedFieldWrapper>
 
       {/* Financial Commentary Section */}
       <div className="space-y-4">

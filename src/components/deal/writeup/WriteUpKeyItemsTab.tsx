@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { DealWriteUpData, KeyItem } from '../DealWriteUp';
+import { FlexChangedFieldWrapper } from './FlexChangedFieldWrapper';
 import {
   DndContext,
   closestCenter,
@@ -25,6 +26,7 @@ import { CSS } from '@dnd-kit/utilities';
 interface WriteUpKeyItemsTabProps {
   data: DealWriteUpData;
   updateField: <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => void;
+  changedFields?: Set<string>;
 }
 
 function SortableKeyItem({
@@ -85,7 +87,7 @@ function SortableKeyItem({
   );
 }
 
-export function WriteUpKeyItemsTab({ data, updateField }: WriteUpKeyItemsTabProps) {
+export function WriteUpKeyItemsTab({ data, updateField, changedFields }: WriteUpKeyItemsTabProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -123,7 +125,7 @@ export function WriteUpKeyItemsTab({ data, updateField }: WriteUpKeyItemsTabProp
   };
 
   return (
-    <div className="space-y-4">
+    <FlexChangedFieldWrapper fieldKey="keyItems" changedFields={changedFields} className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <Label className="text-base font-semibold">Key Items</Label>
@@ -156,6 +158,6 @@ export function WriteUpKeyItemsTab({ data, updateField }: WriteUpKeyItemsTabProp
           </SortableContext>
         </DndContext>
       )}
-    </div>
+    </FlexChangedFieldWrapper>
   );
 }
