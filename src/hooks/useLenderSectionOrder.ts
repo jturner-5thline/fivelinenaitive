@@ -11,7 +11,8 @@ export type LenderSectionId =
   | 'active-deals'
   | 'attachments'
   | 'deals-sent'
-  | 'pass-reasons';
+  | 'pass-reasons'
+  | 'change-log';
 
 export interface LenderSection {
   id: LenderSectionId;
@@ -30,6 +31,7 @@ const DEFAULT_SECTION_ORDER: LenderSectionId[] = [
   'attachments',
   'deals-sent',
   'pass-reasons',
+  'change-log',
 ];
 
 const STORAGE_KEY = 'lender-detail-section-order';

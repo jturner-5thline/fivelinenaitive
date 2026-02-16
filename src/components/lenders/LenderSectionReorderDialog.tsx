@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { GripVertical, RotateCcw, DollarSign, FileText, CheckSquare, User, Briefcase, Paperclip, ArrowRightCircle, XCircle, ListChecks, ClipboardList } from 'lucide-react';
+import { GripVertical, RotateCcw, DollarSign, FileText, CheckSquare, User, Briefcase, Paperclip, ArrowRightCircle, XCircle, ListChecks, ClipboardList, History } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -49,6 +49,7 @@ const SECTION_CONFIG: Record<LenderSectionId, { label: string; icon: React.Compo
   'attachments': { label: 'Attachments', icon: Paperclip },
   'deals-sent': { label: 'Deals Sent', icon: ArrowRightCircle },
   'pass-reasons': { label: 'Pass Reasons', icon: XCircle },
+  'change-log': { label: 'Change Log', icon: History },
 };
 
 interface SortableSectionItemProps {

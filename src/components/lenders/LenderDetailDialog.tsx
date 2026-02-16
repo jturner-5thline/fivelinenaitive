@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,8 @@ import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
+import { useLenderAuditLog } from '@/hooks/useLenderAuditLog';
+import { format } from 'date-fns';
 
 const LENDER_TYPE_OPTIONS = [
   'Alternative',
@@ -256,6 +258,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     open ? lender?.id ?? null : null
   );
 
+  const { entries: auditEntries, isLoading: isLoadingAudit, logChange } = useLenderAuditLog(
+    open ? lender?.id : undefined
+  );
+
   // Initialize edit form when entering edit mode or when lender changes
   useEffect(() => {
     if (lender && isEditMode) {
@@ -324,7 +330,40 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     
     setIsSaving(true);
     try {
+      // Detect changed fields for audit log
+      const fieldMap: Record<string, { label: string; oldVal: string; newVal: string }> = {};
+      const checkField = (key: keyof LenderEditData, label: string, oldValue: string) => {
+        const newVal = editForm[key];
+        if (oldValue !== newVal) {
+          fieldMap[key] = { label, oldVal: oldValue, newVal };
+        }
+      };
+      checkField('name', 'Name', lender.name || '');
+      checkField('tier', 'Tier', lender.tier?.replace(/^T/, '') || '');
+      checkField('lenderType', 'Lender Type', lender.lenderType || '');
+      checkField('minDeal', 'Min Deal Size', lender.minDeal?.toString() || '');
+      checkField('maxDeal', 'Max Deal Size', lender.maxDeal?.toString() || '');
+      checkField('geo', 'Geography', lender.geo || '');
+      checkField('industries', 'Industries', lender.industries?.join(', ') || '');
+      checkField('loanTypes', 'Loan Types', lender.loanTypes?.join(', ') || '');
+      checkField('description', 'Description', lender.description || '');
+      checkField('minRevenue', 'Min Revenue', lender.minRevenue?.toString() || '');
+      checkField('ebitdaMin', 'EBITDA Min', lender.ebitdaMin?.toString() || '');
+      checkField('companyRequirements', 'Company Requirements', lender.companyRequirements || '');
+      checkField('lenderNotes', 'Lender Notes', lender.lenderNotes || '');
+      checkField('relationshipOwners', 'Relationship Owners', lender.relationshipOwners || '');
+
       await onSave(lender.id, editForm);
+
+      // Log each changed field
+      const changedKeys = Object.keys(fieldMap);
+      if (changedKeys.length > 0) {
+        for (const key of changedKeys) {
+          const { label, oldVal, newVal } = fieldMap[key];
+          await logChange('updated', label, oldVal, newVal);
+        }
+      }
+
       setIsEditMode(false);
     } finally {
       setIsSaving(false);
@@ -1620,6 +1659,62 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               <p className="text-muted-foreground text-sm">No pass history with this lender</p>
                             )}
                           </section>
+                        </div>
+                      );
+
+                    case 'change-log':
+                      return (
+                        <div key={sectionId}>
+                          <section>
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+                              <History className="h-4 w-4" />
+                              Change Log ({auditEntries.length})
+                            </h3>
+                            {isLoadingAudit ? (
+                              <p className="text-sm text-muted-foreground">Loading...</p>
+                            ) : auditEntries.length > 0 ? (
+                              <div className="space-y-2 max-h-60 overflow-y-auto">
+                                {auditEntries.map((entry) => (
+                                  <div key={entry.id} className="flex items-start gap-3 text-sm">
+                                    <Clock className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-baseline gap-1 flex-wrap">
+                                        <span className="font-medium text-foreground">
+                                          {entry.field_changed || entry.action}
+                                        </span>
+                                        {entry.action === 'updated' && entry.field_changed && (
+                                          <span className="text-muted-foreground">updated</span>
+                                        )}
+                                      </div>
+                                      {entry.old_value && entry.new_value && (
+                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                          <span className="line-through">{entry.old_value.substring(0, 60)}</span>
+                                          {' → '}
+                                          <span className="text-foreground">{entry.new_value.substring(0, 60)}</span>
+                                        </p>
+                                      )}
+                                      {!entry.old_value && entry.new_value && (
+                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                          Set to: <span className="text-foreground">{entry.new_value.substring(0, 80)}</span>
+                                        </p>
+                                      )}
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        {entry.user_display_name && (
+                                          <span className="text-xs text-primary font-medium">{entry.user_display_name}</span>
+                                        )}
+                                        <span className="text-xs text-muted-foreground">
+                                          {format(new Date(entry.created_at), 'MMM d, h:mm a')}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-muted-foreground text-sm">No changes recorded yet</p>
+                            )}
+                          </section>
+                          {showSeparator && <Separator className="mt-6" />}
                         </div>
                       );
 
