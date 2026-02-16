@@ -1,13 +1,12 @@
 import { Eye, ExternalLink, Linkedin, Building2, MapPin, Calendar, Users, Globe, DollarSign } from 'lucide-react';
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -73,17 +72,17 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
   const hasEbitdaChange = data.financialYears.some(fy => (fy as any).ebitda_change);
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden">
-        <AlertDialogHeader className="px-6 pt-6 pb-4">
-          <AlertDialogTitle className="flex items-center gap-2 text-lg">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <Eye className="h-5 w-5 text-primary" />
             Write-Up Preview
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-xs">
+          </DialogTitle>
+          <DialogDescription className="text-xs">
             Preview of how this deal write-up will appear on FLEx.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <ScrollArea className="flex-1 max-h-[70vh]">
           <div className="px-6 pb-6 space-y-6">
@@ -323,10 +322,10 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
           </div>
         </ScrollArea>
 
-        <AlertDialogFooter className="px-6 py-4 border-t">
-          <AlertDialogCancel>Close</AlertDialogCancel>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        <DialogFooter className="px-6 py-4 border-t">
+          <button onClick={() => onOpenChange(false)} className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Close</button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
