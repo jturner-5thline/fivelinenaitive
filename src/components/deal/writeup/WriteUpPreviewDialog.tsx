@@ -56,6 +56,7 @@ interface WriteUpPreviewDialogProps {
   data: DealWriteUpData;
   owners: Array<{ owner_name: string; ownership_percentage: number; owner_url?: string | null }>;
   totalEquityRaised: string;
+  dealManager?: string;
 }
 
 /* ── Helpers ── */
@@ -132,7 +133,7 @@ const SectionDivider: React.FC<{ title: string }> = ({ title }) => (
 );
 
 /* ── Main component ── */
-export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEquityRaised }: WriteUpPreviewDialogProps) {
+export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEquityRaised, dealManager }: WriteUpPreviewDialogProps) {
   const dealTypeLabels = dealTypeIdsToLabels(data.dealTypes);
   const filteredTeam = (data.team || []).filter(m => m.name.trim());
   const filteredKeyItems = (data.keyItems || []).filter(i => i.title?.trim());
@@ -318,10 +319,11 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   { label: 'Customer Base', value: data.billingModels.length > 0 ? data.billingModels.join(', ') : null },
                   { label: 'Headquarters', value: data.location },
                   { label: 'Industry', value: data.industries.join(', ') },
-                  { label: 'Business Model', value: data.billingModels.join(', ') },
-                  { label: 'Profitability', value: data.profitability },
                   { label: 'Year Founded', value: data.yearFounded },
                   { label: 'Headcount', value: data.headcount },
+                  { label: 'Deal Manager', value: dealManager || null },
+                  { label: 'Business Model', value: data.billingModels.join(', ') },
+                  { label: 'Profitability', value: data.profitability },
                   { label: 'Accounting System', value: data.accountingSystem },
                 ].filter(f => f.value).map(f => (
                   <div key={f.label}>

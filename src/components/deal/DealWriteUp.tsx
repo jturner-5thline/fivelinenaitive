@@ -264,6 +264,26 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const { data: latestSync } = useLatestFlexSync(dealId);
   const { owners, totalEquityRaised } = useDealOwnership(dealId);
   
+  // Fetch deal manager from deals table and subscribe to changes
+  const [dealManager, setDealManager] = useState<string>('');
+  useEffect(() => {
+    const fetchManager = async () => {
+      const { data: dealRow } = await supabase.from('deals').select('manager').eq('id', dealId).single();
+      if (dealRow?.manager) setDealManager(dealRow.manager);
+    };
+    fetchManager();
+    
+    const channel = supabase.channel(`deal-manager-${dealId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'deals', filter: `id=eq.${dealId}` }, (payload) => {
+        if (payload.new?.manager !== undefined) {
+          setDealManager(payload.new.manager || '');
+        }
+      })
+      .subscribe();
+    
+    return () => { supabase.removeChannel(channel); };
+  }, [dealId]);
+  
   // Auto-fill from Deal Space
   const { isExtracting, extractedFields, extractWriteUpData, clearExtractedFields } = useDealSpaceAutoFill(dealId);
   const [showAutoFillDialog, setShowAutoFillDialog] = useState(false);
@@ -1324,6 +1344,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         data={data}
         owners={owners}
         totalEquityRaised={totalEquityRaised}
+        dealManager={dealManager}
       />
 
       {/* Unpublish from FLEx Confirmation Dialog */}
