@@ -23,6 +23,8 @@ interface WriteUpData {
   dataRoomUrl: string;
   industry: string;
   location: string;
+  yearFounded: string;
+  headcount: string;
   dealType: string;
   billingModel: string;
   profitability: string;
@@ -348,13 +350,18 @@ serve(async (req) => {
       const flexDeal = {
         id: dealId, // Original Naitive deal UUID
         company_name: writeUpData!.companyName,
+        company_url: writeUpData!.companyUrl || undefined,
+        linkedin_url: writeUpData!.linkedinUrl || undefined,
         industry: writeUpData!.industry,
         state: writeUpData!.location,
+        year_founded: (writeUpData as any).yearFounded || undefined,
+        headcount: (writeUpData as any).headcount || undefined,
         deal_type: writeUpData!.dealType,
         billing_model: writeUpData!.billingModel || undefined,
         profitability: writeUpData!.profitability || undefined,
         gross_margins: writeUpData!.grossMargins || undefined,
         capital_ask: writeUpData!.capitalAsk || undefined,
+        accounting_system: writeUpData!.accountingSystem || undefined,
         description: writeUpData!.description || undefined,
         use_of_funds: writeUpData!.useOfFunds || undefined,
         existing_debt: writeUpData!.existingDebtDetails || undefined,
