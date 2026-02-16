@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_writeups ADD COLUMN visible_metrics jsonb DEFAULT '{"yoy_growth": true, "this_year_revenue": true, "last_year_revenue": true, "gross_margins": true}'::jsonb;
