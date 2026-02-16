@@ -667,6 +667,26 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
               </Card>
             )}
 
+            {/* ── 11. Key Items (below Ownership) ── */}
+            {filteredKeyItems.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader icon={<Target style={{ width: 20, height: 20, color: T.primary }} />} title="Key Items" />
+                <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  {filteredKeyItems.map((item, idx) => (
+                    <div key={item.id} style={{
+                      padding: 16, borderRadius: T.radius, background: T.secondaryBg50,
+                      border: `1px solid ${T.cardBorder}`,
+                    }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: T.fg }}>{item.title}</div>
+                      {item.description && (
+                        <p style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6, marginTop: 4 }}>{item.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
           </div>
         </ScrollArea>
 
