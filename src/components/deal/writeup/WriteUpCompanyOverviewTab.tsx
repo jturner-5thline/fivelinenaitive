@@ -25,6 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { AutoFillReviewDialog, ExtractedField } from './AutoFillReviewDialog';
+import { FlexChangedFieldWrapper } from './FlexChangedFieldWrapper';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
 import {
   DndContext,
@@ -192,9 +193,10 @@ interface WriteUpCompanyOverviewTabProps {
   data: DealWriteUpData;
   updateField: <K extends keyof DealWriteUpData>(field: K, value: DealWriteUpData[K]) => void;
   onChange?: (data: DealWriteUpData) => void;
+  changedFields?: Set<string>;
 }
 
-export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: WriteUpCompanyOverviewTabProps) {
+export function WriteUpCompanyOverviewTab({ data, updateField, onChange, changedFields }: WriteUpCompanyOverviewTabProps) {
   const { dealTypes: dealTypeOptions } = useDealTypes();
   const { lenders: masterLenders } = useMasterLenders();
   const [locationSearch, setLocationSearch] = useState('');
@@ -395,7 +397,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
     <div className="space-y-6">
       {/* Company Name & URL Row */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <FlexChangedFieldWrapper fieldKey="companyName" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="companyName">Company Name *</Label>
           <Input
             id="companyName"
@@ -403,8 +405,8 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
             onChange={(e) => updateField('companyName', e.target.value)}
             placeholder="TechFlow Solutions"
           />
-        </div>
-        <div className="space-y-2">
+        </FlexChangedFieldWrapper>
+        <FlexChangedFieldWrapper fieldKey="companyUrl" changedFields={changedFields} className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="companyUrl">Company URL</Label>
             <Button
@@ -429,11 +431,11 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
             onChange={(e) => updateField('companyUrl', e.target.value)}
             placeholder="example.com"
           />
-        </div>
+        </FlexChangedFieldWrapper>
       </div>
 
       {/* Company Overview (formerly Description) */}
-      <div className="space-y-2">
+      <FlexChangedFieldWrapper fieldKey="description" changedFields={changedFields} className="space-y-2">
         <Label htmlFor="description">Company Overview *</Label>
         <Textarea
           id="description"
@@ -442,11 +444,11 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
           placeholder="Enterprise SaaS platform for workflow automation with strong recurring revenue and expanding customer base."
           className="min-h-[100px]"
         />
-      </div>
+      </FlexChangedFieldWrapper>
 
       {/* LinkedIn Row */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <FlexChangedFieldWrapper fieldKey="linkedinUrl" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
           <Input
             id="linkedinUrl"
@@ -454,8 +456,8 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
             onChange={(e) => updateField('linkedinUrl', e.target.value)}
             placeholder="linkedin.com/company/..."
           />
-        </div>
-        <div className="space-y-2">
+        </FlexChangedFieldWrapper>
+        <FlexChangedFieldWrapper fieldKey="location" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="location">Location *</Label>
           <Popover open={locationOpen} onOpenChange={setLocationOpen}>
             <PopoverTrigger asChild>
@@ -505,12 +507,12 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
               </ScrollArea>
             </PopoverContent>
           </Popover>
-        </div>
+        </FlexChangedFieldWrapper>
       </div>
 
       {/* Industry & Year Founded Row */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
+        <FlexChangedFieldWrapper fieldKey="industries" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="industry">Industry *</Label>
           <Popover>
             <PopoverTrigger asChild>
@@ -571,8 +573,8 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
               </div>
             </PopoverContent>
           </Popover>
-        </div>
-        <div className="space-y-2">
+        </FlexChangedFieldWrapper>
+        <FlexChangedFieldWrapper fieldKey="yearFounded" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="yearFounded">Year Founded</Label>
           <Input
             id="yearFounded"
@@ -586,8 +588,8 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
             inputMode="numeric"
             pattern="[0-9]*"
           />
-        </div>
-        <div className="space-y-2">
+        </FlexChangedFieldWrapper>
+        <FlexChangedFieldWrapper fieldKey="headcount" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="headcount">Headcount</Label>
           <Input
             id="headcount"
@@ -601,11 +603,11 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
             inputMode="numeric"
             pattern="[0-9]*"
           />
-        </div>
+        </FlexChangedFieldWrapper>
       </div>
 
       {/* Team Members Section */}
-      <div className="space-y-3">
+      <FlexChangedFieldWrapper fieldKey="team" changedFields={changedFields} className="space-y-3">
         <div className="flex items-center justify-between">
           <Label>Team</Label>
           <Button
@@ -664,11 +666,11 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
             </SortableContext>
           </DndContext>
         )}
-      </div>
+      </FlexChangedFieldWrapper>
 
       {/* Deal Type & Billing Model Row */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <FlexChangedFieldWrapper fieldKey="dealTypes" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="dealType">Deal Type *</Label>
           <Popover>
             <PopoverTrigger asChild>
@@ -713,8 +715,8 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
               </div>
             </PopoverContent>
           </Popover>
-        </div>
-        <div className="space-y-2">
+        </FlexChangedFieldWrapper>
+        <FlexChangedFieldWrapper fieldKey="billingModels" changedFields={changedFields} className="space-y-2">
           <Label htmlFor="billingModel">Billing Model *</Label>
           <Popover>
             <PopoverTrigger asChild>
@@ -759,7 +761,7 @@ export function WriteUpCompanyOverviewTab({ data, updateField, onChange }: Write
               </div>
             </PopoverContent>
           </Popover>
-        </div>
+        </FlexChangedFieldWrapper>
       </div>
 
       {/* Auto-fill Review Dialog */}
