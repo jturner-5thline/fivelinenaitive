@@ -88,12 +88,12 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
   return (
     <div
       className={cn(
-        'group relative rounded-lg border cursor-pointer transition-all duration-150 mx-3 mb-2',
+        'group relative rounded-r-lg cursor-pointer transition-all duration-150 mx-0 mr-3 mb-2 border-l-[3px]',
         isSelected
-          ? 'bg-accent/60 border-primary/30 shadow-sm shadow-primary/5'
-          : 'bg-card/40 border-border/40 hover:bg-muted/40 hover:border-border/60',
-        thread.hasUnread && !isSelected && 'border-l-2 border-l-primary',
-        thread.needsResponse && !isSelected && !thread.hasUnread && 'border-l-2 border-l-amber-500'
+          ? 'bg-primary/10 border-l-primary shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.3)] border-t border-r border-b border-t-primary/20 border-r-primary/20 border-b-primary/20'
+          : 'bg-card/40 border-l-transparent border border-border/40 hover:border-l-primary/50 hover:bg-primary/5 hover:border-border/60 rounded-lg',
+        thread.hasUnread && !isSelected && 'border-l-primary',
+        thread.needsResponse && !isSelected && !thread.hasUnread && 'border-l-amber-500'
       )}
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
