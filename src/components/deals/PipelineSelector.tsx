@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 
 export function PipelineSelector() {
   const { pipelines, activePipelineId, activePipeline, setActivePipelineId, createPipeline, isLoading } = usePipelineContext();
+  const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0] || null;
   const { stages: currentStages } = useDealStages();
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -75,6 +76,16 @@ export function PipelineSelector() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[200px]">
+          {defaultPipeline && (
+            <DropdownMenuItem
+              onClick={() => setActivePipelineId(defaultPipeline.id)}
+              className={activePipelineId === defaultPipeline.id ? 'bg-accent' : ''}
+            >
+              Active Pipeline
+              <span className="ml-auto text-xs text-muted-foreground">Default</span>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
           {pipelines.map(pipeline => (
             <DropdownMenuItem
               key={pipeline.id}
