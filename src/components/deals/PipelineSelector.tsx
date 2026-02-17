@@ -88,16 +88,13 @@ export function PipelineSelector() {
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          {pipelines.map(pipeline => (
+          {pipelines.filter(p => !p.isDefault).map(pipeline => (
             <DropdownMenuItem
               key={pipeline.id}
               onSelect={() => setActivePipelineId(pipeline.id)}
               className={activePipelineId === pipeline.id ? 'bg-accent' : ''}
             >
               <span className="truncate">{pipeline.name}</span>
-              {pipeline.isDefault && (
-                <span className="ml-auto text-xs text-muted-foreground">Default</span>
-              )}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
