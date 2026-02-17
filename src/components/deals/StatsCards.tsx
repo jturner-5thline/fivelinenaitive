@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TrendingUp, Briefcase, FileSearch, DollarSign } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Deal } from '@/types/deal';
 import {
@@ -37,6 +38,7 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
   const { formatCurrencyValue } = usePreferences();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<'activeDeals' | 'activeDealValue' | null>(null);
+  const [chartMetric, setChartMetric] = useState<'count' | 'value' | 'fee'>('count');
 
   const activeDeals = deals.filter(d => d.status !== 'archived');
 
@@ -44,21 +46,21 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
     if (!dialogType) return [];
 
     // Group by stage
-    const stageGroups: Record<string, { count: number; value: number }> = {};
+    const stageGroups: Record<string, { count: number; value: number; fee: number }> = {};
     
     activeDeals.forEach(deal => {
       const stage = deal.stage || 'Unknown';
       if (!stageGroups[stage]) {
-        stageGroups[stage] = { count: 0, value: 0 };
+        stageGroups[stage] = { count: 0, value: 0, fee: 0 };
       }
       stageGroups[stage].count += 1;
       stageGroups[stage].value += deal.value || 0;
+      stageGroups[stage].fee += deal.totalFee || 0;
     });
 
     return Object.entries(stageGroups).map(([name, data]) => ({
       name: formatStageName(name),
-      value: dialogType === 'activeDeals' ? data.count : data.value,
-      rawValue: dialogType === 'activeDeals' ? data.count : data.value,
+      value: data[chartMetric],
     }));
   };
 
@@ -71,6 +73,7 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
 
   const handleCardClick = (type: 'activeDeals' | 'activeDealValue') => {
     setDialogType(type);
+    setChartMetric(type === 'activeDeals' ? 'count' : 'value');
     setDialogOpen(true);
   };
 
@@ -122,7 +125,7 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
         <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium text-foreground">{data.name}</p>
           <p className="text-muted-foreground">
-            {dialogType === 'activeDeals' 
+            {chartMetric === 'count' 
               ? `${data.value} deal${data.value !== 1 ? 's' : ''}`
               : formatCurrencyValue(data.value)
             }
@@ -162,10 +165,31 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {dialogType === 'activeDeals' ? 'Active Deals by Stage' : 'Active Deal Volume by Stage'}
-            </DialogTitle>
+            <DialogTitle>Active Deals by Stage</DialogTitle>
           </DialogHeader>
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={chartMetric === 'count' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setChartMetric('count')}
+            >
+              Deal Count
+            </Button>
+            <Button
+              variant={chartMetric === 'value' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setChartMetric('value')}
+            >
+              Deal Size
+            </Button>
+            <Button
+              variant={chartMetric === 'fee' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setChartMetric('fee')}
+            >
+              Closing Fee
+            </Button>
+          </div>
           <div className="h-[300px] w-full">
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
