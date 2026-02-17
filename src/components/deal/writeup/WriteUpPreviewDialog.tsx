@@ -83,7 +83,7 @@ function parsePct(v: string | undefined): number | null {
 }
 
 /* ── Reusable sub-components ── */
-const Card: React.FC<{ children: React.ReactNode; className?: string; hover?: boolean }> = ({ children, className = '', hover }) => (
+const Card: React.FC<{ children: React.ReactNode; className?: string; hover?: boolean; 'data-pdf-section'?: boolean }> = ({ children, className = '', hover, ...rest }) => (
   <div
     style={{
       background: T.cardBg,
@@ -94,6 +94,7 @@ const Card: React.FC<{ children: React.ReactNode; className?: string; hover?: bo
       fontFamily: T.font,
     }}
     className={className}
+    {...rest}
     onMouseEnter={hover ? (e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.01)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; } : undefined}
     onMouseLeave={hover ? (e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; } : undefined}
   >
@@ -153,24 +154,73 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
         scrollParent.style.overflow = 'visible';
         scrollParent.style.maxHeight = 'none';
       }
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: T.bg, logging: false });
+
+      // A4 dimensions in mm
+      const A4_W = 210;
+      const A4_H = 297;
+      const MARGIN = 12;
+      const CONTENT_W = A4_W - MARGIN * 2;
+      const GAP = 3;
+
+      // Find all sections marked with data-pdf-section, or fall back to direct children
+      let sections = Array.from(el.querySelectorAll('[data-pdf-section]')) as HTMLElement[];
+      if (sections.length === 0) {
+        sections = Array.from(el.children) as HTMLElement[];
+      }
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      let currentY = MARGIN;
+      let isFirstSection = true;
+
+      for (const section of sections) {
+        // Skip invisible/empty sections
+        if (section.offsetHeight === 0) continue;
+
+        const canvas = await html2canvas(section, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: T.bg,
+          logging: false,
+        });
+
+        const scaleFactor = CONTENT_W / (canvas.width / 2);
+        const sectionH = (canvas.height / 2) * scaleFactor;
+
+        // If this section won't fit on the current page, start a new one
+        const remaining = A4_H - MARGIN - currentY;
+        if (sectionH > remaining && !isFirstSection) {
+          pdf.addPage();
+          currentY = MARGIN;
+        }
+
+        // If a single section is taller than a full page, tile it across pages
+        if (sectionH > A4_H - MARGIN * 2) {
+          const imgData = canvas.toDataURL('image/png');
+          const fullImgH = sectionH;
+          let yOff = 0;
+          while (yOff < fullImgH) {
+            if (yOff > 0) {
+              pdf.addPage();
+              currentY = MARGIN;
+            }
+            pdf.addImage(imgData, 'PNG', MARGIN, currentY - yOff, CONTENT_W, fullImgH);
+            yOff += A4_H - MARGIN * 2;
+          }
+          currentY = MARGIN + (fullImgH % (A4_H - MARGIN * 2)) + GAP;
+        } else {
+          const imgData = canvas.toDataURL('image/png');
+          pdf.addImage(imgData, 'PNG', MARGIN, currentY, CONTENT_W, sectionH);
+          currentY += sectionH + GAP;
+        }
+
+        isFirstSection = false;
+      }
+
       if (scrollParent) {
         scrollParent.style.overflow = prevOverflow || '';
         scrollParent.style.maxHeight = prevMaxHeight || '';
       }
-      const imgData = canvas.toDataURL('image/png');
-      const pdfW = 210;
-      const pdfH = (canvas.height * pdfW) / canvas.width;
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pageH = 297;
-      let remaining = pdfH;
-      let yOff = 0;
-      while (remaining > 0) {
-        if (yOff > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, -yOff, pdfW, pdfH);
-        remaining -= pageH;
-        yOff += pageH;
-      }
+
       const name = data.publishAsAnonymous ? 'Anonymous' : (data.companyName || 'Deal');
       pdf.save(`${name.replace(/[^a-zA-Z0-9]/g, '_')}_WriteUp.pdf`);
     } catch (err) {
@@ -243,7 +293,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
           <div ref={contentRef} style={{ maxWidth: 896, margin: '0 auto', padding: '32px 24px', background: T.bg, fontFamily: T.font }}>
 
             {/* ── 1. Header Area ── */}
-            <div style={{ marginBottom: 28 }}>
+            <div data-pdf-section style={{ marginBottom: 28 }}>
               <span style={{ fontSize: 14, fontWeight: 500, color: T.mutedFg, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 DEAL WRITE-UP
               </span>
@@ -258,7 +308,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
             </div>
 
             {/* ── 2. Deal Overview Card ── */}
-            <Card className="mb-6">
+            <Card data-pdf-section className="mb-6">
               <CardHeader
                 icon={<Target style={{ width: 20, height: 20, color: T.primary }} />}
                 title="Deal Overview"
@@ -293,7 +343,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
             {/* ── 3. Transaction Highlights ── */}
             {filteredKeyItems.length > 0 && (
-              <Card className="mb-6">
+              <Card data-pdf-section className="mb-6">
                 <CardHeader icon={<Shield style={{ width: 20, height: 20, color: T.primary }} />} title="Transaction Highlights" />
                 <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                   {filteredKeyItems.map(item => (
@@ -312,7 +362,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
             )}
 
             {/* ── 4. Company Overview ── */}
-            <Card className="mb-6">
+            <Card data-pdf-section className="mb-6">
               <CardHeader icon={<Building2 style={{ width: 20, height: 20, color: T.primary }} />} title="Company Overview" />
               <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 32px' }}>
                 {[
@@ -359,7 +409,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
             {/* ── 5. Team ── */}
             {filteredTeam.length > 0 && (
-              <Card className="mb-6">
+              <Card data-pdf-section className="mb-6">
                 <CardHeader icon={<Users style={{ width: 20, height: 20, color: T.primary }} />} title="Team" />
                 <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
                   {filteredTeam.map(member => (
@@ -384,7 +434,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
             {/* ── 6. Company Highlights ── */}
             {filteredHighlights.length > 0 && (
-              <Card className="mb-6">
+              <Card data-pdf-section className="mb-6">
                 <CardHeader icon={<Target style={{ width: 20, height: 20, color: T.primary }} />} title="Company Highlights" />
                 <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                   {filteredHighlights.map(item => (
@@ -404,7 +454,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
             {/* ── 7. Revenue Performance Charts ── */}
             {hasChartData && (
-              <div style={{ marginBottom: 24 }}>
+              <div data-pdf-section style={{ marginBottom: 24 }}>
                 <SectionDivider title="Revenue Performance" />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
                   {/* Revenue Trend Bar Chart */}
@@ -469,7 +519,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
             {/* ── 8. Margin Analysis Charts ── */}
             {hasChartData && marginData.some(d => d.grossMargin !== null || d.ebitdaMargin !== null) && (
-              <div style={{ marginBottom: 24 }}>
+              <div data-pdf-section style={{ marginBottom: 24 }}>
                 <SectionDivider title="Margin Analysis" />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
                   {/* Gross Margin */}
@@ -567,7 +617,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
             {/* ── 9. Financials Table ── */}
             {data.financialYears.length > 0 && (
-              <Card className="mb-6">
+              <Card data-pdf-section className="mb-6">
                 <CardHeader icon={<TrendingUp style={{ width: 20, height: 20, color: T.primary }} />} title="Financials" />
                 <div style={{ padding: '16px 24px 24px' }}>
                   <div style={{ background: T.secondaryBg, borderRadius: T.radius, overflow: 'hidden' }}>
@@ -642,7 +692,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
             {/* ── 10. Ownership & Equity ── */}
             {(owners.length > 0 || totalEquityRaised) && (
-              <Card className="mb-6">
+              <Card data-pdf-section className="mb-6">
                 <CardHeader icon={<PieChartIcon style={{ width: 20, height: 20, color: T.primary }} />} title="Ownership & Equity" />
                 <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: owners.length > 0 ? '220px 1fr' : '1fr', gap: 24, alignItems: 'start' }}>
                   {/* Donut Chart */}
@@ -730,7 +780,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
             {/* ── 11. Key Items (below Ownership) ── */}
             {filteredKeyItems.length > 0 && (
-              <Card className="mb-6">
+              <Card data-pdf-section className="mb-6">
                 <CardHeader icon={<Target style={{ width: 20, height: 20, color: T.primary }} />} title="Key Items" />
                 <div style={{ padding: '16px 24px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                   {filteredKeyItems.map((item, idx) => (
