@@ -4247,14 +4247,16 @@ export default function DealDetail() {
                                   handleFileDropToCategory(category as DealAttachmentCategory, droppedFiles);
                                 }}
                               >
-                                <Collapsible defaultOpen={files.length > 0}>
+                                <Collapsible defaultOpen>
                                   <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors">
                                     <div className="flex items-center gap-2">
                                       <Folder className="h-4 w-4 text-primary" />
                                       <span className="font-medium text-sm">{cat.label}</span>
-                                      <Badge variant="secondary" className="text-xs">
-                                        {files.length}
-                                      </Badge>
+                                      {files.length > 0 && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          {files.length}
+                                        </Badge>
+                                      )}
                                     </div>
                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                   </CollapsibleTrigger>
