@@ -4,7 +4,7 @@ export interface InsightRecommendation {
   title: string;
   description: string;
   actionItems: string[];
-  lovablePrompt: string;
+  prompt: string;
 }
 
 export interface HeatmapInsight {
@@ -35,7 +35,7 @@ export function getInsightRecommendations(insight: UXInsight): InsightRecommenda
           "Optimize images and reduce load time",
           "Add social proof elements",
         ],
-        lovablePrompt: `Optimize the ${insight.description.split(" ")[0]} page for better conversions. Add a prominent call-to-action button above the fold, improve the headline to be more compelling, add social proof elements like testimonials or trust badges, and ensure the page loads quickly by lazy-loading images.`,
+        prompt: `Optimize the ${insight.description.split(" ")[0]} page for better conversions. Add a prominent call-to-action button above the fold, improve the headline to be more compelling, add social proof elements like testimonials or trust badges, and ensure the page loads quickly by lazy-loading images.`,
       });
       break;
 
@@ -49,7 +49,7 @@ export function getInsightRecommendations(insight: UXInsight): InsightRecommenda
           "Improve visual feedback on interactions",
           "Ensure touch targets are at least 44px",
         ],
-        lovablePrompt: `Fix the rage click frustration points in the application. Review elements that users are clicking repeatedly without response. Add proper hover and active states to all interactive elements, implement loading spinners for async operations, and ensure all buttons have cursor:pointer and clear visual feedback.`,
+        prompt: `Fix the rage click frustration points in the application. Review elements that users are clicking repeatedly without response. Add proper hover and active states to all interactive elements, implement loading spinners for async operations, and ensure all buttons have cursor:pointer and clear visual feedback.`,
       });
       break;
 
@@ -63,7 +63,7 @@ export function getInsightRecommendations(insight: UXInsight): InsightRecommenda
           "Show user-friendly error messages",
           "Add error logging and monitoring",
         ],
-        lovablePrompt: `Implement comprehensive error handling. Add Error Boundaries to wrap major sections of the app, implement try-catch blocks for all async operations, show user-friendly error messages with recovery options instead of crashing, and ensure errors are logged to the console with stack traces for debugging.`,
+        prompt: `Implement comprehensive error handling. Add Error Boundaries to wrap major sections of the app, implement try-catch blocks for all async operations, show user-friendly error messages with recovery options instead of crashing, and ensure errors are logged to the console with stack traces for debugging.`,
       });
       break;
 
@@ -77,7 +77,7 @@ export function getInsightRecommendations(insight: UXInsight): InsightRecommenda
           "Show helpful messages when no results found",
           "Track and add missing content users search for",
         ],
-        lovablePrompt: `Improve the search functionality to reduce failed searches. Implement fuzzy matching to handle typos, add autocomplete suggestions as users type, show a helpful "No results" message with alternative suggestions, and consider what content users are searching for that doesn't exist.`,
+        prompt: `Improve the search functionality to reduce failed searches. Implement fuzzy matching to handle typos, add autocomplete suggestions as users type, show a helpful "No results" message with alternative suggestions, and consider what content users are searching for that doesn't exist.`,
       });
       break;
 
@@ -86,7 +86,7 @@ export function getInsightRecommendations(insight: UXInsight): InsightRecommenda
         title: "Review and Optimize",
         description: insight.description,
         actionItems: insight.recommendations,
-        lovablePrompt: insight.prompt,
+        prompt: insight.prompt,
       });
   }
 
@@ -123,7 +123,7 @@ export function convertInsightToRecommendation(insight: UXInsight): UXRecommenda
     target_value: 0,
     action_items: firstRec?.actionItems || insight.recommendations,
     impact: "Improve user experience and engagement",
-    prompt: firstRec?.lovablePrompt || insight.prompt,
+    prompt: firstRec?.prompt || insight.prompt,
   };
 }
 
