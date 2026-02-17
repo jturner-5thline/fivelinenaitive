@@ -350,6 +350,32 @@ export function useDealAttachments(dealId: string | null) {
     }
   };
 
+  const renameAttachment = async (attachmentId: string, newName: string) => {
+    if (!user || !newName.trim()) return false;
+
+    try {
+      const { error } = await supabase
+        .from('deal_attachments')
+        .update({ name: newName.trim() })
+        .eq('id', attachmentId);
+
+      if (error) throw error;
+
+      setAttachments(prev =>
+        prev.map(att =>
+          att.id === attachmentId ? { ...att, name: newName.trim() } : att
+        )
+      );
+
+      toast.success('File renamed');
+      return true;
+    } catch (error) {
+      console.error('Error renaming attachment:', error);
+      toast.error('Failed to rename file');
+      return false;
+    }
+  };
+
   return {
     attachments,
     isLoading,
@@ -357,6 +383,7 @@ export function useDealAttachments(dealId: string | null) {
     uploadMultipleAttachments,
     deleteAttachment,
     updateAttachmentCategory,
+    renameAttachment,
     reorderAttachments,
     refetch: fetchAttachments,
     formatFileSize,

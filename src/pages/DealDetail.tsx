@@ -821,6 +821,7 @@ export default function DealDetail() {
     uploadMultipleAttachments, 
     deleteAttachment,
     updateAttachmentCategory,
+    renameAttachment,
     reorderAttachments,
     formatFileSize 
   } = useDealAttachments(id || null);
@@ -4289,6 +4290,7 @@ export default function DealDetail() {
                                                 attachment={attachment}
                                                 formatFileSize={formatFileSize}
                                                 onDelete={deleteAttachment}
+                                                onRename={renameAttachment}
                                                 onView={(att) => att.url && window.open(att.url, '_blank')}
                                                 onDownload={(att) => {
                                                   if (att.url) {
