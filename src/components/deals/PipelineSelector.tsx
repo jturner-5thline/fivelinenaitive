@@ -75,19 +75,6 @@ export function PipelineSelector() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[200px]">
-          {(() => {
-            const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0];
-            return defaultPipeline ? (
-              <DropdownMenuItem
-                onClick={() => setActivePipelineId(defaultPipeline.id)}
-                className={activePipelineId === defaultPipeline.id ? 'bg-accent' : ''}
-              >
-                Active Pipeline
-                <span className="ml-auto text-xs text-muted-foreground">Default</span>
-              </DropdownMenuItem>
-            ) : null;
-          })()}
-          <DropdownMenuSeparator />
           {pipelines.map(pipeline => (
             <DropdownMenuItem
               key={pipeline.id}
