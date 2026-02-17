@@ -460,7 +460,7 @@ export default function DealDetail() {
     }
   }, [deal?.lenders, lenderSort, configuredStages]);
   
-  
+
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
   const [expandedLenderNotes, setExpandedLenderNotes] = useState<Set<string>>(new Set());
@@ -643,6 +643,17 @@ export default function DealDetail() {
     if (Array.isArray(savedViewPrefs?.lenderGroupFilters)) return new Set(savedViewPrefs.lenderGroupFilters as StageGroup[]);
     return new Set<StageGroup>();
   });
+  const [lenderStageFilters, setLenderStageFilters] = useState<Set<string>>(() => {
+    if (Array.isArray(savedViewPrefs?.lenderStageFilters)) return new Set(savedViewPrefs.lenderStageFilters as string[]);
+    return new Set<string>();
+  });
+  
+  // Apply individual stage filters to sorted lenders
+  const filteredSortedLenders = useMemo(() => {
+    if (lenderStageFilters.size === 0) return sortedLenders;
+    return sortedLenders.filter(l => lenderStageFilters.has(l.stage));
+  }, [sortedLenders, lenderStageFilters]);
+
   const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'materials' | 'financials' | 'agreements' | 'other'>(
     savedViewPrefs?.attachmentFilter ?? 'all'
   );
@@ -656,20 +667,25 @@ export default function DealDetail() {
     const currentFilters = Array.from(lenderGroupFilters);
     const savedFilters = savedViewPrefs?.lenderGroupFilters || 
       (savedViewPrefs?.lenderGroupFilter && savedViewPrefs.lenderGroupFilter !== 'all' ? [savedViewPrefs.lenderGroupFilter] : []);
+    const currentStageFilters = Array.from(lenderStageFilters);
+    const savedStageFilters = savedViewPrefs?.lenderStageFilters || [];
     
     const hasChanged = 
       isLendersExpanded !== (savedViewPrefs?.isLendersExpanded ?? true) ||
       currentFilters.length !== savedFilters.length ||
       currentFilters.some(f => !savedFilters.includes(f)) ||
+      currentStageFilters.length !== savedStageFilters.length ||
+      currentStageFilters.some(f => !savedStageFilters.includes(f)) ||
       attachmentFilter !== (savedViewPrefs?.attachmentFilter ?? 'all');
     
     setViewModified(hasChanged);
-  }, [isLendersExpanded, lenderGroupFilters, attachmentFilter, savedViewPrefs]);
+  }, [isLendersExpanded, lenderGroupFilters, lenderStageFilters, attachmentFilter, savedViewPrefs]);
   
   const saveViewPreferences = useCallback(() => {
     const prefs = {
       isLendersExpanded,
       lenderGroupFilters: Array.from(lenderGroupFilters),
+      lenderStageFilters: Array.from(lenderStageFilters),
       attachmentFilter,
     };
     localStorage.setItem('dealDetailViewPrefs', JSON.stringify(prefs));
@@ -3021,20 +3037,20 @@ export default function DealDetail() {
                             <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
                               <Filter className="h-3.5 w-3.5" />
                               Stage
-                              {lenderGroupFilters.size > 0 && (
+                              {(lenderGroupFilters.size > 0 || lenderStageFilters.size > 0) && (
                                 <span className="ml-1 rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-[10px] leading-none font-medium">
-                                  {lenderGroupFilters.size}
+                                  {lenderGroupFilters.size + lenderStageFilters.size}
                                 </span>
                               )}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-48 p-2" align="start">
+                          <PopoverContent className="w-56 p-2" align="start">
                             <div className="space-y-1">
                               <button
-                                onClick={() => setLenderGroupFilters(new Set())}
+                                onClick={() => { setLenderGroupFilters(new Set()); setLenderStageFilters(new Set()); }}
                                 className={cn(
                                   "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors",
-                                  lenderGroupFilters.size === 0
+                                  lenderGroupFilters.size === 0 && lenderStageFilters.size === 0
                                     ? "bg-accent text-accent-foreground"
                                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                                 )}
@@ -3042,37 +3058,82 @@ export default function DealDetail() {
                                 All
                               </button>
                               {STAGE_GROUPS.map((group) => {
+                                const groupStages = configuredStages.filter(s => s.group === group.id);
                                 const count = deal.lenders?.filter(l => {
                                   const stage = configuredStages.find(s => s.id === l.stage);
                                   return stage?.group === group.id;
                                 }).length || 0;
-                                const isActive = lenderGroupFilters.has(group.id);
+                                const isGroupActive = lenderGroupFilters.has(group.id);
                                 return (
-                                  <button
-                                    key={group.id}
-                                    onClick={() => {
-                                      setLenderGroupFilters(prev => {
-                                        const next = new Set(prev);
-                                        if (next.has(group.id)) {
-                                          next.delete(group.id);
-                                        } else {
-                                          next.add(group.id);
-                                        }
-                                        return next;
-                                      });
-                                    }}
-                                    className={cn(
-                                      "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors",
-                                      isActive
-                                        ? "bg-accent text-accent-foreground"
-                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                                    )}
-                                  >
-                                    <Checkbox checked={isActive} className="h-3.5 w-3.5 pointer-events-none" />
-                                    <span className={`h-2 w-2 rounded-full ${group.color}`} />
-                                    {group.label}
-                                    {count > 0 && <span className="ml-auto font-medium">{count}</span>}
-                                  </button>
+                                  <div key={group.id}>
+                                    <button
+                                      onClick={() => {
+                                        setLenderGroupFilters(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(group.id)) {
+                                            next.delete(group.id);
+                                          } else {
+                                            next.add(group.id);
+                                          }
+                                          return next;
+                                        });
+                                        // Clear individual stage filters for this group when toggling group
+                                        setLenderStageFilters(prev => {
+                                          const next = new Set(prev);
+                                          groupStages.forEach(s => next.delete(s.id));
+                                          return next;
+                                        });
+                                      }}
+                                      className={cn(
+                                        "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors",
+                                        isGroupActive
+                                          ? "bg-accent text-accent-foreground"
+                                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                      )}
+                                    >
+                                      <Checkbox checked={isGroupActive} className="h-3.5 w-3.5 pointer-events-none" />
+                                      <span className={`h-2 w-2 rounded-full ${group.color}`} />
+                                      {group.label}
+                                      {count > 0 && <span className="ml-auto font-medium">{count}</span>}
+                                    </button>
+                                    {/* Individual stages within this group */}
+                                    {groupStages.map(stage => {
+                                      const stageCount = deal.lenders?.filter(l => l.stage === stage.id).length || 0;
+                                      const isStageActive = lenderStageFilters.has(stage.id);
+                                      return (
+                                        <button
+                                          key={stage.id}
+                                          onClick={() => {
+                                            setLenderStageFilters(prev => {
+                                              const next = new Set(prev);
+                                              if (next.has(stage.id)) {
+                                                next.delete(stage.id);
+                                              } else {
+                                                next.add(stage.id);
+                                              }
+                                              return next;
+                                            });
+                                            // Clear group filter if selecting individual stages
+                                            setLenderGroupFilters(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(group.id);
+                                              return next;
+                                            });
+                                          }}
+                                          className={cn(
+                                            "w-full flex items-center gap-2 pl-7 pr-2 py-1 text-[11px] rounded-md transition-colors",
+                                            isStageActive
+                                              ? "bg-accent/70 text-accent-foreground"
+                                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                                          )}
+                                        >
+                                          <Checkbox checked={isStageActive} className="h-3 w-3 pointer-events-none" />
+                                          <span className="truncate">{stage.label}</span>
+                                          {stageCount > 0 && <span className="ml-auto font-medium tabular-nums">{stageCount}</span>}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                 );
                               })}
                             </div>
@@ -3121,7 +3182,7 @@ export default function DealDetail() {
                   <div className="space-y-4">
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
-                        {lenderGroupFilters.size === 0 ? (
+                        {lenderGroupFilters.size === 0 && lenderStageFilters.size === 0 ? (
                           // Flat list when "All" is selected - with drag and drop
                           <DndContext
                             sensors={sensors}
@@ -3129,10 +3190,10 @@ export default function DealDetail() {
                             onDragEnd={handleLenderDragEnd}
                           >
                             <SortableContext
-                              items={sortedLenders.map(l => l.id)}
+                              items={filteredSortedLenders.map(l => l.id)}
                               strategy={verticalListSortingStrategy}
                             >
-                              {sortedLenders.map((lender, index) => {
+                              {filteredSortedLenders.map((lender, index) => {
                                 const lenderOutstandingItems = outstandingItems.filter(
                                   item => Array.isArray(item.requestedBy) 
                                     ? item.requestedBy.includes(lender.name)
@@ -3543,7 +3604,7 @@ export default function DealDetail() {
                           STAGE_GROUPS
                             .filter(group => lenderGroupFilters.has(group.id))
                             .map(group => {
-                              const groupLenders = sortedLenders.filter(l => {
+                              const groupLenders = filteredSortedLenders.filter(l => {
                                 const stage = configuredStages.find(s => s.id === l.stage);
                                 return stage?.group === group.id;
                               }) || [];
