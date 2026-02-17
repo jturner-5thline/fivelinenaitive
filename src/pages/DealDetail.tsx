@@ -4234,53 +4234,62 @@ export default function DealDetail() {
                           <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
                           <p className="text-sm text-muted-foreground">Loading files...</p>
                         </div>
-                      ) : attachments.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <LayoutGrid className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                          <p>No files uploaded yet</p>
-                          <p className="text-sm">Drag & drop files here or click Upload</p>
-                        </div>
                       ) : (
                         <div className="space-y-4">
-                          {Object.entries(attachmentsByCategory).map(([category, files]) => {
-                            const categoryLabel = DEAL_ATTACHMENT_CATEGORIES.find(c => c.value === category)?.label || category;
+                          {DEAL_ATTACHMENT_CATEGORIES.map((cat) => {
+                            const files = attachmentsByCategory[cat.value] || [];
                             return (
-                              <Collapsible key={category} defaultOpen={true}>
-                                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors">
-                                  <div className="flex items-center gap-2">
-                                    <Folder className="h-4 w-4 text-primary" />
-                                    <span className="font-medium text-sm">{categoryLabel}</span>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {files.length}
-                                    </Badge>
-                                  </div>
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="pt-2">
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                    {files.map((attachment) => (
-                                      <SortableAttachmentTile
-                                        key={attachment.id}
-                                        attachment={attachment}
-                                        formatFileSize={formatFileSize}
-                                        onDelete={deleteAttachment}
-                                        onView={(att) => att.url && window.open(att.url, '_blank')}
-                                        onDownload={(att) => {
-                                          if (att.url) {
-                                            const link = document.createElement('a');
-                                            link.href = att.url;
-                                            link.download = att.name;
-                                            link.click();
-                                          }
-                                        }}
-                                        isSelected={selectedAttachments.has(attachment.id)}
-                                        onToggleSelect={toggleAttachmentSelection}
-                                        selectionMode={selectedAttachments.size > 0}
-                                      />
-                                    ))}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
+                              <DroppableAttachmentFolder
+                                key={cat.value}
+                                id={cat.value}
+                                isExpanded={true}
+                                onFileDrop={(category, droppedFiles) => {
+                                  handleFileDropToCategory(category as DealAttachmentCategory, droppedFiles);
+                                }}
+                              >
+                                <Collapsible defaultOpen={files.length > 0}>
+                                  <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:bg-muted/50 p-2 rounded-lg transition-colors">
+                                    <div className="flex items-center gap-2">
+                                      <Folder className="h-4 w-4 text-primary" />
+                                      <span className="font-medium text-sm">{cat.label}</span>
+                                      <Badge variant="secondary" className="text-xs">
+                                        {files.length}
+                                      </Badge>
+                                    </div>
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="pt-2">
+                                    {files.length > 0 ? (
+                                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                        {files.map((attachment) => (
+                                          <SortableAttachmentTile
+                                            key={attachment.id}
+                                            attachment={attachment}
+                                            formatFileSize={formatFileSize}
+                                            onDelete={deleteAttachment}
+                                            onView={(att) => att.url && window.open(att.url, '_blank')}
+                                            onDownload={(att) => {
+                                              if (att.url) {
+                                                const link = document.createElement('a');
+                                                link.href = att.url;
+                                                link.download = att.name;
+                                                link.click();
+                                              }
+                                            }}
+                                            isSelected={selectedAttachments.has(attachment.id)}
+                                            onToggleSelect={toggleAttachmentSelection}
+                                            selectionMode={selectedAttachments.size > 0}
+                                          />
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-center py-4 text-muted-foreground text-sm border border-dashed border-border/50 rounded-lg">
+                                        Drag files here to upload to {cat.label}
+                                      </div>
+                                    )}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </DroppableAttachmentFolder>
                             );
                           })}
                         </div>
