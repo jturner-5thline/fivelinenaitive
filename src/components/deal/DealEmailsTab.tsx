@@ -353,10 +353,10 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
                                 setChipFilter(null);
                               }}
                               className={cn(
-                                'w-full flex items-center gap-2 rounded-md text-left transition-colors px-2.5 py-1.5',
+                                'w-full flex items-center gap-2 rounded-r-md text-left transition-all duration-120 px-2.5 py-1.5 relative border-l-[3px]',
                                 isActive
-                                  ? 'bg-accent text-accent-foreground'
-                                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                                  ? 'border-l-primary bg-primary/10 text-foreground shadow-[inset_0_0_12px_-4px_hsl(var(--primary)/0.3)]'
+                                  : 'border-l-transparent text-muted-foreground hover:border-l-primary/50 hover:bg-primary/5 hover:text-foreground'
                               )}
                             >
                               {item.indicatorColor ? (
