@@ -120,7 +120,7 @@ const Badge: React.FC<{ children: React.ReactNode; variant?: 'primary' | 'outlin
   const styles: Record<string, React.CSSProperties> = {
     primary: { ...base, background: T.primary10, color: T.primary, border: `1px solid ${T.primary20}`, padding: '4px 12px' },
     outline: { ...base, background: T.cardBg, border: `1px solid ${T.cardBorder}`, color: T.fg, padding: '4px 12px' },
-    secondary: { ...base, background: T.secondaryBg, color: T.fg, padding: '4px 12px', border: 'none' },
+    secondary: { ...base, background: T.secondaryBg, color: T.fg, padding: '4px 12px', border: '1px solid transparent' },
     primaryLarge: { ...base, background: T.primary10, color: T.primary, border: `1px solid ${T.primary20}`, padding: '12px 24px', fontSize: 24 },
   };
   return <span style={styles[variant]}>{children}</span>;
