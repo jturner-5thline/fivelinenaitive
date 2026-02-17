@@ -151,6 +151,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
     setChartDialogTitle(title);
     setChartGroupBy(groupBy);
     setChartFilterFn(() => filterFn);
+    setChartViewType('pie');
     setChartDialogOpen(true);
   };
 
