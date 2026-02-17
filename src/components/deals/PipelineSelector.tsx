@@ -78,10 +78,7 @@ export function PipelineSelector() {
         <DropdownMenuContent align="start" className="w-[200px]">
           {defaultPipeline && (
             <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setActivePipelineId(defaultPipeline.id);
-              }}
+              onSelect={() => setActivePipelineId(defaultPipeline.id)}
               className={activePipelineId === defaultPipeline.id ? 'bg-accent' : ''}
             >
               Active Pipeline
