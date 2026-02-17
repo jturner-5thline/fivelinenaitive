@@ -176,15 +176,16 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
         // Skip invisible/empty sections
         if (section.offsetHeight === 0) continue;
 
+        const DPI_SCALE = 3;
         const canvas = await html2canvas(section, {
-          scale: 2,
+          scale: DPI_SCALE,
           useCORS: true,
           backgroundColor: T.bg,
           logging: false,
         });
 
-        const scaleFactor = CONTENT_W / (canvas.width / 2);
-        const sectionH = (canvas.height / 2) * scaleFactor;
+        const scaleFactor = CONTENT_W / (canvas.width / DPI_SCALE);
+        const sectionH = (canvas.height / DPI_SCALE) * scaleFactor;
 
         // If this section won't fit on the current page, start a new one
         const remaining = A4_H - MARGIN - currentY;
