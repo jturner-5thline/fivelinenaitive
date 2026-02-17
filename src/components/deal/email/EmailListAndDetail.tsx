@@ -351,12 +351,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 </Button>
               </PopoverTrigger>
               <PopoverContent side="bottom" align="end" className="w-[320px] p-0 max-h-[70vh] overflow-hidden">
-                {dealId && (
-                  <SmartEmailPanel
-                    thread={thread}
-                    dealId={dealId}
-                  />
-                )}
+                <SmartEmailPanel
+                  thread={thread}
+                  dealId={dealId || 'general'}
+                />
               </PopoverContent>
             </Popover>
             <Tooltip>
