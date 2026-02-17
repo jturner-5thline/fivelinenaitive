@@ -100,41 +100,51 @@ function getEventColorClass(event: CalendarEvent, idx: number): string {
 // ─── Mock events ─────────────────────────────────────────────
 const now = new Date();
 const todayStr = format(now, 'yyyy-MM-dd');
+const tomorrowStr = format(addDays(now, 1), 'yyyy-MM-dd');
+const day2Str = format(addDays(now, 2), 'yyyy-MM-dd');
+const day3Str = format(addDays(now, 3), 'yyyy-MM-dd');
+const day4Str = format(addDays(now, 4), 'yyyy-MM-dd');
+
 const mockEvents: CalendarEvent[] = [
   {
-    id: 'mock-1', calendar_id: 'primary', summary: 'Team Standup', description: 'Daily sync',
+    id: 'mock-1', calendar_id: 'primary', summary: 'Team Standup', description: 'Daily sync on active deals and pipeline updates.',
     location: null, start: `${todayStr}T09:00:00`, end: `${todayStr}T09:30:00`,
     all_day: false, status: 'confirmed', updated: null, created: null,
     html_link: null, hangout_link: 'https://meet.google.com/abc', conference_data: true,
     attendees: [
-      { email: 'alice@team.com', display_name: 'Alice Kim', response_status: 'accepted', organizer: false, self: false },
-      { email: 'you@team.com', display_name: 'You', response_status: 'accepted', organizer: true, self: true },
+      { email: 'alice@5thline.co', display_name: 'Alice Kim', response_status: 'accepted', organizer: false, self: false },
+      { email: 'mike@5thline.co', display_name: 'Mike Torres', response_status: 'accepted', organizer: false, self: false },
+      { email: 'you@5thline.co', display_name: 'You', response_status: 'accepted', organizer: true, self: true },
     ],
-    organizer: { email: 'you@team.com' }, color_id: null,
+    organizer: { email: 'you@5thline.co' }, color_id: null,
   },
   {
     id: 'mock-2', calendar_id: 'primary', summary: 'CloudSync Inc - Term Sheet Review',
-    description: 'Review updated term sheet with Sarah', location: '5th Line Capital Office',
+    description: 'Review updated term sheet from Western Pacific Capital. Focus on covenant package and pricing grid. Sarah to walk through markup.',
+    location: '5th Line Capital Office',
     start: `${todayStr}T10:00:00`, end: `${todayStr}T11:00:00`,
     all_day: false, status: 'confirmed', updated: null, created: null,
     html_link: null, hangout_link: null, attendees: [
-      { email: 'sarah@capitalpartners.com', display_name: 'Sarah Chen', response_status: 'accepted', organizer: false, self: false },
+      { email: 'sarah.chen@cloudsync.io', display_name: 'Sarah Chen', response_status: 'accepted', organizer: false, self: false },
+      { email: 'david.wu@westernpac.com', display_name: 'David Wu', response_status: 'accepted', organizer: false, self: false },
     ],
-    organizer: { email: 'you@team.com' }, color_id: '1',
+    organizer: { email: 'you@5thline.co' }, color_id: '1',
   },
   {
-    id: 'mock-3', calendar_id: 'primary', summary: 'Lunch with Josh (Lango)',
-    description: 'Catch up on Lango deal progress', location: 'Nobu Downtown',
+    id: 'mock-3', calendar_id: 'primary', summary: 'Lunch with Josh Rivera (Lango)',
+    description: 'Catch up on Lango Series B debt raise progress. Discuss lender feedback from Silicon Valley Bank and Hercules.',
+    location: 'Nobu Downtown',
     start: `${todayStr}T12:00:00`, end: `${todayStr}T13:00:00`,
     all_day: false, status: 'confirmed', updated: null, created: null,
     html_link: null, hangout_link: null, attendees: [
       { email: 'josh@lango.io', display_name: 'Josh Rivera', response_status: 'accepted', organizer: false, self: false },
     ],
-    organizer: { email: 'you@team.com' }, color_id: '2',
+    organizer: { email: 'you@5thline.co' }, color_id: '2',
   },
   {
-    id: 'mock-4', calendar_id: 'primary', summary: 'Pipeline Review',
-    description: 'Weekly deal pipeline review', location: null,
+    id: 'mock-4', calendar_id: 'primary', summary: 'Pipeline Review - Q1 Targets',
+    description: 'Weekly deal pipeline review. Cover new inbounds, stage progressions, and fee pipeline forecast.',
+    location: null,
     start: `${todayStr}T14:00:00`, end: `${todayStr}T15:00:00`,
     all_day: false, status: 'confirmed', updated: null, created: null,
     html_link: null, hangout_link: 'https://meet.google.com/xyz', conference_data: true,
@@ -142,48 +152,160 @@ const mockEvents: CalendarEvent[] = [
       { email: 'mike@5thline.co', display_name: 'Mike Torres', response_status: 'accepted', organizer: false, self: false },
       { email: 'nina@5thline.co', display_name: 'Nina Patel', response_status: 'accepted', organizer: false, self: false },
     ],
-    organizer: { email: 'you@team.com' }, color_id: '3',
+    organizer: { email: 'you@5thline.co' }, color_id: '3',
   },
   {
     id: 'mock-5', calendar_id: 'primary', summary: 'TechFlow Solutions - IC Prep',
-    description: 'Prepare IC materials for TechFlow', location: null,
+    description: 'Prepare Investment Committee materials for TechFlow $15M venture debt facility. Need to finalize risk assessment and fee structure.',
+    location: null,
     start: `${todayStr}T16:00:00`, end: `${todayStr}T16:45:00`,
     all_day: false, status: 'confirmed', updated: null, created: null,
     html_link: null, hangout_link: null, attendees: [],
-    organizer: { email: 'you@team.com' }, color_id: '4',
+    organizer: { email: 'you@5thline.co' }, color_id: '4',
   },
   {
     id: 'mock-6', calendar_id: 'primary', summary: 'Board Deck Due',
-    description: 'Submit Q4 board deck', location: null,
-    start: `${todayStr}T00:00:00`, end: `${addDays(now, 1).toISOString().split('T')[0]}T00:00:00`,
+    description: 'Submit Q4 board deck to partners', location: null,
+    start: `${todayStr}T00:00:00`, end: `${tomorrowStr}T00:00:00`,
     all_day: true, status: 'confirmed', updated: null, created: null,
     html_link: null, hangout_link: null, attendees: [],
-    organizer: { email: 'you@team.com' }, color_id: '5',
+    organizer: { email: 'you@5thline.co' }, color_id: '5',
   },
   {
     id: 'mock-7', calendar_id: 'primary', summary: 'NextWave Wireless - Due Diligence Call',
-    description: null, location: null,
-    start: `${format(addDays(now, 1), 'yyyy-MM-dd')}T10:00:00`,
-    end: `${format(addDays(now, 1), 'yyyy-MM-dd')}T11:30:00`,
+    description: 'Legal DD deep dive with NextWave counsel. Cover IP portfolio, material contracts, and pending litigation items.',
+    location: null,
+    start: `${tomorrowStr}T10:00:00`, end: `${tomorrowStr}T11:30:00`,
     all_day: false, status: 'confirmed', updated: null, created: null,
     html_link: null, hangout_link: 'https://meet.google.com/dd', conference_data: true,
     attendees: [
-      { email: 'legal@nextwave.io', display_name: 'Legal Team', response_status: 'tentative', organizer: false, self: false },
+      { email: 'rachel.kim@nextwavewireless.com', display_name: 'Rachel Kim', response_status: 'accepted', organizer: false, self: false },
+      { email: 'tom.harris@skadden.com', display_name: 'Tom Harris', response_status: 'tentative', organizer: false, self: false },
     ],
-    organizer: { email: 'you@team.com' }, color_id: '6',
+    organizer: { email: 'you@5thline.co' }, color_id: '6',
   },
   {
-    id: 'mock-8', calendar_id: 'primary', summary: 'Investor Update Draft',
-    description: null, location: null,
-    start: `${format(addDays(now, 2), 'yyyy-MM-dd')}T14:00:00`,
-    end: `${format(addDays(now, 2), 'yyyy-MM-dd')}T15:00:00`,
+    id: 'mock-8', calendar_id: 'primary', summary: 'Meridian Health - Intro Call',
+    description: 'Initial meeting with Meridian Health CFO. Referred by Jason Park at Piper Sandler. They are exploring a $25M credit facility for expansion into the Southeast market.',
+    location: null,
+    start: `${tomorrowStr}T14:00:00`, end: `${tomorrowStr}T15:00:00`,
     all_day: false, status: 'confirmed', updated: null, created: null,
-    html_link: null, hangout_link: null, attendees: [],
-    organizer: { email: 'you@team.com' }, color_id: '0',
+    html_link: null, hangout_link: 'https://meet.google.com/mer', conference_data: true,
+    attendees: [
+      { email: 'lisa.nguyen@meridianhealth.com', display_name: 'Lisa Nguyen', response_status: 'accepted', organizer: false, self: false },
+      { email: 'jason.park@pipersandler.com', display_name: 'Jason Park', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '0',
+  },
+  {
+    id: 'mock-9', calendar_id: 'primary', summary: 'Apex Logistics - Lender Presentation',
+    description: 'Present Apex Logistics to shortlisted lenders. $40M ABL facility. Key metrics: $120M rev, 15% EBITDA margins, 3-year contracts with top 10 customers.',
+    location: 'Conference Room B',
+    start: `${tomorrowStr}T16:00:00`, end: `${tomorrowStr}T17:00:00`,
+    all_day: false, status: 'confirmed', updated: null, created: null,
+    html_link: null, hangout_link: null, attendees: [
+      { email: 'carlos.mendez@apexlogistics.com', display_name: 'Carlos Mendez', response_status: 'accepted', organizer: false, self: false },
+      { email: 'nina@5thline.co', display_name: 'Nina Patel', response_status: 'accepted', organizer: false, self: false },
+      { email: 'mark.thompson@pnc.com', display_name: 'Mark Thompson', response_status: 'tentative', organizer: false, self: false },
+      { email: 'amy.zhang@bofa.com', display_name: 'Amy Zhang', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '1',
+  },
+  {
+    id: 'mock-10', calendar_id: 'primary', summary: 'GreenBridge Energy - Fee Negotiation',
+    description: 'Discuss engagement terms with GreenBridge. They have competing proposals from Houlihan and Lincoln. Need to differentiate on sector expertise.',
+    location: null,
+    start: `${day2Str}T09:30:00`, end: `${day2Str}T10:30:00`,
+    all_day: false, status: 'confirmed', updated: null, created: null,
+    html_link: null, hangout_link: 'https://meet.google.com/gb', conference_data: true,
+    attendees: [
+      { email: 'ryan.oconnor@greenbridge.energy', display_name: 'Ryan O\'Connor', response_status: 'accepted', organizer: false, self: false },
+      { email: 'priya.sharma@greenbridge.energy', display_name: 'Priya Sharma', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '2',
+  },
+  {
+    id: 'mock-11', calendar_id: 'primary', summary: 'Vantage SaaS - Credit Agreement Review',
+    description: 'Walk through revised credit agreement with Vantage and their counsel. Key open items: financial covenants, reporting requirements, and change of control provisions.',
+    location: null,
+    start: `${day2Str}T13:00:00`, end: `${day2Str}T14:30:00`,
+    all_day: false, status: 'confirmed', updated: null, created: null,
+    html_link: null, hangout_link: 'https://meet.google.com/vs', conference_data: true,
+    attendees: [
+      { email: 'derek.james@vantagesaas.com', display_name: 'Derek James', response_status: 'accepted', organizer: false, self: false },
+      { email: 'maria.garcia@goodwinprocter.com', display_name: 'Maria Garcia', response_status: 'accepted', organizer: false, self: false },
+      { email: 'alice@5thline.co', display_name: 'Alice Kim', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '3',
+  },
+  {
+    id: 'mock-12', calendar_id: 'primary', summary: 'Investor Update Draft Review',
+    description: 'Review quarterly investor update before distribution. Cover fund performance, deal highlights, and market outlook.',
+    location: null,
+    start: `${day2Str}T15:30:00`, end: `${day2Str}T16:30:00`,
+    all_day: false, status: 'confirmed', updated: null, created: null,
+    html_link: null, hangout_link: null, attendees: [
+      { email: 'mike@5thline.co', display_name: 'Mike Torres', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '0',
+  },
+  {
+    id: 'mock-13', calendar_id: 'primary', summary: 'Pinnacle Manufacturing - Site Visit Debrief',
+    description: 'Debrief from last week\'s site visit to Pinnacle\'s Detroit facility. Discuss operational findings and impact on underwriting.',
+    location: null,
+    start: `${day3Str}T10:00:00`, end: `${day3Str}T10:45:00`,
+    all_day: false, status: 'confirmed', updated: null, created: null,
+    html_link: null, hangout_link: 'https://meet.google.com/pm', conference_data: true,
+    attendees: [
+      { email: 'steve.walker@pinnaclemfg.com', display_name: 'Steve Walker', response_status: 'accepted', organizer: false, self: false },
+      { email: 'nina@5thline.co', display_name: 'Nina Patel', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '4',
+  },
+  {
+    id: 'mock-14', calendar_id: 'primary', summary: 'BlueStar Fintech - Initial Screening',
+    description: 'Screening call with BlueStar. $10M revenue run-rate, 140% NRR, seeking $8M venture debt. Intro came through our Stanford GSB network.',
+    location: null,
+    start: `${day3Str}T14:00:00`, end: `${day3Str}T14:45:00`,
+    all_day: false, status: 'confirmed', updated: null, created: null,
+    html_link: null, hangout_link: 'https://meet.google.com/bf', conference_data: true,
+    attendees: [
+      { email: 'kevin.lee@bluestarfintech.com', display_name: 'Kevin Lee', response_status: 'accepted', organizer: false, self: false },
+      { email: 'amanda.ross@bluestarfintech.com', display_name: 'Amanda Ross', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '5',
+  },
+  {
+    id: 'mock-15', calendar_id: 'primary', summary: 'Monthly Lender Roundtable',
+    description: 'Monthly relationship meeting with key lending partners. Review deal flow, market trends, and upcoming mandate pipeline.',
+    location: 'The Capital Grille, Midtown',
+    start: `${day4Str}T12:00:00`, end: `${day4Str}T13:30:00`,
+    all_day: false, status: 'confirmed', updated: null, created: null,
+    html_link: null, hangout_link: null, attendees: [
+      { email: 'jennifer.walsh@jpmorgan.com', display_name: 'Jennifer Walsh', response_status: 'accepted', organizer: false, self: false },
+      { email: 'robert.chen@goldmansachs.com', display_name: 'Robert Chen', response_status: 'tentative', organizer: false, self: false },
+      { email: 'sandra.lee@morganstanley.com', display_name: 'Sandra Lee', response_status: 'accepted', organizer: false, self: false },
+      { email: 'mike@5thline.co', display_name: 'Mike Torres', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '6',
+  },
+  {
+    id: 'mock-16', calendar_id: 'primary', summary: 'OceanView Hotels - Closing Call',
+    description: 'Final closing call for OceanView $30M term loan. All docs signed, confirming funding date and wire instructions.',
+    location: null,
+    start: `${day4Str}T15:00:00`, end: `${day4Str}T15:30:00`,
+    all_day: false, status: 'confirmed', updated: null, created: null,
+    html_link: null, hangout_link: 'https://meet.google.com/ov', conference_data: true,
+    attendees: [
+      { email: 'patricia.martinez@oceanviewhotels.com', display_name: 'Patricia Martinez', response_status: 'accepted', organizer: false, self: false },
+      { email: 'daniel.brown@triplepoint.com', display_name: 'Daniel Brown', response_status: 'accepted', organizer: false, self: false },
+      { email: 'alice@5thline.co', display_name: 'Alice Kim', response_status: 'accepted', organizer: false, self: false },
+    ],
+    organizer: { email: 'you@5thline.co' }, color_id: '1',
   },
 ];
 
-// ─── Event Detail Popover ────────────────────────────────────
+// ─── Event Detail Popover with AI Research ──────────────────
 function EventDetailPopover({
   event,
   colorClass,
@@ -197,65 +319,158 @@ function EventDetailPopover({
   const end = parseISO(event.end);
   const hasVideo = !!(event.hangout_link || event.conference_data);
   const attendees = event.attendees?.filter(a => !a.self) || [];
+  const [showResearch, setShowResearch] = useState(false);
+  const [research, setResearch] = useState<string | null>(null);
+  const [isResearching, setIsResearching] = useState(false);
+
+  const runResearch = async () => {
+    setShowResearch(true);
+    setIsResearching(true);
+    setResearch(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-event-research', {
+        body: {
+          event: {
+            summary: event.summary,
+            description: event.description,
+            location: event.location,
+            start: event.start,
+            end: event.end,
+            attendees: event.attendees?.map(a => ({
+              name: a.display_name,
+              email: a.email,
+              status: a.response_status,
+              is_organizer: a.organizer,
+            })),
+            has_video: hasVideo,
+          },
+        },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+      } else {
+        setResearch(data.result);
+      }
+    } catch (err: any) {
+      console.error('Research error:', err);
+      toast.error('Failed to generate research briefing');
+    } finally {
+      setIsResearching(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[60]" onClick={onClose}>
       <div
-        className="absolute z-[61] bg-card border border-border rounded-xl shadow-2xl w-[340px] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
+        className={cn(
+          "absolute z-[61] bg-card border border-border rounded-xl shadow-2xl left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden transition-all",
+          showResearch ? "w-[680px] max-h-[80vh]" : "w-[340px]"
+        )}
         onClick={e => e.stopPropagation()}
       >
         <div className={cn('h-2 w-full', colorClass)} />
-        <div className="p-4 space-y-3">
-          <div className="flex items-start justify-between">
-            <h3 className="text-base font-semibold text-foreground pr-6">{event.summary}</h3>
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 -mt-1 -mr-1" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-3.5 w-3.5 shrink-0" />
-            {event.all_day ? (
-              <span>All day · {format(start, 'EEEE, MMMM d')}</span>
-            ) : (
-              <span>{format(start, 'EEEE, MMMM d')} · {format(start, 'h:mm a')} – {format(end, 'h:mm a')}</span>
-            )}
-          </div>
-          {event.location && (
+        <div className="flex">
+          {/* Left: Event Details */}
+          <div className={cn("p-4 space-y-3", showResearch ? "w-[300px] border-r shrink-0" : "w-full")}>
+            <div className="flex items-start justify-between">
+              <h3 className="text-base font-semibold text-foreground pr-6">{event.summary}</h3>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 -mt-1 -mr-1" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span>{event.location}</span>
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              {event.all_day ? (
+                <span>All day · {format(start, 'EEEE, MMMM d')}</span>
+              ) : (
+                <span>{format(start, 'EEEE, MMMM d')} · {format(start, 'h:mm a')} – {format(end, 'h:mm a')}</span>
+              )}
             </div>
-          )}
-          {hasVideo && (
-            <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => window.open(event.hangout_link || '', '_blank')}>
-              <Video className="h-3.5 w-3.5" />
-              Join video call
-              <ExternalLink className="h-3 w-3 ml-auto" />
-            </Button>
-          )}
-          {attendees.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Users className="h-3 w-3" />{attendees.length} guest{attendees.length > 1 ? 's' : ''}
-              </p>
-              <div className="space-y-1 max-h-[120px] overflow-y-auto">
-                {attendees.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs text-foreground/80">
-                    <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium shrink-0">
-                      {(a.display_name || a.email).charAt(0).toUpperCase()}
-                    </div>
-                    <span className="truncate">{a.display_name || a.email}</span>
-                    {a.response_status === 'tentative' && <Badge variant="outline" className="text-[9px] h-4 px-1">Maybe</Badge>}
-                  </div>
-                ))}
+            {event.location && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span>{event.location}</span>
               </div>
+            )}
+            {hasVideo && (
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => window.open(event.hangout_link || '', '_blank')}>
+                <Video className="h-3.5 w-3.5" />
+                Join video call
+                <ExternalLink className="h-3 w-3 ml-auto" />
+              </Button>
+            )}
+            {attendees.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Users className="h-3 w-3" />{attendees.length} guest{attendees.length > 1 ? 's' : ''}
+                </p>
+                <div className="space-y-1 max-h-[120px] overflow-y-auto">
+                  {attendees.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-foreground/80">
+                      <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium shrink-0">
+                        {(a.display_name || a.email).charAt(0).toUpperCase()}
+                      </div>
+                      <span className="truncate">{a.display_name || a.email}</span>
+                      {a.response_status === 'tentative' && <Badge variant="outline" className="text-[9px] h-4 px-1">Maybe</Badge>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {event.description && (
+              <>
+                <Separator />
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{event.description}</p>
+              </>
+            )}
+
+            {/* AI Research Button */}
+            <Separator />
+            <Button
+              variant={showResearch ? "secondary" : "default"}
+              size="sm"
+              className="w-full gap-2 text-xs"
+              onClick={runResearch}
+              disabled={isResearching}
+            >
+              {isResearching ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Brain className="h-3.5 w-3.5" />
+              )}
+              {isResearching ? 'Researching...' : showResearch ? 'Refresh Research' : 'AI Meeting Intel'}
+            </Button>
+          </div>
+
+          {/* Right: AI Research Panel */}
+          {showResearch && (
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="p-3 border-b bg-muted/30 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">Meeting Intelligence</span>
+              </div>
+              <ScrollArea className="h-[calc(80vh-90px)]">
+                <div className="p-4">
+                  {isResearching ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">Researching companies & attendees...</p>
+                      <p className="text-xs text-muted-foreground/60">Analyzing LinkedIn, websites, and deal context</p>
+                    </div>
+                  ) : research ? (
+                    <div className="prose prose-sm max-w-none text-foreground/90 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1 [&_ul]:my-1 [&_ul]:pl-4 [&_li]:my-0.5 [&_li]:text-xs [&_p]:my-1 [&_p]:text-xs [&_strong]:text-foreground [&_hr]:my-3">
+                      <ReactMarkdown>{research}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                      <Brain className="h-8 w-8 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">Click "AI Meeting Intel" to research</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
             </div>
-          )}
-          {event.description && (
-            <>
-              <Separator />
-              <p className="text-xs text-muted-foreground whitespace-pre-wrap">{event.description}</p>
-            </>
           )}
         </div>
       </div>

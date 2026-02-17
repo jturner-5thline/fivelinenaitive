@@ -137,3 +137,6 @@ verify_jwt = false
 
 [functions.calendar-ai]
 verify_jwt = false
+
+[functions.calendar-event-research]
+verify_jwt = false
