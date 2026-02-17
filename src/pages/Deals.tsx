@@ -83,11 +83,14 @@ export default function Dashboard() {
     toggleSort,
   } = useDeals();
 
-  // Filter deals by active pipeline
+  // Filter deals by active pipeline (include unassigned deals in the default pipeline)
+  const activePipelineIsDefault = activePipelineId && pipelines.find(p => p.id === activePipelineId)?.isDefault;
   const pipelineFilteredDeals = useMemo(() => {
     if (!activePipelineId) return allFilteredDeals;
-    return allFilteredDeals.filter(deal => deal.pipelineId === activePipelineId);
-  }, [allFilteredDeals, activePipelineId]);
+    return allFilteredDeals.filter(deal => 
+      deal.pipelineId === activePipelineId || (!deal.pipelineId && activePipelineIsDefault)
+    );
+  }, [allFilteredDeals, activePipelineId, activePipelineIsDefault]);
 
   // Get notification counts for filtering
   const allDealIds = useMemo(() => pipelineFilteredDeals.map(d => d.id), [pipelineFilteredDeals]);
