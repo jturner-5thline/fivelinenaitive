@@ -170,13 +170,23 @@ export function usePipelines() {
   }, [companyId]);
 
   const deletePipeline = useCallback(async (id: string) => {
+    if (!companyId) return;
     try {
+      // Find the default pipeline to move deals to
+      const defaultPipeline = pipelines.find(p => p.isDefault && p.id !== id) || pipelines.find(p => p.id !== id);
+      if (defaultPipeline) {
+        // Move all deals from deleted pipeline to default pipeline
+        await supabase
+          .from('deals')
+          .update({ pipeline_id: defaultPipeline.id })
+          .eq('pipeline_id', id);
+      }
       await supabase.from('deal_pipelines').delete().eq('id', id);
       setPipelines(prev => prev.filter(p => p.id !== id));
     } catch (err) {
       console.error('Error deleting pipeline:', err);
     }
-  }, []);
+  }, [companyId, pipelines]);
 
   return {
     pipelines,
