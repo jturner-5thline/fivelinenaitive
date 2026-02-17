@@ -4,11 +4,15 @@ import { toast } from 'sonner';
 
 export type SmartEmailAction = 
   | 'draft_reply' 
+  | 'auto_draft'
   | 'summarize_thread' 
   | 'extract_data' 
   | 'detect_signals' 
   | 'suggest_link' 
-  | 'follow_up_check';
+  | 'follow_up_check'
+  | 'email_to_activity'
+  | 'parse_term_sheet'
+  | 'follow_up_sequence';
 
 interface UseSmartEmailOptions {
   dealId: string;
