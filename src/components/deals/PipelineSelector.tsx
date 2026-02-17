@@ -78,7 +78,10 @@ export function PipelineSelector() {
         <DropdownMenuContent align="start" className="w-[200px]">
           {defaultPipeline && (
             <DropdownMenuItem
-              onSelect={() => setActivePipelineId(defaultPipeline.id)}
+              onClick={() => {
+                setActivePipelineId(defaultPipeline.id);
+                toast.success(`Switched to Active Pipeline`);
+              }}
               className={activePipelineId === defaultPipeline.id ? 'bg-accent' : ''}
             >
               Active Pipeline
