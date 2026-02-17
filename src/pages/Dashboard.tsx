@@ -147,7 +147,7 @@ export default function Dashboard() {
               </div>
             </Card>
             <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-              <DialogContent className="max-w-6xl w-[95vw] h-[85vh] p-0 overflow-hidden">
+              <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
                 <DealEmailsTab dealId="" />
               </DialogContent>
             </Dialog>
