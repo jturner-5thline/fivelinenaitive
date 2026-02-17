@@ -78,9 +78,8 @@ export function PipelineSelector() {
         <DropdownMenuContent align="start" className="w-[200px]">
           {defaultPipeline && (
             <DropdownMenuItem
-              onClick={() => {
+              onSelect={() => {
                 setActivePipelineId(defaultPipeline.id);
-                toast.success(`Switched to Active Pipeline`);
               }}
               className={activePipelineId === defaultPipeline.id ? 'bg-accent' : ''}
             >
@@ -92,7 +91,7 @@ export function PipelineSelector() {
           {pipelines.map(pipeline => (
             <DropdownMenuItem
               key={pipeline.id}
-              onClick={() => setActivePipelineId(pipeline.id)}
+              onSelect={() => setActivePipelineId(pipeline.id)}
               className={activePipelineId === pipeline.id ? 'bg-accent' : ''}
             >
               <span className="truncate">{pipeline.name}</span>
@@ -102,7 +101,7 @@ export function PipelineSelector() {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => { setNewName(''); setCreateOpen(true); }}>
+          <DropdownMenuItem onSelect={() => { setNewName(''); setCreateOpen(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             New Pipeline
           </DropdownMenuItem>
