@@ -3998,6 +3998,17 @@ export default function DealDetail() {
                 <TabsContent value="data-room" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
                   <Card 
                     className="transition-all duration-200 relative"
+                    onDragOver={(e) => {
+                      if (e.dataTransfer?.types?.includes('Files')) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'copy';
+                      }
+                    }}
+                    onDrop={(e) => {
+                      if (e.dataTransfer?.types?.includes('Files')) {
+                        e.preventDefault();
+                      }
+                    }}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">

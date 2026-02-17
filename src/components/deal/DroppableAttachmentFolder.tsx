@@ -15,7 +15,7 @@ export function DroppableAttachmentFolder({
   isExpanded,
   onFileDrop,
 }: DroppableAttachmentFolderProps) {
-  const { isOver, setNodeRef } = useDroppable({
+  const { isOver, setNodeRef: setDroppableRef } = useDroppable({
     id,
     data: {
       type: 'category',
@@ -25,9 +25,17 @@ export function DroppableAttachmentFolder({
 
   const [isNativeDragOver, setIsNativeDragOver] = useState(false);
   const dragCounterRef = useRef(0);
+  const nativeRef = useRef<HTMLDivElement>(null);
+
+  // Combine refs: one for dnd-kit, one for native events
+  const setRefs = useCallback((node: HTMLDivElement | null) => {
+    setDroppableRef(node);
+    (nativeRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+  }, [setDroppableRef]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
-    if (!e.dataTransfer.types.includes('Files')) return;
+    // Only handle native file drags (from the OS), not dnd-kit internal drags
+    if (!e.dataTransfer?.types?.includes('Files')) return;
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current++;
@@ -35,6 +43,7 @@ export function DroppableAttachmentFolder({
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes('Files')) return;
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current--;
@@ -45,9 +54,12 @@ export function DroppableAttachmentFolder({
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (!e.dataTransfer.types.includes('Files')) return;
+    // CRITICAL: Must always preventDefault on dragover for Files to allow drop
+    if (!e.dataTransfer?.types?.includes('Files')) return;
     e.preventDefault();
     e.stopPropagation();
+    // Signal to the browser that we accept a "copy" drop
+    e.dataTransfer.dropEffect = 'copy';
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -66,15 +78,15 @@ export function DroppableAttachmentFolder({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
       className={cn(
         'rounded-lg transition-all duration-300 ease-out',
         highlighted && 'ring-2 ring-primary ring-offset-2 ring-offset-background bg-primary/5 scale-[1.02]'
       )}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
+      onDragEnterCapture={handleDragEnter}
+      onDragLeaveCapture={handleDragLeave}
+      onDragOverCapture={handleDragOver}
+      onDropCapture={handleDrop}
     >
       {children}
       {highlighted && !isExpanded && (
