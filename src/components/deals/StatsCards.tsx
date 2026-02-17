@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { TrendingUp, Briefcase, FileSearch, DollarSign } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Deal } from '@/types/deal';
 import {
@@ -38,16 +37,11 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
   const { formatCurrencyValue } = usePreferences();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<'activeDeals' | 'activeDealValue' | null>(null);
-  const [chartMetric, setChartMetric] = useState<'count' | 'value' | 'fee'>('count');
 
   const activeDeals = deals.filter(d => d.status !== 'archived');
 
-  const getChartData = () => {
-    if (!dialogType) return [];
-
-    // Group by stage
+  const getStageGroups = () => {
     const stageGroups: Record<string, { count: number; value: number; fee: number }> = {};
-    
     activeDeals.forEach(deal => {
       const stage = deal.stage || 'Unknown';
       if (!stageGroups[stage]) {
@@ -57,10 +51,15 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
       stageGroups[stage].value += deal.value || 0;
       stageGroups[stage].fee += deal.totalFee || 0;
     });
+    return stageGroups;
+  };
 
+  const getChartDataForMetric = (metric: 'count' | 'value' | 'fee') => {
+    if (!dialogType) return [];
+    const stageGroups = getStageGroups();
     return Object.entries(stageGroups).map(([name, data]) => ({
       name: formatStageName(name),
-      value: data[chartMetric],
+      value: data[metric],
     }));
   };
 
@@ -73,11 +72,8 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
 
   const handleCardClick = (type: 'activeDeals' | 'activeDealValue') => {
     setDialogType(type);
-    setChartMetric(type === 'activeDeals' ? 'count' : 'value');
     setDialogOpen(true);
   };
-
-  const chartData = getChartData();
 
   const statItems = [
     {
@@ -118,14 +114,14 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
     },
   ];
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltipForMetric = ({ metric, active, payload }: { metric: 'count' | 'value' | 'fee'; active?: boolean; payload?: any[] }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
         <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium text-foreground">{data.name}</p>
           <p className="text-muted-foreground">
-            {chartMetric === 'count' 
+            {metric === 'count'
               ? `${data.value} deal${data.value !== 1 ? 's' : ''}`
               : formatCurrencyValue(data.value)
             }
@@ -136,9 +132,15 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
     return null;
   };
 
-  const renderCustomLabel = ({ name, percent }: any) => {
+  const renderCustomLabel = ({ percent }: any) => {
     return `${(percent * 100).toFixed(0)}%`;
   };
+
+  const chartSections: { metric: 'count' | 'value' | 'fee'; title: string }[] = [
+    { metric: 'count', title: 'Deal Count by Stage' },
+    { metric: 'value', title: 'Deal Size by Stage' },
+    { metric: 'fee', title: 'Closing Fee by Stage' },
+  ];
 
   return (
     <>
@@ -163,60 +165,47 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Active Deals by Stage</DialogTitle>
           </DialogHeader>
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={chartMetric === 'count' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChartMetric('count')}
-            >
-              Deal Count
-            </Button>
-            <Button
-              variant={chartMetric === 'value' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChartMetric('value')}
-            >
-              Deal Size
-            </Button>
-            <Button
-              variant={chartMetric === 'fee' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChartMetric('fee')}
-            >
-              Closing Fee
-            </Button>
-          </div>
-          <div className="h-[300px] w-full">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomLabel}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                No data available
-              </div>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {chartSections.map(({ metric, title }) => {
+              const data = getChartDataForMetric(metric);
+              return (
+                <div key={metric}>
+                  <p className="text-sm font-medium text-muted-foreground mb-1 text-center">{title}</p>
+                  <div className="h-[280px] w-full">
+                    {data.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={data}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={renderCustomLabel}
+                            outerRadius={70}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {data.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltipForMetric metric={metric} />} />
+                          <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        No data available
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
