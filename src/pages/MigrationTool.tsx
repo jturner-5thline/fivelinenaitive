@@ -69,7 +69,7 @@ export default function MigrationTool() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `lovable-export-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `naitive-export-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -80,7 +80,7 @@ export default function MigrationTool() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">Database Migration Tool</h1>
           <p className="text-muted-foreground mt-2">
-            Export data from Lovable Cloud and import to your Supabase project
+            Export data from naitive and import to your database
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export default function MigrationTool() {
               Step 1: Export Data
             </CardTitle>
             <CardDescription>
-              Export all your data from Lovable Cloud
+              Export all your data from naitive
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">

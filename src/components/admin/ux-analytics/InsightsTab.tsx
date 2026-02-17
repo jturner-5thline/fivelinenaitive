@@ -129,7 +129,7 @@ function InsightCard({ insight }: InsightCardProps) {
               ) : (
                 <Copy className="h-4 w-4 mr-2" />
               )}
-              Copy Lovable Prompt
+              Copy Prompt
             </Button>
           )}
         </div>

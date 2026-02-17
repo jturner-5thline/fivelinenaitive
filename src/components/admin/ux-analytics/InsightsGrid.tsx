@@ -41,7 +41,7 @@ export function InsightsGrid({ insights }: InsightsGridProps) {
   const handleCopyPrompt = async (prompt: string) => {
     await navigator.clipboard.writeText(prompt);
     setCopied(true);
-    toast({ title: "Prompt copied!", description: "Paste it into Lovable to implement the fix." });
+    toast({ title: "Prompt copied!", description: "Paste it in to implement the fix." });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -106,7 +106,7 @@ export function InsightsGrid({ insights }: InsightsGridProps) {
               ) : (
                 <>
                   <Copy className="mr-2 h-4 w-4" />
-                  Copy Lovable Prompt
+                  Copy Prompt
                 </>
               )}
             </Button>

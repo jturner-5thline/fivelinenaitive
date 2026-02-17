@@ -68,7 +68,7 @@ export function DevicesTab() {
   const handleCopyPrompt = async (id: string, prompt: string) => {
     await navigator.clipboard.writeText(prompt);
     setCopiedId(id);
-    toast({ title: "Prompt copied!", description: "Paste it into Lovable to implement the fix." });
+    toast({ title: "Prompt copied!", description: "Paste it in to implement the fix." });
     setTimeout(() => setCopiedId(null), 2000);
   };
 
