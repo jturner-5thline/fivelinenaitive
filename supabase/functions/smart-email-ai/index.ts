@@ -32,6 +32,15 @@ serve(async (req) => {
 
     const { action, dealId, emailData, threadData } = await req.json();
 
+    // Validate input lengths
+    const threadStr = JSON.stringify(threadData || {});
+    if (threadStr.length > 50000) {
+      return new Response(JSON.stringify({ error: "Thread data too large" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Fetch deal context
     let dealContext = "";
     if (dealId) {
@@ -89,6 +98,21 @@ ${e.body_preview}
 ---`).join("\n\n")}
 
 Draft a professional reply to the most recent email in this thread. Consider the deal context when relevant.`;
+        break;
+      }
+
+      case "auto_draft": {
+        systemPrompt = `You are an expert debt advisory professional at a capital advisory firm. You proactively draft reply emails when a response is needed. Your drafts should be concise, professional, and address any questions or requests in the latest email. Consider the full deal context for accuracy. Output ONLY the email body text (no subject, no "From:", etc.). Keep replies under 150 words unless the complexity requires more.`;
+        userPrompt = `${dealContext}
+
+EMAIL THREAD: "${threadData?.subject}"
+${threadData?.emails?.map((e: any) => `From: ${e.from_name} <${e.from_email}>
+Date: ${e.received_at}
+---
+${e.body_preview}
+---`).join("\n\n")}
+
+This email requires a response. Draft a professional, context-aware reply addressing any questions, requests, or action items in the latest message.`;
         break;
       }
 
@@ -160,6 +184,47 @@ Does this thread need a follow-up? If so, suggest what to say.`;
         break;
       }
 
+      case "email_to_activity": {
+        systemPrompt = `You are a deal activity logger. Given an email thread, generate a concise activity log entry that captures the key event or update. Return a JSON object: { "activity_type": "email_exchange|lender_update|document_received|meeting_scheduled|action_required|status_update", "summary": "...", "key_details": ["..."], "suggested_tags": ["..."] }. The summary should be a single sentence (max 100 chars) suitable for an activity feed. key_details should be 2-4 bullet points of important information.`;
+        userPrompt = `${dealContext}
+
+EMAIL THREAD: "${threadData?.subject}"
+Participants: ${threadData?.emails?.map((e: any) => e.from_name).filter((n: string, i: number, a: string[]) => a.indexOf(n) === i).join(", ")}
+${threadData?.emails?.map((e: any) => `[${e.from_name} - ${e.received_at}] ${e.body_preview}`).join("\n\n")}
+
+Generate a concise activity log entry for this email thread.`;
+        break;
+      }
+
+      case "parse_term_sheet": {
+        systemPrompt = `You are a term sheet analysis expert in commercial lending and debt advisory. Extract and structure key terms from a term sheet email or attachment description. Return a JSON object: { "deal_terms": { "facility_type": "...", "amount": "...", "rate": "...", "spread": "...", "tenor": "...", "amortization": "...", "collateral": "...", "covenants": ["..."], "fees": [{ "type": "...", "amount": "..." }], "conditions_precedent": ["..."], "key_dates": [{ "description": "...", "date": "..." }] }, "comparison_notes": "...", "risk_flags": ["..."], "negotiation_points": ["..."] }. Be thorough but only include fields where data is clearly present. comparison_notes should note how these terms compare to market norms if identifiable.`;
+        userPrompt = `${dealContext}
+
+TERM SHEET EMAIL:
+From: ${emailData?.from_name} <${emailData?.from_email}>
+Subject: ${emailData?.subject || threadData?.subject}
+Body: ${emailData?.body_preview}
+
+${threadData?.emails ? `FULL THREAD:\n${threadData.emails.map((e: any) => `[${e.from_name}] ${e.body_preview}`).join("\n\n")}` : ""}
+
+Parse and extract all term sheet data from this email/thread. Identify any risk flags and potential negotiation points.`;
+        break;
+      }
+
+      case "follow_up_sequence": {
+        systemPrompt = `You are a deal follow-up strategist. Analyze an email thread and suggest a follow-up sequence strategy. Return a JSON object: { "status": "awaiting_response|ball_in_our_court|mutual_action|stale", "days_silent": number, "recommended_sequence": [{ "day": number, "action": "email|call|internal_note", "tone": "gentle|firm|urgent", "draft": "..." }], "escalation_trigger": "...", "context_notes": "..." }. day is the number of days from now. Limit to 3 follow-ups max. Each draft should be under 80 words.`;
+        userPrompt = `${dealContext}
+
+EMAIL THREAD: "${threadData?.subject}"
+Latest message from: ${threadData?.latestEmail?.from_name}
+Latest message date: ${threadData?.latestEmail?.received_at}
+Thread history:
+${threadData?.emails?.map((e: any) => `[${e.from_name} - ${e.received_at}] ${e.snippet}`).join("\n")}
+
+Analyze this thread and create a follow-up sequence plan. Consider the deal stage, lender relationships, and urgency.`;
+        break;
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Unknown action" }), {
           status: 400,
@@ -179,7 +244,7 @@ Does this thread need a follow-up? If so, suggest what to say.`;
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: action === "draft_reply" ? 0.7 : 0.3,
+        temperature: (action === "draft_reply" || action === "auto_draft") ? 0.7 : 0.3,
       }),
     });
 
@@ -206,13 +271,34 @@ Does this thread need a follow-up? If so, suggest what to say.`;
 
     // Try to parse as JSON for structured responses
     let parsed: any = content;
-    if (action !== "draft_reply") {
+    if (action !== "draft_reply" && action !== "auto_draft") {
       try {
         // Strip markdown code fences if present
         const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         parsed = JSON.parse(cleaned);
       } catch {
         parsed = { raw: content };
+      }
+    }
+
+    // For email_to_activity, also log the activity to the database if dealId is provided
+    if (action === "email_to_activity" && dealId && parsed?.summary) {
+      try {
+        await supabase.from("activity_logs").insert({
+          deal_id: dealId,
+          activity_type: parsed.activity_type || "email_exchange",
+          description: parsed.summary,
+          user_id: user.id,
+          metadata: {
+            source: "smart_email",
+            thread_subject: threadData?.subject,
+            key_details: parsed.key_details,
+            suggested_tags: parsed.suggested_tags,
+          },
+        });
+      } catch (logErr) {
+        console.error("Failed to log activity:", logErr);
+        // Don't fail the whole request
       }
     }
 
