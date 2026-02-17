@@ -71,7 +71,7 @@ export function PipelineSelector() {
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2 max-w-[200px]">
             <Layers className="h-4 w-4 shrink-0" />
-            <span className="truncate">{activePipeline?.name || 'Active Pipeline'}</span>
+            <span className="truncate">{activePipeline?.isDefault ? 'Active Pipeline' : activePipeline?.name || 'Active Pipeline'}</span>
             <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
