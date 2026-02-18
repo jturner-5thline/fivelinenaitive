@@ -114,7 +114,7 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
               </Tooltip>
             </TooltipProvider>
           )}
-          <span className="truncate max-w-[200px] bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
+          <span className="truncate max-w-[200px] text-foreground font-semibold">
             {deal.company}
           </span>
           {deal.migratedFromPersonal && (
@@ -134,7 +134,7 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
     ),
     value: (
       <TableCell key="value">
-        <span className="font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
+        <span className="font-semibold text-foreground">
           {formatCurrencyValue(deal.value)}
         </span>
       </TableCell>
