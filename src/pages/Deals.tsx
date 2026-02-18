@@ -269,10 +269,21 @@ export default function Dashboard() {
                 <Button
                   variant={showMilestones ? 'secondary' : 'outline'}
                   size="sm"
-                  className="gap-2 h-9 shrink-0"
+                  className="gap-2 h-9 shrink-0 border-transparent bg-gradient-to-r from-[#7C3AED]/20 to-[#38BDF8]/20 hover:from-[#7C3AED]/30 hover:to-[#38BDF8]/30 transition-all"
+                  style={{ border: '1px solid transparent', backgroundClip: 'padding-box', boxShadow: '0 0 0 1px #7C3AED66, inset 0 0 0 0 transparent' }}
                   onClick={() => setShowMilestones(!showMilestones)}
                 >
-                  <Target className="h-4 w-4" />
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="url(#milestones-icon-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <defs>
+                      <linearGradient id="milestones-icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#7C3AED" />
+                        <stop offset="100%" stopColor="#38BDF8" />
+                      </linearGradient>
+                    </defs>
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
                   Milestones
                 </Button>
               </div>
