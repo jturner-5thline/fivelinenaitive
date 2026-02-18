@@ -118,17 +118,17 @@ export default function Dashboard() {
         <meta name="description" content="Your personal dashboard for managing deals and workflows." />
       </Helmet>
 
-      <div className="bg-transparent flex flex-col items-center px-4 py-8">
-        <div className="w-full max-w-6xl space-y-6">
+      <div className="bg-transparent flex flex-col items-center px-3 sm:px-4 py-6 sm:py-8">
+        <div className="w-full max-w-6xl space-y-4 sm:space-y-6">
           {/* Hero: Greeting + AI Input + Quick Actions */}
           <div className="text-center space-y-2 pt-2">
-            <p className="text-lg text-muted-foreground">{getTimeBasedGreeting()}, {firstName}</p>
-            <h1 className="text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
+            <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, {firstName}</p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
           </div>
 
           <DashboardAIInput />
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setCalendarOpen(true)}>
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -195,7 +195,7 @@ export default function Dashboard() {
           </div>
 
           {/* Preset tabs + Add Widget */}
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <PresetManager
               presets={presets}
               activePreset={activePreset}

@@ -1958,14 +1958,15 @@ export default function DealDetail() {
 
         <main className="container mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
           {/* Back button and Undo */}
-          <div className="flex items-center justify-between mb-3">
-            <Button variant="ghost" size="sm" className="gap-2" asChild>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <Button variant="ghost" size="sm" className="gap-2 self-start" asChild>
               <Link to="/deals">
                 <ArrowLeft className="h-4 w-4" />
-                Back to Pipeline
+                <span className="hidden sm:inline">Back to Pipeline</span>
+                <span className="sm:hidden">Back</span>
               </Link>
             </Button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {viewModified && (
                 <Button
                   variant="outline"
@@ -2074,11 +2075,11 @@ export default function DealDetail() {
           <Card className="mb-6">
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <InlineEditField
                     value={deal.company}
                     onSave={(value) => updateDeal('company', value)}
-                    displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                    displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
                   <Popover open={isFlagPopoverOpen} onOpenChange={(open) => {
                     setIsFlagPopoverOpen(open);
@@ -2232,11 +2233,11 @@ export default function DealDetail() {
                 <InlineEditField
                   value={formatValue(deal.value)}
                   onSave={(value) => updateDeal('value', parseValue(value))}
-                  displayClassName="text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                  displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                 />
               </div>
               
-              <div className="flex items-center gap-2 mt-4">
+              <div className="flex items-center gap-2 mt-4 flex-wrap">
                 <Select
                   value={deal.status}
                   onValueChange={(value: DealStatus) => updateDeal('status', value)}
@@ -2291,8 +2292,8 @@ export default function DealDetail() {
                 </Select>
               </div>
               
-              <div className="flex items-start justify-between gap-4 border-t border-border mt-4 pt-4">
-                <div className="w-[75%] flex flex-col gap-1 pl-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-t border-border mt-4 pt-4">
+                <div className="w-full sm:w-[75%] flex flex-col gap-1 pl-4">
                   <div className="flex items-start gap-2">
                     <span className="text-lg text-foreground/90 mt-0.5">•</span>
                     <RichTextInlineEdit
@@ -2340,7 +2341,7 @@ export default function DealDetail() {
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
                 <div className="flex items-center gap-2">
                   <DealMemoDialog dealId={deal.id} companyName={deal.company} onGoToDataRoom={() => handleTabChange('data-room')} />
-                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-0 text-muted-foreground">
+                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-0 text-muted-foreground overflow-x-auto max-w-full">
                     <TabsTrigger value="deal-space" className="gap-2">
                       <Sparkles className="h-4 w-4" />
                       Deal Space

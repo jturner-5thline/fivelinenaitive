@@ -174,14 +174,14 @@ export default function Dashboard() {
             {/* Page Header & Widgets */}
             <div className="space-y-2">
               <div 
-                className="flex items-center justify-between opacity-0"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
               >
                 <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">5th Line</h1>
+                  <h1 className="text-2xl sm:text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">5th Line</h1>
                   <PipelineSelector />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <NotificationsDropdown />
                   <LatestUpdatesDropdown />
                   
@@ -257,14 +257,14 @@ export default function Dashboard() {
 
             {/* Results Count & Group Toggle */}
             <div 
-              className="flex items-center justify-between opacity-0"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
             >
               <p className="text-sm text-muted-foreground">
                 Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
                 {deals.length === 1 ? 'deal' : 'deals'}
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
