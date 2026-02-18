@@ -4087,6 +4087,51 @@ export type Database = {
         }
         Relationships: []
       }
+      news_preferences: {
+        Row: {
+          created_at: string
+          default_layout: string
+          default_tab: string
+          digest_frequency: string | null
+          digest_max_articles: number | null
+          id: string
+          industries: string[] | null
+          keywords: string[] | null
+          onboarding_completed: boolean
+          preferred_sources: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_layout?: string
+          default_tab?: string
+          digest_frequency?: string | null
+          digest_max_articles?: number | null
+          id?: string
+          industries?: string[] | null
+          keywords?: string[] | null
+          onboarding_completed?: boolean
+          preferred_sources?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          default_layout?: string
+          default_tab?: string
+          digest_frequency?: string | null
+          digest_max_articles?: number | null
+          id?: string
+          industries?: string[] | null
+          keywords?: string[] | null
+          onboarding_completed?: boolean
+          preferred_sources?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       news_read_status: {
         Row: {
           article_id: string
