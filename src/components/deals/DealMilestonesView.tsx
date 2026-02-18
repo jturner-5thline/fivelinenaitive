@@ -54,7 +54,7 @@ export function DealMilestonesView({ onBack }: { onBack?: () => void }) {
       {/* Controls */}
       <div className="flex items-center gap-2 flex-wrap">
         {onBack && (
-          <Button variant="ghost" size="sm" className="gap-1.5 h-8" onClick={onBack}>
+          <Button variant="outline" size="sm" className="gap-1.5 h-8 font-medium" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" />
             Back to Deals
           </Button>
