@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,13 @@ interface CreateTaskForMentionDialogProps {
   onOpenChange: (open: boolean) => void;
   mentionedUsers: MentionedUser[];
   dealId?: string;
+  noteContext?: string;
+}
+
+/** Strip HTML tags and trim to get plain text from an HTML string */
+function htmlToPlainText(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return (doc.body.textContent || '').trim();
 }
 
 export function CreateTaskForMentionDialog({
@@ -35,6 +42,7 @@ export function CreateTaskForMentionDialog({
   onOpenChange,
   mentionedUsers,
   dealId,
+  noteContext,
 }: CreateTaskForMentionDialogProps) {
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -42,6 +50,13 @@ export function CreateTaskForMentionDialog({
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-populate title from noteContext when dialog opens
+  useEffect(() => {
+    if (open && noteContext) {
+      setTitle(htmlToPlainText(noteContext));
+    }
+  }, [open, noteContext]);
 
   const currentUser = mentionedUsers[currentIndex];
   if (!currentUser) return null;

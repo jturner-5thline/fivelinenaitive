@@ -334,6 +334,7 @@ export default function DealDetail() {
   const teamMembers = useTeamMembers();
   const mentionUsers = useMemo(() => teamMembers, [teamMembers]);
   const [mentionTaskUsers, setMentionTaskUsers] = useState<MentionedUser[]>([]);
+  const [mentionNoteContext, setMentionNoteContext] = useState('');
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
@@ -2312,6 +2313,7 @@ export default function DealDetail() {
                         const newMentions = extractMentionsFromHtml(value);
                         if (newMentions.length > 0) {
                           setMentionTaskUsers(newMentions);
+                          setMentionNoteContext(value);
                           setIsTaskDialogOpen(true);
                         }
                       }}
@@ -4812,6 +4814,7 @@ export default function DealDetail() {
         onOpenChange={setIsTaskDialogOpen}
         mentionedUsers={mentionTaskUsers}
         dealId={id}
+        noteContext={mentionNoteContext}
       />
     </>
   );
