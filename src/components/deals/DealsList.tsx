@@ -178,7 +178,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   // If not grouping, show flat grid
   if (!groupByStatus) {
     return (
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 p-2">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 py-3 px-3">
         {sortedDeals.map((deal, index) => (
           index === 0 ? (
             <HintTooltip
@@ -255,7 +255,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 p-2">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 py-3 px-3">
                 {statusDeals.map((deal, index) => {
                   const isFirstDealOverall = groupedDeals[0].status === status && index === 0;
                   
