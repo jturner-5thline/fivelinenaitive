@@ -2308,13 +2308,10 @@ export default function DealDetail() {
                           await addStatusNote(oldNotes.trim());
                         }
                         updateDeal('notes', value);
-                        // Check for new mentions and prompt task creation
-                        const oldMentions = extractMentionsFromHtml(oldNotes);
+                        // Check for mentions in the new note and prompt task creation
                         const newMentions = extractMentionsFromHtml(value);
-                        const oldIds = new Set(oldMentions.map(m => m.id));
-                        const freshMentions = newMentions.filter(m => !oldIds.has(m.id));
-                        if (freshMentions.length > 0) {
-                          setMentionTaskUsers(freshMentions);
+                        if (newMentions.length > 0) {
+                          setMentionTaskUsers(newMentions);
                           setIsTaskDialogOpen(true);
                         }
                       }}
