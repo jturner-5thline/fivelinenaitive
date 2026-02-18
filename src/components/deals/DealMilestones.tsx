@@ -170,7 +170,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
             {/* Progress line overlay */}
             {completedCount > 0 && (
               <div
-                className="absolute top-[18px] left-0 h-0.5 bg-purple-600 transition-all"
+                className="absolute top-[18px] left-0 h-0.5 bg-brand-gradient transition-all"
                 style={{
                   width: totalCount > 1 ? `${((completedCount - 0.5) / (totalCount - 1)) * 100}%` : '100%',
                 }}
