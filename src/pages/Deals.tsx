@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
+import { MilestoneManagerFilter } from '@/components/deals/MilestoneManagerFilter';
 import { DealsList } from '@/components/deals/DealsList';
 import { DealMilestonesView } from '@/components/deals/DealMilestonesView';
 import { DealsPipelineView } from '@/components/deals/DealsPipelineView';
@@ -252,12 +253,19 @@ export default function Dashboard() {
               style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
             >
               <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <DealFilters
-                    filters={filters}
-                    onFilterChange={updateFilters}
+                {showMilestones ? (
+                  <MilestoneManagerFilter
+                    selected={filters.manager}
+                    onChange={(manager) => updateFilters({ manager })}
                   />
-                </div>
+                ) : (
+                  <div className="flex-1">
+                    <DealFilters
+                      filters={filters}
+                      onFilterChange={updateFilters}
+                    />
+                  </div>
+                )}
                 <Button
                   variant={showMilestones ? 'secondary' : 'outline'}
                   size="sm"
@@ -453,7 +461,7 @@ export default function Dashboard() {
               style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
             >
               {showMilestones ? (
-                <DealMilestonesView onBack={() => setShowMilestones(false)} />
+                <DealMilestonesView onBack={() => setShowMilestones(false)} managerFilter={filters.manager} />
               ) : isLoading ? (
                 <DealsListSkeleton groupByStatus={groupByStatus} />
               ) : viewMode === 'pipeline' ? (
