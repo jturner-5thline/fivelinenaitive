@@ -141,11 +141,11 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   if (viewMode === 'list') {
     return (
       <div>
-        <div className="rounded-md border">
+        <div className="overflow-x-auto">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <Table>
+            <Table className="border-separate border-spacing-y-1">
               <TableHeader>
-                <TableRow>
+                <TableRow className="border-none hover:bg-transparent">
                   <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
                     {activeColumns.map((colId) => (
                       <SortableTableHead key={colId} id={colId} />
