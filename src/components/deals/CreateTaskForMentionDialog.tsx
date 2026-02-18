@@ -31,10 +31,11 @@ interface CreateTaskForMentionDialogProps {
   noteContext?: string;
 }
 
-/** Strip HTML tags and trim to get plain text from an HTML string */
+/** Strip HTML tags, remove @mentions, and trim to get plain text */
 function htmlToPlainText(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  return (doc.body.textContent || '').trim();
+  doc.querySelectorAll('[data-type="mention"]').forEach(el => el.remove());
+  return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
 }
 
 export function CreateTaskForMentionDialog({
