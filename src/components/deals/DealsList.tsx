@@ -164,6 +164,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                     onToggleFlag={onToggleFlag}
                     flexEngagement={flexEngagementScores?.get(deal.id)}
                     columnOrder={activeColumns}
+                    notificationCount={flexNotificationCounts[deal.id] || 0}
                   />
                 ))}
               </TableBody>
