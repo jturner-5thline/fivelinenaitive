@@ -9,6 +9,7 @@ export type DealListColumnId =
   | 'stage' 
   | 'manager' 
   | 'type' 
+  | 'dealType'
   | 'totalFee' 
   | 'totalHours'
   | 'revenuePerHour'
@@ -16,11 +17,11 @@ export type DealListColumnId =
   | 'updated';
 
 export const ALL_COLUMNS: DealListColumnId[] = [
-  'company', 'value', 'status', 'stage', 'manager', 'type', 'totalFee', 'totalHours', 'revenuePerHour', 'lateMilestones', 'updated'
+  'company', 'value', 'status', 'stage', 'manager', 'type', 'dealType', 'totalFee', 'totalHours', 'revenuePerHour', 'lateMilestones', 'updated'
 ];
 
 export const DEFAULT_VISIBLE_COLUMNS: DealListColumnId[] = [
-  'company', 'value', 'status', 'stage', 'manager', 'type', 'totalFee', 'updated'
+  'company', 'value', 'status', 'stage', 'manager', 'type', 'dealType', 'totalFee', 'updated'
 ];
 
 export const COLUMN_LABELS: Record<DealListColumnId, string> = {
@@ -29,7 +30,8 @@ export const COLUMN_LABELS: Record<DealListColumnId, string> = {
   status: 'Status',
   stage: 'Stage',
   manager: 'Manager',
-  type: 'Type',
+  type: 'Engagement',
+  dealType: 'Deal Type',
   totalFee: 'Total Fee',
   totalHours: 'Total Hours',
   revenuePerHour: 'Revenue / Hour',
