@@ -90,7 +90,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
     if (!editTitle.trim()) return;
     onUpdate(id, {
       title: editTitle.trim(),
-      dueDate: editDate?.toISOString(),
+      dueDate: editDate ? editDate.toISOString() : '',
     });
     setEditingId(null);
   };
@@ -445,6 +445,18 @@ function SortableMilestoneItem({
                 onSelect={onEditDateChange}
                 className={cn("p-3 pointer-events-auto")}
               />
+              {editDate && (
+                <div className="px-3 pb-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full h-7 text-xs text-muted-foreground"
+                    onClick={() => onEditDateChange(undefined)}
+                  >
+                    Clear date
+                  </Button>
+                </div>
+              )}
             </PopoverContent>
           </Popover>
           <Button
