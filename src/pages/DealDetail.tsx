@@ -54,6 +54,7 @@ import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
 import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
+import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
@@ -3994,6 +3995,7 @@ export default function DealDetail() {
 
                 <TabsContent value="deal-management" className={cn("mt-6 space-y-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
                   <FlexInfoNotificationsPanel dealId={id} />
+                  <DealTasksPanel dealId={id!} />
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
 
