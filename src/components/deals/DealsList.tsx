@@ -3,7 +3,7 @@ import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { DealListRow } from './DealListRow';
-import { FileX, ChevronDown, ChevronRight, GripVertical, Settings2 } from 'lucide-react';
+import { FileX, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
@@ -11,10 +11,7 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useDealListColumnOrder, COLUMN_LABELS, ALL_COLUMNS, DealListColumnId } from '@/hooks/useDealListColumnOrder';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
+import { useDealListColumnOrder, COLUMN_LABELS, DealListColumnId } from '@/hooks/useDealListColumnOrder';
 import {
   DndContext,
   closestCenter,
@@ -143,35 +140,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   // List view rendering
   if (viewMode === 'list') {
     return (
-      <div className="space-y-2">
-        <div className="flex justify-end">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Settings2 className="h-3.5 w-3.5" />
-                Columns
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-52 p-3">
-              <p className="text-sm font-medium text-foreground mb-2">Toggle columns</p>
-              <div className="space-y-2">
-                {ALL_COLUMNS.map(colId => (
-                  <div key={colId} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`col-${colId}`}
-                      checked={visibleColumns.has(colId)}
-                      disabled={colId === 'company'}
-                      onCheckedChange={() => toggleColumnVisibility(colId)}
-                    />
-                    <Label htmlFor={`col-${colId}`} className="text-sm font-normal cursor-pointer">
-                      {COLUMN_LABELS[colId]}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
+      <div>
         <div className="rounded-md border">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <Table>
