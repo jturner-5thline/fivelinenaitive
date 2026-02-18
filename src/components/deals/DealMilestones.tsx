@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Check, X, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
-import { DealMilestone } from '@/types/deal';
+import { DealMilestone, MilestoneStatus, MILESTONE_STATUS_CONFIG } from '@/types/deal';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -13,6 +14,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -492,7 +499,40 @@ function SortableMilestoneItem({
                 Completed: {format(new Date(milestone.completedAt), 'MMM d, yyyy')}
               </span>
             )}
-          </div>
+           </div>
+          {/* Status tag */}
+          {!milestone.completed && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={cn(
+                  "text-xs font-medium px-2 py-0.5 rounded-md border cursor-pointer transition-colors",
+                  milestone.status && MILESTONE_STATUS_CONFIG[milestone.status]
+                    ? `${MILESTONE_STATUS_CONFIG[milestone.status].bgClass} ${MILESTONE_STATUS_CONFIG[milestone.status].textClass} ${MILESTONE_STATUS_CONFIG[milestone.status].borderClass}`
+                    : "bg-muted text-muted-foreground border-border hover:bg-accent"
+                )}>
+                  {milestone.status ? MILESTONE_STATUS_CONFIG[milestone.status].label : 'Set Status'}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(Object.entries(MILESTONE_STATUS_CONFIG) as [MilestoneStatus, typeof MILESTONE_STATUS_CONFIG[MilestoneStatus]][]).map(([key, config]) => (
+                  <DropdownMenuItem
+                    key={key}
+                    onClick={() => onUpdate(milestone.id, { status: key })}
+                    className={cn(milestone.status === key && "bg-accent")}
+                  >
+                    <span className={cn("h-2 w-2 rounded-full mr-2", config.color)} />
+                    {config.label}
+                  </DropdownMenuItem>
+                ))}
+                {milestone.status && (
+                  <DropdownMenuItem onClick={() => onUpdate(milestone.id, { status: null })}>
+                    <span className="h-2 w-2 rounded-full mr-2 bg-muted-foreground/30" />
+                    Clear Status
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
             <Button
               variant="ghost"

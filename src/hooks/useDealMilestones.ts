@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { DealMilestone } from '@/types/deal';
+import { DealMilestone, MilestoneStatus } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
 
 export interface DbDealMilestone {
@@ -12,6 +12,7 @@ export interface DbDealMilestone {
   completed: boolean;
   completed_at: string | null;
   position: number;
+  status: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -24,6 +25,7 @@ const dbToApp = (db: DbDealMilestone): DealMilestone => ({
   completed: db.completed,
   completedAt: db.completed_at || undefined,
   position: db.position,
+  status: (db.status as MilestoneStatus) || null,
 });
 
 export function useDealMilestones(dealId: string | undefined) {
@@ -98,6 +100,7 @@ export function useDealMilestones(dealId: string | undefined) {
       if (updates.completed !== undefined) updateData.completed = updates.completed;
       if (updates.completedAt !== undefined) updateData.completed_at = updates.completedAt || null;
       if (updates.position !== undefined) updateData.position = updates.position;
+      if ('status' in updates) updateData.status = updates.status || null;
       
       const { error } = await supabase
         .from('deal_milestones')

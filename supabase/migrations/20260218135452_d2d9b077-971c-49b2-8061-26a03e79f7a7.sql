@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_milestones ADD COLUMN status text DEFAULT NULL CHECK (status IN ('on_track', 'at_risk', 'off_track'));
