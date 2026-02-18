@@ -79,20 +79,12 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
     {
       label: 'Active Deals',
       value: stats.activeDeals.toString(),
+      subtitle: formatCurrencyValue(stats.activeDealValue),
       icon: Briefcase,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
       clickable: true,
       clickType: 'activeDeals' as const,
-    },
-    {
-      label: 'Active Deal Volume',
-      value: formatCurrencyValue(stats.activeDealValue),
-      icon: TrendingUp,
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
-      clickable: true,
-      clickType: 'activeDealValue' as const,
     },
     {
       label: 'Deals in Diligence',
@@ -144,7 +136,7 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {statItems.map((stat) => (
           <Card 
             key={stat.label}
@@ -158,6 +150,9 @@ export function StatsCards({ stats, deals }: StatsCardsProps) {
               <div>
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
                 <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
+                {'subtitle' in stat && stat.subtitle && (
+                  <p className="text-sm text-muted-foreground">{stat.subtitle}</p>
+                )}
               </div>
             </CardContent>
           </Card>
