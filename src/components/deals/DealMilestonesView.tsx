@@ -153,7 +153,7 @@ function MilestoneRow({ milestone }: { milestone: MilestoneWithDeal }) {
           {milestone.title}
         </p>
         {milestone.deal_owner && (
-          <Badge variant="secondary" className="shrink-0 text-xs font-medium rounded-md ml-auto">
+          <Badge variant="secondary" className="shrink-0 text-sm font-semibold rounded-md ml-auto px-2.5 py-0.5">
             {milestone.deal_owner}
           </Badge>
         )}
