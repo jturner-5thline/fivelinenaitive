@@ -59,7 +59,7 @@ function DraggableDealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag,
       style={style}
       {...listeners}
       {...attributes}
-      className="touch-none"
+      className="touch-none w-full min-w-0"
     >
       <DealCard
         deal={deal}
@@ -130,8 +130,8 @@ function DroppableStageColumn({
       </div>
 
       {/* Stage Deals */}
-      <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]">
-        <div className="p-3 space-y-3">
+      <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px] [&>[data-radix-scroll-area-viewport]]:!overflow-x-hidden">
+        <div className="p-3 space-y-3 max-w-[calc(300px-2px)]">
           {deals.length === 0 ? (
             <div className={cn(
               "text-center py-8 text-sm text-muted-foreground rounded-lg border-2 border-dashed transition-colors",

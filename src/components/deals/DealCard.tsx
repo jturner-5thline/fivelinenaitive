@@ -164,8 +164,8 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
 
   return (
     <>
-    <Link to={`/deal/${deal.id}`} className="block h-full">
-      <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative border border-blue-500/25 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+    <Link to={`/deal/${deal.id}`} className="block h-full min-w-0 w-full">
+      <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative border border-blue-500/25 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
         {notificationCount > 0 && (
           <TooltipProvider>
             <Tooltip>
@@ -224,9 +224,9 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           </TooltipProvider>
         )}
       <CardHeader className={`space-y-0 ${compact ? 'pb-2 p-3' : 'pb-3'} flex-shrink-0`}>
-        <div className="flex flex-row items-center justify-between">
-          <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground leading-tight truncate ${compact ? 'max-w-[140px]' : 'max-w-[180px]'}`}>{deal.company}</h3>
-          <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-row items-center justify-between gap-1 min-w-0">
+          <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground leading-tight truncate flex-1 min-w-0`}>{deal.company}</h3>
+          <div className="flex items-center gap-2 shrink min-w-0">
             {onToggleFlag && (
               <>
                 <TooltipProvider>
@@ -300,7 +300,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
               onClose={() => setIsEditDrawerOpen(false)}
               onStatusChange={onStatusChange}
             />
-            <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground`}>{formatCurrencyValue(deal.value)}</span>
+            <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground truncate`}>{formatCurrencyValue(deal.value)}</span>
           </div>
         </div>
         <div className={`flex items-center gap-2 ${compact ? 'mt-2' : 'mt-4'} flex-wrap`}>
