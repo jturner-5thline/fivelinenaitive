@@ -1,0 +1,2 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE public.deal_checklist_status;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.deal_checklist_items;
