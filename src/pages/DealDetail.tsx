@@ -879,9 +879,13 @@ export default function DealDetail() {
       // Link each uploaded attachment to its assigned checklist item
       if (assignments && uploadedAttachments && uploadedAttachments.length > 0) {
         for (let i = 0; i < uploadedAttachments.length; i++) {
-          const checklistItemId = assignments.get(i);
-          if (checklistItemId) {
-            await linkChecklistAttachment(checklistItemId, uploadedAttachments[i].id);
+          const checklistItemIds = assignments.get(i);
+          if (checklistItemIds) {
+            // Multiple checklist items may be comma-separated
+            const ids = checklistItemIds.split(',').map(id => id.trim()).filter(Boolean);
+            for (const itemId of ids) {
+              await linkChecklistAttachment(itemId, uploadedAttachments[i].id);
+            }
           }
         }
       }
