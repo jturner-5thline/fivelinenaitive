@@ -11,6 +11,7 @@ export interface MilestoneWithDeal {
   completed: boolean;
   completed_at: string | null;
   deal_company: string;
+  deal_owner: string | null;
 }
 
 export function useAllMilestones(dealIds?: string[]) {
@@ -42,7 +43,7 @@ export function useAllMilestones(dealIds?: string[]) {
           due_date,
           completed,
           completed_at,
-          deals!inner(company, user_id, company_id)
+          deals!inner(company, user_id, company_id, profiles:user_id(display_name))
         `)
         .order('due_date', { ascending: true, nullsFirst: false });
 
@@ -66,6 +67,7 @@ export function useAllMilestones(dealIds?: string[]) {
         completed: m.completed,
         completed_at: m.completed_at,
         deal_company: m.deals.company,
+        deal_owner: m.deals.profiles?.display_name || null,
       }));
 
       setMilestones(milestonesWithDeal);
