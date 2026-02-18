@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { DealsList } from '@/components/deals/DealsList';
+import { DealMilestonesView } from '@/components/deals/DealMilestonesView';
 import { DealsPipelineView } from '@/components/deals/DealsPipelineView';
 import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
@@ -53,6 +54,7 @@ import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 
 export default function Dashboard() {
   const [groupByStatus, setGroupByStatus] = useState(true);
+  const [showMilestones, setShowMilestones] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline'>(() => {
     const stored = localStorage.getItem('deals-view-mode');
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline') ? stored : 'grid';
@@ -249,14 +251,27 @@ export default function Dashboard() {
               className="opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
             >
-              <DealFilters
-                filters={filters}
-                onFilterChange={updateFilters}
-              />
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <DealFilters
+                    filters={filters}
+                    onFilterChange={updateFilters}
+                  />
+                </div>
+                <Button
+                  variant={showMilestones ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="gap-2 h-9 shrink-0"
+                  onClick={() => setShowMilestones(!showMilestones)}
+                >
+                  <Target className="h-4 w-4" />
+                  Milestones
+                </Button>
+              </div>
             </div>
 
             {/* Results Count & Group Toggle */}
-            <div 
+            {!showMilestones && <div 
               className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
             >
@@ -430,14 +445,16 @@ export default function Dashboard() {
                   </>
                 )}
               </div>
-            </div>
+            </div>}
 
-            {/* Deals Grid/List/Pipeline */}
+            {/* Deals Grid/List/Pipeline or Milestones */}
             <div 
               className="opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
             >
-              {isLoading ? (
+              {showMilestones ? (
+                <DealMilestonesView />
+              ) : isLoading ? (
                 <DealsListSkeleton groupByStatus={groupByStatus} />
               ) : viewMode === 'pipeline' ? (
                 <DealsPipelineView
