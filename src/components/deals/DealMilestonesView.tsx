@@ -59,7 +59,7 @@ export function DealMilestonesView({ onBack, managerFilter = [] }: { onBack?: ()
       {/* Controls */}
       <div className="flex items-center gap-2 flex-wrap">
         {onBack && (
-          <Button variant="secondary" size="sm" className="gap-1.5 h-8 font-medium" onClick={onBack}>
+          <Button variant="outline" size="sm" className="gap-1.5 h-8 font-medium bg-gradient-to-r from-background to-primary/20 border-primary/30 hover:border-primary/50 hover:to-primary/30 transition-all" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" />
             Back to Deals
           </Button>
