@@ -166,7 +166,7 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
     ),
     type: (
       <TableCell key="type">
-        <Badge variant="secondary" className="text-xs rounded-lg">
+        <Badge variant="secondary" className="text-xs rounded-lg whitespace-nowrap">
           {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
         </Badge>
       </TableCell>
