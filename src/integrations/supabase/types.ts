@@ -1543,6 +1543,7 @@ export type Database = {
           due_date: string | null
           id: string
           position: number
+          status: string | null
           title: string
           updated_at: string
           user_id: string | null
@@ -1555,6 +1556,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           position?: number
+          status?: string | null
           title: string
           updated_at?: string
           user_id?: string | null
@@ -1567,6 +1569,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           position?: number
+          status?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { DealMilestone } from '@/types/deal';
+import { DealMilestone, MilestoneStatus } from '@/types/deal';
 
 export interface MilestoneWithDeal {
   id: string;
@@ -12,6 +12,7 @@ export interface MilestoneWithDeal {
   completed_at: string | null;
   deal_company: string;
   deal_owner: string | null;
+  status: MilestoneStatus | null;
 }
 
 export function useAllMilestones(dealIds?: string[]) {
@@ -43,6 +44,7 @@ export function useAllMilestones(dealIds?: string[]) {
           due_date,
           completed,
           completed_at,
+          status,
           deals!inner(company, user_id, company_id, manager)
         `)
         .order('due_date', { ascending: true, nullsFirst: false });
@@ -66,6 +68,7 @@ export function useAllMilestones(dealIds?: string[]) {
         due_date: m.due_date,
         completed: m.completed,
         completed_at: m.completed_at,
+        status: m.status || null,
         deal_company: m.deals.company,
         deal_owner: m.deals.manager || null,
       }));

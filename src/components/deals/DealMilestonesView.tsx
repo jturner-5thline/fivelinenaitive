@@ -4,6 +4,7 @@ import { Target, CheckCircle2, Circle, Clock, AlertTriangle, ChevronRight, Loade
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAllMilestones, MilestoneWithDeal } from '@/hooks/useAllMilestones';
+import { MILESTONE_STATUS_CONFIG, MilestoneStatus } from '@/types/deal';
 import { differenceInDays, format, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -156,6 +157,16 @@ function MilestoneRow({ milestone }: { milestone: MilestoneWithDeal }) {
           <Badge variant="secondary" className="shrink-0 text-sm font-semibold rounded-md ml-auto px-2.5 py-0.5 border border-primary/40">
             {milestone.deal_owner}
           </Badge>
+        )}
+        {milestone.status && MILESTONE_STATUS_CONFIG[milestone.status] && (
+          <span className={cn(
+            "shrink-0 text-xs font-medium px-2 py-0.5 rounded-md border",
+            MILESTONE_STATUS_CONFIG[milestone.status].bgClass,
+            MILESTONE_STATUS_CONFIG[milestone.status].textClass,
+            MILESTONE_STATUS_CONFIG[milestone.status].borderClass
+          )}>
+            {MILESTONE_STATUS_CONFIG[milestone.status].label}
+          </span>
         )}
       </div>
 

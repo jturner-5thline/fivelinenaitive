@@ -35,6 +35,14 @@ export interface DealLender {
   updatedAt?: string; // Last update timestamp for the lender
 }
 
+export type MilestoneStatus = 'on_track' | 'at_risk' | 'off_track';
+
+export const MILESTONE_STATUS_CONFIG: Record<MilestoneStatus, { label: string; color: string; bgClass: string; textClass: string; borderClass: string }> = {
+  'on_track': { label: 'On Track', color: 'bg-green-500', bgClass: 'bg-green-500/10', textClass: 'text-green-700 dark:text-green-400', borderClass: 'border-green-500/30' },
+  'at_risk': { label: 'At Risk', color: 'bg-yellow-500', bgClass: 'bg-yellow-500/10', textClass: 'text-yellow-700 dark:text-yellow-400', borderClass: 'border-yellow-500/30' },
+  'off_track': { label: 'Off Track', color: 'bg-red-500', bgClass: 'bg-red-500/10', textClass: 'text-red-700 dark:text-red-400', borderClass: 'border-red-500/30' },
+};
+
 export interface DealMilestone {
   id: string;
   title: string;
@@ -42,6 +50,7 @@ export interface DealMilestone {
   completed: boolean;
   completedAt?: string;
   position?: number;
+  status?: MilestoneStatus | null;
 }
 
 export interface Referrer {
