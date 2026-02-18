@@ -3931,6 +3931,183 @@ export type Database = {
           },
         ]
       }
+      news_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          keyword: string
+          notify_email: boolean
+          notify_in_app: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keyword: string
+          notify_email?: boolean
+          notify_in_app?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keyword?: string
+          notify_email?: boolean
+          notify_in_app?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      news_bookmarks: {
+        Row: {
+          article_data: Json
+          article_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          article_data: Json
+          article_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          article_data?: Json
+          article_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      news_channels: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          keywords: string[]
+          name: string
+          position: number
+          sources: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keywords?: string[]
+          name: string
+          position?: number
+          sources?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keywords?: string[]
+          name?: string
+          position?: number
+          sources?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      news_digest_settings: {
+        Row: {
+          created_at: string
+          frequency: string
+          id: string
+          include_categories: string[] | null
+          is_enabled: boolean
+          max_articles: number | null
+          preferred_day: number | null
+          preferred_time: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          frequency?: string
+          id?: string
+          include_categories?: string[] | null
+          is_enabled?: boolean
+          max_articles?: number | null
+          preferred_day?: number | null
+          preferred_time?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          frequency?: string
+          id?: string
+          include_categories?: string[] | null
+          is_enabled?: boolean
+          max_articles?: number | null
+          preferred_day?: number | null
+          preferred_time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      news_pinned_sources: {
+        Row: {
+          created_at: string
+          id: string
+          source_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          source_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          source_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      news_read_status: {
+        Row: {
+          article_id: string
+          id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          id?: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          article_id?: string
+          id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_reads: {
         Row: {
           id: string
