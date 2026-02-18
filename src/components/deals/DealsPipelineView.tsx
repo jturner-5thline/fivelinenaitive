@@ -131,7 +131,7 @@ function DroppableStageColumn({
 
       {/* Stage Deals */}
       <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px]">
-        <div className="p-2 space-y-2">
+        <div className="p-3 space-y-3">
           {deals.length === 0 ? (
             <div className={cn(
               "text-center py-8 text-sm text-muted-foreground rounded-lg border-2 border-dashed transition-colors",
