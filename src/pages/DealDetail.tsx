@@ -42,6 +42,7 @@ import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
+import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from '@/components/deals/CreateTaskForMentionDialog';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
@@ -332,6 +333,8 @@ export default function DealDetail() {
   const { company, members } = useCompany();
   const teamMembers = useTeamMembers();
   const mentionUsers = useMemo(() => teamMembers, [teamMembers]);
+  const [mentionTaskUsers, setMentionTaskUsers] = useState<MentionedUser[]>([]);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();
@@ -2299,11 +2302,21 @@ export default function DealDetail() {
                     <RichTextInlineEdit
                       value={deal.notes || ''}
                       onSave={async (value) => {
+                        const oldNotes = deal.notes || '';
                         // Save previous note to history before updating
-                        if (deal.notes && deal.notes.trim() && deal.notes !== '<p></p>' && value !== deal.notes) {
-                          await addStatusNote(deal.notes.trim());
+                        if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>' && value !== oldNotes) {
+                          await addStatusNote(oldNotes.trim());
                         }
                         updateDeal('notes', value);
+                        // Check for new mentions and prompt task creation
+                        const oldMentions = extractMentionsFromHtml(oldNotes);
+                        const newMentions = extractMentionsFromHtml(value);
+                        const oldIds = new Set(oldMentions.map(m => m.id));
+                        const freshMentions = newMentions.filter(m => !oldIds.has(m.id));
+                        if (freshMentions.length > 0) {
+                          setMentionTaskUsers(freshMentions);
+                          setIsTaskDialogOpen(true);
+                        }
                       }}
                       placeholder="Click to add status notes..."
                       displayClassName="text-lg text-foreground/90"
@@ -4795,6 +4808,14 @@ export default function DealDetail() {
 
       {/* Floating AI Deal Assistant */}
       {deal && <FloatingDealAssistant dealId={deal.id} dealName={deal.company} />}
+
+      {/* Task creation prompt after mentioning someone */}
+      <CreateTaskForMentionDialog
+        open={isTaskDialogOpen}
+        onOpenChange={setIsTaskDialogOpen}
+        mentionedUsers={mentionTaskUsers}
+        dealId={id}
+      />
     </>
   );
 }
