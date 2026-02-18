@@ -16,6 +16,7 @@ import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { FlagNoteDialog } from './FlagNoteDialog';
 import { DealEditDrawer } from './DealEditDrawer';
+import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from './CreateTaskForMentionDialog';
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +44,8 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [statusText, setStatusText] = useState('');
+  const [mentionTaskUsers, setMentionTaskUsers] = useState<MentionedUser[]>([]);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const statusInputRef = useRef<HTMLTextAreaElement>(null);
   const { formatCurrencyValue, preferences } = usePreferences();
   const { updateDeal } = useDealsContext();
@@ -72,6 +75,15 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
     const newNotes = isEmpty ? '' : statusText;
     if (newNotes !== (deal.notes || '')) {
       await updateDeal(deal.id, { notes: newNotes || null });
+      // Check for new mentions and prompt task creation
+      const oldMentions = extractMentionsFromHtml(deal.notes || '');
+      const newMentions = extractMentionsFromHtml(newNotes);
+      const oldIds = new Set(oldMentions.map(m => m.id));
+      const freshMentions = newMentions.filter(m => !oldIds.has(m.id));
+      if (freshMentions.length > 0) {
+        setMentionTaskUsers(freshMentions);
+        setIsTaskDialogOpen(true);
+      }
     }
   };
 
@@ -151,6 +163,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   }, [deal.lenders, deal.milestones, preferences.staleDealsDays, flexNotificationCount]);
 
   return (
+    <>
     <Link to={`/deal/${deal.id}`} className="block h-full">
       <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
         {notificationCount > 0 && (
@@ -453,5 +466,12 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
       )}
     </Card>
     </Link>
+    <CreateTaskForMentionDialog
+      open={isTaskDialogOpen}
+      onOpenChange={setIsTaskDialogOpen}
+      mentionedUsers={mentionTaskUsers}
+      dealId={deal.id}
+    />
+    </>
   );
 }
