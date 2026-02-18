@@ -165,7 +165,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   return (
     <>
     <Link to={`/deal/${deal.id}`} className="block h-full">
-      <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative border-2 border-blue-500 shadow-[0_0_8px_-2px_#22d3ee40] ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+      <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative border border-blue-500/20 ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
         {notificationCount > 0 && (
           <TooltipProvider>
             <Tooltip>
