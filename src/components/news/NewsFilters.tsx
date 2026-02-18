@@ -66,7 +66,7 @@ export function NewsFilters({
               onClick={() => { onCategoryChange(category.id); onChannelSelect(null); }}
               className={cn(
                 'h-8 gap-1.5 transition-all',
-                selectedCategory === category.id && !activeChannelId && 'shadow-md'
+                selectedCategory === category.id && !activeChannelId && 'bg-gradient-to-r from-primary/90 to-primary/60 text-primary-foreground shadow-md'
               )}
             >
               {category.icon}
@@ -82,7 +82,7 @@ export function NewsFilters({
               onClick={() => onChannelSelect(activeChannelId === channel.id ? null : channel.id)}
               className={cn(
                 'h-8 gap-1.5 transition-all',
-                activeChannelId === channel.id && 'shadow-md'
+                activeChannelId === channel.id && 'bg-gradient-to-r from-primary/90 to-primary/60 text-primary-foreground shadow-md'
               )}
             >
               {channel.name}
