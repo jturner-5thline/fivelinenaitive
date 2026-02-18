@@ -65,6 +65,31 @@ export function useDealChecklistItems(dealId: string | undefined) {
     fetchItems();
   }, [fetchItems]);
 
+  // Real-time subscription for deal checklist item changes
+  useEffect(() => {
+    if (!dealId) return;
+
+    const channel = supabase
+      .channel(`deal-checklist-items-${dealId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deal_checklist_items',
+          filter: `deal_id=eq.${dealId}`,
+        },
+        () => {
+          fetchItems();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [dealId, fetchItems]);
+
   const addItem = async (item: DealChecklistItemInsert): Promise<DealChecklistItem | null> => {
     if (!user || !dealId) return null;
 

@@ -210,6 +210,31 @@ export function useDealChecklistStatus(dealId: string | undefined) {
     fetchStatuses();
   }, [fetchStatuses]);
 
+  // Real-time subscription for checklist status changes
+  useEffect(() => {
+    if (!dealId) return;
+
+    const channel = supabase
+      .channel(`deal-checklist-status-${dealId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deal_checklist_status',
+          filter: `deal_id=eq.${dealId}`,
+        },
+        () => {
+          fetchStatuses();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [dealId, fetchStatuses]);
+
   const toggleItemStatus = async (
     checklistItemId: string, 
     isComplete: boolean,
