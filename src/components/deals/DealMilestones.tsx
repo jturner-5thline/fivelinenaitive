@@ -165,12 +165,12 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
         {!isExpanded && milestones.length > 0 && (
           <div className="relative py-1 pb-2 overflow-hidden">
             {/* Connecting line that spans the full width */}
-            <div className="absolute top-[18px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
+            <div className="absolute top-[22px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
             
             {/* Progress line overlay */}
             {completedCount > 0 && (
               <div
-                className="absolute top-[18px] left-0 h-0.5 bg-brand-gradient transition-all"
+                className="absolute top-[22px] left-0 h-0.5 bg-brand-gradient transition-all"
                 style={{
                   width: totalCount > 1 ? `${((completedCount - 0.5) / (totalCount - 1)) * 100}%` : '100%',
                 }}
@@ -191,21 +191,21 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                       >
                         {milestone.completed ? (
                           <svg 
-                            className="h-5 w-5 fill-current" 
+                            className="h-10 w-10 fill-current" 
                             viewBox="0 0 24 24"
                           >
                             <path d="M12 2L22 12L12 22L2 12L12 2Z" />
                           </svg>
                         ) : isOverdue(milestone) ? (
                           <svg 
-                            className="h-5 w-5 fill-current" 
+                            className="h-10 w-10 fill-current" 
                             viewBox="0 0 24 24"
                           >
                             <path d="M12 2L22 12L12 22L2 12L12 2Z" />
                           </svg>
                         ) : (
                           <svg 
-                            className="h-5 w-5" 
+                            className="h-10 w-10" 
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
