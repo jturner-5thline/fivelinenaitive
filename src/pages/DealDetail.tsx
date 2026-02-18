@@ -4814,6 +4814,7 @@ export default function DealDetail() {
         onOpenChange={setIsTaskDialogOpen}
         mentionedUsers={mentionTaskUsers}
         dealId={id}
+        dealName={deal?.company}
         noteContext={mentionNoteContext}
       />
     </>
