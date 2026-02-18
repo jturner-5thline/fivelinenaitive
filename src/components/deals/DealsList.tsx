@@ -141,7 +141,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   if (viewMode === 'list') {
     return (
       <div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto px-1 py-0.5">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <Table className="border-separate border-spacing-y-1">
               <TableHeader>
