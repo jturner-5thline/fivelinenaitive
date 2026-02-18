@@ -76,14 +76,14 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
     if (minutes < 60) {
       text = `${minutes} Min. Ago`;
     } else if (hours < 24) {
-      text = `${hours} Hours Ago`;
+      text = `${hours} ${hours === 1 ? 'Hour' : 'Hours'} Ago`;
     } else if (days < 7) {
-      text = `${days} Days Ago`;
+      text = `${days} ${days === 1 ? 'Day' : 'Days'} Ago`;
       if (isStale) {
         highlightClass = 'bg-warning/20 px-1.5 py-0.5 rounded text-warning';
       }
     } else if (days <= 30) {
-      text = `${weeks} Weeks Ago`;
+      text = `${weeks} ${weeks === 1 ? 'Week' : 'Weeks'} Ago`;
       if (isStale) {
         highlightClass = isCritical ? 'bg-destructive/20 px-1.5 py-0.5 rounded text-destructive' : 'bg-warning/20 px-1.5 py-0.5 rounded text-warning';
       }
