@@ -425,9 +425,8 @@ export default function Dashboard() {
                 {viewMode === 'list' && (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1.5 h-8">
+                      <Button variant="outline" size="icon" className="h-8 w-8">
                         <Settings2 className="h-3.5 w-3.5" />
-                        Columns
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-52 p-3">
