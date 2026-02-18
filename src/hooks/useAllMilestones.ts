@@ -23,7 +23,17 @@ export function useAllMilestones(dealIds?: string[]) {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get the user's company_id
+      const { data: membership } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      const companyId = membership?.company_id;
+
+      let query = supabase
         .from('deal_milestones')
         .select(`
           id,
@@ -32,10 +42,19 @@ export function useAllMilestones(dealIds?: string[]) {
           due_date,
           completed,
           completed_at,
-          deals!inner(company, user_id)
+          deals!inner(company, user_id, company_id)
         `)
-        .eq('deals.user_id', user.id)
         .order('due_date', { ascending: true, nullsFirst: false });
+
+      if (companyId) {
+        // Show milestones for all deals in the company
+        query = query.eq('deals.company_id', companyId);
+      } else {
+        // Fallback: only show own deals
+        query = query.eq('deals.user_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
