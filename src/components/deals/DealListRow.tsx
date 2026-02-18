@@ -261,7 +261,7 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
 
   return (
     <TableRow 
-      className={`group cursor-pointer rounded-md border-2 border-muted-foreground/30 shadow-[0_0_0_1px_hsl(var(--primary)/0.2)] bg-transparent hover:bg-accent/50 transition-colors ${timeAgoData.isStale ? 'bg-warning/5' : ''} [&>td:first-child]:rounded-l-md [&>td:last-child]:rounded-r-md`}
+      className={`group cursor-pointer rounded-md shadow-[inset_0_0_0_2px_hsl(var(--muted-foreground)/0.3),0_0_0_1px_hsl(var(--primary)/0.2)] bg-transparent hover:bg-accent/50 transition-colors ${timeAgoData.isStale ? 'bg-warning/5' : ''} [&>td:first-child]:rounded-l-md [&>td:last-child]:rounded-r-md`}
       onClick={() => navigate(`/deal/${deal.id}`)}
     >
       {columnOrder.map(colId => columnCells[colId])}
