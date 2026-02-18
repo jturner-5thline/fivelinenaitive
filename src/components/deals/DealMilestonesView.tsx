@@ -130,12 +130,16 @@ function MilestoneRow({ milestone }: { milestone: MilestoneWithDeal }) {
         <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
       )}
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <Badge variant="secondary" className="shrink-0 font-medium">
+          {milestone.deal_company}
+        </Badge>
+        <span className="text-sm text-muted-foreground">—</span>
         <p className={cn(
           "text-sm font-medium truncate",
           milestone.completed && "line-through text-muted-foreground"
         )}>
-          <span className="text-muted-foreground">[{milestone.deal_company}]</span> - {milestone.title}
+          {milestone.title}
         </p>
       </div>
 
