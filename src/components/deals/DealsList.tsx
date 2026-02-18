@@ -143,7 +143,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
       <div>
         <div className="overflow-visible px-0 py-1">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <Table className="border-separate border-spacing-y-1">
+            <Table className="border-separate border-spacing-y-1.5">
               <TableHeader>
                 <TableRow className="shadow-[inset_0_0_0_2px_hsl(var(--muted-foreground)/0.3)] bg-card rounded-md [&>th:first-child]:rounded-l-md [&>th:last-child]:rounded-r-md hover:bg-card">
                   <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
