@@ -96,6 +96,7 @@ export function ChecklistLinkDialog({
     onConfirm(assignments);
     setSelectedItemIds(new Set());
     setIsNaSelected(false);
+    onOpenChange(false);
   };
 
   const handleCancel = () => {
