@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, CheckCircle2, Circle, Clock, AlertTriangle, ChevronRight, Loader2, ArrowUpDown } from 'lucide-react';
+import { Target, CheckCircle2, Circle, Clock, AlertTriangle, ChevronRight, Loader2, ArrowUpDown, ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAllMilestones, MilestoneWithDeal } from '@/hooks/useAllMilestones';
@@ -16,7 +16,7 @@ import {
 type MilestoneFilter = 'all' | 'incomplete' | 'complete';
 type MilestoneSort = 'oldest' | 'newest';
 
-export function DealMilestonesView() {
+export function DealMilestonesView({ onBack }: { onBack?: () => void }) {
   const { milestones, isLoading } = useAllMilestones();
   const [filter, setFilter] = useState<MilestoneFilter>('all');
   const [sort, setSort] = useState<MilestoneSort>('oldest');
@@ -53,6 +53,12 @@ export function DealMilestonesView() {
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex items-center gap-2 flex-wrap">
+        {onBack && (
+          <Button variant="ghost" size="sm" className="gap-1.5 h-8" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+            Back to Deals
+          </Button>
+        )}
         <div className="flex items-center border rounded-md">
           {(['all', 'incomplete', 'complete'] as MilestoneFilter[]).map((f) => (
             <Button

@@ -453,7 +453,7 @@ export default function Dashboard() {
               style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
             >
               {showMilestones ? (
-                <DealMilestonesView />
+                <DealMilestonesView onBack={() => setShowMilestones(false)} />
               ) : isLoading ? (
                 <DealsListSkeleton groupByStatus={groupByStatus} />
               ) : viewMode === 'pipeline' ? (
