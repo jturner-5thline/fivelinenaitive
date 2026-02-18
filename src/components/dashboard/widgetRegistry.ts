@@ -1,5 +1,6 @@
 import React from 'react';
 import { Briefcase, ListTodo, Bell, Calendar, Mail, Sparkles, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare } from 'lucide-react';
+import { lazyRetry } from '@/lib/lazyRetry';
 
 export interface WidgetDefinition {
   type: string;
@@ -13,18 +14,18 @@ export interface WidgetDefinition {
 }
 
 // Lazy-load widget components
-const MyDealsWidget = React.lazy(() => import('./MyDealsWidget').then(m => ({ default: m.MyDealsWidget })));
-const MyTasksWidget = React.lazy(() => import('./MyTasksWidget').then(m => ({ default: m.MyTasksWidget })));
-const KeyAlertsWidget = React.lazy(() => import('./KeyAlertsWidget').then(m => ({ default: m.KeyAlertsWidget })));
-const MyDayWidget = React.lazy(() => import('./MyDayWidget').then(m => ({ default: m.MyDayWidget })));
-const EmailIntelligenceWidget = React.lazy(() => import('./EmailIntelligenceWidget').then(m => ({ default: m.EmailIntelligenceWidget })));
-const NotificationCarousel = React.lazy(() => import('./NotificationCarousel').then(m => ({ default: m.NotificationCarousel })));
-const WorkflowSuggestionsWidget = React.lazy(() => import('./WorkflowSuggestionsWidget').then(m => ({ default: m.WorkflowSuggestionsWidget })));
-const AgentSuggestionsWidget = React.lazy(() => import('./AgentSuggestionsWidget').then(m => ({ default: m.AgentSuggestionsWidget })));
-const DashboardAIInput = React.lazy(() => import('./DashboardAIInput').then(m => ({ default: m.DashboardAIInput })));
-const NewsFeedWidget = React.lazy(() => import('../deals/NewsFeedWidget').then(m => ({ default: m.NewsFeedWidget })));
-const RecentActivityWidget = React.lazy(() => import('./RecentActivityWidget'));
-const CustomFilterWidget = React.lazy(() => import('./CustomFilterWidget'));
+const MyDealsWidget = React.lazy(lazyRetry(() => import('./MyDealsWidget').then(m => ({ default: m.MyDealsWidget }))));
+const MyTasksWidget = React.lazy(lazyRetry(() => import('./MyTasksWidget').then(m => ({ default: m.MyTasksWidget }))));
+const KeyAlertsWidget = React.lazy(lazyRetry(() => import('./KeyAlertsWidget').then(m => ({ default: m.KeyAlertsWidget }))));
+const MyDayWidget = React.lazy(lazyRetry(() => import('./MyDayWidget').then(m => ({ default: m.MyDayWidget }))));
+const EmailIntelligenceWidget = React.lazy(lazyRetry(() => import('./EmailIntelligenceWidget').then(m => ({ default: m.EmailIntelligenceWidget }))));
+const NotificationCarousel = React.lazy(lazyRetry(() => import('./NotificationCarousel').then(m => ({ default: m.NotificationCarousel }))));
+const WorkflowSuggestionsWidget = React.lazy(lazyRetry(() => import('./WorkflowSuggestionsWidget').then(m => ({ default: m.WorkflowSuggestionsWidget }))));
+const AgentSuggestionsWidget = React.lazy(lazyRetry(() => import('./AgentSuggestionsWidget').then(m => ({ default: m.AgentSuggestionsWidget }))));
+const DashboardAIInput = React.lazy(lazyRetry(() => import('./DashboardAIInput').then(m => ({ default: m.DashboardAIInput }))));
+const NewsFeedWidget = React.lazy(lazyRetry(() => import('../deals/NewsFeedWidget').then(m => ({ default: m.NewsFeedWidget }))));
+const RecentActivityWidget = React.lazy(lazyRetry(() => import('./RecentActivityWidget')));
+const CustomFilterWidget = React.lazy(lazyRetry(() => import('./CustomFilterWidget')));
 
 export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   'my-deals': {
