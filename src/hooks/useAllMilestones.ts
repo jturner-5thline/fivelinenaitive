@@ -43,7 +43,7 @@ export function useAllMilestones(dealIds?: string[]) {
           due_date,
           completed,
           completed_at,
-          deals!inner(company, user_id, company_id, profiles:user_id(display_name))
+          deals!inner(company, user_id, company_id, manager)
         `)
         .order('due_date', { ascending: true, nullsFirst: false });
 
@@ -67,7 +67,7 @@ export function useAllMilestones(dealIds?: string[]) {
         completed: m.completed,
         completed_at: m.completed_at,
         deal_company: m.deals.company,
-        deal_owner: m.deals.profiles?.display_name || null,
+        deal_owner: m.deals.manager || null,
       }));
 
       setMilestones(milestonesWithDeal);
