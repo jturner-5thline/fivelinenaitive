@@ -196,8 +196,9 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                           >
                             <defs>
                               <linearGradient id={`diamond-grad-${milestone.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#7C3AED" />
-                                <stop offset="60%" stopColor="#A78BFA" />
+                                <stop offset="0%" stopColor="#1a1025" />
+                                <stop offset="25%" stopColor="#7C3AED" />
+                                <stop offset="65%" stopColor="#A78BFA" />
                                 <stop offset="100%" stopColor="#38BDF8" />
                               </linearGradient>
                               <linearGradient id={`diamond-border-${milestone.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
