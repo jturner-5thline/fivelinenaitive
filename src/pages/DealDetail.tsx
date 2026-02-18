@@ -55,6 +55,7 @@ import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
+import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
@@ -1994,6 +1995,7 @@ export default function DealDetail() {
                   Undo ({editHistory.length})
                 </Button>
               )}
+              <CreateTaskButton dealId={id!} dealName={deal?.company} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-2">
