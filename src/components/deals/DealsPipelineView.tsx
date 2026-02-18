@@ -22,7 +22,12 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { FileX } from 'lucide-react';
+import { FileX, Maximize2, Minimize2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
 
 interface DealsPipelineViewProps {
   deals: Deal[];
@@ -86,6 +91,7 @@ interface DroppableStageColumnProps {
   flexNotificationCounts?: Record<string, number>;
   activeDealId: string | null;
   isOver: boolean;
+  fullscreen?: boolean;
 }
 
 function DroppableStageColumn({
@@ -100,6 +106,7 @@ function DroppableStageColumn({
   flexNotificationCounts,
   activeDealId,
   isOver,
+  fullscreen,
 }: DroppableStageColumnProps) {
   const { setNodeRef } = useDroppable({
     id: stageId,
@@ -130,7 +137,7 @@ function DroppableStageColumn({
       </div>
 
       {/* Stage Deals */}
-      <ScrollArea className="h-[calc(100vh-380px)] min-h-[400px] [&>[data-radix-scroll-area-viewport]]:!overflow-x-hidden">
+      <ScrollArea className={cn("min-h-[400px] [&>[data-radix-scroll-area-viewport]]:!overflow-x-hidden", fullscreen ? "h-[calc(92vh-120px)]" : "h-[calc(100vh-380px)]")}>
         <div className="p-3 space-y-3 max-w-[calc(300px-2px)]">
           {deals.length === 0 ? (
             <div className={cn(
@@ -170,6 +177,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -255,7 +263,8 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
     );
   }
 
-  return (
+
+  const pipelineContent = (fullscreen: boolean) => (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
@@ -283,6 +292,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
                 flexNotificationCounts={flexNotificationCounts}
                 activeDealId={activeDealId}
                 isOver={overId === stage.id}
+                fullscreen={fullscreen}
               />
             );
           })}
@@ -302,5 +312,44 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
         ) : null}
       </DragOverlay>
     </DndContext>
+  );
+
+  return (
+    <>
+      <div className="relative">
+        <div className="flex justify-end mb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setIsFullscreen(true)}
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+            Expand
+          </Button>
+        </div>
+        {pipelineContent(false)}
+      </div>
+
+      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <DialogContent className="max-w-[98vw] w-[98vw] h-[92vh] max-h-[92vh] p-4 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-lg font-semibold">Pipeline View</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setIsFullscreen(false)}
+            >
+              <Minimize2 className="h-3.5 w-3.5" />
+              Close
+            </Button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {pipelineContent(true)}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
