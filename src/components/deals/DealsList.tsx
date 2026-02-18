@@ -145,7 +145,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <Table className="border-separate border-spacing-y-1">
               <TableHeader>
-                <TableRow className="border-2 border-muted-foreground/30 bg-card rounded-md [&>th:first-child]:rounded-l-md [&>th:last-child]:rounded-r-md hover:bg-card">
+                <TableRow className="shadow-[inset_0_0_0_2px_hsl(var(--muted-foreground)/0.3)] bg-card rounded-md [&>th:first-child]:rounded-l-md [&>th:last-child]:rounded-r-md hover:bg-card">
                   <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
                     {activeColumns.map((colId) => (
                       <SortableTableHead key={colId} id={colId} />
