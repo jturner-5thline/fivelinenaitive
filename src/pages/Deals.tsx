@@ -111,11 +111,25 @@ export default function Dashboard() {
     }).length;
   }, [pipelineFilteredDeals, preferences.staleDealsDays]);
 
-  // Apply hasNotificationsOnly filter
+  // Apply hasNotificationsOnly filter - must match DealCard notification logic
   const deals = useMemo(() => {
     if (!filters.hasNotificationsOnly) return pipelineFilteredDeals;
-    return pipelineFilteredDeals.filter(deal => (notificationCounts[deal.id] || 0) > 0);
-  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, notificationCounts]);
+    return pipelineFilteredDeals.filter(deal => {
+      let count = notificationCounts[deal.id] || 0;
+      // Count stale lenders (same logic as DealCard)
+      deal.lenders?.forEach(lender => {
+        if (lender.trackingStatus === 'active' && lender.updatedAt) {
+          const days = Math.floor((Date.now() - new Date(lender.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+          if (days >= preferences.staleDealsDays) count++;
+        }
+      });
+      // Count overdue milestones (same logic as DealCard)
+      deal.milestones?.forEach(m => {
+        if (!m.completed && m.dueDate && new Date(m.dueDate) < new Date()) count++;
+      });
+      return count > 0;
+    });
+  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, notificationCounts, preferences.staleDealsDays]);
 
   const handleMarkReviewed = async (dealId: string) => {
     try {
