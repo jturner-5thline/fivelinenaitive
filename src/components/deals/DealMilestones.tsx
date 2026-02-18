@@ -191,14 +191,20 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                       >
                         {milestone.completed ? (
                           <svg 
-                            className="h-10 w-10 fill-current" 
+                            className="h-10 w-10" 
                             viewBox="0 0 24 24"
                           >
-                            <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                            <defs>
+                              <linearGradient id={`diamond-grad-${milestone.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#A78BFA" />
+                                <stop offset="100%" stopColor="#38BDF8" />
+                              </linearGradient>
+                            </defs>
+                            <path d="M12 2L22 12L12 22L2 12L12 2Z" fill={`url(#diamond-grad-${milestone.id})`} />
                           </svg>
                         ) : isOverdue(milestone) ? (
                           <svg 
-                            className="h-10 w-10 fill-current" 
+                            className="h-10 w-10 fill-current text-destructive" 
                             viewBox="0 0 24 24"
                           >
                             <path d="M12 2L22 12L12 22L2 12L12 2Z" />
@@ -208,10 +214,14 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                             className="h-10 w-10" 
                             viewBox="0 0 24 24"
                             fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
                           >
-                            <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                            <defs>
+                              <linearGradient id={`diamond-grad-stroke-${milestone.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#A78BFA" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.4" />
+                              </linearGradient>
+                            </defs>
+                            <path d="M12 2L22 12L12 22L2 12L12 2Z" stroke={`url(#diamond-grad-stroke-${milestone.id})`} strokeWidth="1.5" />
                           </svg>
                         )}
                       </div>
