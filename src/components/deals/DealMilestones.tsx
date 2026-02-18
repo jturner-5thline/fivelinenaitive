@@ -165,12 +165,12 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
         {!isExpanded && milestones.length > 0 && (
           <div className="relative py-1 pb-2 overflow-hidden">
             {/* Connecting line that spans the full width */}
-            <div className="absolute top-[22px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
+            <div className="absolute top-[26px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
             
             {/* Progress line overlay */}
             {completedCount > 0 && (
               <div
-                className="absolute top-[22px] left-0 h-0.5 bg-brand-gradient transition-all"
+                className="absolute top-[26px] left-0 h-0.5 bg-brand-gradient transition-all"
                 style={{
                   width: totalCount > 1 ? `${((completedCount - 0.5) / (totalCount - 1)) * 100}%` : '100%',
                 }}
