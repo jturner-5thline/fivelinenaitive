@@ -153,7 +153,7 @@ function MilestoneRow({ milestone }: { milestone: MilestoneWithDeal }) {
           {milestone.title}
         </p>
         {milestone.deal_owner && (
-          <Badge className="shrink-0 text-sm font-semibold rounded-md ml-auto px-2.5 py-0.5 bg-gradient-to-r from-primary/25 to-primary/15 text-primary-foreground border border-primary/30">
+          <Badge className="shrink-0 text-sm font-semibold rounded-md ml-auto px-2.5 py-0.5 bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10 text-foreground border border-primary/20">
             {milestone.deal_owner}
           </Badge>
         )}
