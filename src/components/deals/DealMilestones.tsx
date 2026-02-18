@@ -185,7 +185,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                     <TooltipTrigger asChild>
                       <div
                         className={cn(
-                          "transition-colors cursor-pointer bg-background p-0.5 flex-shrink-0",
+                          "transition-colors cursor-pointer p-0.5 flex-shrink-0",
                           getMilestoneColor(milestone)
                         )}
                       >
