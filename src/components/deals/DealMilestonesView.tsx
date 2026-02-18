@@ -135,10 +135,7 @@ function MilestoneRow({ milestone }: { milestone: MilestoneWithDeal }) {
           "text-sm font-medium truncate",
           milestone.completed && "line-through text-muted-foreground"
         )}>
-          {milestone.title}
-        </p>
-        <p className="text-xs text-muted-foreground truncate">
-          {milestone.deal_company}
+          <span className="text-muted-foreground">[{milestone.deal_company}]</span> - {milestone.title}
         </p>
       </div>
 
