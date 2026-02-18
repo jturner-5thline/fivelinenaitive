@@ -16,13 +16,18 @@ import {
 type MilestoneFilter = 'all' | 'incomplete' | 'complete';
 type MilestoneSort = 'oldest' | 'newest';
 
-export function DealMilestonesView({ onBack }: { onBack?: () => void }) {
+export function DealMilestonesView({ onBack, managerFilter = [] }: { onBack?: () => void; managerFilter?: string[] }) {
   const { milestones, isLoading } = useAllMilestones();
   const [filter, setFilter] = useState<MilestoneFilter>('all');
   const [sort, setSort] = useState<MilestoneSort>('oldest');
 
   const filteredAndSorted = useMemo(() => {
     let result = [...milestones];
+
+    // Manager filter
+    if (managerFilter.length > 0) {
+      result = result.filter(m => m.deal_owner && managerFilter.includes(m.deal_owner));
+    }
 
     // Filter
     if (filter === 'complete') {
@@ -39,7 +44,7 @@ export function DealMilestonesView({ onBack }: { onBack?: () => void }) {
     });
 
     return result;
-  }, [milestones, filter, sort]);
+  }, [milestones, filter, sort, managerFilter]);
 
   if (isLoading) {
     return (
