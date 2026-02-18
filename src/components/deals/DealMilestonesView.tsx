@@ -131,7 +131,7 @@ function MilestoneRow({ milestone }: { milestone: MilestoneWithDeal }) {
       )}
 
       <div className="flex-1 min-w-0 flex items-center gap-2">
-        <Badge variant="secondary" className="shrink-0 font-medium text-sm bg-accent/20 text-accent-foreground border border-accent/30">
+        <Badge variant="secondary" className="shrink-0 font-medium text-sm bg-accent/20 text-accent-foreground border border-accent/30 rounded-md">
           {milestone.deal_company}
         </Badge>
         <span className="text-sm text-muted-foreground">—</span>
