@@ -1,5 +1,5 @@
 import { useState, ReactNode } from 'react';
-import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus } from 'lucide-react';
+import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
@@ -36,9 +36,10 @@ interface DealListRowProps {
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;
   columnOrder?: DealListColumnId[];
+  notificationCount?: number;
 }
 
-export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS }: DealListRowProps) {
+export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0 }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
@@ -117,6 +118,23 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
           <span className="truncate max-w-[200px] text-foreground font-semibold">
             {deal.company}
           </span>
+          {notificationCount > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="relative flex items-center">
+                    <Bell className="h-3.5 w-3.5 text-primary" />
+                    <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+                      {notificationCount}
+                    </span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{notificationCount} pending notification{notificationCount > 1 ? 's' : ''}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {deal.migratedFromPersonal && (
             <TooltipProvider>
               <Tooltip>
