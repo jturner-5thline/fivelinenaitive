@@ -57,7 +57,7 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
   };
 
   return (
-    <TableHead ref={setNodeRef} style={style} {...attributes} {...listeners} className="text-foreground">
+    <TableHead ref={setNodeRef} style={style} {...attributes} {...listeners} className="text-foreground text-center">
       <div className="flex items-center gap-1 whitespace-nowrap">
         <GripVertical className="h-3 w-3 text-muted-foreground/50" />
         <span>{COLUMN_LABELS[id]}</span>
