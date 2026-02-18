@@ -28,6 +28,7 @@ interface CreateTaskForMentionDialogProps {
   onOpenChange: (open: boolean) => void;
   mentionedUsers: MentionedUser[];
   dealId?: string;
+  dealName?: string;
   noteContext?: string;
 }
 
@@ -43,6 +44,7 @@ export function CreateTaskForMentionDialog({
   onOpenChange,
   mentionedUsers,
   dealId,
+  dealName,
   noteContext,
 }: CreateTaskForMentionDialogProps) {
   const { user } = useAuth();
@@ -137,6 +139,12 @@ export function CreateTaskForMentionDialog({
         </div>
 
         <div className="space-y-3">
+          {dealName && (
+            <div>
+              <Label className="text-xs">Deal</Label>
+              <p className="mt-1 text-sm text-foreground">{dealName}</p>
+            </div>
+          )}
           <div>
             <Label htmlFor="task-title" className="text-xs">Task title</Label>
             <Input
