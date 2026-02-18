@@ -31,7 +31,12 @@ import { useTrendingTopics } from '@/hooks/useTrendingTopics';
 import { cn } from '@/lib/utils';
 import type { NewsItem } from '@/hooks/useNews';
 
-export function NewsGrid() {
+interface NewsGridProps {
+  defaultLayout?: ViewLayout;
+  defaultTab?: string;
+}
+
+export function NewsGrid({ defaultLayout, defaultTab }: NewsGridProps) {
   const { news, isLoading, error, lastFetched, refetch } = useNews();
   const { bookmarkedArticles, isBookmarked, toggleBookmark } = useNewsBookmarks();
   const { isRead, markAsRead } = useNewsReadStatus();
@@ -47,9 +52,9 @@ export function NewsGrid() {
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [viewLayout, setViewLayout] = useState<ViewLayout>(() => {
-    return (localStorage.getItem('news-view-layout') as ViewLayout) || 'grid';
+    return defaultLayout || (localStorage.getItem('news-view-layout') as ViewLayout) || 'grid';
   });
-  const [activeTab, setActiveTab] = useState('for-you');
+  const [activeTab, setActiveTab] = useState(defaultTab || 'for-you');
   const [summaryArticle, setSummaryArticle] = useState<NewsItem | null>(null);
 
   const setLayout = (layout: ViewLayout) => {
