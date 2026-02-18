@@ -9,12 +9,10 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
-    // Start fading out at 3 seconds
     const fadeOutTimer = setTimeout(() => {
       setIsFadingOut(true);
     }, 3000);
 
-    // Complete at 4 seconds
     const completeTimer = setTimeout(() => {
       setIsVisible(false);
       onComplete();
@@ -26,12 +24,23 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
     };
   }, [onComplete]);
 
+  const handleClick = () => {
+    if (!isFadingOut) {
+      setIsFadingOut(true);
+      setTimeout(() => {
+        setIsVisible(false);
+        onComplete();
+      }, 500);
+    }
+  };
+
   if (!isVisible) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black transition-opacity duration-1000 ${
-        isFadingOut ? 'opacity-0' : 'opacity-100'
+      onClick={handleClick}
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black cursor-pointer transition-opacity ${
+        isFadingOut ? 'opacity-0 duration-500' : 'opacity-100 duration-1000'
       }`}
     >
       <h1
