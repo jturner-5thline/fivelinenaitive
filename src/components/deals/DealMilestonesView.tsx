@@ -161,7 +161,7 @@ function MilestoneRow({ milestone }: { milestone: MilestoneWithDeal }) {
 
       <div className="text-right shrink-0">
         {isOverdue && dueDate && (
-          <Badge variant="destructive" className="text-xs">
+          <Badge variant="destructive" className="text-xs rounded-md">
             {daysOverdue}d overdue
           </Badge>
         )}
