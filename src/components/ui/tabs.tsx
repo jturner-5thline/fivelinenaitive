@@ -43,7 +43,7 @@ const TabsList = React.forwardRef<
         else if (ref) ref.current = node;
       }}
       className={cn(
-        "relative inline-flex h-auto items-center justify-center gap-0 rounded-none bg-muted/50 p-0 text-muted-foreground overflow-hidden",
+        "relative inline-flex h-auto items-center justify-center gap-0 rounded-md bg-muted/50 p-0 text-muted-foreground overflow-hidden",
         className,
       )}
       {...props}
