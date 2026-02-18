@@ -61,12 +61,14 @@ export function NewsFilters({
           {categories.map((category) => (
             <Button
               key={category.id}
-              variant={selectedCategory === category.id && !activeChannelId ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
               onClick={() => { onCategoryChange(category.id); onChannelSelect(null); }}
               className={cn(
                 'h-8 gap-1.5 transition-all',
-                selectedCategory === category.id && !activeChannelId && 'bg-gradient-to-r from-primary/90 to-primary/60 text-primary-foreground shadow-md'
+                selectedCategory === category.id && !activeChannelId
+                  ? 'bg-gradient-to-r from-primary/90 to-primary/60 text-primary-foreground border-primary/50 shadow-md'
+                  : 'border-primary/40 text-primary hover:bg-gradient-to-r hover:from-primary/90 hover:to-primary/60 hover:text-primary-foreground hover:border-primary/50'
               )}
             >
               {category.icon}
@@ -77,12 +79,14 @@ export function NewsFilters({
           {channels.filter(c => c.is_active).map((channel) => (
             <Button
               key={channel.id}
-              variant={activeChannelId === channel.id ? 'default' : 'outline'}
+              variant="outline"
               size="sm"
               onClick={() => onChannelSelect(activeChannelId === channel.id ? null : channel.id)}
               className={cn(
                 'h-8 gap-1.5 transition-all',
-                activeChannelId === channel.id && 'bg-gradient-to-r from-primary/90 to-primary/60 text-primary-foreground shadow-md'
+                activeChannelId === channel.id
+                  ? 'bg-gradient-to-r from-primary/90 to-primary/60 text-primary-foreground border-primary/50 shadow-md'
+                  : 'border-primary/40 text-primary hover:bg-gradient-to-r hover:from-primary/90 hover:to-primary/60 hover:text-primary-foreground hover:border-primary/50'
               )}
             >
               {channel.name}
