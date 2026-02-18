@@ -166,19 +166,29 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
     ),
     type: (
       <TableCell key="type">
+        <Badge variant="secondary" className="text-xs rounded-lg">
+          {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+        </Badge>
+      </TableCell>
+    ),
+    dealType: (
+      <TableCell key="dealType">
         <div className="flex flex-wrap gap-1">
-          <Badge variant="secondary" className="text-xs rounded-lg">
-            {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-          </Badge>
-          {dealTypeLabels.slice(0, 1).map((label, index) => (
-            <Badge key={index} variant="outline" className="text-xs rounded-lg">
-              {label}
-            </Badge>
-          ))}
-          {dealTypeLabels.length > 1 && (
-            <Badge variant="outline" className="text-xs rounded-lg">
-              +{dealTypeLabels.length - 1}
-            </Badge>
+          {dealTypeLabels.length > 0 ? (
+            <>
+              {dealTypeLabels.slice(0, 1).map((label, index) => (
+                <Badge key={index} variant="outline" className="text-xs rounded-lg">
+                  {label}
+                </Badge>
+              ))}
+              {dealTypeLabels.length > 1 && (
+                <Badge variant="outline" className="text-xs rounded-lg">
+                  +{dealTypeLabels.length - 1}
+                </Badge>
+              )}
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground">—</span>
           )}
         </div>
       </TableCell>
