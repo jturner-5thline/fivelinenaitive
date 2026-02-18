@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2 } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { MilestoneManagerFilter } from '@/components/deals/MilestoneManagerFilter';
@@ -43,6 +43,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useDealListColumnOrder, COLUMN_LABELS, ALL_COLUMNS } from '@/hooks/useDealListColumnOrder';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,7 +70,7 @@ export default function Dashboard() {
   const { activePipelineId, pipelines } = usePipelineContext();
   
   const { preferences } = usePreferences();
-  
+  const { visibleColumns, toggleColumnVisibility } = useDealListColumnOrder();
 
   useEffect(() => {
     localStorage.setItem('deals-view-mode', viewMode);
@@ -417,6 +420,36 @@ export default function Dashboard() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Columns Config */}
+                {viewMode === 'list' && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1.5 h-8">
+                        <Settings2 className="h-3.5 w-3.5" />
+                        Columns
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-52 p-3">
+                      <p className="text-sm font-medium text-foreground mb-2">Toggle columns</p>
+                      <div className="space-y-2">
+                        {ALL_COLUMNS.map(colId => (
+                          <div key={colId} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`col-${colId}`}
+                              checked={visibleColumns.has(colId)}
+                              disabled={colId === 'company'}
+                              onCheckedChange={() => toggleColumnVisibility(colId)}
+                            />
+                            <Label htmlFor={`col-${colId}`} className="text-sm font-normal cursor-pointer">
+                              {COLUMN_LABELS[colId]}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
 
                 <div className="h-4 w-px bg-border" />
 
