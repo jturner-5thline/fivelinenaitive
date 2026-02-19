@@ -55,9 +55,16 @@ Available action types:
 - webhook: Call an external URL. Config: { url: string }
 - update_field: Update a deal field. Config: { field: 'status' | 'stage' | 'manager', value: string }
 
-Parse the user's description and return a valid workflow configuration. Be smart about interpreting intent - if they mention "email", use send_email. If they mention "notify" or "alert", use send_notification. If they mention "Zapier" or "webhook", use webhook.
+Parse the user's description and return a valid workflow configuration as a JSON object with these fields:
+- name (string): A short descriptive name
+- description (string): Brief description of what the workflow does
+- triggerType (string, one of: deal_stage_change, lender_stage_change, new_deal, deal_closed, scheduled)
+- triggerConfig (object): Config for the trigger
+- actions (array of objects with "type" and "config" fields)
 
-Generate a concise but descriptive name and description for the workflow based on the user's intent.`;
+Be smart about interpreting intent - if they mention "email", use send_email. If they mention "notify" or "alert", use send_notification. If they mention "Zapier" or "webhook", use webhook.
+
+Respond ONLY with valid JSON, no markdown or explanation.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -66,60 +73,11 @@ Generate a concise but descriptive name and description for the workflow based o
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "openai/gpt-5-mini",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Parse this workflow description into a structured configuration: "${description}"` }
+          { role: "user", content: `Parse this workflow description into a structured JSON configuration: "${description}"` }
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "create_workflow",
-              description: "Create a workflow configuration from the parsed description",
-              parameters: {
-                type: "object",
-                properties: {
-                  name: { 
-                    type: "string",
-                    description: "A short, descriptive name for the workflow (e.g., 'Deal Won Notification')"
-                  },
-                  description: { 
-                    type: "string",
-                    description: "A brief description of what the workflow does"
-                  },
-                  triggerType: { 
-                    type: "string",
-                    enum: ["deal_stage_change", "lender_stage_change", "new_deal", "deal_closed", "scheduled"]
-                  },
-                  triggerConfig: { 
-                    type: "object",
-                    description: "Configuration for the trigger based on trigger type"
-                  },
-                  actions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        type: { 
-                          type: "string",
-                          enum: ["send_notification", "send_email", "webhook", "update_field"]
-                        },
-                        config: { 
-                          type: "object",
-                          description: "Configuration for the action based on action type"
-                        }
-                      },
-                      required: ["type", "config"]
-                    }
-                  }
-                },
-                required: ["name", "description", "triggerType", "triggerConfig", "actions"]
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "create_workflow" } }
       }),
     });
 
@@ -142,13 +100,24 @@ Generate a concise but descriptive name and description for the workflow based o
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const content = data.choices?.[0]?.message?.content;
     
-    if (!toolCall || toolCall.function.name !== "create_workflow") {
-      throw new Error("Failed to parse workflow - no valid response");
+    if (!content) {
+      throw new Error("Failed to parse workflow - no response content");
     }
 
-    const parsed = JSON.parse(toolCall.function.arguments);
+    // Extract JSON from response, handling markdown code blocks
+    let jsonStr = content.trim();
+    jsonStr = jsonStr.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    const jsonStart = jsonStr.search(/[\{\[]/);
+    const jsonEnd = jsonStr.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) {
+      throw new Error("No JSON found in AI response");
+    }
+    jsonStr = jsonStr.substring(jsonStart, jsonEnd + 1)
+      .replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+
+    const parsed = JSON.parse(jsonStr);
     
     // Build the workflow data with proper structure
     const workflow: WorkflowData = {
