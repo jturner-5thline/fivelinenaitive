@@ -253,7 +253,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
             <DialogTrigger asChild>
               <Button 
                 variant="outline" 
-                className={`h-9 gap-2 relative border-primary/40 bg-gradient-to-r from-primary/90 to-primary/60 text-primary-foreground hover:from-primary hover:to-primary/70 ${hasUnreadUpdates ? '' : ''}`}
+                className={`h-9 gap-2 relative border-primary text-primary bg-transparent hover:bg-primary/10 ${hasUnreadUpdates ? '' : ''}`}
               >
                 <FileText className="h-4 w-4" />
                 <span className="text-sm">Deal Memo</span>
