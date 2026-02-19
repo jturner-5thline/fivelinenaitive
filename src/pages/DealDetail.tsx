@@ -2456,6 +2456,7 @@ export default function DealDetail() {
                                 <CollapsibleContent className="flex-1 flex flex-col">
                                   <CardContent className="pt-0 flex-1">
                                     <DealResearchPanel
+                                      dealId={deal.id}
                                       companyName={deal.company}
                                       companyUrl={deal.companyUrl}
                                       industry={deal.dealTypes?.[0]}
