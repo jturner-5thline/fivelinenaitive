@@ -89,7 +89,7 @@ function DraggableLenderTile({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-gradient-to-br from-[hsl(270,20%,8%)] to-[hsl(260,15%,5%)] border border-border rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing relative",
+        "bg-gradient-to-br from-[hsl(230,25%,12%)] to-[hsl(260,15%,5%)] border border-blue-500/25 rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing relative",
         isDragging && "opacity-50 shadow-lg",
         hasFailed && "border-destructive/50 bg-destructive/5"
       )}
