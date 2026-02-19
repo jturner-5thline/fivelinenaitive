@@ -194,9 +194,27 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                       )}
                     >
                       {message.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_li]:my-0.5 [&_p]:my-1 [&_ul_ul]:pl-3 [&_ul_ul]:my-0.5">
+                        <div className="max-w-none">
                           <ReactMarkdown
                             components={{
+                              h2: ({ children }) => (
+                                <h3 className="font-semibold text-sm mt-3 mb-1">{children}</h3>
+                              ),
+                              h3: ({ children }) => (
+                                <h4 className="font-medium text-sm mt-2 mb-1">{children}</h4>
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="list-disc pl-4 my-1 space-y-0.5">{children}</ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="list-decimal pl-4 my-1 space-y-0.5">{children}</ol>
+                              ),
+                              li: ({ children }) => (
+                                <li className="text-sm">{children}</li>
+                              ),
+                              p: ({ children }) => (
+                                <p className="my-1">{children}</p>
+                              ),
                               a: ({ href, children }) => {
                                 if (href?.startsWith('#tab-')) {
                                   const tab = href.replace('#tab-', '');
@@ -231,7 +249,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                               }
                             }}
                           >
-                            {message.content}
+                            {message.content.replace(/([^\n])\n(#{1,3}\s)/g, '$1\n\n$2')}
                           </ReactMarkdown>
                         </div>
                       ) : (
