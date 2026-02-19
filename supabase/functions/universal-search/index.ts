@@ -165,6 +165,13 @@ Deno.serve(async (req) => {
       .in('deal_id', deals?.map(d => d.id) || [])
       .limit(50);
 
+    // Get aggregate lender stats
+    const { data: lenderStats } = await supabase
+      .rpc('get_lender_deal_stats', { 
+        _company_id: companyId,
+        _limit: 20 
+      });
+
     // Get milestones summary
     const { data: milestones } = await supabase
       .from('milestones')
@@ -189,7 +196,12 @@ ${activities?.slice(0, 5).map(a =>
   `- ${a.activity_type}: ${a.description} (${(a as any).deals?.company || 'Unknown'})`
 ).join('\n') || 'No recent activity'}
 
-## Active Lenders on Deals
+## Top Lenders by Volume
+${lenderStats?.map((l: any) => 
+  `- ${l.lender_name}: ${l.deal_count} deals (${l.active_count} active, ${l.funded_count} funded) - Total Volume: $${(l.total_volume / 1000000).toFixed(1)}M`
+).join('\n') || 'No lender stats available'}
+
+## Active Lenders on Recent Deals
 ${dealLenders?.slice(0, 10).map(l => 
   `- ${l.name}: ${l.stage}`
 ).join('\n') || 'No lenders tracked'}

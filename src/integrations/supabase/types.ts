@@ -6064,6 +6064,16 @@ export type Database = {
       }
       can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      get_lender_deal_stats: {
+        Args: { _company_id: string; _limit?: number }
+        Returns: {
+          active_count: number
+          deal_count: number
+          funded_count: number
+          lender_name: string
+          total_volume: number
+        }[]
+      }
       get_team_members_for_mention: {
         Args: { _user_id: string }
         Returns: {
