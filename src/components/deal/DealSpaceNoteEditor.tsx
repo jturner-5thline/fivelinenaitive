@@ -15,7 +15,8 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
-import { useEffect, useRef, useCallback, useState } from 'react';
+import Mention from '@tiptap/extension-mention';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -39,7 +40,10 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { NoteTOC } from './notes/NoteTOC';
 import { NoteVersionHistory } from './notes/NoteVersionHistory';
+import { MentionTaskDialog } from './notes/MentionTaskDialog';
+import mentionSuggestion from './notes/mentionSuggestion';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ─── Ribbon helpers ───
 function RibbonBtn({ onClick, isActive, icon: Icon, label, disabled, className }: {
@@ -127,6 +131,7 @@ export function DealSpaceNoteEditor({
   showComments, onToggleComments,
   fetchVersions, restoreVersion,
 }: DealSpaceNoteEditorProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState(note.title);
   const [isSaving, setIsSaving] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
@@ -138,9 +143,21 @@ export function DealSpaceNoteEditor({
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [dealData, setDealData] = useState<any>(null);
   const [lenders, setLenders] = useState<any[]>([]);
+  const [mentionDialogOpen, setMentionDialogOpen] = useState(false);
+  const [pendingMention, setPendingMention] = useState<{ userId: string; userName: string } | null>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedContentRef = useRef(note.content);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const seenMentionIdsRef = useRef<Set<string>>(new Set());
+
+  // Initialize seen mentions from existing content
+  useEffect(() => {
+    const existing = note.content?.match(/data-id="([^"]+)"/g) || [];
+    existing.forEach((m) => {
+      const id = m.match(/data-id="([^"]+)"/)?.[1];
+      if (id) seenMentionIdsRef.current.add(id);
+    });
+  }, [note.id]);
 
   // Fetch deal data for slash commands
   useEffect(() => {
@@ -155,6 +172,16 @@ export function DealSpaceNoteEditor({
     fetchDealData();
   }, [dealId]);
 
+  // Memoize mention extension to avoid re-render loops
+  const mentionExtension = useMemo(() => 
+    Mention.configure({
+      HTMLAttributes: {
+        class: 'mention text-primary font-medium bg-primary/10 rounded px-1 py-0.5 cursor-pointer',
+      },
+      suggestion: mentionSuggestion,
+    }),
+  []);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
@@ -168,8 +195,9 @@ export function DealSpaceNoteEditor({
       TaskItem.configure({ nested: true }),
       TextStyle, Color,
       Highlight.configure({ multicolor: true }),
-      Placeholder.configure({ placeholder: 'Start typing… Use "/" for quick actions' }),
+      Placeholder.configure({ placeholder: 'Start typing… Use "@" to mention a team member' }),
       CharacterCount,
+      mentionExtension,
     ],
     content: note.content || '',
     editorProps: {
@@ -185,6 +213,7 @@ export function DealSpaceNoteEditor({
           '[&_hr]:my-6 [&_hr]:border-border',
           '[&_img]:max-w-full [&_img]:rounded-md [&_img]:my-2',
           '[&_a]:text-primary [&_a]:underline',
+          '[&_.mention]:text-primary [&_.mention]:font-medium [&_.mention]:bg-primary/10 [&_.mention]:rounded [&_.mention]:px-1 [&_.mention]:py-0.5',
         ),
       },
       handleDrop: (_view, event) => {
@@ -198,7 +227,72 @@ export function DealSpaceNoteEditor({
         return false;
       },
     },
-  }, [note.id]);
+    onUpdate: ({ editor: ed }) => {
+      // Check for newly added mentions
+      const html = ed.getHTML();
+      const mentionRegex = /data-id="([^"]+)"[^>]*>@([^<]+)</g;
+      let match;
+      while ((match = mentionRegex.exec(html)) !== null) {
+        const mentionId = match[1];
+        const mentionName = match[2];
+        if (!seenMentionIdsRef.current.has(mentionId)) {
+          seenMentionIdsRef.current.add(mentionId);
+          setPendingMention({ userId: mentionId, userName: mentionName });
+          setMentionDialogOpen(true);
+          break; // Only handle one new mention at a time
+        }
+      }
+    },
+  }, [note.id, mentionExtension]);
+
+  // Handle mention notification
+  const handleMentionNotify = async () => {
+    if (!pendingMention || !user || !dealData) return;
+    try {
+      await supabase.from('flex_notifications').insert({
+        user_id: pendingMention.userId,
+        deal_id: dealId,
+        alert_type: 'mention',
+        title: `${dealData.company}: You were mentioned in a note`,
+        message: `${user.email} mentioned you in "${note.title}" on the ${dealData.company} deal.`,
+      } as any);
+      toast({ title: `${pendingMention.userName} has been notified` });
+    } catch (err) {
+      console.error('Error sending notification:', err);
+    }
+    setMentionDialogOpen(false);
+    setPendingMention(null);
+  };
+
+  // Handle mention + task creation
+  const handleMentionTask = async (task: { title: string; description: string; due_date?: string }) => {
+    if (!pendingMention || !user) return;
+    try {
+      // Create task
+      await supabase.from('tasks').insert({
+        deal_id: dealId,
+        assigned_to: pendingMention.userId,
+        assigned_by: user.id,
+        title: task.title,
+        description: task.description || null,
+        due_date: task.due_date || null,
+      } as any);
+      // Also send notification
+      await supabase.from('flex_notifications').insert({
+        user_id: pendingMention.userId,
+        deal_id: dealId,
+        alert_type: 'task_assigned',
+        title: `${dealData?.company}: Task assigned to you`,
+        message: `${user.email} assigned you a task: "${task.title}" on the ${dealData?.company} deal.`,
+      } as any);
+      toast({ title: `Task assigned to ${pendingMention.userName}` });
+    } catch (err) {
+      console.error('Error creating task:', err);
+      toast({ title: 'Failed to create task', variant: 'destructive' });
+    }
+    setMentionDialogOpen(false);
+    setPendingMention(null);
+  };
 
   const handleImageUpload = async (file: File) => {
     if (!editor) return;
@@ -534,6 +628,19 @@ export function DealSpaceNoteEditor({
         noteId={note.id}
         fetchVersions={fetchVersions}
         onRestore={restoreVersion}
+      />
+
+      <MentionTaskDialog
+        open={mentionDialogOpen}
+        onOpenChange={(open) => {
+          setMentionDialogOpen(open);
+          if (!open) setPendingMention(null);
+        }}
+        mentionedUserName={pendingMention?.userName || ''}
+        mentionedUserId={pendingMention?.userId || ''}
+        dealName={dealData?.company}
+        onNotifyOnly={handleMentionNotify}
+        onCreateTask={handleMentionTask}
       />
     </div>
   );
