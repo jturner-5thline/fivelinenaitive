@@ -382,7 +382,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
           </div>
         )}
 
-        <ScrollArea className="max-h-[400px]">
+        <ScrollArea className="h-[400px]">
           <div className="space-y-2">
             {pendingRequests.map(request => (
               <SyncRequestCard
