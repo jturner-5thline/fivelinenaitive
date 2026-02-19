@@ -4858,6 +4858,62 @@ export type Database = {
         }
         Relationships: []
       }
+      report_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          delivery_response: Json | null
+          delivery_status: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          report_data: Json | null
+          scheduled_report_id: string
+          started_at: string | null
+          status: string
+          summary_text: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          delivery_response?: Json | null
+          delivery_status?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          report_data?: Json | null
+          scheduled_report_id: string
+          started_at?: string | null
+          status?: string
+          summary_text?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          delivery_response?: Json | null
+          delivery_status?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          report_data?: Json | null
+          scheduled_report_id?: string
+          started_at?: string | null
+          status?: string
+          summary_text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_runs_scheduled_report_id_fkey"
+            columns: ["scheduled_report_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_actions: {
         Row: {
           action_config: Json
@@ -4920,6 +4976,81 @@ export type Database = {
             columns: ["workflow_run_id"]
             isOneToOne: false
             referencedRelation: "workflow_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_reports: {
+        Row: {
+          agent_id: string | null
+          company_id: string | null
+          created_at: string
+          delivery_config: Json
+          delivery_method: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          report_config: Json
+          report_type: string
+          schedule_cron: string
+          schedule_timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          delivery_config?: Json
+          delivery_method?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          report_config?: Json
+          report_type: string
+          schedule_cron?: string
+          schedule_timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          delivery_config?: Json
+          delivery_method?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          report_config?: Json
+          report_type?: string
+          schedule_cron?: string
+          schedule_timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_reports_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
