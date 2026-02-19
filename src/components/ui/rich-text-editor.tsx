@@ -57,6 +57,7 @@ export function RichTextEditor({
                     editor: props.editor,
                   });
                   popup = document.createElement('div');
+                  popup.classList.add('mention-list');
                   popup.style.position = 'absolute';
                   popup.style.zIndex = '9999';
                   document.body.appendChild(popup);
