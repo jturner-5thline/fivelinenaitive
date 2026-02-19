@@ -74,10 +74,28 @@ export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
   const formatContent = (content: string) => {
     const lines = content.split('\n');
     return lines.map((line, i) => {
-      // Bullet points
+      // Headings
+      const h2Match = line.match(/^##\s+(.+)$/);
+      if (h2Match) {
+        return <h3 key={i} className="font-semibold text-sm mt-3 mb-1">{formatTextWithBold(h2Match[1])}</h3>;
+      }
+      const h3Match = line.match(/^###\s+(.+)$/);
+      if (h3Match) {
+        return <h4 key={i} className="font-medium text-sm mt-2 mb-0.5">{formatTextWithBold(h3Match[1])}</h4>;
+      }
+
+      // Sub-bullets (indented with spaces/tabs + - or •)
+      const subBulletMatch = line.match(/^[\s]{2,}[-•]\s+(.+)$/);
+      if (subBulletMatch) {
+        return (
+          <li key={i} className="ml-8 list-[circle]">{formatTextWithBold(subBulletMatch[1])}</li>
+        );
+      }
+
+      // Top-level bullet points
       if (line.startsWith('- ') || line.startsWith('• ')) {
         return (
-          <li key={i} className="ml-4">{formatTextWithBold(line.substring(2))}</li>
+          <li key={i} className="ml-4 list-disc">{formatTextWithBold(line.substring(2))}</li>
         );
       }
       
@@ -85,7 +103,7 @@ export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
       const numberedMatch = line.match(/^(\d+)\.\s+(.+)$/);
       if (numberedMatch) {
         return (
-          <li key={i} className="ml-4">{formatTextWithBold(numberedMatch[2])}</li>
+          <li key={i} className="ml-4 list-decimal">{formatTextWithBold(numberedMatch[2])}</li>
         );
       }
 
