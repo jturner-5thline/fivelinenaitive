@@ -140,3 +140,9 @@ verify_jwt = false
 
 [functions.calendar-event-research]
 verify_jwt = false
+
+[functions.slack-agent-gateway]
+verify_jwt = false
+
+[functions.check-deal-slas]
+verify_jwt = false
