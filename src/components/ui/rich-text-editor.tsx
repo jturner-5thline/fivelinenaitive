@@ -13,6 +13,7 @@ interface RichTextEditorProps {
   onCancel: () => void;
   className?: string;
   mentionUsers?: MentionUser[];
+  onBlurSave?: () => void;
 }
 
 export function RichTextEditor({
@@ -22,6 +23,7 @@ export function RichTextEditor({
   onCancel,
   className,
   mentionUsers = [],
+  onBlurSave,
 }: RichTextEditorProps) {
   const mentionUsersRef = useRef(mentionUsers);
   mentionUsersRef.current = mentionUsers;
@@ -109,6 +111,19 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: 'prose prose-sm max-w-none focus:outline-none min-h-[80px] px-3 py-2',
+      },
+      handleKeyDown: (_view, event) => {
+        // Enter without Shift saves (unless mention popup is active)
+        if (event.key === 'Enter' && !event.shiftKey) {
+          // Check if mention suggestion is active by looking for the popup
+          const mentionPopup = document.querySelector('[data-tippy-root]') || document.querySelector('.mention-list');
+          if (!mentionPopup) {
+            event.preventDefault();
+            onSave();
+            return true;
+          }
+        }
+        return false;
       },
     },
   }, [extensions]);

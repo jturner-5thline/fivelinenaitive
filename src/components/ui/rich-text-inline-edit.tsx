@@ -105,15 +105,29 @@ export function RichTextInlineEdit({
     setIsEditing(false);
   };
 
+  // Handle click outside to save
+  const editorWrapperRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isEditing) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      if (editorWrapperRef.current && !editorWrapperRef.current.contains(e.target as Node)) {
+        handleSave();
+      }
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, [isEditing, handleSave]);
+
   if (isEditing) {
     return (
-      <div className="relative">
+      <div className="relative" ref={editorWrapperRef}>
         <RichTextEditor
           content={editValue}
           onChange={handleChange}
           onSave={handleSave}
           onCancel={handleCancel}
           mentionUsers={mentionUsers}
+          onBlurSave={handleSave}
         />
         {showSaved && (
           <div className="absolute -top-6 right-0 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 animate-fade-in">
