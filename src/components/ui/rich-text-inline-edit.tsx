@@ -8,6 +8,7 @@ import type { MentionUser } from '@/components/ui/mention-list';
 interface RichTextInlineEditProps {
   value: string;
   onSave: (value: string) => void;
+  onExplicitSave?: (value: string) => void;
   placeholder?: string;
   displayClassName?: string;
   autoSave?: boolean;
@@ -18,6 +19,7 @@ interface RichTextInlineEditProps {
 export function RichTextInlineEdit({
   value,
   onSave,
+  onExplicitSave,
   placeholder = 'Click to edit',
   displayClassName,
   autoSave = false,
@@ -93,6 +95,7 @@ export function RichTextInlineEdit({
       lastSavedValueRef.current = editValue;
       showSavedIndicator();
     }
+    onExplicitSave?.(editValue);
     setIsEditing(false);
   };
 

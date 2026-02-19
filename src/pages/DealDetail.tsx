@@ -2316,7 +2316,9 @@ export default function DealDetail() {
                           await addStatusNote(oldNotes.trim());
                         }
                         updateDeal('notes', value);
-                        // Check for mentions in the new note and prompt task creation
+                      }}
+                      onExplicitSave={(value) => {
+                        // Only check for mentions when user explicitly finishes editing
                         const newMentions = extractMentionsFromHtml(value);
                         if (newMentions.length > 0) {
                           setMentionTaskUsers(newMentions);
