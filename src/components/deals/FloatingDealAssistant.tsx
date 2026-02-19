@@ -194,7 +194,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
                       )}
                     >
                       {message.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <div className="prose prose-sm dark:prose-invert max-w-none [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_li]:my-0.5 [&_p]:my-1 [&_ul_ul]:pl-3 [&_ul_ul]:my-0.5">
                           <ReactMarkdown
                             components={{
                               a: ({ href, children }) => {
