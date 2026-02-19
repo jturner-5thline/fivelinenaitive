@@ -136,6 +136,56 @@ export type Database = {
           },
         ]
       }
+      agent_memory: {
+        Row: {
+          agent_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          importance: number | null
+          key: string
+          memory_type: string
+          metadata: Json | null
+          updated_at: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          importance?: number | null
+          key: string
+          memory_type?: string
+          metadata?: Json | null
+          updated_at?: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          importance?: number | null
+          key?: string
+          memory_type?: string
+          metadata?: Json | null
+          updated_at?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_memory_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_messages: {
         Row: {
           content: string
@@ -1659,6 +1709,78 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "deal_pipelines_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_sla_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          agent_id: string | null
+          check_interval_hours: number | null
+          company_id: string | null
+          conditions: Json
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_checked_at: string | null
+          name: string
+          rule_type: string
+          slack_channel_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type?: string
+          agent_id?: string | null
+          check_interval_hours?: number | null
+          company_id?: string | null
+          conditions?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_checked_at?: string | null
+          name: string
+          rule_type?: string
+          slack_channel_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          agent_id?: string | null
+          check_interval_hours?: number | null
+          company_id?: string | null
+          conditions?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_checked_at?: string | null
+          name?: string
+          rule_type?: string
+          slack_channel_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_sla_rules_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_sla_rules_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -4798,6 +4920,63 @@ export type Database = {
             columns: ["workflow_run_id"]
             isOneToOne: false
             referencedRelation: "workflow_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slack_agent_routes: {
+        Row: {
+          agent_id: string
+          company_id: string | null
+          config: Json | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          route_type: string
+          slack_channel_id: string
+          slack_channel_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          company_id?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          route_type?: string
+          slack_channel_id: string
+          slack_channel_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          company_id?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          route_type?: string
+          slack_channel_id?: string
+          slack_channel_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_agent_routes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_agent_routes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
