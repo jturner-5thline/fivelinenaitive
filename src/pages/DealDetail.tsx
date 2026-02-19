@@ -2309,13 +2309,14 @@ export default function DealDetail() {
                     <span className="text-lg text-foreground/90 mt-0.5">•</span>
                     <RichTextInlineEdit
                       value={deal.notes || ''}
-                      onSave={async (value) => {
+                      onSave={(value) => {
                         const oldNotes = deal.notes || '';
-                        // Save previous note to history before updating
-                        if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>' && value !== oldNotes) {
-                          await addStatusNote(oldNotes.trim());
-                        }
+                        // Update deal notes FIRST to prevent realtime refetch race condition
                         updateDeal('notes', value);
+                        // Then save previous note to history (no await - fire and forget)
+                        if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>' && value !== oldNotes) {
+                          addStatusNote(oldNotes.trim());
+                        }
                       }}
                       onExplicitSave={(value) => {
                         // Only check for mentions when user explicitly finishes editing
