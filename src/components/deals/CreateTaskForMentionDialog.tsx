@@ -39,6 +39,16 @@ function htmlToPlainText(html: string): string {
   return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
 }
 
+/** Generate a task title from note context, e.g. "send information over" → "Send information over" */
+function generateTaskTitle(html: string): string {
+  const plain = htmlToPlainText(html);
+  if (!plain) return '';
+  // Capitalize first letter
+  const title = plain.charAt(0).toUpperCase() + plain.slice(1);
+  // Truncate if too long
+  return title.length > 80 ? title.slice(0, 77) + '…' : title;
+}
+
 export function CreateTaskForMentionDialog({
   open,
   onOpenChange,
@@ -57,7 +67,7 @@ export function CreateTaskForMentionDialog({
   // Auto-populate title from noteContext when dialog opens
   useEffect(() => {
     if (open && noteContext) {
-      setTitle(htmlToPlainText(noteContext));
+      setTitle(generateTaskTitle(noteContext));
     }
   }, [open, noteContext]);
 
