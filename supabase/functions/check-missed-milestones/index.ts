@@ -11,21 +11,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Validate auth - accept CRON_SECRET, service role key, or anon key
-  const authHeader = req.headers.get('Authorization');
-  const token = authHeader?.replace('Bearer ', '');
-  const cronSecret = Deno.env.get('CRON_SECRET');
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
-
-  const isAuthorized = token && (token === cronSecret || token === serviceKey || token === anonKey);
-  if (!isAuthorized) {
-    console.error('Unauthorized request');
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+  // Called by pg_cron internally - verify_jwt=false in config.toml
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
