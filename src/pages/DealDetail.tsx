@@ -2366,7 +2366,7 @@ export default function DealDetail() {
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
                 <div className="flex items-center gap-2">
                   <DealMemoDialog dealId={deal.id} companyName={deal.company} onGoToDataRoom={() => handleTabChange('data-room')} />
-                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-muted p-0 text-muted-foreground overflow-x-auto max-w-full">
+                    <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto max-w-full">
                     <TabsTrigger value="deal-space" className="gap-2">
                       <Sparkles className="h-4 w-4" />
                       Deal Space
