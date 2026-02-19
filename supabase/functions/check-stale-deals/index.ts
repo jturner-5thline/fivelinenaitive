@@ -16,11 +16,16 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Validate CRON_SECRET for scheduled function authentication
+  // Validate auth - accept CRON_SECRET, service role key, or anon key
   const authHeader = req.headers.get('Authorization');
-  const expectedSecret = Deno.env.get('CRON_SECRET');
-  if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
-    console.error('Unauthorized request - invalid or missing CRON_SECRET');
+  const token = authHeader?.replace('Bearer ', '');
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+
+  const isAuthorized = token && (token === cronSecret || token === serviceKey || token === anonKey);
+  if (!isAuthorized) {
+    console.error('Unauthorized request');
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { "Content-Type": "application/json", ...corsHeaders },
