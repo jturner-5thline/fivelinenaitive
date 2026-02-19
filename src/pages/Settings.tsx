@@ -16,6 +16,8 @@ import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSe
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { DataRoomChecklistSettings } from '@/components/settings/DataRoomChecklistSettings';
 import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
+import { ScheduledReportsSettings } from '@/components/settings/ScheduledReportsSettings';
+import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -82,6 +84,14 @@ const SETTINGS_SECTIONS = [
   {
     id: 'preferences',
     keywords: ['preferences', 'theme', 'notifications', 'regional', 'settings', 'dark', 'light', 'mode'],
+  },
+  {
+    id: 'scheduled-reports',
+    keywords: ['scheduled', 'reports', 'report', 'automation', 'pipeline', 'summary', 'recurring'],
+  },
+  {
+    id: 'sla-rules',
+    keywords: ['sla', 'rules', 'stale', 'alert', 'monitoring', 'deal', 'activity', 'timeout'],
   },
 ];
 
@@ -303,6 +313,10 @@ export default function Settings() {
             {isVisible('lender-matching') && <LenderMatchingSettings />}
 
             {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
+
+            {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
+
+            {isVisible('sla-rules') && <SLARulesSettings />}
 
             {isVisible('preferences') && (
               <Card>
