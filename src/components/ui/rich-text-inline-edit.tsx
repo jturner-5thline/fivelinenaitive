@@ -85,7 +85,7 @@ export function RichTextInlineEdit({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = (explicit = false) => {
     // Clear any pending auto-save
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -95,7 +95,9 @@ export function RichTextInlineEdit({
       lastSavedValueRef.current = editValue;
       showSavedIndicator();
     }
-    onExplicitSave?.(editValue);
+    if (explicit) {
+      onExplicitSave?.(editValue);
+    }
     setIsEditing(false);
   };
 
@@ -132,10 +134,10 @@ export function RichTextInlineEdit({
         <RichTextEditor
           content={editValue}
           onChange={handleChange}
-          onSave={handleSave}
+          onSave={() => handleSave(true)}
           onCancel={handleCancel}
           mentionUsers={mentionUsers}
-          onBlurSave={handleSave}
+          onBlurSave={() => handleSave()}
         />
         {showSaved && (
           <div className="absolute -top-6 right-0 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 animate-fade-in">
