@@ -149,3 +149,6 @@ verify_jwt = false
 
 [functions.generate-scheduled-report]
 verify_jwt = false
+
+[functions.research-orchestrator]
+verify_jwt = false

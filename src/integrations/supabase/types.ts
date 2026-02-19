@@ -1716,6 +1716,53 @@ export type Database = {
           },
         ]
       }
+      deal_research_cache: {
+        Row: {
+          citations: Json | null
+          content: string
+          created_at: string
+          deal_id: string
+          expires_at: string
+          generated_by: string | null
+          id: string
+          metadata: Json | null
+          research_type: string
+          updated_at: string
+        }
+        Insert: {
+          citations?: Json | null
+          content: string
+          created_at?: string
+          deal_id: string
+          expires_at?: string
+          generated_by?: string | null
+          id?: string
+          metadata?: Json | null
+          research_type: string
+          updated_at?: string
+        }
+        Update: {
+          citations?: Json | null
+          content?: string
+          created_at?: string
+          deal_id?: string
+          expires_at?: string
+          generated_by?: string | null
+          id?: string
+          metadata?: Json | null
+          research_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_research_cache_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_sla_rules: {
         Row: {
           action_config: Json
