@@ -114,6 +114,11 @@ export function RichTextInlineEdit({
     if (!isEditing) return;
     const handleMouseDown = (e: MouseEvent) => {
       if (editorWrapperRef.current && !editorWrapperRef.current.contains(e.target as Node)) {
+        // Don't save if clicking on the mention dropdown popup
+        const target = e.target as HTMLElement;
+        if (target.closest('.mention-list') || target.closest('[data-tippy-root]')) {
+          return;
+        }
         handleSave();
       }
     };
