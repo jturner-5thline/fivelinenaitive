@@ -2319,10 +2319,13 @@ export default function DealDetail() {
                         }
                       }}
                       onExplicitSave={(value) => {
-                        // Only check for mentions when user explicitly finishes editing
-                        const newMentions = extractMentionsFromHtml(value);
-                        if (newMentions.length > 0) {
-                          setMentionTaskUsers(newMentions);
+                        // Only check for NEW mentions (not ones already in the saved text)
+                        const oldMentions = extractMentionsFromHtml(deal.notes || '');
+                        const allMentions = extractMentionsFromHtml(value);
+                        const oldIds = new Set(oldMentions.map(m => m.id));
+                        const freshMentions = allMentions.filter(m => !oldIds.has(m.id));
+                        if (freshMentions.length > 0) {
+                          setMentionTaskUsers(freshMentions);
                           setMentionNoteContext(value);
                           setIsTaskDialogOpen(true);
                         }
