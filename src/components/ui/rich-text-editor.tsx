@@ -3,7 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MentionList, matchesMentionQuery, type MentionUser } from '@/components/ui/mention-list';
 
 interface RichTextEditorProps {
@@ -27,6 +27,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const mentionUsersRef = useRef(mentionUsers);
   mentionUsersRef.current = mentionUsers;
+  const mentionActiveRef = useRef(false);
   const [MentionExt, setMentionExt] = useState<any>(null);
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export function RichTextEditor({
 
               return {
                 onStart: (props: any) => {
+                  mentionActiveRef.current = true;
                   component = new ReactRenderer(MentionList, {
                     props,
                     editor: props.editor,
@@ -93,6 +95,8 @@ export function RichTextEditor({
                   return (component?.ref as any)?.onKeyDown?.(props) ?? false;
                 },
                 onExit: () => {
+                  // Delay clearing the flag so handleKeyDown still sees it as active
+                  setTimeout(() => { mentionActiveRef.current = false; }, 100);
                   popup?.remove();
                   component?.destroy();
                 },
@@ -116,9 +120,7 @@ export function RichTextEditor({
       handleKeyDown: (_view, event) => {
         // Enter without Shift saves (unless mention popup is active)
         if (event.key === 'Enter' && !event.shiftKey) {
-          // Check if mention suggestion is active by looking for the popup
-          const mentionPopup = document.querySelector('[data-tippy-root]') || document.querySelector('.mention-list');
-          if (!mentionPopup) {
+          if (!mentionActiveRef.current) {
             event.preventDefault();
             onSave();
             return true;
