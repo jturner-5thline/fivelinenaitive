@@ -128,55 +128,71 @@ export function NodeInspector({ node, onConfigChange, onClose, onDelete }: NodeI
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-4">
           {data.description && (
-            <p className="text-xs text-muted-foreground">{data.description}</p>
-          )}
-
-          {/* Ports info */}
-          {data.inputs.length > 0 && (
-            <div>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Inputs</span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {data.inputs.map(inp => (
-                  <Badge key={inp.key} variant="outline" className="text-[10px]">
-                    {inp.label || inp.key}: {inp.type}
-                  </Badge>
-                ))}
-              </div>
+            <div className="p-2.5 rounded-md bg-muted/50 border border-border/50">
+              <p className="text-xs text-muted-foreground leading-relaxed">{data.description}</p>
             </div>
           )}
 
-          {data.outputs.length > 0 && (
-            <div>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Outputs</span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {data.outputs.map(out => (
-                  <Badge key={out.key} variant="secondary" className="text-[10px]">
-                    {out.label || out.key}: {out.type}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
+          {/* Configuration - show first as it's what users care about most */}
           {configEntries.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Configuration</span>
-                <div className="space-y-3 mt-2">
-                  {configEntries.map(([key, field]) => (
-                    <ConfigFieldRenderer
-                      key={key}
-                      fieldKey={key}
-                      field={field}
-                      value={data.config[key]}
-                      onChange={handleFieldChange}
-                    />
-                  ))}
-                </div>
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">⚙️ Settings</span>
               </div>
-            </>
+              <div className="space-y-3">
+                {configEntries.map(([key, field]) => (
+                  <ConfigFieldRenderer
+                    key={key}
+                    fieldKey={key}
+                    field={field}
+                    value={data.config[key]}
+                    onChange={handleFieldChange}
+                  />
+                ))}
+              </div>
+            </div>
           )}
+
+          {configEntries.length === 0 && (
+            <div className="p-3 rounded-md border border-dashed border-border text-center">
+              <p className="text-xs text-muted-foreground">No configuration needed — just connect this node.</p>
+            </div>
+          )}
+
+          {/* Ports info - collapsible section */}
+          <Separator />
+          <details className="group">
+            <summary className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground cursor-pointer select-none flex items-center gap-1 hover:text-foreground transition-colors">
+              <span className="transition-transform group-open:rotate-90">▶</span>
+              Inputs & Outputs
+            </summary>
+            <div className="mt-2 space-y-2">
+              {data.inputs.length > 0 && (
+                <div>
+                  <span className="text-[10px] text-muted-foreground">Accepts:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {data.inputs.map(inp => (
+                      <Badge key={inp.key} variant="outline" className="text-[10px]">
+                        {inp.label || inp.key}{inp.required ? ' *' : ''}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {data.outputs.length > 0 && (
+                <div>
+                  <span className="text-[10px] text-muted-foreground">Produces:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {data.outputs.map(out => (
+                      <Badge key={out.key} variant="secondary" className="text-[10px]">
+                        {out.label || out.key}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
 
           <Separator />
 

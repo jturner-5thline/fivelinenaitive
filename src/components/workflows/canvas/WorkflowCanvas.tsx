@@ -191,6 +191,95 @@ export function WorkflowCanvas({
     [setNodes, setEdges, pushHistory]
   );
 
+  const getNodeData = useCallback((nodeType: string): CanvasNodeData => {
+    const reg = NODE_REGISTRY.find(n => n.type === nodeType)!;
+    return {
+      label: reg.label,
+      nodeType: reg.type,
+      icon: reg.icon,
+      category: reg.category,
+      inputs: reg.inputs,
+      outputs: reg.outputs,
+      configSchema: reg.configSchema,
+      config: {},
+      description: reg.description,
+    };
+  }, []);
+
+  const loadTemplate = useCallback((templateId: string) => {
+    const templates: Record<string, { nodes: Node[]; edges: Edge[]; name: string }> = {
+      lender_passed: {
+        name: 'Lender Passed Notification',
+        nodes: [
+          {
+            id: 'tpl_trigger', type: 'workflowNode', position: { x: 50, y: 150 },
+            data: { ...getNodeData('trigger/lender_event'), config: { event: 'stage_change' } },
+          },
+          {
+            id: 'tpl_condition', type: 'workflowNode', position: { x: 320, y: 150 },
+            data: { ...getNodeData('condition/equals'), config: { operator: 'equals', compareTo: 'Passed' } },
+          },
+          {
+            id: 'tpl_slack', type: 'workflowNode', position: { x: 590, y: 100 },
+            data: { ...getNodeData('integration/slack'), config: { channel: '#deals' } },
+          },
+          {
+            id: 'tpl_log', type: 'workflowNode', position: { x: 590, y: 250 },
+            data: { ...getNodeData('integration/database_insert'), config: { table: 'activity_logs', activity_type: 'lender_passed' } },
+          },
+        ],
+        edges: [
+          { id: 'e1', source: 'tpl_trigger', target: 'tpl_condition', animated: true },
+          { id: 'e2', source: 'tpl_condition', target: 'tpl_slack', sourceHandle: 'true', animated: true },
+          { id: 'e3', source: 'tpl_condition', target: 'tpl_log', sourceHandle: 'true', animated: true },
+        ],
+      },
+      deal_stage_change: {
+        name: 'Deal Stage Change Email',
+        nodes: [
+          {
+            id: 'tpl_trigger', type: 'workflowNode', position: { x: 50, y: 150 },
+            data: { ...getNodeData('trigger/deal_event'), config: { event: 'stage_change' } },
+          },
+          {
+            id: 'tpl_email', type: 'workflowNode', position: { x: 350, y: 150 },
+            data: { ...getNodeData('integration/email'), config: { subject: 'Deal stage updated' } },
+          },
+        ],
+        edges: [
+          { id: 'e1', source: 'tpl_trigger', target: 'tpl_email', animated: true },
+        ],
+      },
+      scheduled_report: {
+        name: 'Scheduled Report',
+        nodes: [
+          {
+            id: 'tpl_trigger', type: 'workflowNode', position: { x: 50, y: 150 },
+            data: { ...getNodeData('trigger/schedule'), config: { frequency: 'daily', time: '09:00' } },
+          },
+          {
+            id: 'tpl_lookup', type: 'workflowNode', position: { x: 320, y: 150 },
+            data: { ...getNodeData('data/lookup'), config: { table: 'deals' } },
+          },
+          {
+            id: 'tpl_slack', type: 'workflowNode', position: { x: 590, y: 150 },
+            data: { ...getNodeData('integration/slack'), config: { channel: '#reports' } },
+          },
+        ],
+        edges: [
+          { id: 'e1', source: 'tpl_trigger', target: 'tpl_lookup', animated: true },
+          { id: 'e2', source: 'tpl_lookup', target: 'tpl_slack', animated: true },
+        ],
+      },
+    };
+
+    const tpl = templates[templateId];
+    if (!tpl) return;
+    setName(tpl.name);
+    setNodes(tpl.nodes);
+    setEdges(tpl.edges);
+  }, [setNodes, setEdges]);
+
   const handleSave = () => {
     onSave({ name, description, isActive: active, nodes, edges });
   };
@@ -270,9 +359,55 @@ export function WorkflowCanvas({
 
             {nodes.length === 0 && (
               <Panel position="top-center">
-                <div className="mt-20 text-center text-muted-foreground">
-                  <p className="text-sm font-medium">Drag nodes from the left panel to get started</p>
-                  <p className="text-xs mt-1">Connect them by dragging from output ports to input ports</p>
+                <div className="mt-16 text-center max-w-md mx-auto">
+                  <div className="text-4xl mb-3">🧩</div>
+                  <h3 className="text-base font-semibold text-foreground mb-1">Build your first workflow</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Drag a node from the left panel onto the canvas, then connect nodes by dragging between their ports.
+                  </p>
+                  <div className="flex flex-col gap-2 items-center">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick start templates</p>
+                    <div className="flex gap-2 flex-wrap justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs gap-1.5"
+                        onClick={() => loadTemplate('lender_passed')}
+                      >
+                        🔔 Lender Passed → Slack
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs gap-1.5"
+                        onClick={() => loadTemplate('deal_stage_change')}
+                      >
+                        📋 Deal Stage → Email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs gap-1.5"
+                        onClick={() => loadTemplate('scheduled_report')}
+                      >
+                        ⏰ Scheduled Report
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="mt-5 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+                    <div className="flex flex-col items-center gap-1 p-2 rounded-md bg-muted/50">
+                      <span className="text-lg">①</span>
+                      <span>Drag a trigger</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 p-2 rounded-md bg-muted/50">
+                      <span className="text-lg">②</span>
+                      <span>Add actions</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 p-2 rounded-md bg-muted/50">
+                      <span className="text-lg">③</span>
+                      <span>Connect & save</span>
+                    </div>
+                  </div>
                 </div>
               </Panel>
             )}

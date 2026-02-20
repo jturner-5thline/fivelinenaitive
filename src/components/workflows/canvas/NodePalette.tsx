@@ -66,15 +66,20 @@ export function NodePalette({ onDragStart }: NodePaletteProps) {
                     <div
                       key={node.type}
                       className={cn(
-                        'flex items-center gap-2 px-2 py-1.5 rounded-md border cursor-grab transition-colors text-sm',
+                        'flex items-start gap-2 px-2.5 py-2 rounded-md border cursor-grab transition-all text-sm group',
+                        'hover:shadow-sm hover:scale-[1.02] active:scale-[0.98]',
                         categoryBg[cat.key]
                       )}
                       draggable
                       onDragStart={e => onDragStart(e, node.type)}
+                      title={node.description}
                     >
-                      <span className="text-base leading-none">{node.icon}</span>
-                      <div className="min-w-0">
+                      <span className="text-base leading-none mt-0.5">{node.icon}</span>
+                      <div className="min-w-0 flex-1">
                         <div className="text-xs font-medium truncate">{node.label}</div>
+                        <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-2 opacity-70 group-hover:opacity-100 transition-opacity">
+                          {node.description}
+                        </div>
                       </div>
                     </div>
                   ))}
