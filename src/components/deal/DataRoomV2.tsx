@@ -466,7 +466,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
           </div>
         </ResizablePanel>
 
-        <ResizableHandle withHandle />
+        <ResizableHandle className="bg-transparent w-0" />
 
         <ResizablePanel defaultSize={40} minSize={25}>
           <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
@@ -490,7 +490,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
           </div>
         </ResizablePanel>
 
-        <ResizableHandle withHandle />
+        <ResizableHandle className="bg-transparent w-0" />
 
         <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
           <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
