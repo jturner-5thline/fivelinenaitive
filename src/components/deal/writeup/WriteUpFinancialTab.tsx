@@ -399,43 +399,31 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
         </FlexChangedFieldWrapper>
         <div className="space-y-2">
           <Label htmlFor="financialDataAsOf">Financial Data As Of</Label>
-          <div className="flex gap-2">
-            <Select 
-              value={data.financialDataAsOf ? format(data.financialDataAsOf, 'MMMM') : ''} 
-              onValueChange={(month) => {
-                const currentYear = data.financialDataAsOf ? data.financialDataAsOf.getFullYear() : new Date().getFullYear();
-                const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].indexOf(month);
-                if (monthIndex !== -1) {
-                  updateField('financialDataAsOf', new Date(currentYear, monthIndex, 1));
+          <Input
+            id="financialDataAsOf"
+            value={data.financialDataAsOf ? format(data.financialDataAsOf, 'MM/yyyy') : ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              // Allow typing with auto-slash
+              if (val.length === 2 && !val.includes('/')) {
+                e.target.value = val + '/';
+              }
+              // Parse MM/YYYY
+              const match = val.match(/^(\d{1,2})\/(\d{4})$/);
+              if (match) {
+                const month = parseInt(match[1], 10);
+                const year = parseInt(match[2], 10);
+                if (month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+                  updateField('financialDataAsOf', new Date(year, month - 1, 1));
                 }
-              }}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Month" />
-              </SelectTrigger>
-              <SelectContent>
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(month => (
-                  <SelectItem key={month} value={month}>{month}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select 
-              value={data.financialDataAsOf ? data.financialDataAsOf.getFullYear().toString() : ''} 
-              onValueChange={(year) => {
-                const currentMonth = data.financialDataAsOf ? data.financialDataAsOf.getMonth() : 0;
-                updateField('financialDataAsOf', new Date(parseInt(year), currentMonth, 1));
-              }}
-            >
-              <SelectTrigger className="w-[100px]">
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                  <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              }
+              // If cleared, set to null
+              if (val === '') {
+                updateField('financialDataAsOf', null);
+              }
+            }}
+            placeholder="MM/YYYY"
+          />
         </div>
       </div>
 
