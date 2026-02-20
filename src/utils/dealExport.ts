@@ -769,156 +769,335 @@ interface OutstandingItem {
   requestedBy: string[];
 }
 
-// Status Report PDF Export
+// Status Report PDF Export — matches branded design template
 export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[]): void {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  
-  // Header with brand color
-  doc.setFillColor(147, 51, 234); // Purple
-  doc.rect(0, 0, pageWidth, 40, 'F');
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+
+  const fullDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const dateMMDD = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }).replace('/', '-');
-  const reportTitle = `${deal.company} Debt Status Report - ${dateMMDD}`;
-  
-  // Title
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
+
+  // Brand colors
+  const brandBlue: [number, number, number] = [30, 58, 138]; // Dark navy
+  const accentBlue: [number, number, number] = [37, 99, 235]; // Bright blue for date & headings
+  const textDark: [number, number, number] = [31, 41, 55];
+  const textMedium: [number, number, number] = [75, 85, 99];
+  const bgLight: [number, number, number] = [243, 244, 246]; // Light gray
+  const borderLight: [number, number, number] = [209, 213, 219];
+
+  // ─── PAGE 1 ───────────────────────────────────────────────────────────────
+
+  // Top blue bar
+  doc.setFillColor(30, 58, 138);
+  doc.rect(0, 0, pageWidth, 6, 'F');
+
+  // "5TH LINE" logo text
+  let yPos = 22;
   doc.setFont('helvetica', 'bold');
-  doc.text(reportTitle, 20, 25);
-  
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Generated ${formatDate(new Date().toISOString())}`, 20, 35);
-  
-  // Reset text color
-  doc.setTextColor(0, 0, 0);
-  
-  let yPos = 55;
-  
-  // Deal Status Section (Notes from top box)
   doc.setFontSize(14);
+  doc.setTextColor(...brandBlue);
+  doc.text('5', margin, yPos);
+  doc.setFontSize(7);
+  doc.text('TH', margin + 5.5, yPos - 3);
+  doc.setFontSize(14);
+  doc.text('| LINE', margin + 11, yPos);
+
+  // Title: "{Company} — Status Update: {Date}"
+  yPos = 40;
   doc.setFont('helvetica', 'bold');
-  doc.text('Deal Status', 20, yPos);
-  yPos += 10;
-  
-  doc.setFontSize(10);
+  doc.setFontSize(22);
+  doc.setTextColor(...textDark);
+  const titlePrefix = `${deal.company} — Status Update: `;
+  doc.text(titlePrefix, margin, yPos);
+  const prefixWidth = doc.getTextWidth(titlePrefix);
+  doc.setTextColor(...accentBlue);
+  doc.text(fullDate, margin + prefixWidth, yPos);
+
+  // ─── Key Updates ────────────────────────────────────────────────────────
+  yPos = 58;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...brandBlue);
+  doc.text('Key Updates:', margin, yPos);
+  // Underline
+  const kuWidth = doc.getTextWidth('Key Updates:');
+  doc.setDrawColor(...brandBlue);
+  doc.setLineWidth(0.5);
+  doc.line(margin, yPos + 1.5, margin + kuWidth, yPos + 1.5);
+
+  yPos += 12;
   doc.setFont('helvetica', 'normal');
-  if (deal.notes) {
-    const splitNotes = doc.splitTextToSize(deal.notes, pageWidth - 40);
-    doc.text(splitNotes, 20, yPos);
-    yPos += splitNotes.length * 5 + 15;
+  doc.setFontSize(10);
+  doc.setTextColor(...textDark);
+
+  // Parse notes into bullet points (split by newlines, strip HTML tags)
+  const rawNotes = deal.notes || '';
+  const strippedNotes = rawNotes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+  const bulletItems = strippedNotes.split(/\n+/).map(s => s.trim()).filter(Boolean);
+
+  if (bulletItems.length > 0) {
+    for (const item of bulletItems) {
+      if (yPos > pageHeight - 40) { doc.addPage(); yPos = 20; }
+      const lines = doc.splitTextToSize(item, contentWidth - 10);
+      // Bullet circle
+      doc.setFillColor(...textDark);
+      doc.circle(margin + 2, yPos - 1.2, 1, 'F');
+      doc.text(lines, margin + 8, yPos);
+      yPos += lines.length * 5 + 4;
+    }
   } else {
-    doc.setTextColor(128, 128, 128);
-    doc.text('No status notes available', 20, yPos);
-    doc.setTextColor(0, 0, 0);
-    yPos += 15;
+    doc.setTextColor(...textMedium);
+    doc.text('No updates available.', margin + 8, yPos);
+    yPos += 10;
   }
 
-  // Lenders Section
-  if (deal.lenders && deal.lenders.length > 0) {
-    if (yPos > 230) {
-      doc.addPage();
-      yPos = 20;
-    }
-    
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Current Lenders', 20, yPos);
-    yPos += 10;
+  // ─── Key Lenders – Process Status & Next Actions ────────────────────────
+  yPos += 8;
+  if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
 
-    const lenderData = deal.lenders.map(lender => {
-      const stageName = configuredStages?.find(s => s.id === lender.stage)?.label || 
-                        LENDER_STAGE_CONFIG[lender.stage]?.label || 
-                        lender.stage;
-      const substageName = lender.substage 
-        ? (configuredSubstages?.find(s => s.id === lender.substage)?.label || lender.substage)
-        : '-';
-      const passReason = lender.trackingStatus === 'passed' && lender.passReason 
-        ? lender.passReason 
-        : '-';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...brandBlue);
+  const klTitle = 'Key Lenders \u2013 Process Status & Next Actions:';
+  doc.text(klTitle, margin, yPos);
+  const klWidth = doc.getTextWidth(klTitle);
+  doc.setDrawColor(...brandBlue);
+  doc.setLineWidth(0.5);
+  doc.line(margin, yPos + 1.5, margin + klWidth, yPos + 1.5);
+  yPos += 10;
+
+  // Filter active lenders for the detail table (exclude passed)
+  const activeLenders = (deal.lenders || []).filter(l => l.trackingStatus !== 'passed');
+
+  if (activeLenders.length > 0) {
+    const lenderTableData = activeLenders.map(lender => {
+      const stageName = configuredStages?.find(s => s.id === lender.stage)?.label ||
+        LENDER_STAGE_CONFIG[lender.stage]?.label || lender.stage;
       return [
         lender.name,
         stageName,
-        substageName,
-        LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus]?.label || lender.trackingStatus,
-        passReason,
-        lender.notes || '-',
+        '', // Key Focus Areas — placeholder, can be enriched
+        '', // Current Challenges — placeholder
+        lender.notes || '',
       ];
     });
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Lender Name', 'Stage', 'Substage', 'Tracking', 'Pass Reason', 'Notes']],
-      body: lenderData,
-      theme: 'striped',
-      headStyles: { fillColor: [147, 51, 234], textColor: 255 },
-      styles: { fontSize: 8, cellPadding: 3 },
-      columnStyles: {
-        0: { cellWidth: 30 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 25 },
-        3: { cellWidth: 22 },
-        4: { cellWidth: 30 },
-        5: { cellWidth: 33 },
+      head: [['Lender', 'Process Stage', 'Key Focus Areas', 'Current Challenges', 'Next Action']],
+      body: lenderTableData,
+      theme: 'plain',
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: textDark,
+        fontStyle: 'bold',
+        fontSize: 9,
+        cellPadding: 5,
+        lineWidth: { bottom: 0.3 },
+        lineColor: borderLight,
       },
-      margin: { left: 20, right: 20 },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: textDark,
+        cellPadding: 5,
+        lineWidth: { bottom: 0.15 },
+        lineColor: [229, 231, 235],
+      },
+      styles: { overflow: 'linebreak' },
+      columnStyles: {
+        0: { cellWidth: 32 },
+        1: { cellWidth: 32 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: 38 },
+        4: { cellWidth: 33 },
+      },
+      margin: { left: margin, right: margin },
+      tableLineColor: borderLight,
+      tableLineWidth: 0.3,
     });
 
-    yPos = (doc as any).lastAutoTable.finalY + 15;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // Outstanding Items Section
-  if (outstandingItems && outstandingItems.length > 0) {
-    if (yPos > 230) {
-      doc.addPage();
-      yPos = 20;
-    }
-    
-    doc.setFontSize(14);
+  // ─── PAGE 2 ───────────────────────────────────────────────────────────────
+  doc.addPage();
+  yPos = 20;
+
+  // ─── Lender Pipeline Snapshot ───────────────────────────────────────────
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...brandBlue);
+  doc.text('Lender Pipeline Snapshot', margin, yPos);
+  yPos += 10;
+
+  // Group lenders by tracking status
+  const allLenders = deal.lenders || [];
+  const pipelineGroups: { label: string; lenders: string[]; borderColor: [number, number, number]; iconColor: [number, number, number] }[] = [
+    { label: 'On Deck', lenders: allLenders.filter(l => l.trackingStatus === 'on-deck').map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
+    { label: 'In Review', lenders: allLenders.filter(l => l.trackingStatus === 'active').map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
+    { label: 'Terms Issued', lenders: allLenders.filter(l => l.stage === 'term-sheets' || l.stage === 'draft-terms').map(l => l.name), borderColor: [34, 197, 94], iconColor: [34, 197, 94] },
+    { label: 'Passed', lenders: allLenders.filter(l => l.trackingStatus === 'passed').map(l => l.name), borderColor: [239, 68, 68], iconColor: [239, 68, 68] },
+  ];
+
+  const cardW = (contentWidth - 9) / 4; // 4 cards with 3px gap
+  const cardX = margin;
+
+  for (let i = 0; i < pipelineGroups.length; i++) {
+    const g = pipelineGroups[i];
+    const x = cardX + i * (cardW + 3);
+    const cardH = Math.max(40, 32 + g.lenders.length * 5);
+
+    // Card background
+    doc.setFillColor(...bgLight);
+    doc.setDrawColor(...g.borderColor);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(x, yPos, cardW, cardH, 2, 2, 'FD');
+
+    // Icon circle
+    doc.setFillColor(...g.iconColor);
+    doc.circle(x + 8, yPos + 8, 4, 'F');
+
+    // Stage label with count
     doc.setFont('helvetica', 'bold');
-    doc.text('Outstanding Items', 20, yPos);
+    doc.setFontSize(9);
+    doc.setTextColor(...textDark);
+    doc.text(`${g.label} (${g.lenders.length})`, x + 5, yPos + 20);
+
+    // Lender names
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...textMedium);
+    g.lenders.forEach((name, idx) => {
+      doc.text(`${idx + 1}. ${name}`, x + 7, yPos + 26 + idx * 5);
+    });
+  }
+
+  const maxCardH = Math.max(40, ...pipelineGroups.map(g => 32 + g.lenders.length * 5));
+  yPos += maxCardH + 15;
+
+  // ─── Recent Milestones ──────────────────────────────────────────────────
+  const completedMilestones = (deal.milestones || []).filter(m => m.completed);
+  if (completedMilestones.length > 0 || true) {
+    if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(...brandBlue);
+    doc.text('Recent Milestones', margin, yPos);
     yPos += 10;
 
-    const itemData = outstandingItems.map(item => {
-      const status = item.received && item.approved 
-        ? 'Completed' 
-        : item.approved 
-          ? 'Approved' 
-          : item.received 
-            ? 'Received' 
-            : 'Requested';
-      const requestedBy = Array.isArray(item.requestedBy) 
-        ? item.requestedBy.join(', ') 
-        : item.requestedBy || '-';
-      const completedDate = item.completedAt 
-        ? formatDate(item.completedAt) 
-        : '-';
-      return [
-        item.text,
-        status,
-        requestedBy,
-        completedDate,
-      ];
-    });
+    const milestoneItems = completedMilestones.length > 0
+      ? completedMilestones.slice(0, 3).map(m => m.title)
+      : ['No completed milestones yet'];
 
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Item', 'Status', 'Requested By', 'Completed']],
-      body: itemData,
-      theme: 'striped',
-      headStyles: { fillColor: [147, 51, 234], textColor: 255 },
-      styles: { fontSize: 8, cellPadding: 3 },
-      columnStyles: {
-        0: { cellWidth: 60 },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 50 },
-        3: { cellWidth: 35 },
-      },
-      margin: { left: 20, right: 20 },
-    });
+    const mCardW = (contentWidth - 6) / 3;
+    for (let i = 0; i < Math.min(milestoneItems.length, 3); i++) {
+      const x = margin + i * (mCardW + 3);
+      const lines = doc.splitTextToSize(milestoneItems[i], mCardW - 10);
+      const cH = Math.max(35, 22 + lines.length * 4);
+
+      doc.setFillColor(...bgLight);
+      doc.setDrawColor(34, 197, 94);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(x, yPos, mCardW, cH, 2, 2, 'FD');
+
+      // Icon circle
+      doc.setFillColor(187, 247, 208);
+      doc.circle(x + mCardW / 2, yPos + 10, 5, 'F');
+      doc.setFillColor(34, 197, 94);
+      doc.circle(x + mCardW / 2, yPos + 10, 3, 'F');
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...textDark);
+      doc.text(lines, x + mCardW / 2, yPos + 20, { align: 'center', maxWidth: mCardW - 8 });
+    }
+
+    const mCardH = Math.max(35, 22 + 8);
+    yPos += mCardH + 15;
   }
 
-  // Footer
+  // ─── Next Steps ─────────────────────────────────────────────────────────
+  const upcomingMilestones = (deal.milestones || []).filter(m => !m.completed);
+  if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...brandBlue);
+  doc.text('Next Steps', margin, yPos);
+  yPos += 10;
+
+  const nextItems = upcomingMilestones.length > 0
+    ? upcomingMilestones.slice(0, 2).map(m => m.title)
+    : ['No upcoming steps defined'];
+
+  const nsCardW = (contentWidth - 3) / 2;
+  for (let i = 0; i < Math.min(nextItems.length, 2); i++) {
+    const x = margin + i * (nsCardW + 3);
+    const lines = doc.splitTextToSize(nextItems[i], nsCardW - 10);
+    const cH = Math.max(35, 22 + lines.length * 4);
+
+    doc.setFillColor(255, 251, 235); // Light amber
+    doc.setDrawColor(251, 146, 60); // Orange
+    doc.setLineWidth(0.6);
+    doc.roundedRect(x, yPos, nsCardW, cH, 2, 2, 'FD');
+
+    // Orange circle with arrow
+    doc.setFillColor(251, 146, 60);
+    doc.circle(x + nsCardW / 2, yPos + 10, 5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('\u2192', x + nsCardW / 2 - 2, yPos + 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...textDark);
+    doc.text(lines, x + nsCardW / 2, yPos + 20, { align: 'center', maxWidth: nsCardW - 8 });
+  }
+
+  const nsCardH = Math.max(35, 22 + 8);
+  yPos += nsCardH + 15;
+
+  // ─── What We Need From You ──────────────────────────────────────────────
+  if (yPos > pageHeight - 50) { doc.addPage(); yPos = 20; }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...brandBlue);
+  doc.text('What We Need From You', margin, yPos);
+  yPos += 10;
+
+  const pendingItems = (outstandingItems || []).filter(i => !i.completed && !i.received);
+  const actionText = pendingItems.length > 0
+    ? pendingItems.map(i => i.text).join('\n')
+    : 'No action items at this time.';
+
+  const actionLines = doc.splitTextToSize(actionText, contentWidth - 20);
+  const actionCardH = Math.max(35, 20 + actionLines.length * 5);
+
+  doc.setFillColor(241, 245, 249); // Light blue-gray
+  doc.setDrawColor(147, 197, 253); // Blue border
+  doc.setLineWidth(0.6);
+  doc.roundedRect(margin, yPos, contentWidth, actionCardH, 2, 2, 'FD');
+
+  // Warning/info icon
+  doc.setFillColor(147, 197, 253);
+  doc.circle(margin + contentWidth / 2, yPos + 10, 5, 'F');
+  doc.setTextColor(59, 130, 246);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('!', margin + contentWidth / 2 - 1, yPos + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...textDark);
+  doc.text(actionLines, margin + contentWidth / 2, yPos + 20, { align: 'center', maxWidth: contentWidth - 16 });
+
+  // ─── Footer ─────────────────────────────────────────────────────────────
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -927,12 +1106,12 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
     doc.text(
       `Page ${i} of ${pageCount}`,
       pageWidth / 2,
-      doc.internal.pageSize.getHeight() - 10,
+      pageHeight - 10,
       { align: 'center' }
     );
   }
 
-  doc.save(`${deal.company} Debt Status Report - ${dateMMDD}.pdf`);
+  doc.save(`${deal.company} Status Update - ${dateMMDD}.pdf`);
 }
 
 // Status Report Word Export
