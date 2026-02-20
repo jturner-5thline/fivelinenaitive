@@ -77,9 +77,8 @@ export function CreateTaskButton({ dealId, dealName }: CreateTaskButtonProps) {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsOpen(true)}>
+      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setIsOpen(true)}>
         <Plus className="h-4 w-4" />
-        Create Task
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
