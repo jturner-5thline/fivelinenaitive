@@ -358,7 +358,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-      <Card className="border-primary/30 bg-primary/5 relative overflow-hidden before:absolute before:inset-0 before:rounded-[inherit] before:p-[1px] before:bg-gradient-to-r before:from-primary/60 before:via-primary/30 before:to-primary/60 before:[mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] before:[mask-composite:exclude] before:pointer-events-none">
+      <Card className="border-amber-500/30 bg-amber-500/5">
         <CollapsibleTrigger asChild>
           <CardHeader className="py-4 cursor-pointer hover:bg-muted/50 transition-colors">
             <div className="flex items-center justify-between">
@@ -407,8 +407,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                   <div className="flex items-center gap-2">
                     <Button 
                       size="sm" 
-                      variant="ghost"
-                      className="bg-gradient-to-r from-destructive/90 to-destructive/60 text-destructive-foreground hover:from-destructive hover:to-destructive/70 hover:text-destructive-foreground"
+                      variant="destructive"
                       onClick={handleBulkReject}
                       disabled={isBulkProcessing}
                     >
@@ -421,8 +420,6 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     </Button>
                     <Button 
                       size="sm" 
-                      variant="ghost"
-                      className="bg-gradient-to-r from-primary/90 to-primary/60 text-primary-foreground hover:from-primary hover:to-primary/70 hover:text-primary-foreground"
                       onClick={handleBulkApprove}
                       disabled={isBulkProcessing}
                     >
