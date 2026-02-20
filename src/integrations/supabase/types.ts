@@ -1032,6 +1032,8 @@ export type Database = {
           name: string
           position: number
           size_bytes: number
+          source: string
+          upload_job_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -1044,6 +1046,8 @@ export type Database = {
           name: string
           position?: number
           size_bytes?: number
+          source?: string
+          upload_job_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1056,9 +1060,19 @@ export type Database = {
           name?: string
           position?: number
           size_bytes?: number
+          source?: string
+          upload_job_id?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "deal_attachments_upload_job_id_fkey"
+            columns: ["upload_job_id"]
+            isOneToOne: false
+            referencedRelation: "upload_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deal_call_transcripts: {
         Row: {
@@ -2791,6 +2805,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      file_checklist_map: {
+        Row: {
+          checklist_item_id: string
+          deal_id: string
+          file_id: string
+          id: string
+          mapped_at: string
+          mapped_by: string
+          mapping_source: string
+        }
+        Insert: {
+          checklist_item_id: string
+          deal_id: string
+          file_id: string
+          id?: string
+          mapped_at?: string
+          mapped_by: string
+          mapping_source?: string
+        }
+        Update: {
+          checklist_item_id?: string
+          deal_id?: string
+          file_id?: string
+          id?: string
+          mapped_at?: string
+          mapped_by?: string
+          mapping_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_checklist_map_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_checklist_map_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "deal_attachments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       financial_change_logs: {
         Row: {
@@ -5403,6 +5462,53 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upload_jobs: {
+        Row: {
+          completed_at: string | null
+          deal_id: string
+          files_failed: number
+          files_uploaded_successfully: number
+          id: string
+          initiated_at: string
+          initiated_by: string
+          job_type: string
+          status: string
+          total_files_detected: number
+        }
+        Insert: {
+          completed_at?: string | null
+          deal_id: string
+          files_failed?: number
+          files_uploaded_successfully?: number
+          id?: string
+          initiated_at?: string
+          initiated_by: string
+          job_type?: string
+          status?: string
+          total_files_detected?: number
+        }
+        Update: {
+          completed_at?: string | null
+          deal_id?: string
+          files_failed?: number
+          files_uploaded_successfully?: number
+          id?: string
+          initiated_at?: string
+          initiated_by?: string
+          job_type?: string
+          status?: string
+          total_files_detected?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upload_jobs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
