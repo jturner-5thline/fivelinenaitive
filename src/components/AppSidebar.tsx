@@ -35,7 +35,7 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
   { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
-  { title: "AI Research", url: "/research", icon: Sparkles, featureKey: null }, // Always visible
+  { title: "AI Research", url: "/research", icon: Sparkles, featureKey: "ai_research" },
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
   { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
   { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },

@@ -121,6 +121,7 @@ const PAGE_SECTIONS: SectionConfig[] = [
   { key: 'salesBd', label: 'Sales & BD', icon: Users, description: 'Sales and business development' },
   { key: 'hr', label: 'HR', icon: UserCog, description: 'Human resources tools' },
   { key: 'operations', label: 'Operations', icon: Cog, description: 'Operational management' },
+  { key: 'finance', label: 'Finance', icon: DollarSign, description: 'Financial management and reporting' },
   { key: 'lenders', label: 'Lenders Database', icon: Users, description: 'Master lender database' },
   { key: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Detailed analytics and charts' },
   { key: 'reports', label: 'Reports', icon: FileText, description: 'Custom report generation' },
