@@ -416,7 +416,7 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => handlePipelineDialogClose(false)}>Cancel</Button>
+                
                 <Button variant="gradient" size="sm" onClick={handleSavePipeline} disabled={isSavingPipeline}>
                   {isSavingPipeline ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   {editingPipelineId ? 'Save Changes' : 'Create Pipeline'}
