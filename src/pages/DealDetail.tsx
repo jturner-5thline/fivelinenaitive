@@ -2423,61 +2423,6 @@ export default function DealDetail() {
             </CardHeader>
           </Card>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 mb-6">
-              <CreateTaskButton dealId={id!} dealName={deal?.company} />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9">
-                    <FileText className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="bg-popover">
-                  <DropdownMenuItem onClick={() => setShowStatusReportPreview(true)}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={async () => {
-                    await exportStatusReportToWord(deal, configuredStages, configuredSubstages, outstandingItems);
-                    toast({ title: "Word document exported", description: "Status report exported to Word document." });
-                  }}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export as Word
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="bg-popover">
-                  <DropdownMenuItem onClick={() => {
-                    exportDealToCSV(deal);
-                    toast({ title: "CSV exported", description: "Deal data exported to CSV file." });
-                  }}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export as CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    exportDealToPDF(deal);
-                    toast({ title: "PDF exported", description: "Deal report exported to PDF." });
-                  }}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={async () => {
-                    await exportDealToWord(deal);
-                    toast({ title: "Word document exported", description: "Deal report exported to Word document." });
-                  }}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Export as Word
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-          </div>
-
           {/* Main Content Grid */}
           <div className="grid gap-6">
             {/* Main Content */}
@@ -2522,6 +2467,59 @@ export default function DealDetail() {
                     Emails
                   </TabsTrigger>
                   </TabsList>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <CreateTaskButton dealId={id!} dealName={deal?.company} />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-9 w-9">
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover">
+                        <DropdownMenuItem onClick={() => setShowStatusReportPreview(true)}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          await exportStatusReportToWord(deal, configuredStages, configuredSubstages, outstandingItems);
+                          toast({ title: "Word document exported", description: "Status report exported to Word document." });
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as Word
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-9 w-9">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover">
+                        <DropdownMenuItem onClick={() => {
+                          exportDealToCSV(deal);
+                          toast({ title: "CSV exported", description: "Deal data exported to CSV file." });
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          exportDealToPDF(deal);
+                          toast({ title: "PDF exported", description: "Deal report exported to PDF." });
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          await exportDealToWord(deal);
+                          toast({ title: "Word document exported", description: "Deal report exported to Word document." });
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as Word
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
 
                 <TabsContent value="deal-info" className={cn("mt-6 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
