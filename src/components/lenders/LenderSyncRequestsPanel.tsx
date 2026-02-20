@@ -318,6 +318,36 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     }
   };
 
+  const handleBulkReject = async () => {
+    if (selectedApprovable.length === 0) return;
+    
+    setIsBulkProcessing(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const request of selectedApprovable) {
+      const success = await rejectRequest(request.id);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    setIsBulkProcessing(false);
+    setSelectedIds(new Set());
+
+    if (failCount === 0) {
+      toast({ title: 'Bulk Declined', description: `Successfully declined ${successCount} request(s).` });
+    } else {
+      toast({ 
+        title: 'Partial Success', 
+        description: `Declined ${successCount}, failed ${failCount}.`,
+        variant: 'destructive'
+      });
+    }
+  };
+
   if (loading) {
     return null;
   }
@@ -372,18 +402,33 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                   </span>
                 </div>
                 {selectedApprovable.length > 0 && (
-                  <Button 
-                    size="sm" 
-                    onClick={handleBulkApprove}
-                    disabled={isBulkProcessing}
-                  >
-                    {isBulkProcessing ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <CheckCheck className="h-4 w-4 mr-1" />
-                    )}
-                    Approve All ({selectedApprovable.length})
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="destructive"
+                      onClick={handleBulkReject}
+                      disabled={isBulkProcessing}
+                    >
+                      {isBulkProcessing ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <X className="h-4 w-4 mr-1" />
+                      )}
+                      Decline All ({selectedApprovable.length})
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={handleBulkApprove}
+                      disabled={isBulkProcessing}
+                    >
+                      {isBulkProcessing ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <CheckCheck className="h-4 w-4 mr-1" />
+                      )}
+                      Approve All ({selectedApprovable.length})
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
