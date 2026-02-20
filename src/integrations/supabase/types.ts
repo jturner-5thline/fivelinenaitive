@@ -591,6 +591,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           description: string | null
+          graph_config: Json | null
           id: string
           is_public: boolean | null
           is_shared: boolean | null
@@ -613,6 +614,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           description?: string | null
+          graph_config?: Json | null
           id?: string
           is_public?: boolean | null
           is_shared?: boolean | null
@@ -635,6 +637,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           description?: string | null
+          graph_config?: Json | null
           id?: string
           is_public?: boolean | null
           is_shared?: boolean | null
