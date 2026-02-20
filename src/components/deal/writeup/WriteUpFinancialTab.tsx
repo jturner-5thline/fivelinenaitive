@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, Sparkles, Loader2, Check, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,8 @@ import {
 import { cn } from '@/lib/utils';
 import { DealWriteUpData, FinancialYear, FinancialComment } from '../DealWriteUp';
 import { FlexChangedFieldWrapper } from './FlexChangedFieldWrapper';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const PROFITABILITY_OPTIONS = [
   'Profitable',
@@ -177,6 +179,42 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
       return formatted;
     });
   }, [data.financialDataAsOf]);
+
+  // AI refine state
+  const [isRefining, setIsRefining] = useState(false);
+  const [refinedText, setRefinedText] = useState<string | null>(null);
+
+  const handleRefineUseOfFunds = async () => {
+    if (!data.useOfFunds?.trim()) {
+      toast.error('Please enter some text first before refining');
+      return;
+    }
+    setIsRefining(true);
+    setRefinedText(null);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('refine-text', {
+        body: {
+          text: data.useOfFunds,
+          fieldName: 'Use of Funds',
+          context: `Company: ${data.companyName || ''}, Capital Ask: ${data.capitalAsk || ''}`,
+        },
+      });
+      if (error) throw error;
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (result?.refined) {
+        setRefinedText(result.refined);
+      }
+    } catch (e) {
+      console.error('Refine error:', e);
+      toast.error('Failed to refine text');
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   // Column visibility toggles
   const [showRevGrowth, setShowRevGrowth] = useState(true);
   const [showGmDelta, setShowGmDelta] = useState(true);
@@ -531,14 +569,68 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
 
       {/* Use of Funds */}
       <FlexChangedFieldWrapper fieldKey="useOfFunds" changedFields={changedFields} className="space-y-2">
-        <Label htmlFor="useOfFunds">Use of Funds</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="useOfFunds">Use of Funds</Label>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefineUseOfFunds}
+            disabled={isRefining || !data.useOfFunds?.trim()}
+            className="gap-1.5 text-xs h-7"
+          >
+            {isRefining ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+            )}
+            {isRefining ? 'Refining...' : 'AI Refine'}
+          </Button>
+        </div>
         <Textarea
           id="useOfFunds"
           value={data.useOfFunds}
-          onChange={(e) => updateField('useOfFunds', e.target.value)}
+          onChange={(e) => {
+            updateField('useOfFunds', e.target.value);
+            setRefinedText(null);
+          }}
           placeholder="Expand sales team and accelerate product development for enterprise features."
           className="min-h-[80px]"
         />
+        {refinedText && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Suggestion
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs gap-1"
+                  onClick={() => {
+                    updateField('useOfFunds', refinedText);
+                    setRefinedText(null);
+                    toast.success('Suggestion applied');
+                  }}
+                >
+                  <Check className="h-3 w-3" />
+                  Apply
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs gap-1 text-muted-foreground"
+                  onClick={() => setRefinedText(null)}
+                >
+                  <X className="h-3 w-3" />
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+            <p className="text-sm text-foreground">{refinedText}</p>
+          </div>
+        )}
       </FlexChangedFieldWrapper>
 
       {/* Existing Debt Details */}
