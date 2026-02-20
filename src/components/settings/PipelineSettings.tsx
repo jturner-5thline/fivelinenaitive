@@ -415,11 +415,10 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
                   {editingPipelineId ? 'Modify pipeline name and stages' : 'Set up a new pipeline with custom stages'}
                 </DialogDescription>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                
-                <Button variant="gradient" size="sm" onClick={handleSavePipeline} disabled={isSavingPipeline}>
-                  {isSavingPipeline ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  {editingPipelineId ? 'Save Changes' : 'Create Pipeline'}
+              <div className="flex items-center shrink-0 mr-6">
+                <Button variant="gradient" size="sm" onClick={handleSavePipeline} disabled={isSavingPipeline} className="gap-1.5">
+                  {isSavingPipeline ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {editingPipelineId ? 'Save' : 'Create'}
                 </Button>
               </div>
             </div>
