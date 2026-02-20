@@ -3029,7 +3029,7 @@ export default function DealDetail() {
               <div className="flex gap-6">
               <div className="w-[70%] space-y-6">
               {/* Lenders Card */}
-                <Card className="max-h-[500px] flex flex-col">
+                <Card className="max-h-[750px] flex flex-col">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
