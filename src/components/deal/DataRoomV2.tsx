@@ -444,90 +444,74 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       )}
 
       {/* Three-pane resizable layout */}
-      <ResizablePanelGroup direction="horizontal" className="h-[400px]" style={{ overflow: 'hidden' }}>
-        <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
-          <div className="h-full min-w-0 pr-1">
-            <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
-            <ContextPane
-              selectedItem={selectedItem}
-              selectedItemFiles={selectedItemFiles}
-              statusMap={statusMap}
-              progressData={progressData}
-              categories={categories}
-              allItems={allItems}
-              attachments={attachments}
-              unmappedFiles={unmappedFiles}
-              getFilesForItem={getFilesForItem}
-              mapFileToItem={mapFileToItem}
-              unmapFile={unmapFile}
-              handleUploadFiles={handleUploadFiles}
-              handleDownloadFile={handleDownloadFile}
-              setSelectedItemId={setSelectedItemId}
-              setPreviewFile={handleSetPreviewFile}
-              onExportIndex={handleExportIndex}
-              onDownloadSection={handleDownloadSection}
-              onDownloadAll={handleDownloadAll}
-              comments={comments}
-              onAddComment={addComment}
-              onDeleteComment={deleteComment}
-              getCommentsForItem={getCommentsForItem}
-              currentUserId={user?.id}
-            />
-            </div>
-          </div>
-        </ResizablePanel>
+      <div className="grid grid-cols-[30%_30%_1fr] gap-2 h-[400px]">
+        <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+          <ContextPane
+            selectedItem={selectedItem}
+            selectedItemFiles={selectedItemFiles}
+            statusMap={statusMap}
+            progressData={progressData}
+            categories={categories}
+            allItems={allItems}
+            attachments={attachments}
+            unmappedFiles={unmappedFiles}
+            getFilesForItem={getFilesForItem}
+            mapFileToItem={mapFileToItem}
+            unmapFile={unmapFile}
+            handleUploadFiles={handleUploadFiles}
+            handleDownloadFile={handleDownloadFile}
+            setSelectedItemId={setSelectedItemId}
+            setPreviewFile={handleSetPreviewFile}
+            onExportIndex={handleExportIndex}
+            onDownloadSection={handleDownloadSection}
+            onDownloadAll={handleDownloadAll}
+            comments={comments}
+            onAddComment={addComment}
+            onDeleteComment={deleteComment}
+            getCommentsForItem={getCommentsForItem}
+            currentUserId={user?.id}
+          />
+        </div>
 
-        <ResizableHandle className="bg-transparent w-0" />
+        <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+          <ChecklistTreePane
+            categories={categories}
+            grouped={grouped}
+            progressData={progressData}
+            statusMap={statusMap}
+            selectedItemId={selectedItemId}
+            setSelectedItemId={setSelectedItemId}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            getFilesForItem={getFilesForItem}
+            getCategoryByName={getCategoryByName}
+            unmappedFiles={unmappedFiles}
+            handleUploadFiles={handleUploadFiles}
+          />
+        </div>
 
-        <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
-          <div className="h-full min-w-0 px-1">
-            <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
-            <ChecklistTreePane
-              categories={categories}
-              grouped={grouped}
-              progressData={progressData}
-              statusMap={statusMap}
-              selectedItemId={selectedItemId}
-              setSelectedItemId={setSelectedItemId}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              getFilesForItem={getFilesForItem}
-              getCategoryByName={getCategoryByName}
-              unmappedFiles={unmappedFiles}
-              handleUploadFiles={handleUploadFiles}
-            />
-            </div>
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle className="bg-transparent w-0" />
-
-        <ResizablePanel defaultSize={40} minSize={25}>
-          <div className="h-full min-w-0 pl-1">
-            <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
-            <FileListPane
-              selectedItem={selectedItem}
-              selectedItemFiles={selectedItemFiles}
-              attachments={attachments}
-              selectedFiles={selectedFiles}
-              setSelectedFiles={setSelectedFiles}
-              getItemsForFile={getItemsForFile}
-              getFilesForItem={getFilesForItem}
-              handleDownloadFile={handleDownloadFile}
-              handleUploadFiles={handleUploadFiles}
-              deleteAttachment={deleteAttachment}
-              setSelectedItemId={setSelectedItemId}
-              setPreviewFile={handleSetPreviewFile}
-              onOpenMappingDialog={openMappingDialog}
-              fileInputRef={fileInputRef}
-              allItems={allItems}
-            />
-            </div>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+        <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+          <FileListPane
+            selectedItem={selectedItem}
+            selectedItemFiles={selectedItemFiles}
+            attachments={attachments}
+            selectedFiles={selectedFiles}
+            setSelectedFiles={setSelectedFiles}
+            getItemsForFile={getItemsForFile}
+            getFilesForItem={getFilesForItem}
+            handleDownloadFile={handleDownloadFile}
+            handleUploadFiles={handleUploadFiles}
+            deleteAttachment={deleteAttachment}
+            setSelectedItemId={setSelectedItemId}
+            setPreviewFile={handleSetPreviewFile}
+            onOpenMappingDialog={openMappingDialog}
+            fileInputRef={fileInputRef}
+            allItems={allItems}
+          />
+        </div>
+      </div>
 
       {/* Keyboard shortcuts hint */}
       <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground">
