@@ -12,13 +12,18 @@ import {
   type Node,
   type Edge,
   type NodeTypes,
+  type EdgeTypes,
   Panel,
+  EdgeLabelRenderer,
+  BaseEdge,
+  getSmoothStepPath,
+  type EdgeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, Loader2, X, Undo2, Redo2, LayoutGrid, Sparkles, FileText, Play, Copy } from 'lucide-react';
+import { Save, Loader2, X, Undo2, Redo2, LayoutGrid, Sparkles, FileText, Play, Copy, Keyboard, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AgentNode } from './AgentNode';
@@ -28,6 +33,7 @@ import { GraphValidationPanel } from './GraphValidationPanel';
 import { CanvasTemplatesPicker } from './CanvasTemplatesPicker';
 import { AgentCanvasWizard } from './AgentCanvasWizard';
 import { InlineTestRunner } from './InlineTestRunner';
+import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 import { AGENT_NODE_REGISTRY } from './agentNodeRegistry';
 import { useGraphValidation } from './useGraphValidation';
 import { useAutoLayout } from './useAutoLayout';
@@ -44,8 +50,42 @@ interface AgentCanvasProps {
   isSaving?: boolean;
 }
 
+// Custom edge with label
+function LabeledEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, sourceHandleId, targetHandleId, style, ...props }: EdgeProps) {
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX, sourceY, sourcePosition,
+    targetX, targetY, targetPosition,
+  });
+
+  const label = sourceHandleId || '';
+
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} style={{ ...style, stroke: 'hsl(var(--primary))', strokeWidth: 2 }} />
+      {label && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: 'none',
+            }}
+            className="px-1.5 py-0.5 rounded bg-card border border-border text-[9px] text-muted-foreground font-medium shadow-sm"
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
 const nodeTypes: NodeTypes = {
   agentNode: AgentNode as any,
+};
+
+const edgeTypes: EdgeTypes = {
+  labeled: LabeledEdge as any,
 };
 
 export function AgentCanvas({
@@ -58,6 +98,7 @@ export function AgentCanvas({
   isSaving,
 }: AgentCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -65,6 +106,7 @@ export function AgentCanvas({
   const [showTemplates, setShowTemplates] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [showTestRunner, setShowTestRunner] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [copiedNode, setCopiedNode] = useState<Node | null>(null);
 
   // Undo/redo
@@ -118,10 +160,27 @@ export function AgentCanvas({
   // Auto-layout
   const autoLayout = useAutoLayout(setNodes, pushHistory);
 
+  // Connection validation
+  const isValidConnection = useCallback((connection: Connection) => {
+    // Prevent self-connections
+    if (connection.source === connection.target) return false;
+    // Prevent duplicate edges
+    const exists = edges.some(
+      e => e.source === connection.source && e.target === connection.target &&
+           e.sourceHandle === connection.sourceHandle && e.targetHandle === connection.targetHandle
+    );
+    return !exists;
+  }, [edges]);
+
   const onConnect = useCallback(
     (params: Connection) => {
       pushHistory();
-      setEdges(eds => addEdge({ ...params, animated: true, style: { stroke: 'hsl(var(--primary))' } }, eds));
+      setEdges(eds => addEdge({
+        ...params,
+        type: 'labeled',
+        animated: true,
+        style: { stroke: 'hsl(var(--primary))' },
+      }, eds));
     },
     [setEdges, pushHistory]
   );
@@ -218,6 +277,45 @@ export function AgentCanvas({
     toast.success('Node duplicated');
   }, [setNodes, pushHistory]);
 
+  // Export graph JSON
+  const handleExport = useCallback(() => {
+    const graphData = { name, nodes, edges };
+    const blob = new Blob([JSON.stringify(graphData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name || 'agent-graph'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Graph exported');
+  }, [name, nodes, edges]);
+
+  // Import graph JSON
+  const handleImport = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.nodes && Array.isArray(data.nodes)) {
+          pushHistory();
+          setNodes(data.nodes);
+          setEdges(data.edges || []);
+          if (data.name) setName(data.name);
+          toast.success('Graph imported');
+        } else {
+          toast.error('Invalid graph file');
+        }
+      } catch {
+        toast.error('Failed to parse JSON file');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    event.target.value = '';
+  }, [setNodes, setEdges, pushHistory]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -259,11 +357,20 @@ export function AgentCanvas({
     setNodes(data.nodes);
     setEdges(data.edges);
     setName(data.name);
-    toast.success('Solution created from wizard');
+    toast.success('Solution created');
   };
 
   return (
     <div className="flex flex-col h-full bg-background relative">
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleImport}
+      />
+
       {/* Top toolbar */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-card">
         <Input
@@ -276,7 +383,7 @@ export function AgentCanvas({
         <GraphValidationPanel validation={validation} />
 
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowWizard(true)} title="Wizard Mode">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowWizard(true)} title="Wizard / AI Generate">
             <Sparkles className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowTemplates(true)} title="Templates">
@@ -301,8 +408,18 @@ export function AgentCanvas({
             </Button>
           )}
           <div className="w-px h-5 bg-border mx-1" />
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="Export JSON" disabled={nodes.length === 0}>
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fileInputRef.current?.click()} title="Import JSON">
+            <Upload className="h-4 w-4" />
+          </Button>
+          <div className="w-px h-5 bg-border mx-1" />
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowTestRunner(v => !v)} title="Test Run">
             <Play className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowShortcuts(true)} title="Keyboard Shortcuts">
+            <Keyboard className="h-4 w-4" />
           </Button>
           <div className="w-px h-5 bg-border mx-1" />
           <Button variant="ghost" size="sm" onClick={onCancel}>
@@ -327,16 +444,19 @@ export function AgentCanvas({
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              isValidConnection={isValidConnection}
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
               onDrop={onDrop}
               onDragOver={onDragOver}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               fitView
               deleteKeyCode={['Backspace', 'Delete']}
               multiSelectionKeyCode="Shift"
               className="bg-background"
               defaultEdgeOptions={{
+                type: 'labeled',
                 animated: true,
                 style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
               }}
@@ -355,11 +475,11 @@ export function AgentCanvas({
                     <div className="text-4xl mb-3">🧠</div>
                     <h3 className="text-base font-semibold text-foreground mb-1">Design your agent solution</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Drag components from the left panel, or use the wizard / templates to get started fast.
+                      Drag components, use AI generation, or load a template to get started.
                     </p>
                     <div className="flex items-center justify-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => setShowWizard(true)}>
-                        <Sparkles className="h-4 w-4 mr-1" /> Wizard
+                        <Sparkles className="h-4 w-4 mr-1" /> AI Generate
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
                         <FileText className="h-4 w-4 mr-1" /> Templates
@@ -396,11 +516,17 @@ export function AgentCanvas({
         onSelect={handleLoadTemplate}
       />
 
-      {/* Wizard */}
+      {/* Wizard with AI generation */}
       <AgentCanvasWizard
         open={showWizard}
         onOpenChange={setShowWizard}
         onComplete={handleWizardComplete}
+      />
+
+      {/* Keyboard shortcuts help */}
+      <KeyboardShortcutsHelp
+        open={showShortcuts}
+        onOpenChange={setShowShortcuts}
       />
     </div>
   );
