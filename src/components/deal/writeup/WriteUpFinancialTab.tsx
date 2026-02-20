@@ -52,7 +52,10 @@ interface WriteUpFinancialTabProps {
 // Format currency value - revenue in $X.XXMM format
 const formatCurrency = (value: string): string => {
   if (!value) return '';
-  if (value.startsWith('$') || value.startsWith('(')) return value;
+  // Allow parenthesized negatives to pass through (e.g., ($1.50MM))
+  if (value.startsWith('(')) return value;
+  // Already formatted as $X.XXMM / $X.XXK — return as-is
+  if (/^\$[\d,.]+MM$/i.test(value) || /^\$[\d,.]+K$/i.test(value)) return value;
   const numericValue = value.replace(/[^0-9.-]/g, '');
   if (numericValue && !isNaN(parseFloat(numericValue))) {
     const num = parseFloat(numericValue);
