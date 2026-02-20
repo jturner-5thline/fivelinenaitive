@@ -77,7 +77,7 @@ export function CreateTaskButton({ dealId, dealName }: CreateTaskButtonProps) {
 
   return (
     <>
-      <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setIsOpen(true)}>
+      <Button variant="outline" size="icon" className="h-9 w-9 border-primary/40 text-primary hover:bg-primary/10" onClick={() => setIsOpen(true)}>
         <Plus className="h-4 w-4" />
       </Button>
 
