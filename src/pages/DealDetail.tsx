@@ -132,6 +132,125 @@ import { toast } from '@/hooks/use-toast';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import { Label } from '@/components/ui/label';
+
+// Editable deal tile for lender "About" tab - extracted to avoid hooks-in-map
+function EditableLenderDealTile({ 
+  dealInfo, 
+  configuredStages, 
+  updateLenderInDb 
+}: { 
+  dealInfo: { dealId: string; dealName: string; company: string; lenderInfo?: DealLender };
+  configuredStages: { id: string; label: string; group: string }[];
+  updateLenderInDb: (lenderId: string, updates: Partial<DealLender>) => Promise<void>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editStage, setEditStage] = useState(dealInfo.lenderInfo?.stage || '');
+  const [editNotes, setEditNotes] = useState(dealInfo.lenderInfo?.notes || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!dealInfo.lenderInfo) return;
+    setIsSaving(true);
+    try {
+      const updates: Partial<DealLender> = {};
+      if (editStage !== dealInfo.lenderInfo.stage) {
+        updates.stage = editStage as LenderStage;
+        const newStageConfig = configuredStages.find(s => s.id === editStage);
+        if (newStageConfig) {
+          updates.trackingStatus = newStageConfig.group as LenderTrackingStatus;
+        }
+      }
+      if (editNotes !== (dealInfo.lenderInfo.notes || '')) {
+        updates.notes = editNotes;
+      }
+      if (Object.keys(updates).length > 0) {
+        await updateLenderInDb(dealInfo.lenderInfo.id, updates);
+        toast({ title: "Lender updated", description: "Changes saved successfully." });
+      }
+      setIsEditing(false);
+    } catch {
+      toast({ title: "Error", description: "Failed to update lender.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isEditing && dealInfo.lenderInfo) {
+    return (
+      <div className="p-3 bg-muted/50 rounded-lg text-sm space-y-2 border border-primary/30" onClick={(e) => e.stopPropagation()}>
+        <p className="font-medium">{dealInfo.company}</p>
+        <div>
+          <Label className="text-xs text-muted-foreground">Stage</Label>
+          <Select value={editStage} onValueChange={setEditStage}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[10000]">
+              {configuredStages.map((s) => (
+                <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Notes</Label>
+          <Textarea
+            value={editNotes}
+            onChange={(e) => setEditNotes(e.target.value)}
+            placeholder="Add notes..."
+            rows={2}
+            className="text-xs resize-none"
+          />
+        </div>
+        <div className="flex gap-1.5">
+          <Button size="sm" className="h-7 text-xs flex-1" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => {
+            setIsEditing(false);
+            setEditStage(dealInfo.lenderInfo?.stage || '');
+            setEditNotes(dealInfo.lenderInfo?.notes || '');
+          }} disabled={isSaving}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm group hover:bg-muted transition-colors">
+      <div>
+        <p className="font-medium">{dealInfo.company}</p>
+        <p className="text-xs text-muted-foreground">{dealInfo.dealName}</p>
+        {dealInfo.lenderInfo?.notes && (
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{dealInfo.lenderInfo.notes}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {dealInfo.lenderInfo && (
+          <>
+            <Badge variant="outline" className="text-xs">
+              {configuredStages.find(s => s.id === dealInfo.lenderInfo!.stage)?.label || dealInfo.lenderInfo.stage}
+            </Badge>
+            <Badge variant="secondary" className="text-xs">
+              {LENDER_TRACKING_STATUS_CONFIG[dealInfo.lenderInfo.trackingStatus].label}
+            </Badge>
+            <button
+              className="p-1 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+              title="Edit stage & notes"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Helper to calculate business days between two dates
 const getBusinessDaysDiff = (date: Date) => {
   const now = new Date();
@@ -4528,24 +4647,12 @@ export default function DealDetail() {
                     <h4 className="text-sm font-semibold mb-2">Deals with {selectedLenderName}</h4>
                     <div className="space-y-2">
                       {getLenderDeals(selectedLenderName).map((dealInfo) => (
-                        <div key={dealInfo.dealId} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
-                          <div>
-                            <p className="font-medium">{dealInfo.company}</p>
-                            <p className="text-xs text-muted-foreground">{dealInfo.dealName}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {dealInfo.lenderInfo && (
-                              <>
-                                <Badge variant="outline" className="text-xs">
-                                  {LENDER_STATUS_CONFIG[dealInfo.lenderInfo.status].label}
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs">
-                                  {LENDER_TRACKING_STATUS_CONFIG[dealInfo.lenderInfo.trackingStatus].label}
-                                </Badge>
-                              </>
-                            )}
-                          </div>
-                        </div>
+                        <EditableLenderDealTile
+                          key={dealInfo.dealId}
+                          dealInfo={dealInfo}
+                          configuredStages={configuredStages}
+                          updateLenderInDb={updateLenderInDb}
+                        />
                       ))}
                     </div>
                   </div>
