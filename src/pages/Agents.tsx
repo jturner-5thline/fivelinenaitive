@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Sparkles } from 'lucide-react';
+import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Sparkles, Workflow } from 'lucide-react';
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent, useDuplicateAgent, type Agent, type CreateAgentData } from '@/hooks/useAgents';
 import { useAuth } from '@/contexts/AuthContext';
 import { AgentCard } from '@/components/agents/AgentCard';
@@ -17,7 +17,10 @@ import { AgentTriggersManager } from '@/components/agents/AgentTriggersManager';
 import { AgentRunsHistory } from '@/components/agents/AgentRunsHistory';
 import { AgentTemplatesGallery } from '@/components/agents/AgentTemplatesGallery';
 import { AgentSuggestionsPanel } from '@/components/agents/AgentSuggestionsPanel';
+import { AgentCanvas } from '@/components/agents/canvas/AgentCanvas';
 import { type AgentSuggestion } from '@/hooks/useAgentSuggestions';
+import type { Node, Edge } from '@xyflow/react';
+import { toast } from 'sonner';
 
 export default function Agents() {
   const { user } = useAuth();
@@ -35,6 +38,8 @@ export default function Agents() {
   const [deletingAgent, setDeletingAgent] = useState<Agent | null>(null);
   const [managingTriggersAgent, setManagingTriggersAgent] = useState<Agent | null>(null);
   const [pendingSuggestion, setPendingSuggestion] = useState<AgentSuggestion | null>(null);
+  const [canvasAgent, setCanvasAgent] = useState<Agent | null>(null);
+  const [showCanvas, setShowCanvas] = useState(false);
 
   const myAgents = agents?.filter(a => a.user_id === user?.id) || [];
   const sharedAgents = agents?.filter(a => a.is_shared && a.user_id !== user?.id) || [];
@@ -81,6 +86,35 @@ export default function Agents() {
     setIsBuilderOpen(true);
   };
 
+  const handleCanvasSave = async (data: { name: string; nodes: Node[]; edges: Edge[] }) => {
+    try {
+      if (canvasAgent) {
+        await updateAgent.mutateAsync({
+          id: canvasAgent.id,
+          name: data.name,
+          graph_config: { nodes: data.nodes, edges: data.edges },
+        } as any);
+      } else {
+        await createAgent.mutateAsync({
+          name: data.name,
+          system_prompt: 'Visual agent solution — see graph config for details.',
+          description: `Multi-agent solution with ${data.nodes.length} nodes`,
+          graph_config: { nodes: data.nodes, edges: data.edges },
+        } as any);
+      }
+      toast.success('Agent solution saved');
+      setShowCanvas(false);
+      setCanvasAgent(null);
+    } catch (err) {
+      toast.error('Failed to save agent solution');
+    }
+  };
+
+  const handleOpenCanvas = (agent?: Agent) => {
+    setCanvasAgent(agent || null);
+    setShowCanvas(true);
+  };
+
   const renderAgentGrid = (agentList: Agent[], isOwn: boolean) => {
     const filtered = filterAgents(agentList);
     
@@ -121,6 +155,28 @@ export default function Agents() {
     </div>
   );
 
+  // If canvas is open, render full-screen canvas
+  if (showCanvas) {
+    const graphConfig = (canvasAgent as any)?.graph_config;
+    return (
+      <AppLayout mainClassName="bg-background">
+        <div className="h-[calc(100vh-64px)]">
+          <AgentCanvas
+            initialNodes={graphConfig?.nodes || []}
+            initialEdges={graphConfig?.edges || []}
+            agentName={canvasAgent?.name || ''}
+            onSave={handleCanvasSave}
+            onCancel={() => {
+              setShowCanvas(false);
+              setCanvasAgent(null);
+            }}
+            isSaving={createAgent.isPending || updateAgent.isPending}
+          />
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout mainClassName="bg-background">
       <div className="p-6 space-y-6">
@@ -133,10 +189,16 @@ export default function Agents() {
               <p className="text-muted-foreground">Build and customize AI assistants for your workflow</p>
             </div>
           </div>
-          <Button onClick={() => setIsBuilderOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Agent
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => handleOpenCanvas()}>
+              <Workflow className="mr-2 h-4 w-4" />
+              Visual Builder
+            </Button>
+            <Button onClick={() => setIsBuilderOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Agent
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -156,6 +218,10 @@ export default function Agents() {
             <TabsTrigger value="my-agents" className="gap-2">
               <Lock className="h-4 w-4" />
               My Agents ({myAgents.length})
+            </TabsTrigger>
+            <TabsTrigger value="builder" className="gap-2">
+              <Workflow className="h-4 w-4" />
+              Builder
             </TabsTrigger>
             <TabsTrigger value="templates" className="gap-2">
               <Sparkles className="h-4 w-4" />
@@ -178,6 +244,67 @@ export default function Agents() {
           <TabsContent value="my-agents" className="mt-6 space-y-6">
             <AgentSuggestionsPanel onCreateAgent={handleCreateFromSuggestion} />
             {isLoading ? renderSkeleton() : renderAgentGrid(myAgents, true)}
+          </TabsContent>
+
+          <TabsContent value="builder" className="mt-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Visual Agent Builder</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Design multi-agent solutions by connecting agents, tools, memory, and human checkpoints on a visual canvas.
+                  </p>
+                </div>
+                <Button onClick={() => handleOpenCanvas()}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Solution
+                </Button>
+              </div>
+
+              {/* Show agents that have graph_config */}
+              {(() => {
+                const graphAgents = myAgents.filter((a: any) => a.graph_config);
+                if (graphAgents.length === 0) {
+                  return (
+                    <div className="text-center py-16 border border-dashed border-border rounded-xl">
+                      <Workflow className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                      <h3 className="mt-4 font-medium">No visual agent solutions yet</h3>
+                      <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                        Use the visual builder to design multi-agent workflows with drag-and-drop. Connect LLM agents, tools, memory stores, and human approval gates.
+                      </p>
+                      <Button className="mt-4" onClick={() => handleOpenCanvas()}>
+                        <Workflow className="mr-2 h-4 w-4" />
+                        Open Visual Builder
+                      </Button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {graphAgents.map((agent: any) => {
+                      const nodeCount = agent.graph_config?.nodes?.length || 0;
+                      return (
+                        <div
+                          key={agent.id}
+                          className="border border-border rounded-xl p-4 bg-card hover:border-primary/30 transition-colors cursor-pointer"
+                          onClick={() => handleOpenCanvas(agent)}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <Workflow className="h-5 w-5 text-primary" />
+                            <h3 className="font-semibold text-sm truncate">{agent.name}</h3>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{agent.description}</p>
+                          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{nodeCount} node{nodeCount !== 1 ? 's' : ''}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
           </TabsContent>
 
           <TabsContent value="templates" className="mt-6">

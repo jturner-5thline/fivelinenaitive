@@ -23,6 +23,7 @@ export interface Agent {
   is_public: boolean;
   usage_count: number;
   last_used_at: string | null;
+  graph_config: Record<string, any> | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +42,7 @@ export interface CreateAgentData {
   can_search_web?: boolean;
   is_shared?: boolean;
   is_public?: boolean;
+  graph_config?: Record<string, any>;
 }
 
 export function useAgents() {
