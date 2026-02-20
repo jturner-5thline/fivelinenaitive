@@ -407,7 +407,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                   <div className="flex items-center gap-2">
                     <Button 
                       size="sm" 
-                      className="bg-gradient-to-r from-destructive/90 to-destructive/60 text-destructive-foreground hover:from-destructive hover:to-destructive/70 shadow-sm"
+                      className="bg-gradient-to-r from-destructive to-destructive/70 text-destructive-foreground hover:from-destructive/90 hover:to-destructive/60 shadow-sm"
                       onClick={handleBulkReject}
                       disabled={isBulkProcessing}
                     >
