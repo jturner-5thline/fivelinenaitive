@@ -133,16 +133,10 @@ export function LenderSuggestionsPanel({
               ) : (
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 border-primary/30 hover:border-primary/50 hover:bg-primary/5"
+                  size="icon"
+                  className="h-8 w-8 border-primary/30 hover:border-primary/50 hover:bg-primary/5"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  <span className="hidden sm:inline">Suggestions</span>
-                  {totalMatches > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal">
-                      {totalMatches}
-                    </Badge>
-                  )}
                 </Button>
               )}
             </DialogTrigger>
