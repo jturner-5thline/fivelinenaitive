@@ -3091,12 +3091,14 @@ export default function DealDetail() {
                                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                                           </div>
                                           <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                            Closing: <span className="font-medium text-foreground">${(() => {
+                                            Closing: <span className="font-medium text-foreground">{(() => {
                                               const total = deal.totalFee ?? 0;
                                               const milestone = deal.milestoneFee ?? 0;
                                               const retainer = deal.retainerFee ?? 0;
                                               const closing = Math.max(0, total - milestone - retainer);
-                                              return Math.round(closing).toLocaleString();
+                                              if (closing >= 1_000_000) return `$${(closing / 1_000_000).toFixed(1)}M`;
+                                              if (closing >= 1_000) return `$${(closing / 1_000).toFixed(1)}K`;
+                                              return `$${Math.round(closing).toLocaleString()}`;
                                             })()}</span>
                                           </span>
                                         </div>
