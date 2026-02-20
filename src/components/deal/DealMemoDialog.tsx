@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { FileText, Save, Loader2, Plus, X, FolderOpen, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ const MEMO_SECTIONS: MemoSection[] = [
 ];
 
 export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemoDialogProps) {
+  const { user } = useAuth();
   const { memo, isLoading, isSaving, saveMemo } = useDealMemo(dealId);
   const { hasUnreadUpdates, markAsViewed } = useDealMemoNotification(dealId);
   const { entries: auditEntries, isLoading: auditLoading, logChanges } = useDealMemoAuditLog(dealId);
@@ -57,7 +59,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
   });
   const [highlightsList, setHighlightsList] = useState<string[]>([]);
   const [newHighlight, setNewHighlight] = useState('');
-  const [hurdlesList, setHurdlesList] = useState<{ hurdle: string; remedy: string; resolved: boolean }[]>([]);
+  const [hurdlesList, setHurdlesList] = useState<{ hurdle: string; remedy: string; resolved: boolean; resolvedBy: string }[]>([]);
   const [newHurdle, setNewHurdle] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [editingHighlight, setEditingHighlight] = useState<number | null>(null);
@@ -71,18 +73,17 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
   };
 
   // Parse hurdles with remedies (stored as "hurdle||remedy")
-  const parseHurdles = (str: string | null): { hurdle: string; remedy: string; resolved: boolean }[] => {
+  const parseHurdles = (str: string | null): { hurdle: string; remedy: string; resolved: boolean; resolvedBy: string }[] => {
     if (!str) return [];
     return str.split('\n').filter(h => h.trim() !== '').map(line => {
       const parts = line.split('||');
-      return { hurdle: parts[0] || '', remedy: parts[1] || '', resolved: parts[2] === 'true' };
+      return { hurdle: parts[0] || '', remedy: parts[1] || '', resolved: parts[2] === 'true', resolvedBy: parts[3] || '' };
     });
   };
 
-  // Stringify hurdles with remedies and resolved state
-  const stringifyHurdles = (items: { hurdle: string; remedy: string; resolved: boolean }[]): string => {
+  const stringifyHurdles = (items: { hurdle: string; remedy: string; resolved: boolean; resolvedBy: string }[]): string => {
     return items.map(h => {
-      const parts = [h.hurdle, h.remedy, h.resolved ? 'true' : 'false'];
+      const parts = [h.hurdle, h.remedy, h.resolved ? 'true' : 'false', h.resolvedBy];
       return parts.join('||');
     }).join('\n');
   };
@@ -155,7 +156,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
 
   const handleAddHurdle = () => {
     if (newHurdle.trim()) {
-      const updated = [...hurdlesList, { hurdle: newHurdle.trim(), remedy: '', resolved: false }];
+      const updated = [...hurdlesList, { hurdle: newHurdle.trim(), remedy: '', resolved: false, resolvedBy: '' }];
       setHurdlesList(updated);
       setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
       setNewHurdle('');
@@ -190,7 +191,13 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
 
   const handleToggleHurdleResolved = (index: number) => {
     const updated = [...hurdlesList];
-    updated[index] = { ...updated[index], resolved: !updated[index].resolved };
+    const isNowResolved = !updated[index].resolved;
+    const resolverName = user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email || 'Unknown';
+    updated[index] = { 
+      ...updated[index], 
+      resolved: isNowResolved, 
+      resolvedBy: isNowResolved ? resolverName : '' 
+    };
     setHurdlesList(updated);
     setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
     setHasChanges(true);
@@ -438,6 +445,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                   />
                 </div>
                 {hurdlesList.length > 0 ? (
+                  <TooltipProvider>
                   <ol className="space-y-2">
                     {hurdlesList.map((item, index) => (
                       <li 
@@ -445,17 +453,26 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                         className={`p-2 rounded-md group ${item.resolved ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50'}`}
                       >
                         <div className="flex items-start gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleHurdleResolved(index)}
-                            className={`mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors ${
-                              item.resolved 
-                                ? 'bg-primary border-primary text-primary-foreground' 
-                                : 'border-muted-foreground/30 hover:border-primary'
-                            }`}
-                          >
-                            {item.resolved && <Check className="h-3 w-3" />}
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleHurdleResolved(index)}
+                                className={`mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors ${
+                                  item.resolved 
+                                    ? 'bg-primary border-primary text-primary-foreground' 
+                                    : 'border-muted-foreground/30 hover:border-primary'
+                                }`}
+                              >
+                                {item.resolved && <Check className="h-3 w-3" />}
+                              </button>
+                            </TooltipTrigger>
+                            {item.resolved && item.resolvedBy && (
+                              <TooltipContent side="top">
+                                <p>Resolved by {item.resolvedBy}</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
                           <div className="flex-1 min-w-0">
                             {editingHurdle === index ? (
                               <Input
@@ -513,6 +530,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                       </li>
                     ))}
                   </ol>
+                  </TooltipProvider>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
                     No hurdles added yet
