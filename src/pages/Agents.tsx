@@ -165,6 +165,7 @@ export default function Agents() {
             initialNodes={graphConfig?.nodes || []}
             initialEdges={graphConfig?.edges || []}
             agentName={canvasAgent?.name || ''}
+            agentId={canvasAgent?.id}
             onSave={handleCanvasSave}
             onCancel={() => {
               setShowCanvas(false);
