@@ -3029,17 +3029,10 @@ export default function DealDetail() {
               <div className="flex gap-6">
               <div className="w-[70%] space-y-6">
               {/* Lenders Card */}
-              <Collapsible open={isLendersExpanded} onOpenChange={setIsLendersExpanded}>
                 <Card>
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CollapsibleTrigger asChild>
-                        <button className="flex items-center gap-2 hover:text-primary transition-colors">
-                          {isLendersExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          )}
+                        <div className="flex items-center gap-2">
                           <CardTitle className="text-lg">
                             Lenders
                           </CardTitle>
@@ -3048,8 +3041,7 @@ export default function DealDetail() {
                               ({deal.lenders.length})
                             </span>
                           )}
-                        </button>
-                      </CollapsibleTrigger>
+                        </div>
                       <LenderSearchInput
                         lenderNames={lenderNames}
                         existingLenderNames={existingLenderNames}
@@ -3208,7 +3200,7 @@ export default function DealDetail() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CollapsibleContent>
+                  
                     <CardContent>
                   <div className="space-y-4">
                     {deal.lenders && deal.lenders.length > 0 && (
@@ -3985,30 +3977,22 @@ export default function DealDetail() {
                     )}
                   </div>
                     </CardContent>
-                  </CollapsibleContent>
+                  
                 </Card>
-              </Collapsible>
               </div>
 
               <div className="w-[30%]">
                    {/* Activity Timeline */}
-                  <Collapsible defaultOpen>
                     <Card>
                       <CardHeader className="pb-3">
-                        <CollapsibleTrigger className="flex items-center justify-between w-full group">
                           <CardTitle className="text-lg">
                             Activity
                           </CardTitle>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                        </CollapsibleTrigger>
                       </CardHeader>
-                      <CollapsibleContent>
                         <CardContent className="pt-0">
                           <ActivityTimeline activities={activities} />
                         </CardContent>
-                      </CollapsibleContent>
                     </Card>
-                   </Collapsible>
               </div>
               </div>
                 </TabsContent>
