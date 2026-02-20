@@ -5,7 +5,7 @@ import type { FileChecklistMapping } from '@/hooks/useFileChecklistMap';
 
 export type UnifiedChecklistItem = (ChecklistItem & { is_deal_specific?: false }) | DealChecklistItem;
 
-export type StatusFilter = 'all' | 'complete' | 'missing' | 'required' | 'has_files';
+export type StatusFilter = 'all' | 'complete' | 'missing' | 'required' | 'has_files' | 'overdue';
 
 export interface SectionProgress {
   total: number;

@@ -64,7 +64,7 @@ export function FileListPane({
   };
 
   return (
-    <div className="col-span-4 border rounded-lg overflow-hidden flex flex-col">
+    <div className="h-full overflow-hidden flex flex-col">
       <div className="p-2 border-b bg-muted/30 flex items-center justify-between">
         <span className="text-xs font-semibold">
           {selectedItem ? `Files for: ${selectedItem.name}` : `All Files (${attachments.length})`}

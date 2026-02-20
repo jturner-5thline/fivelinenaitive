@@ -1,9 +1,12 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { Upload, Download } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { Upload, Download, Settings, Share2, History, Keyboard } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
+
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
@@ -11,6 +14,9 @@ import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { useDealAttachments, type DealAttachment } from '@/hooks/useDealAttachments';
 import { useFileChecklistMap } from '@/hooks/useFileChecklistMap';
 import { useUploadJobs } from '@/hooks/useUploadJobs';
+import { useDataRoomComments } from '@/hooks/useDataRoomComments';
+import { useDataRoomAudit } from '@/hooks/useDataRoomAudit';
+import { useDataRoomShareLinks } from '@/hooks/useDataRoomShareLinks';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { CircularProgress } from './data-room/CircularProgress';
@@ -19,6 +25,10 @@ import { FileListPane } from './data-room/FileListPane';
 import { ContextPane } from './data-room/ContextPane';
 import { MappingDialog } from './data-room/MappingDialog';
 import { FilePreviewPanel } from './data-room/FilePreviewPanel';
+import { BreadcrumbTrail } from './data-room/BreadcrumbTrail';
+import { ChecklistEditor } from './data-room/ChecklistEditor';
+import { ShareLinkManager } from './data-room/ShareLinkManager';
+import { AuditLogPanel } from './data-room/AuditLogPanel';
 import type { UnifiedChecklistItem, StatusFilter, ProgressData } from './data-room/types';
 
 interface DataRoomV2Props {
@@ -29,13 +39,16 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
   const { user } = useAuth();
 
   // Data sources
-  const { items: templateItems, loading: l1 } = useDataRoomChecklist();
-  const { items: dealItems, loading: l2 } = useDealChecklistItems(dealId);
+  const { items: templateItems, loading: l1, addItem: addTemplateItem, updateItem: updateTemplateItem, deleteItem: deleteTemplateItem } = useDataRoomChecklist();
+  const { items: dealItems, loading: l2, addItem: addDealItem, updateItem: updateDealItem, deleteItem: deleteDealItem } = useDealChecklistItems(dealId);
   const { statuses, toggleItemStatus } = useDealChecklistStatus(dealId);
   const { getCategoryByName } = useChecklistCategories();
   const { attachments, isLoading: l3, uploadAttachment, deleteAttachment, refetch: refetchAttachments } = useDealAttachments(dealId);
   const { mappings, mapFileToItem, mapFileToItems, unmapFile, getFilesForItem, getItemsForFile, getUnmappedFileIds } = useFileChecklistMap(dealId);
   const { activeJob, createJob, completeJob } = useUploadJobs(dealId);
+  const { comments, addComment, deleteComment, getCommentsForItem } = useDataRoomComments(dealId);
+  const { entries: auditEntries, loading: auditLoading, logAction } = useDataRoomAudit(dealId);
+  const { links: shareLinks, createLink, deactivateLink, deleteLink } = useDataRoomShareLinks(dealId);
 
   // UI state
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -46,8 +59,12 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [previewFile, setPreviewFile] = useState<DealAttachment | null>(null);
+  const [showChecklistEditor, setShowChecklistEditor] = useState(false);
+  const [showShareLinks, setShowShareLinks] = useState(false);
+  const [showAuditLog, setShowAuditLog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Merge checklist items
   const allItems: UnifiedChecklistItem[] = useMemo(() => {
@@ -114,7 +131,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
     };
   }, [grouped, statusMap, getFilesForItem]);
 
-  // Upload handler
+  // Upload handler with audit logging
   const handleUploadFiles = useCallback(async (files: File[], targetItemId?: string) => {
     if (!user || files.length === 0) return;
 
@@ -135,6 +152,11 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
     if (job) await completeJob(job.id, successCount, failCount);
     await refetchAttachments();
 
+    // Audit log
+    for (const att of uploadedAttachments) {
+      logAction('upload', 'file', att.id, att.name, { size: att.size_bytes });
+    }
+
     if (targetItemId && uploadedAttachments.length > 0) {
       for (const att of uploadedAttachments) {
         await mapFileToItem(att.id, targetItemId, 'manual_drag');
@@ -144,7 +166,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       setFilesToMap(uploadedAttachments);
       setShowMappingDialog(true);
     }
-  }, [user, createJob, completeJob, uploadAttachment, refetchAttachments, mapFileToItem]);
+  }, [user, createJob, completeJob, uploadAttachment, refetchAttachments, mapFileToItem, logAction]);
 
   // Global drag/drop
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -167,17 +189,18 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
   }, [handleUploadFiles]);
 
   // Download helpers
-  const handleDownloadFile = (att: DealAttachment) => {
+  const handleDownloadFile = useCallback((att: DealAttachment) => {
     if (att.url) {
       const link = document.createElement('a');
       link.href = att.url;
       link.download = att.name;
       link.click();
+      logAction('download', 'file', att.id, att.name);
     }
-  };
+  }, [logAction]);
 
   const handleExportIndex = useCallback(() => {
-    const rows = [['Category', 'Item', 'Required', 'Status', 'Files Attached', 'File Names']];
+    const rows = [['Category', 'Item', 'Required', 'Status', 'Files Attached', 'File Names', 'Due Date']];
     for (const cat of categories) {
       for (const item of grouped[cat]) {
         const fileCount = getFilesForItem(item.id).length;
@@ -187,12 +210,9 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
           .filter(Boolean)
           .join('; ');
         rows.push([
-          cat,
-          item.name,
-          item.is_required ? 'Yes' : 'No',
-          isComplete ? 'Complete' : 'Missing',
-          String(fileCount),
-          fileNames,
+          cat, item.name, item.is_required ? 'Yes' : 'No',
+          isComplete ? 'Complete' : 'Missing', String(fileCount), fileNames,
+          (item as any).due_date || '',
         ]);
       }
     }
@@ -200,45 +220,72 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
-    link.download = 'data-room-index.csv';
-    link.click();
+    link.href = url; link.download = 'data-room-index.csv'; link.click();
     URL.revokeObjectURL(url);
+    logAction('export', 'checklist', undefined, 'data-room-index.csv');
     toast.success('Checklist index exported');
-  }, [categories, grouped, getFilesForItem, statusMap, attachments]);
+  }, [categories, grouped, getFilesForItem, statusMap, attachments, logAction]);
 
   const handleDownloadSection = useCallback(async (category: string) => {
     const items = grouped[category] || [];
     const filesToDownload: DealAttachment[] = [];
     for (const item of items) {
-      const fileMappings = getFilesForItem(item.id);
-      for (const m of fileMappings) {
+      for (const m of getFilesForItem(item.id)) {
         const att = attachments.find(a => a.id === m.file_id);
-        if (att && att.url && !filesToDownload.some(f => f.id === att.id)) {
-          filesToDownload.push(att);
-        }
+        if (att && att.url && !filesToDownload.some(f => f.id === att.id)) filesToDownload.push(att);
       }
     }
-    if (filesToDownload.length === 0) {
-      toast.error('No files to download in this section');
-      return;
-    }
+    if (filesToDownload.length === 0) { toast.error('No files to download in this section'); return; }
     await downloadAsZip(filesToDownload, `${category}.zip`);
-  }, [grouped, getFilesForItem, attachments]);
+    logAction('download', 'section', undefined, category);
+  }, [grouped, getFilesForItem, attachments, logAction]);
 
   const handleDownloadAll = useCallback(async () => {
     const filesWithUrls = attachments.filter(a => a.url);
-    if (filesWithUrls.length === 0) {
-      toast.error('No files to download');
-      return;
-    }
+    if (filesWithUrls.length === 0) { toast.error('No files to download'); return; }
     await downloadAsZip(filesWithUrls, 'data-room.zip');
-  }, [attachments]);
+    logAction('download', 'all', undefined, 'data-room.zip');
+  }, [attachments, logAction]);
 
   const openMappingDialog = useCallback((files: DealAttachment[]) => {
     setFilesToMap(files);
     setShowMappingDialog(true);
   }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't trigger if typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const flatItems = categories.flatMap(cat => grouped[cat]);
+        const currentIdx = flatItems.findIndex(i => i.id === selectedItemId);
+        const nextIdx = e.key === 'ArrowDown'
+          ? Math.min(currentIdx + 1, flatItems.length - 1)
+          : Math.max(currentIdx - 1, 0);
+        if (flatItems[nextIdx]) setSelectedItemId(flatItems[nextIdx].id);
+      }
+      if (e.key === 'Escape') {
+        if (previewFile) setPreviewFile(null);
+        else if (selectedItemId) setSelectedItemId(null);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+        e.preventDefault();
+        fileInputRef.current?.click();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [categories, grouped, selectedItemId, previewFile]);
+
+  // Handle preview with audit
+  const handleSetPreviewFile = useCallback((file: DealAttachment | null) => {
+    setPreviewFile(file);
+    if (file) logAction('preview', 'file', file.id, file.name);
+  }, [logAction]);
 
   const loading = l1 || l2 || l3;
 
@@ -252,6 +299,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
 
   return (
     <div
+      ref={containerRef}
       className="relative"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -268,22 +316,51 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         </div>
       )}
 
-      {/* Header with overall progress */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <CircularProgress value={progressData.overall} size={52} />
-          <div>
-            <h3 className="font-semibold text-sm">Data Room Progress</h3>
-            <p className="text-xs text-muted-foreground">
-              {progressData.completedItems}/{progressData.totalItems} items complete
+      {/* Header with progress + breadcrumb */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <CircularProgress value={progressData.overall} size={48} />
+          <div className="min-w-0">
+            <BreadcrumbTrail
+              category={selectedItem?.category}
+              itemName={selectedItem?.name}
+              onNavigateHome={() => setSelectedItemId(null)}
+              onNavigateCategory={() => setSelectedItemId(null)}
+            />
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {progressData.completedItems}/{progressData.totalItems} items
               {progressData.requiredTotal > 0 && ` · ${progressData.requiredCompleted}/${progressData.requiredTotal} required`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
-            <Upload className="h-3.5 w-3.5" />
-            Upload Files
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowAuditLog(!showAuditLog)}>
+                <History className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Activity Log</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowShareLinks(true)}>
+                <Share2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Share Links</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowChecklistEditor(true)}>
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Edit Checklist</TooltipContent>
+          </Tooltip>
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5 h-7 text-xs">
+            <Upload className="h-3 w-3" />
+            Upload
           </Button>
           <input
             ref={fileInputRef}
@@ -299,63 +376,97 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         </div>
       </div>
 
-      {/* Three-pane layout */}
-      <div className="grid grid-cols-12 gap-3 min-h-[500px]">
-        <ChecklistTreePane
-          categories={categories}
-          grouped={grouped}
-          progressData={progressData}
-          statusMap={statusMap}
-          selectedItemId={selectedItemId}
-          setSelectedItemId={setSelectedItemId}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          getFilesForItem={getFilesForItem}
-          getCategoryByName={getCategoryByName}
-          unmappedFiles={unmappedFiles}
-          handleUploadFiles={handleUploadFiles}
-        />
+      {/* Audit log collapsible */}
+      {showAuditLog && (
+        <div className="mb-3 border rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold">Activity Log</span>
+            <Button variant="ghost" size="sm" className="h-5 text-[10px]" onClick={() => setShowAuditLog(false)}>Hide</Button>
+          </div>
+          <AuditLogPanel entries={auditEntries} loading={auditLoading} />
+        </div>
+      )}
 
-        <FileListPane
-          selectedItem={selectedItem}
-          selectedItemFiles={selectedItemFiles}
-          attachments={attachments}
-          selectedFiles={selectedFiles}
-          setSelectedFiles={setSelectedFiles}
-          getItemsForFile={getItemsForFile}
-          getFilesForItem={getFilesForItem}
-          handleDownloadFile={handleDownloadFile}
-          handleUploadFiles={handleUploadFiles}
-          deleteAttachment={deleteAttachment}
-          setSelectedItemId={setSelectedItemId}
-          setPreviewFile={setPreviewFile}
-          onOpenMappingDialog={openMappingDialog}
-          fileInputRef={fileInputRef}
-          allItems={allItems}
-        />
+      {/* Three-pane resizable layout */}
+      <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
+        <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
+          <ChecklistTreePane
+            categories={categories}
+            grouped={grouped}
+            progressData={progressData}
+            statusMap={statusMap}
+            selectedItemId={selectedItemId}
+            setSelectedItemId={setSelectedItemId}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            getFilesForItem={getFilesForItem}
+            getCategoryByName={getCategoryByName}
+            unmappedFiles={unmappedFiles}
+            handleUploadFiles={handleUploadFiles}
+          />
+        </ResizablePanel>
 
-        <ContextPane
-          selectedItem={selectedItem}
-          selectedItemFiles={selectedItemFiles}
-          statusMap={statusMap}
-          progressData={progressData}
-          categories={categories}
-          allItems={allItems}
-          attachments={attachments}
-          unmappedFiles={unmappedFiles}
-          getFilesForItem={getFilesForItem}
-          mapFileToItem={mapFileToItem}
-          unmapFile={unmapFile}
-          handleUploadFiles={handleUploadFiles}
-          handleDownloadFile={handleDownloadFile}
-          setSelectedItemId={setSelectedItemId}
-          setPreviewFile={setPreviewFile}
-          onExportIndex={handleExportIndex}
-          onDownloadSection={handleDownloadSection}
-          onDownloadAll={handleDownloadAll}
-        />
+        <ResizableHandle withHandle />
+
+        <ResizablePanel defaultSize={40} minSize={25}>
+          <FileListPane
+            selectedItem={selectedItem}
+            selectedItemFiles={selectedItemFiles}
+            attachments={attachments}
+            selectedFiles={selectedFiles}
+            setSelectedFiles={setSelectedFiles}
+            getItemsForFile={getItemsForFile}
+            getFilesForItem={getFilesForItem}
+            handleDownloadFile={handleDownloadFile}
+            handleUploadFiles={handleUploadFiles}
+            deleteAttachment={deleteAttachment}
+            setSelectedItemId={setSelectedItemId}
+            setPreviewFile={handleSetPreviewFile}
+            onOpenMappingDialog={openMappingDialog}
+            fileInputRef={fileInputRef}
+            allItems={allItems}
+          />
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
+          <ContextPane
+            selectedItem={selectedItem}
+            selectedItemFiles={selectedItemFiles}
+            statusMap={statusMap}
+            progressData={progressData}
+            categories={categories}
+            allItems={allItems}
+            attachments={attachments}
+            unmappedFiles={unmappedFiles}
+            getFilesForItem={getFilesForItem}
+            mapFileToItem={mapFileToItem}
+            unmapFile={unmapFile}
+            handleUploadFiles={handleUploadFiles}
+            handleDownloadFile={handleDownloadFile}
+            setSelectedItemId={setSelectedItemId}
+            setPreviewFile={handleSetPreviewFile}
+            onExportIndex={handleExportIndex}
+            onDownloadSection={handleDownloadSection}
+            onDownloadAll={handleDownloadAll}
+            comments={comments}
+            onAddComment={addComment}
+            onDeleteComment={deleteComment}
+            getCommentsForItem={getCommentsForItem}
+            currentUserId={user?.id}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      {/* Keyboard shortcuts hint */}
+      <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1"><Keyboard className="h-3 w-3" /> Shortcuts:</span>
+        <span>↑↓ Navigate</span>
+        <span>Esc Back</span>
+        <span>⌘U Upload</span>
       </div>
 
       {/* Upload progress toast */}
@@ -372,7 +483,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         </div>
       )}
 
-      {/* Mapping Dialog */}
+      {/* Dialogs */}
       <MappingDialog
         open={showMappingDialog}
         onOpenChange={setShowMappingDialog}
@@ -382,6 +493,26 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         allItems={allItems}
         getItemsForFile={getItemsForFile}
         mapFileToItems={mapFileToItems}
+      />
+
+      <ChecklistEditor
+        open={showChecklistEditor}
+        onOpenChange={setShowChecklistEditor}
+        categories={categories}
+        grouped={grouped}
+        onAddItem={addDealItem}
+        onUpdateItem={updateDealItem}
+        onDeleteItem={deleteDealItem}
+        isDealSpecific
+      />
+
+      <ShareLinkManager
+        open={showShareLinks}
+        onOpenChange={setShowShareLinks}
+        links={shareLinks}
+        onCreateLink={createLink}
+        onDeactivateLink={deactivateLink}
+        onDeleteLink={deleteLink}
       />
 
       {/* File Preview */}
@@ -415,9 +546,7 @@ async function downloadAsZip(files: DealAttachment[], zipName: string) {
     const content = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(content);
     const link = document.createElement('a');
-    link.href = url;
-    link.download = zipName;
-    link.click();
+    link.href = url; link.download = zipName; link.click();
     URL.revokeObjectURL(url);
     toast.success(`Downloaded ${zipName}`, { id: loadingToast });
   } catch (err) {
