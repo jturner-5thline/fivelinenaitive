@@ -127,6 +127,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
@@ -4392,6 +4393,7 @@ export default function DealDetail() {
               activity => activity.description?.includes(selectedLenderName) || 
                 activity.metadata?.lenderName === selectedLenderName
             );
+            const dealLender = deal?.lenders?.find(l => l.name === selectedLenderName);
             return (
               <Tabs defaultValue="this-deal" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -4399,7 +4401,63 @@ export default function DealDetail() {
                   <TabsTrigger value="about">About {selectedLenderName}</TabsTrigger>
                 </TabsList>
                 
+                <ScrollArea className="max-h-[60vh]">
                 <TabsContent value="this-deal" className="space-y-6 mt-4">
+                  {/* Stage & Notes Editing */}
+                  {dealLender && (
+                    <>
+                      {/* Stage Selector */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Stage</h4>
+                        <Select
+                          value={dealLender.stage}
+                          onValueChange={(value) => {
+                            const newStage = configuredStages.find(s => s.id === value);
+                            if (newStage?.group === 'passed') {
+                              setPendingPassStageChange({ lenderId: dealLender.id, newStageId: value, isEditing: false });
+                              setSelectedPassReasons([]);
+                              setPassReasonDialogOpen(true);
+                            } else {
+                              const newGroup = newStage?.group || 'active';
+                              withSavingAsync(`lender-stage-${dealLender.id}`, async () => {
+                                await updateLenderInDb(dealLender.id, { 
+                                  stage: value, 
+                                  trackingStatus: newGroup,
+                                });
+                              });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {configuredStages.map((stage) => (
+                              <SelectItem key={stage.id} value={stage.id}>
+                                {stage.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Lender Notes */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Notes</h4>
+                        <InlineEditField
+                          value={dealLender.notes || ''}
+                          onSave={(value) => {
+                            withSavingAsync(`lender-notes-${dealLender.id}`, async () => {
+                              await updateLenderInDb(dealLender.id, { notes: value });
+                            });
+                          }}
+                          type="textarea"
+                          placeholder="Add lender notes..."
+                        />
+                      </div>
+                    </>
+                  )}
+
                   {/* Outstanding Items for this Lender */}
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Requested Items</h4>
@@ -4502,6 +4560,7 @@ export default function DealDetail() {
                     </div>
                   </div>
                 </TabsContent>
+                </ScrollArea>
               </Tabs>
             );
           })()}
