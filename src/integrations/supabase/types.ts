@@ -930,6 +930,53 @@ export type Database = {
         }
         Relationships: []
       }
+      data_room_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          deal_id: string
+          id: string
+          metadata: Json | null
+          target_id: string | null
+          target_name: string | null
+          target_type: string
+          user_display_name: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_name?: string | null
+          target_type: string
+          user_display_name?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_name?: string | null
+          target_type?: string
+          user_display_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_audit_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_room_checklist_categories: {
         Row: {
           color: string | null
@@ -980,6 +1027,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           description: string | null
+          due_date: string | null
           id: string
           is_required: boolean
           name: string
@@ -992,6 +1040,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           is_required?: boolean
           name: string
@@ -1004,6 +1053,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           is_required?: boolean
           name?: string
@@ -1017,6 +1067,164 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_comments: {
+        Row: {
+          checklist_item_id: string
+          content: string
+          created_at: string
+          deal_id: string
+          id: string
+          parent_comment_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          checklist_item_id: string
+          content: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          parent_comment_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          checklist_item_id?: string
+          content?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          parent_comment_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "data_room_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_file_permissions: {
+        Row: {
+          can_delete: boolean
+          can_download: boolean
+          can_view: boolean
+          created_at: string
+          deal_id: string
+          file_id: string
+          granted_by: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          can_delete?: boolean
+          can_download?: boolean
+          can_view?: boolean
+          created_at?: string
+          deal_id: string
+          file_id: string
+          granted_by: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          can_delete?: boolean
+          can_download?: boolean
+          can_view?: boolean
+          created_at?: string
+          deal_id?: string
+          file_id?: string
+          granted_by?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_file_permissions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_file_permissions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "deal_attachments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_room_share_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          deal_id: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          label: string
+          max_uploads: number | null
+          password_hash: string | null
+          permissions: string
+          target_checklist_items: string[] | null
+          token: string
+          updated_at: string
+          uploads_used: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          deal_id: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          max_uploads?: number | null
+          password_hash?: string | null
+          permissions?: string
+          target_checklist_items?: string[] | null
+          token?: string
+          updated_at?: string
+          uploads_used?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          deal_id?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          max_uploads?: number | null
+          password_hash?: string | null
+          permissions?: string
+          target_checklist_items?: string[] | null
+          token?: string
+          updated_at?: string
+          uploads_used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_share_links_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
@@ -1134,6 +1342,7 @@ export type Database = {
           created_by: string | null
           deal_id: string
           description: string | null
+          due_date: string | null
           id: string
           is_required: boolean
           name: string
@@ -1146,6 +1355,7 @@ export type Database = {
           created_by?: string | null
           deal_id: string
           description?: string | null
+          due_date?: string | null
           id?: string
           is_required?: boolean
           name: string
@@ -1158,6 +1368,7 @@ export type Database = {
           created_by?: string | null
           deal_id?: string
           description?: string | null
+          due_date?: string | null
           id?: string
           is_required?: boolean
           name?: string

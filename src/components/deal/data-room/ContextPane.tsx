@@ -11,7 +11,10 @@ import {
 import { cn } from '@/lib/utils';
 import { FileIcon } from './FileIcon';
 import { formatBytes, formatRelativeTime } from './helpers';
+import { CommentsThread } from './CommentsThread';
+import { DueDatePicker, DueDateBadge } from './DueDatePicker';
 import type { DealAttachment } from '@/hooks/useDealAttachments';
+import type { DataRoomComment } from '@/hooks/useDataRoomComments';
 import type { UnifiedChecklistItem, ProgressData, DataRoomContextValue } from './types';
 
 interface ContextPaneProps {
@@ -33,6 +36,12 @@ interface ContextPaneProps {
   onExportIndex: () => void;
   onDownloadSection: (category: string) => void;
   onDownloadAll: () => void;
+  // New props for comments
+  comments?: DataRoomComment[];
+  onAddComment?: (itemId: string, content: string, parentId?: string) => Promise<boolean>;
+  onDeleteComment?: (commentId: string) => Promise<boolean>;
+  getCommentsForItem?: (itemId: string) => DataRoomComment[];
+  currentUserId?: string;
 }
 
 export function ContextPane({
@@ -41,10 +50,11 @@ export function ContextPane({
   getFilesForItem, mapFileToItem, unmapFile,
   handleUploadFiles, handleDownloadFile, setSelectedItemId,
   setPreviewFile, onExportIndex, onDownloadSection, onDownloadAll,
+  comments, onAddComment, onDeleteComment, getCommentsForItem, currentUserId,
 }: ContextPaneProps) {
 
   return (
-    <div className="col-span-4 border rounded-lg overflow-hidden flex flex-col">
+    <div className="h-full flex flex-col">
       <div className="p-2 border-b bg-muted/30 flex items-center justify-between">
         <span className="text-xs font-semibold">
           {selectedItem ? 'Item Details' : 'Room Summary'}
@@ -83,6 +93,10 @@ export function ContextPane({
               handleUploadFiles={handleUploadFiles}
               handleDownloadFile={handleDownloadFile}
               setPreviewFile={setPreviewFile}
+              comments={comments || []}
+              onAddComment={onAddComment}
+              onDeleteComment={onDeleteComment}
+              currentUserId={currentUserId}
             />
           ) : (
             <RoomSummaryView
@@ -106,6 +120,7 @@ export function ContextPane({
 function ItemDetailView({
   item, files, statusMap, unmappedFiles,
   mapFileToItem, unmapFile, handleUploadFiles, handleDownloadFile, setPreviewFile,
+  comments, onAddComment, onDeleteComment, currentUserId,
 }: {
   item: UnifiedChecklistItem;
   files: DealAttachment[];
@@ -116,8 +131,13 @@ function ItemDetailView({
   handleUploadFiles: DataRoomContextValue['handleUploadFiles'];
   handleDownloadFile: DataRoomContextValue['handleDownloadFile'];
   setPreviewFile: (f: DealAttachment | null) => void;
+  comments: DataRoomComment[];
+  onAddComment?: (itemId: string, content: string, parentId?: string) => Promise<boolean>;
+  onDeleteComment?: (commentId: string) => Promise<boolean>;
+  currentUserId?: string;
 }) {
   const isComplete = statusMap.get(item.id)?.isComplete || files.length > 0;
+  const itemComments = comments.filter(c => c.checklist_item_id === item.id);
 
   return (
     <div className="space-y-4">
@@ -134,6 +154,7 @@ function ItemDetailView({
           ) : (
             <Badge variant="destructive" className="text-xs">Missing</Badge>
           )}
+          <DueDateBadge dueDate={(item as any).due_date} />
         </div>
       </div>
 
@@ -238,6 +259,20 @@ function ItemDetailView({
               ))}
             </div>
           </div>
+        </>
+      )}
+
+      {/* Comments */}
+      {onAddComment && onDeleteComment && (
+        <>
+          <Separator />
+          <CommentsThread
+            comments={comments}
+            checklistItemId={item.id}
+            onAddComment={onAddComment}
+            onDeleteComment={onDeleteComment}
+            currentUserId={currentUserId}
+          />
         </>
       )}
     </div>

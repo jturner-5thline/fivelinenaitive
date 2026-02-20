@@ -63,7 +63,7 @@ export function ChecklistTreePane({
   };
 
   return (
-    <div className="col-span-4 border rounded-lg overflow-hidden flex flex-col">
+    <div className="h-full overflow-hidden flex flex-col">
       <div className="p-2 border-b bg-muted/30 space-y-1.5">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
