@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
@@ -157,7 +157,26 @@ const parseYearToNumber = (yearStr: string): number | null => {
 
 export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteUpFinancialTabProps) {
   const [grossMarginErrors, setGrossMarginErrors] = useState<Record<string, string | null>>({});
-  
+  const [financialAsOfText, setFinancialAsOfText] = useState(
+    data.financialDataAsOf ? format(data.financialDataAsOf, 'MM/yyyy') : ''
+  );
+
+  // Sync external changes back to local text
+  useEffect(() => {
+    const formatted = data.financialDataAsOf ? format(data.financialDataAsOf, 'MM/yyyy') : '';
+    setFinancialAsOfText(prev => {
+      // Only update if the date actually changed (avoid overwriting mid-typing)
+      const match = prev.match(/^(\d{2})\/(\d{4})$/);
+      if (match && data.financialDataAsOf) {
+        const m = parseInt(match[1], 10);
+        const y = parseInt(match[2], 10);
+        if (m === data.financialDataAsOf.getMonth() + 1 && y === data.financialDataAsOf.getFullYear()) {
+          return prev;
+        }
+      }
+      return formatted;
+    });
+  }, [data.financialDataAsOf]);
   // Column visibility toggles
   const [showRevGrowth, setShowRevGrowth] = useState(true);
   const [showGmDelta, setShowGmDelta] = useState(true);
@@ -399,31 +418,58 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
         </FlexChangedFieldWrapper>
         <div className="space-y-2">
           <Label htmlFor="financialDataAsOf">Financial Data As Of</Label>
-          <Input
-            id="financialDataAsOf"
-            value={data.financialDataAsOf ? format(data.financialDataAsOf, 'MM/yyyy') : ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              // Allow typing with auto-slash
-              if (val.length === 2 && !val.includes('/')) {
-                e.target.value = val + '/';
-              }
-              // Parse MM/YYYY
-              const match = val.match(/^(\d{1,2})\/(\d{4})$/);
-              if (match) {
-                const month = parseInt(match[1], 10);
-                const year = parseInt(match[2], 10);
-                if (month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
-                  updateField('financialDataAsOf', new Date(year, month - 1, 1));
+          <div className="flex gap-2">
+            <Input
+              id="financialDataAsOf"
+              value={financialAsOfText}
+              onChange={(e) => {
+                let val = e.target.value;
+                // Auto-insert slash after 2 digits
+                if (val.length === 2 && !val.includes('/') && financialAsOfText.length < val.length) {
+                  val = val + '/';
                 }
-              }
-              // If cleared, set to null
-              if (val === '') {
-                updateField('financialDataAsOf', null);
-              }
-            }}
-            placeholder="MM/YYYY"
-          />
+                // Only allow digits and slash, max 7 chars (MM/YYYY)
+                if (/^[\d/]*$/.test(val) && val.length <= 7) {
+                  setFinancialAsOfText(val);
+                  // Parse MM/YYYY
+                  const match = val.match(/^(\d{2})\/(\d{4})$/);
+                  if (match) {
+                    const month = parseInt(match[1], 10);
+                    const year = parseInt(match[2], 10);
+                    if (month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+                      updateField('financialDataAsOf', new Date(year, month - 1, 1));
+                    }
+                  }
+                }
+                if (val === '') {
+                  setFinancialAsOfText('');
+                  updateField('financialDataAsOf', null);
+                }
+              }}
+              placeholder="MM/YYYY"
+              className="flex-1"
+            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0">
+                  <CalendarIcon className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={data.financialDataAsOf || undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      updateField('financialDataAsOf', date);
+                      setFinancialAsOfText(format(date, 'MM/yyyy'));
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
 
