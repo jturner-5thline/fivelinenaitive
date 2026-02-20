@@ -21,7 +21,7 @@ export function AgentNodePalette({ onDragStart }: AgentNodePaletteProps) {
     : AGENT_NODE_REGISTRY;
 
   return (
-    <div className="w-56 border-r border-border bg-card flex flex-col">
+    <div className="w-64 min-w-[256px] border-r border-border bg-card flex flex-col">
       <div className="px-3 py-2 border-b border-border space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Components</h3>
         <div className="relative">
