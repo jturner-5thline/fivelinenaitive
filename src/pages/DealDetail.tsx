@@ -2525,7 +2525,7 @@ export default function DealDetail() {
                 <TabsContent value="deal-info" className={cn("mt-6 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Milestones Card */}
                   <Card>
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-2 pb-2">
                       <DealMilestones
                         milestones={dbMilestones}
                         onAdd={addMilestone}

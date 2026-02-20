@@ -130,9 +130,9 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   };
 
   return (
-    <div className="pt-1">
+    <div className="pt-0">
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1">
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="h-auto p-0 hover:bg-transparent gap-2">
               {isExpanded ? (
@@ -163,7 +163,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
 
         {/* Collapsed View - Diamond Icons with Connecting Lines and Labels */}
         {!isExpanded && milestones.length > 0 && (
-          <div className="relative py-1 pb-2 overflow-hidden">
+          <div className="relative py-0 pb-0 overflow-hidden">
             {/* Connecting line that spans the full width */}
             <div className="absolute top-[26px] left-0 right-0 h-0.5 bg-muted-foreground/30" />
             
@@ -263,7 +263,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                   {/* Label below diamond */}
                   <span
                     className={cn(
-                      "text-[12px] mt-0.5 text-center leading-normal truncate w-full px-0.5",
+                      "text-[11px] mt-0 text-center leading-tight truncate w-full px-0.5",
                       milestone.completed
                         ? "text-foreground"
                         : isOverdue(milestone)
