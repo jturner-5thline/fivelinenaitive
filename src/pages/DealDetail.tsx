@@ -2728,7 +2728,7 @@ export default function DealDetail() {
                           );
                         case 'deal-information':
                           return (
-                            <Card key={id}>
+                            <Card key={id} className="bg-gradient-to-br from-card via-card to-background/80 border-border">
                               <CardHeader className="flex flex-row items-center justify-between py-4">
                                 <CardTitle className="text-lg">Deal Information</CardTitle>
                               </CardHeader>
