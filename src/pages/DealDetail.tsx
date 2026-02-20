@@ -3201,7 +3201,7 @@ export default function DealDetail() {
                     </div>
                   </CardHeader>
                   
-                    <CardContent className="overflow-y-auto flex-1">
+                    <CardContent className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }} onMouseEnter={(e) => { e.currentTarget.style.scrollbarColor = 'hsl(var(--border)) transparent'; }} onMouseLeave={(e) => { e.currentTarget.style.scrollbarColor = 'transparent transparent'; }}>
                   <div className="space-y-4">
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
