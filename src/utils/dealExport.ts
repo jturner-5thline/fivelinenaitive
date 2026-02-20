@@ -752,12 +752,12 @@ export async function exportPipelineToWord(deals: Deal[]): Promise<void> {
 
 // ==================== STATUS REPORT EXPORTS ====================
 
-interface LenderStageConfig {
+export interface LenderStageConfig {
   id: string;
   label: string;
 }
 
-interface OutstandingItem {
+export interface OutstandingItem {
   id: string;
   text: string;
   completed: boolean;
@@ -769,8 +769,24 @@ interface OutstandingItem {
   requestedBy: string[];
 }
 
+export interface StatusReportEditableContent {
+  keyUpdates: string[];
+  lenderRows: { name: string; processStage: string; focusAreas: string; challenges: string; nextAction: string }[];
+  completedMilestones: string[];
+  nextSteps: string[];
+  actionItems: string;
+  sectionsVisible: {
+    keyUpdates: boolean;
+    lenderTable: boolean;
+    pipelineSnapshot: boolean;
+    milestones: boolean;
+    nextSteps: boolean;
+    actionItems: boolean;
+  };
+}
+
 // Status Report PDF Export — matches branded design template
-export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[]): void {
+export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[], editableContent?: StatusReportEditableContent): void {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -833,93 +849,100 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
   doc.setFontSize(10);
   doc.setTextColor(...textDark);
 
-  // Parse notes into bullet points (split by newlines, strip HTML tags)
-  const rawNotes = deal.notes || '';
-  const strippedNotes = rawNotes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
-  const bulletItems = strippedNotes.split(/\n+/).map(s => s.trim()).filter(Boolean);
-
-  if (bulletItems.length > 0) {
-    for (const item of bulletItems) {
-      if (yPos > pageHeight - 40) { doc.addPage(); yPos = 20; }
-      const lines = doc.splitTextToSize(item, contentWidth - 10);
-      // Bullet circle
-      doc.setFillColor(...textDark);
-      doc.circle(margin + 2, yPos - 1.2, 1, 'F');
-      doc.text(lines, margin + 8, yPos);
-      yPos += lines.length * 5 + 4;
-    }
+  // Use editable content if provided, otherwise parse from deal
+  let bulletItems: string[];
+  if (editableContent) {
+    bulletItems = editableContent.keyUpdates.filter(Boolean);
   } else {
-    doc.setTextColor(...textMedium);
-    doc.text('No updates available.', margin + 8, yPos);
-    yPos += 10;
+    const rawNotes = deal.notes || '';
+    const strippedNotes = rawNotes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+    bulletItems = strippedNotes.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  }
+
+  const showKeyUpdates = editableContent ? editableContent.sectionsVisible.keyUpdates : true;
+  if (showKeyUpdates) {
+    if (bulletItems.length > 0) {
+      for (const item of bulletItems) {
+        if (yPos > pageHeight - 40) { doc.addPage(); yPos = 20; }
+        const lines = doc.splitTextToSize(item, contentWidth - 10);
+        doc.setFillColor(...textDark);
+        doc.circle(margin + 2, yPos - 1.2, 1, 'F');
+        doc.text(lines, margin + 8, yPos);
+        yPos += lines.length * 5 + 4;
+      }
+    } else {
+      doc.setTextColor(...textMedium);
+      doc.text('No updates available.', margin + 8, yPos);
+      yPos += 10;
+    }
   }
 
   // ─── Key Lenders – Process Status & Next Actions ────────────────────────
-  yPos += 8;
-  if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
+  const showLenderTable = editableContent ? editableContent.sectionsVisible.lenderTable : true;
+  if (showLenderTable) {
+    yPos += 8;
+    if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...brandBlue);
-  const klTitle = 'Key Lenders \u2013 Process Status & Next Actions:';
-  doc.text(klTitle, margin, yPos);
-  const klWidth = doc.getTextWidth(klTitle);
-  doc.setDrawColor(...brandBlue);
-  doc.setLineWidth(0.5);
-  doc.line(margin, yPos + 1.5, margin + klWidth, yPos + 1.5);
-  yPos += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(...brandBlue);
+    const klTitle = 'Key Lenders \u2013 Process Status & Next Actions:';
+    doc.text(klTitle, margin, yPos);
+    const klWidth = doc.getTextWidth(klTitle);
+    doc.setDrawColor(...brandBlue);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos + 1.5, margin + klWidth, yPos + 1.5);
+    yPos += 10;
 
-  // Filter active lenders for the detail table (exclude passed)
-  const activeLenders = (deal.lenders || []).filter(l => l.trackingStatus !== 'passed');
+    let lenderTableData: string[][];
+    if (editableContent) {
+      lenderTableData = editableContent.lenderRows.map(r => [r.name, r.processStage, r.focusAreas, r.challenges, r.nextAction]);
+    } else {
+      const activeLenders = (deal.lenders || []).filter(l => l.trackingStatus !== 'passed');
+      lenderTableData = activeLenders.map(lender => {
+        const stageName = configuredStages?.find(s => s.id === lender.stage)?.label ||
+          LENDER_STAGE_CONFIG[lender.stage]?.label || lender.stage;
+        return [lender.name, stageName, '', '', lender.notes || ''];
+      });
+    }
 
-  if (activeLenders.length > 0) {
-    const lenderTableData = activeLenders.map(lender => {
-      const stageName = configuredStages?.find(s => s.id === lender.stage)?.label ||
-        LENDER_STAGE_CONFIG[lender.stage]?.label || lender.stage;
-      return [
-        lender.name,
-        stageName,
-        '', // Key Focus Areas — placeholder, can be enriched
-        '', // Current Challenges — placeholder
-        lender.notes || '',
-      ];
-    });
+    if (lenderTableData.length > 0) {
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Lender', 'Process Stage', 'Key Focus Areas', 'Current Challenges', 'Next Action']],
+        body: lenderTableData,
+        theme: 'plain',
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: textDark,
+          fontStyle: 'bold',
+          fontSize: 9,
+          cellPadding: 5,
+          lineWidth: { bottom: 0.3 },
+          lineColor: borderLight,
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: textDark,
+          cellPadding: 5,
+          lineWidth: { bottom: 0.15 },
+          lineColor: [229, 231, 235],
+        },
+        styles: { overflow: 'linebreak' },
+        columnStyles: {
+          0: { cellWidth: 32 },
+          1: { cellWidth: 32 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 38 },
+          4: { cellWidth: 33 },
+        },
+        margin: { left: margin, right: margin },
+        tableLineColor: borderLight,
+        tableLineWidth: 0.3,
+      });
 
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Lender', 'Process Stage', 'Key Focus Areas', 'Current Challenges', 'Next Action']],
-      body: lenderTableData,
-      theme: 'plain',
-      headStyles: {
-        fillColor: [255, 255, 255],
-        textColor: textDark,
-        fontStyle: 'bold',
-        fontSize: 9,
-        cellPadding: 5,
-        lineWidth: { bottom: 0.3 },
-        lineColor: borderLight,
-      },
-      bodyStyles: {
-        fontSize: 9,
-        textColor: textDark,
-        cellPadding: 5,
-        lineWidth: { bottom: 0.15 },
-        lineColor: [229, 231, 235],
-      },
-      styles: { overflow: 'linebreak' },
-      columnStyles: {
-        0: { cellWidth: 32 },
-        1: { cellWidth: 32 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 38 },
-        4: { cellWidth: 33 },
-      },
-      margin: { left: margin, right: margin },
-      tableLineColor: borderLight,
-      tableLineWidth: 0.3,
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+    }
   }
 
   // ─── PAGE 2 ───────────────────────────────────────────────────────────────
@@ -927,175 +950,182 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
   yPos = 20;
 
   // ─── Lender Pipeline Snapshot ───────────────────────────────────────────
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...brandBlue);
-  doc.text('Lender Pipeline Snapshot', margin, yPos);
-  yPos += 10;
-
-  // Group lenders by tracking status
-  const allLenders = deal.lenders || [];
-  const pipelineGroups: { label: string; lenders: string[]; borderColor: [number, number, number]; iconColor: [number, number, number] }[] = [
-    { label: 'On Deck', lenders: allLenders.filter(l => l.trackingStatus === 'on-deck').map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
-    { label: 'In Review', lenders: allLenders.filter(l => l.trackingStatus === 'active').map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
-    { label: 'Terms Issued', lenders: allLenders.filter(l => l.stage === 'term-sheets' || l.stage === 'draft-terms').map(l => l.name), borderColor: [34, 197, 94], iconColor: [34, 197, 94] },
-    { label: 'Passed', lenders: allLenders.filter(l => l.trackingStatus === 'passed').map(l => l.name), borderColor: [239, 68, 68], iconColor: [239, 68, 68] },
-  ];
-
-  const cardW = (contentWidth - 9) / 4; // 4 cards with 3px gap
-  const cardX = margin;
-
-  for (let i = 0; i < pipelineGroups.length; i++) {
-    const g = pipelineGroups[i];
-    const x = cardX + i * (cardW + 3);
-    const cardH = Math.max(40, 32 + g.lenders.length * 5);
-
-    // Card background
-    doc.setFillColor(...bgLight);
-    doc.setDrawColor(...g.borderColor);
-    doc.setLineWidth(0.6);
-    doc.roundedRect(x, yPos, cardW, cardH, 2, 2, 'FD');
-
-    // Icon circle
-    doc.setFillColor(...g.iconColor);
-    doc.circle(x + 8, yPos + 8, 4, 'F');
-
-    // Stage label with count
+  const showPipeline = editableContent ? editableContent.sectionsVisible.pipelineSnapshot : true;
+  if (showPipeline) {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...textDark);
-    doc.text(`${g.label} (${g.lenders.length})`, x + 5, yPos + 20);
+    doc.setFontSize(16);
+    doc.setTextColor(...brandBlue);
+    doc.text('Lender Pipeline Snapshot', margin, yPos);
+    yPos += 10;
 
-    // Lender names
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...textMedium);
-    g.lenders.forEach((name, idx) => {
-      doc.text(`${idx + 1}. ${name}`, x + 7, yPos + 26 + idx * 5);
-    });
+    const allLenders = deal.lenders || [];
+    const pipelineGroups: { label: string; lenders: string[]; borderColor: [number, number, number]; iconColor: [number, number, number] }[] = [
+      { label: 'On Deck', lenders: allLenders.filter(l => l.trackingStatus === 'on-deck').map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
+      { label: 'In Review', lenders: allLenders.filter(l => l.trackingStatus === 'active').map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
+      { label: 'Terms Issued', lenders: allLenders.filter(l => l.stage === 'term-sheets' || l.stage === 'draft-terms').map(l => l.name), borderColor: [34, 197, 94], iconColor: [34, 197, 94] },
+      { label: 'Passed', lenders: allLenders.filter(l => l.trackingStatus === 'passed').map(l => l.name), borderColor: [239, 68, 68], iconColor: [239, 68, 68] },
+    ];
+
+    const cardW = (contentWidth - 9) / 4;
+    const cardX = margin;
+
+    for (let i = 0; i < pipelineGroups.length; i++) {
+      const g = pipelineGroups[i];
+      const x = cardX + i * (cardW + 3);
+      const cardH = Math.max(40, 32 + g.lenders.length * 5);
+
+      doc.setFillColor(...bgLight);
+      doc.setDrawColor(...g.borderColor);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(x, yPos, cardW, cardH, 2, 2, 'FD');
+
+      doc.setFillColor(...g.iconColor);
+      doc.circle(x + 8, yPos + 8, 4, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...textDark);
+      doc.text(`${g.label} (${g.lenders.length})`, x + 5, yPos + 20);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...textMedium);
+      g.lenders.forEach((name, idx) => {
+        doc.text(`${idx + 1}. ${name}`, x + 7, yPos + 26 + idx * 5);
+      });
+    }
+
+    const maxCardH = Math.max(40, ...pipelineGroups.map(g => 32 + g.lenders.length * 5));
+    yPos += maxCardH + 15;
   }
 
-  const maxCardH = Math.max(40, ...pipelineGroups.map(g => 32 + g.lenders.length * 5));
-  yPos += maxCardH + 15;
-
   // ─── Recent Milestones ──────────────────────────────────────────────────
-  const completedMilestones = (deal.milestones || []).filter(m => m.completed);
-  if (completedMilestones.length > 0 || true) {
+  const showMilestones = editableContent ? editableContent.sectionsVisible.milestones : true;
+  if (showMilestones) {
+    const milestoneItems = editableContent
+      ? editableContent.completedMilestones.filter(Boolean)
+      : (deal.milestones || []).filter(m => m.completed).slice(0, 3).map(m => m.title);
+    
+    if (milestoneItems.length > 0 || !editableContent) {
+      if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(...brandBlue);
+      doc.text('Recent Milestones', margin, yPos);
+      yPos += 10;
+
+      const finalMilestoneItems = milestoneItems.length > 0 ? milestoneItems : ['No completed milestones yet'];
+
+      const mCardW = (contentWidth - 6) / 3;
+      for (let i = 0; i < Math.min(finalMilestoneItems.length, 3); i++) {
+        const x = margin + i * (mCardW + 3);
+        const lines = doc.splitTextToSize(finalMilestoneItems[i], mCardW - 10);
+        const cH = Math.max(35, 22 + lines.length * 4);
+
+        doc.setFillColor(...bgLight);
+        doc.setDrawColor(34, 197, 94);
+        doc.setLineWidth(0.6);
+        doc.roundedRect(x, yPos, mCardW, cH, 2, 2, 'FD');
+
+        doc.setFillColor(187, 247, 208);
+        doc.circle(x + mCardW / 2, yPos + 10, 5, 'F');
+        doc.setFillColor(34, 197, 94);
+        doc.circle(x + mCardW / 2, yPos + 10, 3, 'F');
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...textDark);
+        doc.text(lines, x + mCardW / 2, yPos + 20, { align: 'center', maxWidth: mCardW - 8 });
+      }
+
+      const mCardH = Math.max(35, 22 + 8);
+      yPos += mCardH + 15;
+    }
+  }
+
+  // ─── Next Steps ─────────────────────────────────────────────────────────
+  const showNextSteps = editableContent ? editableContent.sectionsVisible.nextSteps : true;
+  if (showNextSteps) {
     if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(...brandBlue);
-    doc.text('Recent Milestones', margin, yPos);
+    doc.text('Next Steps', margin, yPos);
     yPos += 10;
 
-    const milestoneItems = completedMilestones.length > 0
-      ? completedMilestones.slice(0, 3).map(m => m.title)
-      : ['No completed milestones yet'];
+    const nextItems = editableContent
+      ? editableContent.nextSteps.filter(Boolean)
+      : (deal.milestones || []).filter(m => !m.completed).slice(0, 2).map(m => m.title);
+    const finalNextItems = nextItems.length > 0 ? nextItems : ['No upcoming steps defined'];
 
-    const mCardW = (contentWidth - 6) / 3;
-    for (let i = 0; i < Math.min(milestoneItems.length, 3); i++) {
-      const x = margin + i * (mCardW + 3);
-      const lines = doc.splitTextToSize(milestoneItems[i], mCardW - 10);
+    const nsCardW = (contentWidth - 3) / 2;
+    for (let i = 0; i < Math.min(finalNextItems.length, 2); i++) {
+      const x = margin + i * (nsCardW + 3);
+      const lines = doc.splitTextToSize(finalNextItems[i], nsCardW - 10);
       const cH = Math.max(35, 22 + lines.length * 4);
 
-      doc.setFillColor(...bgLight);
-      doc.setDrawColor(34, 197, 94);
+      doc.setFillColor(255, 251, 235);
+      doc.setDrawColor(251, 146, 60);
       doc.setLineWidth(0.6);
-      doc.roundedRect(x, yPos, mCardW, cH, 2, 2, 'FD');
+      doc.roundedRect(x, yPos, nsCardW, cH, 2, 2, 'FD');
 
-      // Icon circle
-      doc.setFillColor(187, 247, 208);
-      doc.circle(x + mCardW / 2, yPos + 10, 5, 'F');
-      doc.setFillColor(34, 197, 94);
-      doc.circle(x + mCardW / 2, yPos + 10, 3, 'F');
+      doc.setFillColor(251, 146, 60);
+      doc.circle(x + nsCardW / 2, yPos + 10, 5, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('\u2192', x + nsCardW / 2 - 2, yPos + 12);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(...textDark);
-      doc.text(lines, x + mCardW / 2, yPos + 20, { align: 'center', maxWidth: mCardW - 8 });
+      doc.text(lines, x + nsCardW / 2, yPos + 20, { align: 'center', maxWidth: nsCardW - 8 });
     }
 
-    const mCardH = Math.max(35, 22 + 8);
-    yPos += mCardH + 15;
+    const nsCardH = Math.max(35, 22 + 8);
+    yPos += nsCardH + 15;
   }
-
-  // ─── Next Steps ─────────────────────────────────────────────────────────
-  const upcomingMilestones = (deal.milestones || []).filter(m => !m.completed);
-  if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...brandBlue);
-  doc.text('Next Steps', margin, yPos);
-  yPos += 10;
-
-  const nextItems = upcomingMilestones.length > 0
-    ? upcomingMilestones.slice(0, 2).map(m => m.title)
-    : ['No upcoming steps defined'];
-
-  const nsCardW = (contentWidth - 3) / 2;
-  for (let i = 0; i < Math.min(nextItems.length, 2); i++) {
-    const x = margin + i * (nsCardW + 3);
-    const lines = doc.splitTextToSize(nextItems[i], nsCardW - 10);
-    const cH = Math.max(35, 22 + lines.length * 4);
-
-    doc.setFillColor(255, 251, 235); // Light amber
-    doc.setDrawColor(251, 146, 60); // Orange
-    doc.setLineWidth(0.6);
-    doc.roundedRect(x, yPos, nsCardW, cH, 2, 2, 'FD');
-
-    // Orange circle with arrow
-    doc.setFillColor(251, 146, 60);
-    doc.circle(x + nsCardW / 2, yPos + 10, 5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text('\u2192', x + nsCardW / 2 - 2, yPos + 12);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...textDark);
-    doc.text(lines, x + nsCardW / 2, yPos + 20, { align: 'center', maxWidth: nsCardW - 8 });
-  }
-
-  const nsCardH = Math.max(35, 22 + 8);
-  yPos += nsCardH + 15;
 
   // ─── What We Need From You ──────────────────────────────────────────────
-  if (yPos > pageHeight - 50) { doc.addPage(); yPos = 20; }
+  const showActionItems = editableContent ? editableContent.sectionsVisible.actionItems : true;
+  if (showActionItems) {
+    if (yPos > pageHeight - 50) { doc.addPage(); yPos = 20; }
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...brandBlue);
-  doc.text('What We Need From You', margin, yPos);
-  yPos += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(...brandBlue);
+    doc.text('What We Need From You', margin, yPos);
+    yPos += 10;
 
-  const pendingItems = (outstandingItems || []).filter(i => !i.completed && !i.received);
-  const actionText = pendingItems.length > 0
-    ? pendingItems.map(i => i.text).join('\n')
-    : 'No action items at this time.';
+    const actionText = editableContent
+      ? editableContent.actionItems
+      : (() => {
+          const pendingItems = (outstandingItems || []).filter(i => !i.completed && !i.received);
+          return pendingItems.length > 0 ? pendingItems.map(i => i.text).join('\n') : 'No action items at this time.';
+        })();
 
-  const actionLines = doc.splitTextToSize(actionText, contentWidth - 20);
-  const actionCardH = Math.max(35, 20 + actionLines.length * 5);
+    const actionLines = doc.splitTextToSize(actionText, contentWidth - 20);
+    const actionCardH = Math.max(35, 20 + actionLines.length * 5);
 
-  doc.setFillColor(241, 245, 249); // Light blue-gray
-  doc.setDrawColor(147, 197, 253); // Blue border
-  doc.setLineWidth(0.6);
-  doc.roundedRect(margin, yPos, contentWidth, actionCardH, 2, 2, 'FD');
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(147, 197, 253);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(margin, yPos, contentWidth, actionCardH, 2, 2, 'FD');
 
-  // Warning/info icon
-  doc.setFillColor(147, 197, 253);
-  doc.circle(margin + contentWidth / 2, yPos + 10, 5, 'F');
-  doc.setTextColor(59, 130, 246);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('!', margin + contentWidth / 2 - 1, yPos + 12);
+    doc.setFillColor(147, 197, 253);
+    doc.circle(margin + contentWidth / 2, yPos + 10, 5, 'F');
+    doc.setTextColor(59, 130, 246);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('!', margin + contentWidth / 2 - 1, yPos + 12);
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(...textDark);
-  doc.text(actionLines, margin + contentWidth / 2, yPos + 20, { align: 'center', maxWidth: contentWidth - 16 });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...textDark);
+    doc.text(actionLines, margin + contentWidth / 2, yPos + 20, { align: 'center', maxWidth: contentWidth - 16 });
+  }
 
   // ─── Footer ─────────────────────────────────────────────────────────────
   const pageCount = doc.getNumberOfPages();
