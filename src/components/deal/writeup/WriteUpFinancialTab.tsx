@@ -455,18 +455,57 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                   <CalendarIcon className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={data.financialDataAsOf || undefined}
-                  onSelect={(date) => {
-                    if (date) {
-                      updateField('financialDataAsOf', date);
-                      setFinancialAsOfText(format(date, 'MM/yyyy'));
-                    }
-                  }}
-                  initialFocus
-                />
+              <PopoverContent className="w-auto p-3" align="end">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const current = data.financialDataAsOf || new Date();
+                        updateField('financialDataAsOf', new Date(current.getFullYear() - 1, current.getMonth(), 1));
+                        setFinancialAsOfText(format(new Date(current.getFullYear() - 1, current.getMonth(), 1), 'MM/yyyy'));
+                      }}
+                    >
+                      ←
+                    </Button>
+                    <span className="text-sm font-medium">
+                      {data.financialDataAsOf ? data.financialDataAsOf.getFullYear() : new Date().getFullYear()}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const current = data.financialDataAsOf || new Date();
+                        updateField('financialDataAsOf', new Date(current.getFullYear() + 1, current.getMonth(), 1));
+                        setFinancialAsOfText(format(new Date(current.getFullYear() + 1, current.getMonth(), 1), 'MM/yyyy'));
+                      }}
+                    >
+                      →
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, idx) => {
+                      const year = data.financialDataAsOf ? data.financialDataAsOf.getFullYear() : new Date().getFullYear();
+                      const isSelected = data.financialDataAsOf?.getMonth() === idx && data.financialDataAsOf?.getFullYear() === year;
+                      return (
+                        <Button
+                          key={month}
+                          variant={isSelected ? 'default' : 'outline'}
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => {
+                            const newDate = new Date(year, idx, 1);
+                            updateField('financialDataAsOf', newDate);
+                            setFinancialAsOfText(format(newDate, 'MM/yyyy'));
+                          }}
+                        >
+                          {month}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
               </PopoverContent>
             </Popover>
           </div>
