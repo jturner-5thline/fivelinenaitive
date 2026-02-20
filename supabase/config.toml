@@ -152,3 +152,6 @@ verify_jwt = false
 
 [functions.research-orchestrator]
 verify_jwt = false
+
+[functions.refine-text]
+verify_jwt = false
