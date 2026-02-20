@@ -298,43 +298,30 @@ function EditableDealTile({
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div 
-          className={cn(
-            "flex-shrink-0 w-[160px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative",
-            deal.passed && "border-l-2 border-l-destructive"
-          )}
-          onClick={() => onNavigate(deal.dealId)}
+    <div 
+      className={cn(
+        "flex-shrink-0 w-[180px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative",
+        deal.passed && "border-l-2 border-l-destructive"
+      )}
+      onClick={() => onNavigate(deal.dealId)}
+    >
+      <div className="absolute top-2 right-2 flex items-center gap-0.5">
+        <button
+          className="p-1 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsEditing(true); }}
+          title="Edit stage & notes"
         >
-          <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              className="p-0.5 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground"
-              onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
-              title="Edit stage & notes"
-            >
-              <Pencil className="h-3 w-3" />
-            </button>
-            <ArrowRight className="h-3 w-3 text-muted-foreground" />
-          </div>
-          <p className="font-medium text-sm truncate mb-1 pr-6">{deal.company}</p>
-          <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
-          <Badge variant="outline" className="text-[10px] mt-1 font-normal">{deal.stage}</Badge>
-          {deal.notes && (
-            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{deal.notes}</p>
-          )}
-          <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-[200px]">
-        <p className="font-medium">{deal.company}</p>
-        {deal.passed && <p className="text-xs text-destructive font-medium">Passed</p>}
-        <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
-        {deal.notes && <p className="text-xs text-muted-foreground">Notes: {deal.notes}</p>}
-        {deal.passReason && <p className="text-xs text-muted-foreground">Reason: {deal.passReason}</p>}
-        <p className="text-xs text-muted-foreground mt-1 italic">Click pencil to edit</p>
-      </TooltipContent>
-    </Tooltip>
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <p className="font-medium text-sm truncate mb-1 pr-6">{deal.company}</p>
+      <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+      <Badge variant="outline" className="text-[10px] mt-1 font-normal">{deal.stage}</Badge>
+      {deal.notes && (
+        <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{deal.notes}</p>
+      )}
+      <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+    </div>
   );
 }
 
