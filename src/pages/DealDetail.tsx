@@ -4376,8 +4376,8 @@ export default function DealDetail() {
 
       {/* Lender Detail Dialog */}
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{selectedLenderName}</DialogTitle>
           </DialogHeader>
           {selectedLenderName && (() => {
@@ -4401,7 +4401,7 @@ export default function DealDetail() {
                   <TabsTrigger value="about">About {selectedLenderName}</TabsTrigger>
                 </TabsList>
                 
-                <ScrollArea className="max-h-[60vh]">
+                <ScrollArea className="h-[60vh]">
                 <TabsContent value="this-deal" className="space-y-6 mt-4">
                   {/* Stage & Notes Editing */}
                   {dealLender && (
