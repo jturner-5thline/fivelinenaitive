@@ -5,6 +5,29 @@ import { toast } from '@/hooks/use-toast';
 import { DealWriteUpData, KeyItem, CompanyHighlight, FinancialYear, FinancialComment, TeamMember, VisibleMetrics } from '@/components/deal/DealWriteUp';
 import { Json } from '@/integrations/supabase/types';
 
+// Format stored currency values like "$2000000" → "$2.00MM"
+const formatStoredCurrency = (value: string): string => {
+  if (!value) return '';
+  if (value.startsWith('(')) return value;
+  if (/^\$[\d,.]+MM$/i.test(value) || /^\$[\d,.]+K$/i.test(value)) return value;
+  const numericValue = value.replace(/[^0-9.-]/g, '');
+  if (numericValue && !isNaN(parseFloat(numericValue))) {
+    const num = parseFloat(numericValue);
+    const upperValue = value.toUpperCase();
+    if (upperValue.includes('MM') || upperValue.includes('M')) {
+      return `$${num.toFixed(2)}MM`;
+    } else if (upperValue.includes('K')) {
+      return `$${num.toFixed(2)}K`;
+    } else if (num >= 1000000) {
+      return `$${(num / 1000000).toFixed(2)}MM`;
+    } else if (num >= 1000) {
+      return `$${(num / 1000).toFixed(2)}K`;
+    }
+    return `$${num.toFixed(2)}`;
+  }
+  return value;
+};
+
 interface DealWriteupRow {
   id: string;
   deal_id: string;
@@ -160,10 +183,14 @@ export function useDealWriteup(dealId: string | undefined) {
       companyHighlights = row.company_highlights as unknown as CompanyHighlight[];
     }
     
-    // Parse financial_years from JSON
+    // Parse financial_years from JSON and format currency values
     let financialYears: FinancialYear[] = [];
     if (row.financial_years && Array.isArray(row.financial_years)) {
-      financialYears = row.financial_years as unknown as FinancialYear[];
+      financialYears = (row.financial_years as unknown as FinancialYear[]).map(fy => ({
+        ...fy,
+        revenue: formatStoredCurrency(fy.revenue),
+        ebitda: formatStoredCurrency(fy.ebitda),
+      }));
     }
 
     // Parse financial_comments from JSON (stored in financial_years or separately)
