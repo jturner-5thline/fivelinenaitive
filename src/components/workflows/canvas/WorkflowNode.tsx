@@ -3,6 +3,8 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import type { CanvasNodeData } from './types';
 import { NODE_CATEGORIES } from './nodeRegistry';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertCircle, AlertTriangle } from 'lucide-react';
 
 const categoryColors: Record<string, string> = {
   trigger: 'border-chart-1/50 bg-chart-1/10',
@@ -14,18 +16,59 @@ const categoryColors: Record<string, string> = {
 
 const handleStyle = { width: 12, height: 12, borderRadius: '50%' };
 
-function WorkflowNodeComponent({ data, selected }: NodeProps & { data: CanvasNodeData }) {
+interface ValidationIssue {
+  type: 'error' | 'warning';
+  message: string;
+}
+
+function WorkflowNodeComponent({ data, selected }: NodeProps & { data: CanvasNodeData & { _validation?: ValidationIssue[] } }) {
   const catConfig = NODE_CATEGORIES.find(c => c.key === data.category);
+  const validation = data._validation || [];
+  const errors = validation.filter(v => v.type === 'error');
+  const warnings = validation.filter(v => v.type === 'warning');
 
   return (
     <div
       className={cn(
-        'rounded-lg border-2 shadow-md min-w-[180px] max-w-[220px] transition-all',
+        'rounded-lg border-2 shadow-md min-w-[180px] max-w-[220px] transition-all relative',
         'bg-card text-card-foreground',
         categoryColors[data.category] || 'border-border',
-        selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+        selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+        errors.length > 0 && 'border-destructive/60'
       )}
     >
+      {/* Validation badge */}
+      {validation.length > 0 && (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={cn(
+                'absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-primary-foreground shadow-sm z-10',
+                errors.length > 0 ? 'bg-destructive' : 'bg-chart-3'
+              )}>
+                {errors.length > 0
+                  ? <AlertCircle className="h-3 w-3" />
+                  : <AlertTriangle className="h-3 w-3" />
+                }
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <div className="space-y-1">
+                {validation.map((v, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-xs">
+                    {v.type === 'error'
+                      ? <AlertCircle className="h-3 w-3 text-destructive mt-0.5 shrink-0" />
+                      : <AlertTriangle className="h-3 w-3 text-chart-3 mt-0.5 shrink-0" />
+                    }
+                    <span>{v.message}</span>
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
       {/* Input handles */}
       {data.inputs.map((input, i) => (
         <Handle
