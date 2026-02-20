@@ -18,6 +18,7 @@ import { DataRoomChecklistSettings } from '@/components/settings/DataRoomCheckli
 import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
 import { ScheduledReportsSettings } from '@/components/settings/ScheduledReportsSettings';
 import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
+import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -56,6 +57,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'deal-types',
     keywords: ['deal', 'types', 'type', 'category', 'classification'],
+  },
+  {
+    id: 'pipelines',
+    keywords: ['pipeline', 'pipelines', 'kanban', 'board', 'workflow', 'deal', 'stages', 'manage'],
   },
   {
     id: 'deal-stages',
@@ -301,6 +306,8 @@ export default function Settings() {
             {isVisible('pass-reasons') && <PassReasonsSettings isAdmin={isAdmin} />}
 
             {isVisible('deal-types') && <DealTypesSettings isAdmin={isAdmin} />}
+
+            {isVisible('pipelines') && <PipelineSettings isAdmin={isAdmin} />}
 
             {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
 
