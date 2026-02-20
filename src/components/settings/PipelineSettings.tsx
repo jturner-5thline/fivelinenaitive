@@ -96,6 +96,14 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
   const [pipelineIsDefault, setPipelineIsDefault] = useState(false);
   const [isSavingPipeline, setIsSavingPipeline] = useState(false);
 
+  // Original state for unsaved changes detection
+  const [originalName, setOriginalName] = useState('');
+  const [originalStages, setOriginalStages] = useState<DealStageOption[]>([]);
+  const [originalIsDefault, setOriginalIsDefault] = useState(false);
+
+  // Unsaved changes confirmation
+  const [unsavedConfirmOpen, setUnsavedConfirmOpen] = useState(false);
+
   // Stage add/edit dialog
   const [stageDialogOpen, setStageDialogOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<DealStageOption | null>(null);
@@ -124,12 +132,39 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
     });
   };
 
+  const hasPipelineChanges = () => {
+    return pipelineName !== originalName ||
+      JSON.stringify(pipelineStages) !== JSON.stringify(originalStages) ||
+      pipelineIsDefault !== originalIsDefault;
+  };
+
+  const handlePipelineDialogClose = (open: boolean) => {
+    if (!open && hasPipelineChanges()) {
+      setUnsavedConfirmOpen(true);
+      return;
+    }
+    setPipelineDialogOpen(open);
+  };
+
+  const handleDiscardChanges = () => {
+    setUnsavedConfirmOpen(false);
+    setPipelineDialogOpen(false);
+  };
+
+  const handleSaveFromConfirm = async () => {
+    setUnsavedConfirmOpen(false);
+    await handleSavePipeline();
+  };
+
   // Open create pipeline dialog
   const handleCreatePipeline = () => {
     setEditingPipelineId(null);
     setPipelineName('');
     setPipelineStages(DEFAULT_STAGES);
     setPipelineIsDefault(pipelines.length === 0);
+    setOriginalName('');
+    setOriginalStages(DEFAULT_STAGES);
+    setOriginalIsDefault(pipelines.length === 0);
     setPipelineDialogOpen(true);
   };
 
@@ -139,6 +174,9 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
     setPipelineName(pipeline.name);
     setPipelineStages([...pipeline.stages]);
     setPipelineIsDefault(pipeline.isDefault);
+    setOriginalName(pipeline.name);
+    setOriginalStages([...pipeline.stages]);
+    setOriginalIsDefault(pipeline.isDefault);
     setPipelineDialogOpen(true);
   };
 
@@ -367,7 +405,7 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
       </Collapsible>
 
       {/* Create/Edit Pipeline Dialog */}
-      <Dialog open={pipelineDialogOpen} onOpenChange={setPipelineDialogOpen}>
+      <Dialog open={pipelineDialogOpen} onOpenChange={handlePipelineDialogClose}>
         <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
@@ -378,7 +416,7 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => setPipelineDialogOpen(false)}>Cancel</Button>
+                <Button variant="outline" size="sm" onClick={() => handlePipelineDialogClose(false)}>Cancel</Button>
                 <Button variant="gradient" size="sm" onClick={handleSavePipeline} disabled={isSavingPipeline}>
                   {isSavingPipeline ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   {editingPipelineId ? 'Save Changes' : 'Create Pipeline'}
@@ -494,6 +532,22 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
             <AlertDialogAction onClick={handleDeletePipeline} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unsaved Changes Confirmation */}
+      <AlertDialog open={unsavedConfirmOpen} onOpenChange={setUnsavedConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Would you like to save them before closing?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardChanges}>Discard</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveFromConfirm}>Save Changes</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
