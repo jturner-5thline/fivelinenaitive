@@ -343,9 +343,6 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
               </div>
             </div>
-            <CardDescription>
-              Review and approve lender changes from Flex
-            </CardDescription>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
