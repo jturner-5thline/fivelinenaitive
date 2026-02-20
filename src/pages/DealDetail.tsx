@@ -3077,7 +3077,7 @@ export default function DealDetail() {
                                       <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
                                         <span className="text-muted-foreground text-sm">Success Fee %</span>
                                         <div className="flex items-center gap-2">
-                                          <div className="relative w-20 shrink-0">
+                                          <div className="relative w-16 shrink-0">
                                             <Input
                                               type="number"
                                               value={deal.successFeePercent ?? ''}
