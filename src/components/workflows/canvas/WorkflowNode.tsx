@@ -148,16 +148,16 @@ function WorkflowNodeComponent({ data, selected }: NodeProps & { data: CanvasNod
       ))}
 
       {/* Section header - "When", "Check if", "Do this" */}
-      <div className="px-4 pt-3 pb-1 flex items-center gap-2">
-        <span className="text-base leading-none">{data.icon}</span>
-        <span className={cn('text-[11px] font-semibold uppercase tracking-wider', headerColor)}>
+      <div className="px-4 pt-3 pb-1">
+        <span className={cn('font-serif text-xs italic tracking-wide', headerColor)}>
           {sectionHeader}
         </span>
       </div>
 
       {/* Main label - human readable action */}
-      <div className="px-4 pb-2">
-        <p className="text-sm font-medium text-foreground leading-snug">{data.label}</p>
+      <div className="px-4 pb-2 flex items-center gap-2">
+        <span className="text-base leading-none">{data.icon}</span>
+        <p className="text-sm font-semibold text-foreground leading-snug tracking-tight">{data.label}</p>
       </div>
 
       {/* Config summary - inline readable values */}
