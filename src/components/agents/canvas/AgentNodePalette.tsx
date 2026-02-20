@@ -61,8 +61,8 @@ export function AgentNodePalette({ onDragStart }: AgentNodePaletteProps) {
                     >
                       <span className="text-base">{item.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{item.label}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+                        <p className="text-xs font-medium">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{item.description}</p>
                       </div>
                     </div>
                   ))}
