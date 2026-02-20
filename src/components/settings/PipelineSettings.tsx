@@ -370,10 +370,21 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
       <Dialog open={pipelineDialogOpen} onOpenChange={setPipelineDialogOpen}>
         <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingPipelineId ? 'Edit Pipeline' : 'Create Pipeline'}</DialogTitle>
-            <DialogDescription>
-              {editingPipelineId ? 'Modify pipeline name and stages' : 'Set up a new pipeline with custom stages'}
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>{editingPipelineId ? 'Edit Pipeline' : 'Create Pipeline'}</DialogTitle>
+                <DialogDescription>
+                  {editingPipelineId ? 'Modify pipeline name and stages' : 'Set up a new pipeline with custom stages'}
+                </DialogDescription>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" onClick={() => setPipelineDialogOpen(false)}>Cancel</Button>
+                <Button variant="gradient" size="sm" onClick={handleSavePipeline} disabled={isSavingPipeline}>
+                  {isSavingPipeline ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  {editingPipelineId ? 'Save Changes' : 'Create Pipeline'}
+                </Button>
+              </div>
+            </div>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -428,13 +439,6 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPipelineDialogOpen(false)}>Cancel</Button>
-            <Button variant="gradient" onClick={handleSavePipeline} disabled={isSavingPipeline}>
-              {isSavingPipeline ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              {editingPipelineId ? 'Save Changes' : 'Create Pipeline'}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
