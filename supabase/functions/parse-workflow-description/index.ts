@@ -5,21 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface WorkflowAction {
-  id: string;
-  type: "send_notification" | "send_email" | "webhook" | "update_field";
-  config: Record<string, unknown>;
-}
-
-interface WorkflowData {
-  name: string;
-  description: string;
-  isActive: boolean;
-  triggerType: "deal_stage_change" | "lender_stage_change" | "new_deal" | "deal_closed" | "scheduled";
-  triggerConfig: Record<string, unknown>;
-  actions: WorkflowAction[];
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -27,7 +12,7 @@ serve(async (req) => {
 
   try {
     const { description } = await req.json();
-    
+
     if (!description || typeof description !== "string") {
       return new Response(
         JSON.stringify({ error: "Description is required" }),
@@ -40,31 +25,45 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are a workflow configuration parser. Your job is to convert natural language descriptions of workflows into structured workflow configurations.
+    const systemPrompt = `You are a workflow builder assistant. Convert natural language into a visual node-based workflow.
 
-Available trigger types:
-- deal_stage_change: Triggers when a deal moves to a different stage. Config: { fromStage?: string, toStage?: string }
-- lender_stage_change: Triggers when a lender status changes. Config: { fromStage?: string, toStage?: string }
-- new_deal: Triggers when a new deal is created. No additional config needed.
-- deal_closed: Triggers when a deal is closed (won or lost). Config: { closedStatus?: 'won' | 'lost' }
-- scheduled: Runs on a schedule. Config: { schedule: 'daily' | 'weekly' | 'monthly' }
+Available node types and their categories:
+TRIGGERS (category: "trigger"):
+- trigger/lender_event: Fires on lender stage/status changes. Config: { event: "stage_change"|"created"|"updated" }
+- trigger/deal_event: Fires on deal changes. Config: { event: "stage_change"|"created"|"closed" }
+- trigger/schedule: Runs on schedule. Config: { frequency: "hourly"|"daily"|"weekly"|"monthly", time?: "HH:MM" }
+- trigger/webhook: Receives external HTTP data. Config: { method: "POST"|"GET" }
 
-Available action types:
-- send_notification: Send an in-app notification. Config: { title: string, message: string }
-- send_email: Send an email. Config: { subject: string, body: string }
-- webhook: Call an external URL. Config: { url: string }
-- update_field: Update a deal field. Config: { field: 'status' | 'stage' | 'manager', value: string }
+CONDITIONS (category: "condition"):
+- condition/equals: If/else branch. Config: { operator: "equals"|"not_equals"|"contains"|"greater_than"|"less_than", compareTo: "value" }
+- condition/switch: Multi-branch. Config: { case_1: "value", case_2: "value" }
 
-Parse the user's description and return a valid workflow configuration as a JSON object with these fields:
-- name (string): A short descriptive name
-- description (string): Brief description of what the workflow does
-- triggerType (string, one of: deal_stage_change, lender_stage_change, new_deal, deal_closed, scheduled)
-- triggerConfig (object): Config for the trigger
-- actions (array of objects with "type" and "config" fields)
+DATA (category: "data"):
+- data/lookup: Fetch from DB. Config: { table: "deals"|"deal_lenders"|"profiles", fields?: "col1,col2" }
+- data/template: Format message. Config: { template: "{{var}} text" }
+- data/transform: Reshape data. Config: { expression: "code" }
 
-Be smart about interpreting intent - if they mention "email", use send_email. If they mention "notify" or "alert", use send_notification. If they mention "Zapier" or "webhook", use webhook.
+INTEGRATIONS (category: "integration"):
+- integration/slack: Post to Slack. Config: { channel: "#channel", username?: "Bot Name" }
+- integration/email: Send email. Config: { to: "email", subject: "subject" }
+- integration/webhook: HTTP request. Config: { url: "https://...", method: "GET"|"POST"|"PUT" }
+- integration/database_insert: Log to DB. Config: { table: "activity_logs"|"deal_flag_notes", activity_type?: "type" }
+- integration/notification: In-app notification. Config: { title: "title", priority: "low"|"normal"|"high" }
 
-Respond ONLY with valid JSON, no markdown or explanation.`;
+UTILITY (category: "utility"):
+- utility/delay: Wait. Config: { amount: number, unit: "seconds"|"minutes"|"hours" }
+- utility/retry: Retry on error. Config: { maxRetries: number, backoffMs: number }
+
+Return a JSON object with:
+- name: short workflow name
+- description: one-sentence description
+- nodes: array of { id, type (from above list), config (filled config object) }
+- edges: array of { source (node id), target (node id), sourceHandle? (output key like "true"/"false") }
+
+Layout nodes left-to-right, spacing 270px horizontally. Start triggers at x:50, y:150.
+Use sequential IDs like "ai_1", "ai_2", etc.
+
+Respond ONLY with valid JSON.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -76,7 +75,7 @@ Respond ONLY with valid JSON, no markdown or explanation.`;
         model: "openai/gpt-5-mini",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Parse this workflow description into a structured JSON configuration: "${description}"` }
+          { role: "user", content: `Build a workflow for: "${description}"` }
         ],
       }),
     });
@@ -101,12 +100,11 @@ Respond ONLY with valid JSON, no markdown or explanation.`;
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
-    
+
     if (!content) {
       throw new Error("Failed to parse workflow - no response content");
     }
 
-    // Extract JSON from response, handling markdown code blocks
     let jsonStr = content.trim();
     jsonStr = jsonStr.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
     const jsonStart = jsonStr.search(/[\{\[]/);
@@ -118,32 +116,16 @@ Respond ONLY with valid JSON, no markdown or explanation.`;
       .replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
 
     const parsed = JSON.parse(jsonStr);
-    
-    // Build the workflow data with proper structure
-    const workflow: WorkflowData = {
-      name: parsed.name || "Untitled Workflow",
-      description: parsed.description || "",
-      isActive: true,
-      triggerType: parsed.triggerType || "new_deal",
-      triggerConfig: parsed.triggerConfig || {},
-      actions: (parsed.actions || []).map((action: any, index: number) => ({
-        id: `action-${Date.now()}-${index}`,
-        type: action.type,
-        config: action.config || {}
-      }))
-    };
-
-    // Ensure at least one action if none parsed
-    if (workflow.actions.length === 0) {
-      workflow.actions.push({
-        id: `action-${Date.now()}-0`,
-        type: "send_notification",
-        config: { title: "Workflow Triggered", message: "Your workflow was triggered" }
-      });
-    }
 
     return new Response(
-      JSON.stringify({ workflow }),
+      JSON.stringify({
+        workflow: {
+          name: parsed.name || "Untitled Workflow",
+          description: parsed.description || "",
+          nodes: parsed.nodes || [],
+          edges: parsed.edges || [],
+        }
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
