@@ -722,7 +722,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                         value={item.year}
                         onChange={(e) => updateFinancialYear(item.id, 'year', e.target.value)}
                         placeholder="2024"
-                        className="h-8 border-0 border-b border-dashed border-muted-foreground/30 bg-muted/20 rounded-none px-1 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary font-medium"
+                        className="h-8 border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary font-medium placeholder:text-muted-foreground/50"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -731,7 +731,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                         onChange={(e) => updateFinancialYear(item.id, 'revenue', e.target.value)}
                         onBlur={(e) => updateFinancialYear(item.id, 'revenue', formatCurrency(e.target.value))}
                         placeholder="$24.72MM"
-                        className="h-8 border-0 border-b border-dashed border-muted-foreground/30 bg-muted/20 rounded-none px-1 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
+                        className="h-8 border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -765,8 +765,8 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                           }}
                           placeholder="53%"
                           className={cn(
-                            "h-8 border-0 border-b border-dashed border-muted-foreground/30 bg-muted/20 rounded-none px-1 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary",
-                            grossMarginErrors[item.id] && "text-destructive"
+                            "h-8 border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50",
+                            grossMarginErrors[item.id] && "text-destructive border-destructive/50"
                           )}
                         />
                         {grossMarginErrors[item.id] && (
@@ -800,7 +800,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                         onBlur={(e) => updateFinancialYear(item.id, 'ebitda', formatEbitda(e.target.value))}
                         placeholder="$1.00MM"
                         className={cn(
-                          "h-8 border-0 border-b border-dashed border-muted-foreground/30 bg-muted/20 rounded-none px-1 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary",
+                          "h-8 border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50",
                           isNegativeEbitda(item.ebitda) && "text-red-600 dark:text-red-500"
                         )}
                       />
