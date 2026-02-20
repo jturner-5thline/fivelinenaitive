@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, DragEvent, useEffect, useCallback } from 'react';
+import { useMemo, useRef, useState, DragEvent, useEffect, useCallback, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock } from 'lucide-react';
 import {
@@ -43,8 +43,10 @@ import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
 import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
 import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { useLenderAuditLog } from '@/hooks/useLenderAuditLog';
+import { useDealStages } from '@/contexts/DealStagesContext';
 import { format } from 'date-fns';
 import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
+import { toast } from 'sonner';
 
 const LENDER_TYPE_OPTIONS = [
   'Alternative',
@@ -213,8 +215,132 @@ function HorizontalScrollContainer({ children }: { children: React.ReactNode }) 
   );
 }
 
+// Editable deal tile for inline stage/notes editing
+function EditableDealTile({ 
+  deal,
+  stages,
+  onUpdateLender,
+  onNavigate,
+  formatCurrency,
+  variant = 'active',
+}: { 
+  deal: { dealId: string; company: string; stage: string; value: number; manager: string; lenderId: string; notes: string; passed?: boolean; passReason?: string };
+  stages: { id: string; label: string }[];
+  onUpdateLender: (lenderId: string, updates: Record<string, unknown>) => Promise<void>;
+  onNavigate: (dealId: string) => void;
+  formatCurrency: (value: number) => string;
+  variant?: 'active' | 'sent';
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editStage, setEditStage] = useState(deal.stage);
+  const [editNotes, setEditNotes] = useState(deal.notes);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updates: Record<string, unknown> = {};
+      if (editStage !== deal.stage) updates.stage = editStage;
+      if (editNotes !== deal.notes) updates.notes = editNotes;
+      
+      if (Object.keys(updates).length > 0) {
+        await onUpdateLender(deal.lenderId, updates);
+        toast.success('Lender updated');
+      }
+      setIsEditing(false);
+    } catch (err) {
+      toast.error('Failed to update lender');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div 
+        className="flex-shrink-0 w-[220px] p-3 bg-muted/50 rounded-lg border border-primary/30 space-y-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="font-medium text-sm truncate">{deal.company}</p>
+        <div>
+          <Label className="text-xs text-muted-foreground">Stage</Label>
+          <Select value={editStage} onValueChange={setEditStage}>
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[9999]">
+              {stages.map((s) => (
+                <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Notes</Label>
+          <Textarea
+            value={editNotes}
+            onChange={(e) => setEditNotes(e.target.value)}
+            placeholder="Add notes..."
+            rows={2}
+            className="text-xs resize-none"
+          />
+        </div>
+        <div className="flex gap-1.5">
+          <Button size="sm" className="h-6 text-xs flex-1" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => { setIsEditing(false); setEditStage(deal.stage); setEditNotes(deal.notes); }} disabled={isSaving}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div 
+          className={cn(
+            "flex-shrink-0 w-[160px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative",
+            deal.passed && "border-l-2 border-l-destructive"
+          )}
+          onClick={() => onNavigate(deal.dealId)}
+        >
+          <div className="absolute top-2 right-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              className="p-0.5 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground"
+              onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+              title="Edit stage & notes"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+          </div>
+          <p className="font-medium text-sm truncate mb-1 pr-6">{deal.company}</p>
+          <p className="text-lg font-semibold text-primary">{formatCurrency(deal.value)}</p>
+          <Badge variant="outline" className="text-[10px] mt-1 font-normal">{deal.stage}</Badge>
+          {deal.notes && (
+            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{deal.notes}</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-[200px]">
+        <p className="font-medium">{deal.company}</p>
+        {deal.passed && <p className="text-xs text-destructive font-medium">Passed</p>}
+        <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
+        {deal.notes && <p className="text-xs text-muted-foreground">Notes: {deal.notes}</p>}
+        {deal.passReason && <p className="text-xs text-muted-foreground">Reason: {deal.passReason}</p>}
+        <p className="text-xs text-muted-foreground mt-1 italic">Click pencil to edit</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelete, onSave, initialEditMode = false }: LenderDetailDialogProps) {
-  const { deals } = useDealsContext();
+  const { deals, updateLender: updateDealLender } = useDealsContext();
+  const { stages } = useDealStages();
   const { user } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -451,8 +577,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
   const lenderDeals = useMemo(() => {
     if (!lender) return { active: [], sent: [], passReasons: [] };
 
-    const active: { dealId: string; dealName: string; company: string; stage: string; status: string; value: number; manager: string }[] = [];
-    const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string; value: number; manager: string; passed?: boolean; passReason?: string }[] = [];
+    const active: { dealId: string; dealName: string; company: string; stage: string; status: string; value: number; manager: string; lenderId: string; notes: string }[] = [];
+    const sent: { dealId: string; dealName: string; company: string; stage: string; dateSent: string; value: number; manager: string; passed?: boolean; passReason?: string; lenderId: string; notes: string }[] = [];
     const passReasons: { dealId: string; dealName: string; company: string; reason: string }[] = [];
     const activeDealIds = new Set<string>();
 
@@ -478,6 +604,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             manager: deal.manager,
             passed: true,
             passReason: dealLender.passReason,
+            lenderId: dealLender.id,
+            notes: dealLender.notes || '',
           });
         } else if (dealLender.trackingStatus === 'active' && dealLender.stage?.toLowerCase() !== 'passed') {
           // Only add to active if stage is NOT "Passed" (case-insensitive)
@@ -489,6 +617,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             status: dealLender.trackingStatus,
             value: deal.value,
             manager: deal.manager,
+            lenderId: dealLender.id,
+            notes: dealLender.notes || '',
           });
           activeDealIds.add(deal.id);
         }
@@ -508,6 +638,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
           value: deal.value,
           manager: deal.manager,
           passed: false,
+          lenderId: dealLender.id,
+          notes: dealLender.notes || '',
         });
       }
     });
@@ -1380,24 +1512,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             {lenderDeals.active.length > 0 ? (
                               <HorizontalScrollContainer>
                                 {lenderDeals.active.map((deal) => (
-                                  <Tooltip key={deal.dealId}>
-                                    <TooltipTrigger asChild>
-                                      <div 
-                                        className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
-                                        onClick={() => handleNavigateToDeal(deal.dealId)}
-                                      >
-                                        <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
-                                        <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
-                                        <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" className="max-w-[200px]">
-                                      <p className="font-medium">{deal.company}</p>
-                                      <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
-                                      {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
-                                    </TooltipContent>
-                                  </Tooltip>
+                                  <EditableDealTile
+                                    key={deal.dealId}
+                                    deal={deal}
+                                    stages={stages}
+                                    onUpdateLender={updateDealLender}
+                                    onNavigate={handleNavigateToDeal}
+                                    formatCurrency={formatCurrencyValue}
+                                    variant="active"
+                                  />
                                 ))}
                               </HorizontalScrollContainer>
                             ) : (
@@ -1589,34 +1712,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             {lenderDeals.sent.length > 0 ? (
                               <HorizontalScrollContainer>
                                 {lenderDeals.sent.map((deal) => (
-                                  <Tooltip key={deal.dealId}>
-                                    <TooltipTrigger asChild>
-                                      <div 
-                                        className={cn(
-                                          "flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative",
-                                          deal.passed && "border-l-2 border-l-destructive"
-                                        )}
-                                        onClick={() => handleNavigateToDeal(deal.dealId)}
-                                      >
-                                        {deal.passed && (
-                                          <div className="absolute top-2 left-2">
-                                            <ThumbsDown className="h-3 w-3 text-destructive" />
-                                          </div>
-                                        )}
-                                        <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        <p className={cn("font-medium text-sm truncate mb-1 pr-4", deal.passed && "pl-4")}>{deal.company}</p>
-                                        <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
-                                        <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="bottom" className="max-w-[200px]">
-                                      <p className="font-medium">{deal.company}</p>
-                                      {deal.passed && <p className="text-xs text-destructive font-medium">Passed</p>}
-                                      <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
-                                      {deal.passReason && <p className="text-xs text-muted-foreground">Reason: {deal.passReason}</p>}
-                                      {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
-                                    </TooltipContent>
-                                  </Tooltip>
+                                  <EditableDealTile
+                                    key={deal.dealId}
+                                    deal={deal}
+                                    stages={stages}
+                                    onUpdateLender={updateDealLender}
+                                    onNavigate={handleNavigateToDeal}
+                                    formatCurrency={formatCurrencyValue}
+                                    variant="sent"
+                                  />
                                 ))}
                               </HorizontalScrollContainer>
                             ) : (
@@ -1735,24 +1839,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               {lenderDeals.active.length > 0 ? (
                 <HorizontalScrollContainer>
                   {lenderDeals.active.map((deal) => (
-                    <Tooltip key={deal.dealId}>
-                      <TooltipTrigger asChild>
-                        <div 
-                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
-                          onClick={() => handleNavigateToDeal(deal.dealId)}
-                        >
-                          <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
-                          <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
-                          <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-[200px]">
-                        <p className="font-medium">{deal.company}</p>
-                        <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
-                        {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
-                      </TooltipContent>
-                    </Tooltip>
+                    <EditableDealTile
+                      key={deal.dealId}
+                      deal={deal}
+                      stages={stages}
+                      onUpdateLender={updateDealLender}
+                      onNavigate={handleNavigateToDeal}
+                      formatCurrency={formatCurrencyValue}
+                      variant="active"
+                    />
                   ))}
                 </HorizontalScrollContainer>
               ) : (
@@ -1971,24 +2066,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
               {lenderDeals.sent.length > 0 ? (
                 <HorizontalScrollContainer>
                   {lenderDeals.sent.map((deal) => (
-                    <Tooltip key={deal.dealId}>
-                      <TooltipTrigger asChild>
-                        <div 
-                          className="flex-shrink-0 w-[140px] p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group border border-border/50 hover:border-border relative"
-                          onClick={() => handleNavigateToDeal(deal.dealId)}
-                        >
-                          <ArrowRight className="h-3 w-3 absolute top-2 right-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <p className="font-medium text-sm truncate mb-1 pr-4">{deal.company}</p>
-                          <p className="text-lg font-semibold text-primary">{formatCurrencyValue(deal.value)}</p>
-                          <p className="text-xs text-muted-foreground mt-1 truncate">{deal.manager}</p>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-[200px]">
-                        <p className="font-medium">{deal.company}</p>
-                        <p className="text-xs text-muted-foreground">Stage: {deal.stage}</p>
-                        {deal.manager && <p className="text-xs text-muted-foreground">Manager: {deal.manager}</p>}
-                      </TooltipContent>
-                    </Tooltip>
+                    <EditableDealTile
+                      key={deal.dealId}
+                      deal={deal}
+                      stages={stages}
+                      onUpdateLender={updateDealLender}
+                      onNavigate={handleNavigateToDeal}
+                      formatCurrency={formatCurrencyValue}
+                      variant="sent"
+                    />
                   ))}
                 </HorizontalScrollContainer>
               ) : (
