@@ -236,6 +236,7 @@ interface LenderSyncRequestsPanelProps {
 export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequestsPanelProps) {
   const { requests, pendingCount, loading, refetch, approveRequest, rejectRequest, mergeRequest } = useLenderSyncRequests();
   const [showAll, setShowAll] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
@@ -324,98 +325,108 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   // Always show when rendered - parent controls visibility
 
   return (
-    <Card className="border-amber-500/30 bg-amber-500/5">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-amber-500" />
-            <CardTitle className="text-base">Flex Sync Requests</CardTitle>
-            {pendingCount > 0 && (
-              <Badge variant="destructive" className="rounded-full">
-                {pendingCount}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowAll(!showAll)}>
-              {showAll ? 'Show Pending Only' : 'Show All'}
-            </Button>
-          </div>
-        </div>
-        <CardDescription>
-          Review and approve lender changes from Flex
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {/* Bulk actions bar */}
-        {approvableRequests.length > 0 && (
-          <div className="flex items-center justify-between mb-3 pb-3 border-b">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={selectedIds.size === approvableRequests.length && approvableRequests.length > 0}
-                onCheckedChange={(checked) => checked ? selectAll() : deselectAll()}
-              />
-              <span className="text-sm text-muted-foreground">
-                {selectedIds.size > 0 
-                  ? `${selectedApprovable.length} of ${approvableRequests.length} selected`
-                  : `Select all (${approvableRequests.length})`
-                }
-              </span>
-            </div>
-            {selectedApprovable.length > 0 && (
-              <Button 
-                size="sm" 
-                onClick={handleBulkApprove}
-                disabled={isBulkProcessing}
-              >
-                {isBulkProcessing ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <CheckCheck className="h-4 w-4 mr-1" />
+    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-amber-500" />
+                <CardTitle className="text-base">Flex Sync Requests</CardTitle>
+                {pendingCount > 0 && (
+                  <Badge variant="destructive" className="rounded-full">
+                    {pendingCount}
+                  </Badge>
                 )}
-                Approve All ({selectedApprovable.length})
+              </div>
+              <div className="flex items-center gap-2">
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+              </div>
+            </div>
+            <CardDescription>
+              Review and approve lender changes from Flex
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
+            <div className="flex items-center justify-end gap-2 mb-3">
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
+                <RefreshCw className="h-4 w-4" />
               </Button>
-            )}
-          </div>
-        )}
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setShowAll(!showAll); }}>
+                {showAll ? 'Show Pending Only' : 'Show All'}
+              </Button>
+            </div>
 
-        <ScrollArea className="h-[400px]">
-          <div className="space-y-2">
-            {pendingRequests.map(request => (
-              <SyncRequestCard
-                key={request.id}
-                request={request}
-                isSelected={selectedIds.has(request.id)}
-                onToggleSelect={toggleSelect}
-                onApprove={handleApprove}
-                onReject={rejectRequest}
-                onMerge={handleMerge}
-              />
-            ))}
-            
-            {showAll && processedRequests.length > 0 && (
-              <>
-                <Separator className="my-4" />
-                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Previously Processed</p>
-                {processedRequests.slice(0, 10).map(request => (
+            {/* Bulk actions bar */}
+            {approvableRequests.length > 0 && (
+              <div className="flex items-center justify-between mb-3 pb-3 border-b">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={selectedIds.size === approvableRequests.length && approvableRequests.length > 0}
+                    onCheckedChange={(checked) => checked ? selectAll() : deselectAll()}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {selectedIds.size > 0 
+                      ? `${selectedApprovable.length} of ${approvableRequests.length} selected`
+                      : `Select all (${approvableRequests.length})`
+                    }
+                  </span>
+                </div>
+                {selectedApprovable.length > 0 && (
+                  <Button 
+                    size="sm" 
+                    onClick={handleBulkApprove}
+                    disabled={isBulkProcessing}
+                  >
+                    {isBulkProcessing ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <CheckCheck className="h-4 w-4 mr-1" />
+                    )}
+                    Approve All ({selectedApprovable.length})
+                  </Button>
+                )}
+              </div>
+            )}
+
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-2">
+                {pendingRequests.map(request => (
                   <SyncRequestCard
                     key={request.id}
                     request={request}
-                    isSelected={false}
-                    onToggleSelect={() => {}}
+                    isSelected={selectedIds.has(request.id)}
+                    onToggleSelect={toggleSelect}
                     onApprove={handleApprove}
                     onReject={rejectRequest}
                     onMerge={handleMerge}
                   />
                 ))}
-              </>
-            )}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+                
+                {showAll && processedRequests.length > 0 && (
+                  <>
+                    <Separator className="my-4" />
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Previously Processed</p>
+                    {processedRequests.slice(0, 10).map(request => (
+                      <SyncRequestCard
+                        key={request.id}
+                        request={request}
+                        isSelected={false}
+                        onToggleSelect={() => {}}
+                        onApprove={handleApprove}
+                        onReject={rejectRequest}
+                        onMerge={handleMerge}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
