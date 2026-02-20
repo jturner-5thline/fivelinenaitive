@@ -358,13 +358,13 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <Card className="border-amber-500/30 bg-amber-500/5">
         <CollapsibleTrigger asChild>
-          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+          <CardHeader className="py-4 cursor-pointer hover:bg-muted/50 transition-colors">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-amber-500" />
+                <Bell className="h-5 w-5 text-destructive border border-destructive rounded-sm p-0.5" />
                 <CardTitle className="text-base">Flex Sync Requests</CardTitle>
                 {pendingCount > 0 && (
-                  <Badge variant="destructive" className="rounded-full">
+                  <Badge variant="destructive" className="rounded-full h-6 w-6 p-0 flex items-center justify-center text-xs">
                     {pendingCount}
                   </Badge>
                 )}
