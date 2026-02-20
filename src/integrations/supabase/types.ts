@@ -6174,6 +6174,7 @@ export type Database = {
       workflows: {
         Row: {
           actions: Json
+          company_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -6187,6 +6188,7 @@ export type Database = {
         }
         Insert: {
           actions?: Json
+          company_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -6200,6 +6202,7 @@ export type Database = {
         }
         Update: {
           actions?: Json
+          company_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -6212,6 +6215,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workflows_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workflows_template_id_fkey"
             columns: ["template_id"]

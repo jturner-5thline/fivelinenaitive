@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import type { WorkflowData, WorkflowAction, TriggerType } from '@/components/workflows/WorkflowBuilder';
 
@@ -18,6 +19,7 @@ export interface Workflow {
 
 export function useWorkflows() {
   const { user } = useAuth();
+  const { company } = useCompany();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -70,6 +72,7 @@ export function useWorkflows() {
         .from('workflows')
         .insert({
           user_id: user.id,
+          company_id: company?.id || null,
           name: data.name,
           description: data.description || null,
           is_active: data.isActive,
