@@ -15,7 +15,9 @@ import {
   FlaskConical,
   Rocket,
   Ban,
-  Bot
+  Bot,
+  DollarSign,
+  Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -99,6 +101,18 @@ const pageConfigs: PageConfig[] = [
     label: "AI Agents", 
     description: "AI-powered automation agents and assistants",
     icon: <Bot className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_finance", 
+    label: "Finance", 
+    description: "Financial management and reporting",
+    icon: <DollarSign className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_ai_research", 
+    label: "AI Research", 
+    description: "AI-powered research and analysis tools",
+    icon: <Sparkles className="h-5 w-5" />
   },
   { 
     featureKey: "chat_widget", 
