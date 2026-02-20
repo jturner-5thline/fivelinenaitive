@@ -47,6 +47,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { WorkflowBuilder, WorkflowData, TriggerType, ActionType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
+import { WorkflowCanvas } from '@/components/workflows/canvas/WorkflowCanvas';
 import { WorkflowAnalytics } from '@/components/workflows/WorkflowAnalytics';
 import { WorkflowVersionHistory } from '@/components/workflows/WorkflowVersionHistory';
 import { WorkflowTemplatesLibrary } from '@/components/workflows/WorkflowTemplatesLibrary';
@@ -964,32 +965,68 @@ export default function Workflows() {
         </main>
       </div>
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingWorkflow ? 'Edit Workflow' : 'Create Workflow'}
-            </DialogTitle>
-          </DialogHeader>
-          <WorkflowBuilder
-            initialData={editingWorkflow ? {
-              name: editingWorkflow.name,
-              description: editingWorkflow.description || '',
-              isActive: editingWorkflow.is_active,
-              triggerType: editingWorkflow.trigger_type,
-              triggerConfig: editingWorkflow.trigger_config,
-              actions: editingWorkflow.actions,
-            } : templateData || undefined}
-            onSave={handleSave}
+      {/* Full-screen Canvas Builder */}
+      {isDialogOpen && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <WorkflowCanvas
+            workflowName={editingWorkflow?.name || templateData?.name || ''}
+            workflowDescription={editingWorkflow?.description || templateData?.description || ''}
+            isActive={editingWorkflow?.is_active ?? templateData?.isActive ?? true}
+            onSave={async (canvasData) => {
+              setIsSaving(true);
+              try {
+                // Convert canvas data to WorkflowData for persistence
+                const workflowData: WorkflowData = {
+                  name: canvasData.name,
+                  description: canvasData.description,
+                  isActive: canvasData.isActive,
+                  triggerType: (canvasData.nodes.find(n => (n.data as any)?.category === 'trigger')?.data as any)?.nodeType?.split('/')[1] === 'lender_event'
+                    ? 'lender_stage_change'
+                    : (canvasData.nodes.find(n => (n.data as any)?.category === 'trigger')?.data as any)?.nodeType?.split('/')[1] === 'deal_event'
+                    ? 'deal_stage_change'
+                    : (canvasData.nodes.find(n => (n.data as any)?.category === 'trigger')?.data as any)?.nodeType?.split('/')[1] === 'schedule'
+                    ? 'scheduled'
+                    : 'deal_stage_change',
+                  triggerConfig: {
+                    canvasNodes: canvasData.nodes,
+                    canvasEdges: canvasData.edges,
+                  },
+                  actions: canvasData.nodes
+                    .filter(n => (n.data as any)?.category !== 'trigger')
+                    .map(n => ({
+                      id: n.id,
+                      type: 'webhook' as ActionType,
+                      config: (n.data as any)?.config || {},
+                    })),
+                };
+
+                if (editingWorkflow) {
+                  await updateWorkflow(editingWorkflow.id, workflowData);
+                } else {
+                  await createWorkflow(workflowData);
+                }
+                setIsDialogOpen(false);
+                setEditingWorkflow(null);
+                setTemplateData(null);
+              } finally {
+                setIsSaving(false);
+              }
+            }}
             onCancel={() => {
               setIsDialogOpen(false);
+              setEditingWorkflow(null);
               setTemplateData(null);
             }}
             isSaving={isSaving}
+            initialNodes={
+              editingWorkflow?.trigger_config?.canvasNodes as any[] || []
+            }
+            initialEdges={
+              editingWorkflow?.trigger_config?.canvasEdges as any[] || []
+            }
           />
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingWorkflow} onOpenChange={() => setDeletingWorkflow(null)}>
