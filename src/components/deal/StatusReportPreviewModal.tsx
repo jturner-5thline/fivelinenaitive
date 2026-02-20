@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileText, Download, Plus, X, Eye, EyeOff } from 'lucide-react';
 import { Deal, LENDER_STAGE_CONFIG } from '@/types/deal';
 import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } from '@/utils/dealExport';
@@ -141,8 +140,8 @@ export function StatusReportPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-0">
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Status Report Preview
@@ -152,7 +151,7 @@ export function StatusReportPreviewModal({
           </p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <div className="flex-1 overflow-y-auto px-6">
           <div className="space-y-6 py-4">
             {/* Title Preview */}
             <div className="rounded-lg border border-border bg-muted/30 p-4">
@@ -333,9 +332,9 @@ export function StatusReportPreviewModal({
               />
             </SectionBlock>
           </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-border">
+        <DialogFooter className="px-6 py-4 border-t border-border shrink-0">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
