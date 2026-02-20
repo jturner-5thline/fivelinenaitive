@@ -662,14 +662,14 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
           <table className="w-full min-w-[750px]">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th style={{ width: columnWidths.year }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                <th style={{ width: columnWidths.year }} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">
                   Year
                 </th>
-                <th style={{ width: columnWidths.revenue }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                <th style={{ width: columnWidths.revenue }} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">
                   Total Revenue
                 </th>
-                <th style={{ width: columnWidths.revGrowth }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  <div className="flex items-center gap-2">
+                <th style={{ width: columnWidths.revGrowth }} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
                     <Checkbox 
                       checked={showRevGrowth} 
                       onCheckedChange={(checked) => setShowRevGrowth(!!checked)}
@@ -678,11 +678,11 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                     <span>Rev. Growth</span>
                   </div>
                 </th>
-                <th style={{ width: columnWidths.grossMargin }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                <th style={{ width: columnWidths.grossMargin }} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">
                   Gross Margin
                 </th>
-                <th style={{ width: columnWidths.gmDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  <div className="flex items-center gap-2">
+                <th style={{ width: columnWidths.gmDelta }} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
                     <Checkbox 
                       checked={showGmDelta} 
                       onCheckedChange={(checked) => setShowGmDelta(!!checked)}
@@ -691,11 +691,11 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                     <span>GM Δ</span>
                   </div>
                 </th>
-                <th style={{ width: columnWidths.ebitda }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                <th style={{ width: columnWidths.ebitda }} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">
                   EBITDA
                 </th>
-                <th style={{ width: columnWidths.ebitdaDelta }} className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  <div className="flex items-center gap-2">
+                <th style={{ width: columnWidths.ebitdaDelta }} className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
                     <Checkbox 
                       checked={showEbitdaDelta} 
                       onCheckedChange={(checked) => setShowEbitdaDelta(!!checked)}
@@ -722,7 +722,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                         value={item.year}
                         onChange={(e) => updateFinancialYear(item.id, 'year', e.target.value)}
                         placeholder="2024"
-                        className="h-8 border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary font-medium placeholder:text-muted-foreground/50"
+                        className="h-8 text-center border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary font-medium placeholder:text-muted-foreground/50"
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -731,10 +731,10 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                         onChange={(e) => updateFinancialYear(item.id, 'revenue', e.target.value)}
                         onBlur={(e) => updateFinancialYear(item.id, 'revenue', formatCurrency(e.target.value))}
                         placeholder="$24.72MM"
-                        className="h-8 border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50"
+                        className="h-8 text-center border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50"
                       />
                     </td>
-                    <td className="py-2 px-4">
+                    <td className="py-2 px-4 text-center">
                       {showRevGrowth ? (
                         (() => {
                           const growth = calculateRevenueGrowth(index);
@@ -765,7 +765,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                           }}
                           placeholder="53%"
                           className={cn(
-                            "h-8 border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50",
+                            "h-8 text-center border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50",
                             grossMarginErrors[item.id] && "text-destructive border-destructive/50"
                           )}
                         />
@@ -774,7 +774,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                         )}
                       </div>
                     </td>
-                    <td className="py-2 px-4">
+                    <td className="py-2 px-4 text-center">
                       {showGmDelta ? (
                         (() => {
                           const change = calculateGrossMarginChange(index);
@@ -800,12 +800,12 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
                         onBlur={(e) => updateFinancialYear(item.id, 'ebitda', formatEbitda(e.target.value))}
                         placeholder="$1.00MM"
                         className={cn(
-                          "h-8 border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50",
+                          "h-8 text-center border border-border/50 bg-muted/30 rounded-md px-2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0 focus-visible:border-primary placeholder:text-muted-foreground/50",
                           isNegativeEbitda(item.ebitda) && "text-red-600 dark:text-red-500"
                         )}
                       />
                     </td>
-                    <td className="py-2 px-4">
+                    <td className="py-2 px-4 text-center">
                       {showEbitdaDelta ? (
                         (() => {
                           const growth = calculateEbitdaGrowth(index);
