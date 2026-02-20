@@ -3090,7 +3090,7 @@ export default function DealDetail() {
                                             />
                                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                                           </div>
-                                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                          <span className="text-xs text-muted-foreground whitespace-nowrap flex-1 text-right">
                                             <span className="font-medium text-foreground">{(() => {
                                               const total = deal.totalFee ?? 0;
                                               const milestone = deal.milestoneFee ?? 0;
