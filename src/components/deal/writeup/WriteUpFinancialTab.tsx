@@ -49,7 +49,7 @@ interface WriteUpFinancialTabProps {
   changedFields?: Set<string>;
 }
 
-// Format currency value
+// Format currency value - revenue in $X.XXMM format
 const formatCurrency = (value: string): string => {
   if (!value) return '';
   if (value.startsWith('$') || value.startsWith('(')) return value;
@@ -57,16 +57,16 @@ const formatCurrency = (value: string): string => {
   if (numericValue && !isNaN(parseFloat(numericValue))) {
     const num = parseFloat(numericValue);
     const upperValue = value.toUpperCase();
-    if (upperValue.includes('M')) {
-      return `$${num}M`;
+    if (upperValue.includes('MM') || upperValue.includes('M')) {
+      return `$${num.toFixed(2)}MM`;
     } else if (upperValue.includes('K')) {
-      return `$${num}K`;
+      return `$${num.toFixed(2)}K`;
     } else if (num >= 1000000) {
-      return `$${(num / 1000000).toFixed(1)}M`.replace('.0M', 'M');
+      return `$${(num / 1000000).toFixed(2)}MM`;
     } else if (num >= 1000) {
-      return `$${num.toLocaleString()}`;
+      return `$${(num / 1000).toFixed(2)}K`;
     }
-    return `$${num.toLocaleString()}`;
+    return `$${num.toFixed(2)}`;
   }
   return value.startsWith('$') ? value : `$${value}`;
 };
