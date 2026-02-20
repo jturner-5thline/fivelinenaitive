@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { GripVertical, Clock, MessageSquare, Search, RefreshCw, Settings2 } from 'lucide-react';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
 import { STAGE_GROUPS, StageGroup, PassReasonOption } from '@/contexts/LenderStagesContext';
 import { cn } from '@/lib/utils';
@@ -244,6 +244,12 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
       },
     })
   );
