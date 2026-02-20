@@ -1,103 +1,51 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import {
-  Check, ChevronDown, ChevronRight, Upload, FileText, Link2, Unlink, Download,
-  Filter, X, AlertCircle, FolderOpen, FileCheck, Paperclip, Search,
-  MoreHorizontal, Eye, Trash2, GripVertical, Archive,
-} from 'lucide-react';
+import { Upload, Download } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import {
-  Tooltip, TooltipContent, TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
-import { useDataRoomChecklist, useDealChecklistStatus, type ChecklistItem } from '@/hooks/useDataRoomChecklist';
-import { useDealChecklistItems, type DealChecklistItem } from '@/hooks/useDealChecklistItems';
-import { useChecklistCategories, getCategoryColorClasses } from '@/hooks/useChecklistCategories';
+import { toast } from 'sonner';
+import JSZip from 'jszip';
+
+import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
+import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
+import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { useDealAttachments, type DealAttachment } from '@/hooks/useDealAttachments';
 import { useFileChecklistMap } from '@/hooks/useFileChecklistMap';
 import { useUploadJobs } from '@/hooks/useUploadJobs';
-import { getCategoryIcon } from '@/components/settings/CategoryIconPicker';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
-type UnifiedChecklistItem = (ChecklistItem & { is_deal_specific?: false }) | DealChecklistItem;
+import { CircularProgress } from './data-room/CircularProgress';
+import { ChecklistTreePane } from './data-room/ChecklistTreePane';
+import { FileListPane } from './data-room/FileListPane';
+import { ContextPane } from './data-room/ContextPane';
+import { MappingDialog } from './data-room/MappingDialog';
+import { FilePreviewPanel } from './data-room/FilePreviewPanel';
+import type { UnifiedChecklistItem, StatusFilter, ProgressData } from './data-room/types';
 
 interface DataRoomV2Props {
   dealId: string;
 }
 
-// ─── Circular Progress ──────────────────────────────────────────────
-function CircularProgress({ value, size = 40, strokeWidth = 3.5 }: { value: number; size?: number; strokeWidth?: number }) {
-  const r = (size - strokeWidth) / 2;
-  const c = r * 2 * Math.PI;
-  const offset = c - (value / 100) * c;
-  return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-secondary" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={strokeWidth}
-          strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
-          className={cn("transition-all duration-300", value === 100 ? "text-green-500" : "text-primary")} />
-      </svg>
-      <span className="absolute text-[10px] font-bold">{value}%</span>
-    </div>
-  );
-}
-
-// ─── File icon helper ──────────────────────────────────────────────
-function getFileIcon(name: string) {
-  const ext = name.split('.').pop()?.toLowerCase();
-  if (['pdf'].includes(ext || '')) return <FileText className="h-4 w-4 text-red-500" />;
-  if (['xls', 'xlsx', 'csv'].includes(ext || '')) return <FileText className="h-4 w-4 text-green-600" />;
-  if (['doc', 'docx'].includes(ext || '')) return <FileText className="h-4 w-4 text-blue-500" />;
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || '')) return <Eye className="h-4 w-4 text-purple-500" />;
-  return <FileText className="h-4 w-4 text-muted-foreground" />;
-}
-
-function formatBytes(bytes: number) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-// ═══════════════════════════════════════════════════════════════════
 export function DataRoomV2({ dealId }: DataRoomV2Props) {
   const { user } = useAuth();
 
   // Data sources
   const { items: templateItems, loading: l1 } = useDataRoomChecklist();
-  const { items: dealItems, loading: l2, addItem: addDealItem } = useDealChecklistItems(dealId);
+  const { items: dealItems, loading: l2 } = useDealChecklistItems(dealId);
   const { statuses, toggleItemStatus } = useDealChecklistStatus(dealId);
-  const { categories: categoryConfigs, getCategoryByName } = useChecklistCategories();
-  const { attachments, isLoading: l3, uploadAttachment, uploadMultipleAttachments, deleteAttachment, refetch: refetchAttachments } = useDealAttachments(dealId);
-  const { mappings, mapFileToItem, mapFilesToItem, mapFileToItems, unmapFile, getFilesForItem, getItemsForFile, getUnmappedFileIds } = useFileChecklistMap(dealId);
+  const { getCategoryByName } = useChecklistCategories();
+  const { attachments, isLoading: l3, uploadAttachment, deleteAttachment, refetch: refetchAttachments } = useDealAttachments(dealId);
+  const { mappings, mapFileToItem, mapFileToItems, unmapFile, getFilesForItem, getItemsForFile, getUnmappedFileIds } = useFileChecklistMap(dealId);
   const { activeJob, createJob, completeJob } = useUploadJobs(dealId);
 
   // UI state
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showMappingDialog, setShowMappingDialog] = useState(false);
   const [filesToMap, setFilesToMap] = useState<DealAttachment[]>([]);
-  const [mappingSelections, setMappingSelections] = useState<Set<string>>(new Set());
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [previewFile, setPreviewFile] = useState<DealAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
@@ -143,7 +91,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
   }, [selectedItemId, getFilesForItem, attachments]);
 
   // Progress calculations
-  const progressData = useMemo(() => {
+  const progressData: ProgressData = useMemo(() => {
     const sectionProgress: Record<string, { total: number; completed: number; required: number; requiredCompleted: number }> = {};
     let totalItems = 0, completedItems = 0, requiredTotal = 0, requiredCompleted = 0;
 
@@ -166,7 +114,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
     };
   }, [grouped, statusMap, getFilesForItem]);
 
-  // ─── Upload handlers ───────────────────────────────────────────
+  // Upload handler
   const handleUploadFiles = useCallback(async (files: File[], targetItemId?: string) => {
     if (!user || files.length === 0) return;
 
@@ -188,15 +136,12 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
     await refetchAttachments();
 
     if (targetItemId && uploadedAttachments.length > 0) {
-      // Auto-map to the target item
       for (const att of uploadedAttachments) {
         await mapFileToItem(att.id, targetItemId, 'manual_drag');
       }
       toast.success(`${uploadedAttachments.length} file(s) uploaded and mapped`);
     } else if (uploadedAttachments.length > 0) {
-      // Open mapping dialog for unmapped files
       setFilesToMap(uploadedAttachments);
-      setMappingSelections(new Set());
       setShowMappingDialog(true);
     }
   }, [user, createJob, completeJob, uploadAttachment, refetchAttachments, mapFileToItem]);
@@ -221,31 +166,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
     if (files.length > 0) handleUploadFiles(files);
   }, [handleUploadFiles]);
 
-  // Item drop handler
-  const handleItemDrop = useCallback((itemId: string, e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    dragCounterRef.current = 0; setIsDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) handleUploadFiles(files, itemId);
-  }, [handleUploadFiles]);
-
-  // Mapping dialog confirm
-  const handleConfirmMapping = async () => {
-    if (filesToMap.length === 0) return;
-    const itemIds = Array.from(mappingSelections);
-    let totalMapped = 0;
-    for (const file of filesToMap) {
-      if (itemIds.length > 0) {
-        totalMapped += await mapFileToItems(file.id, itemIds, 'manual_picker');
-      }
-    }
-    if (totalMapped > 0) toast.success(`Mapped ${filesToMap.length} file(s) to ${itemIds.length} item(s)`);
-    setShowMappingDialog(false);
-    setFilesToMap([]);
-    setMappingSelections(new Set());
-  };
-
-  // Download
+  // Download helpers
   const handleDownloadFile = (att: DealAttachment) => {
     if (att.url) {
       const link = document.createElement('a');
@@ -254,6 +175,70 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       link.click();
     }
   };
+
+  const handleExportIndex = useCallback(() => {
+    const rows = [['Category', 'Item', 'Required', 'Status', 'Files Attached', 'File Names']];
+    for (const cat of categories) {
+      for (const item of grouped[cat]) {
+        const fileCount = getFilesForItem(item.id).length;
+        const isComplete = statusMap.get(item.id)?.isComplete || fileCount > 0;
+        const fileNames = getFilesForItem(item.id)
+          .map(m => attachments.find(a => a.id === m.file_id)?.name)
+          .filter(Boolean)
+          .join('; ');
+        rows.push([
+          cat,
+          item.name,
+          item.is_required ? 'Yes' : 'No',
+          isComplete ? 'Complete' : 'Missing',
+          String(fileCount),
+          fileNames,
+        ]);
+      }
+    }
+    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'data-room-index.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Checklist index exported');
+  }, [categories, grouped, getFilesForItem, statusMap, attachments]);
+
+  const handleDownloadSection = useCallback(async (category: string) => {
+    const items = grouped[category] || [];
+    const filesToDownload: DealAttachment[] = [];
+    for (const item of items) {
+      const fileMappings = getFilesForItem(item.id);
+      for (const m of fileMappings) {
+        const att = attachments.find(a => a.id === m.file_id);
+        if (att && att.url && !filesToDownload.some(f => f.id === att.id)) {
+          filesToDownload.push(att);
+        }
+      }
+    }
+    if (filesToDownload.length === 0) {
+      toast.error('No files to download in this section');
+      return;
+    }
+    await downloadAsZip(filesToDownload, `${category}.zip`);
+  }, [grouped, getFilesForItem, attachments]);
+
+  const handleDownloadAll = useCallback(async () => {
+    const filesWithUrls = attachments.filter(a => a.url);
+    if (filesWithUrls.length === 0) {
+      toast.error('No files to download');
+      return;
+    }
+    await downloadAsZip(filesWithUrls, 'data-room.zip');
+  }, [attachments]);
+
+  const openMappingDialog = useCallback((files: DealAttachment[]) => {
+    setFilesToMap(files);
+    setShowMappingDialog(true);
+  }, []);
 
   const loading = l1 || l2 || l3;
 
@@ -316,421 +301,61 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
 
       {/* Three-pane layout */}
       <div className="grid grid-cols-12 gap-3 min-h-[500px]">
-        {/* LEFT PANE: Checklist Tree */}
-        <div className="col-span-4 border rounded-lg overflow-hidden flex flex-col">
-          <div className="p-2 border-b bg-muted/30">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-7 text-xs"
-              />
-            </div>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-1.5 space-y-1">
-              {categories.map(cat => {
-                const items = grouped[cat].filter(i =>
-                  !searchQuery || i.name.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-                if (items.length === 0) return null;
+        <ChecklistTreePane
+          categories={categories}
+          grouped={grouped}
+          progressData={progressData}
+          statusMap={statusMap}
+          selectedItemId={selectedItemId}
+          setSelectedItemId={setSelectedItemId}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          getFilesForItem={getFilesForItem}
+          getCategoryByName={getCategoryByName}
+          unmappedFiles={unmappedFiles}
+          handleUploadFiles={handleUploadFiles}
+        />
 
-                const sp = progressData.sections[cat];
-                const pct = sp ? Math.round((sp.completed / sp.total) * 100) : 0;
-                const catData = getCategoryByName(cat);
-                const colorClasses = catData ? getCategoryColorClasses(catData.color) : getCategoryColorClasses('gray');
-                const IconComp = catData ? getCategoryIcon(catData.icon) : getCategoryIcon('folder');
+        <FileListPane
+          selectedItem={selectedItem}
+          selectedItemFiles={selectedItemFiles}
+          attachments={attachments}
+          selectedFiles={selectedFiles}
+          setSelectedFiles={setSelectedFiles}
+          getItemsForFile={getItemsForFile}
+          getFilesForItem={getFilesForItem}
+          handleDownloadFile={handleDownloadFile}
+          handleUploadFiles={handleUploadFiles}
+          deleteAttachment={deleteAttachment}
+          setSelectedItemId={setSelectedItemId}
+          setPreviewFile={setPreviewFile}
+          onOpenMappingDialog={openMappingDialog}
+          fileInputRef={fileInputRef}
+          allItems={allItems}
+        />
 
-                return (
-                  <Collapsible key={cat} defaultOpen>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors text-left group">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90 shrink-0" />
-                        <IconComp className={cn("h-3.5 w-3.5 shrink-0", colorClasses.textClass)} />
-                        <span className="text-xs font-semibold truncate">{cat}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] text-muted-foreground">{sp?.completed}/{sp?.total}</span>
-                        <div className="w-12 h-1.5 bg-secondary rounded-full overflow-hidden">
-                          <div
-                            className={cn("h-full rounded-full transition-all", pct === 100 ? "bg-green-500" : "bg-primary")}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="ml-3 space-y-px">
-                        {items.map(item => {
-                          const fileCount = getFilesForItem(item.id).length;
-                          const isComplete = statusMap.get(item.id)?.isComplete || fileCount > 0;
-                          const isSelected = selectedItemId === item.id;
-
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => setSelectedItemId(item.id)}
-                              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-                              onDrop={(e) => handleItemDrop(item.id, e)}
-                              className={cn(
-                                "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left transition-colors text-xs",
-                                isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
-                              )}
-                            >
-                              {isComplete ? (
-                                <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                              ) : (
-                                <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40 shrink-0" />
-                              )}
-                              <span className={cn("flex-1 truncate", isComplete && "text-muted-foreground")}>{item.name}</span>
-                              {item.is_required && (
-                                <span className="text-[9px] text-amber-600 font-medium shrink-0">REQ</span>
-                              )}
-                              {fileCount > 0 && (
-                                <Badge variant="secondary" className="h-4 px-1 text-[10px]">{fileCount}</Badge>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                );
-              })}
-
-              {/* Unmapped files bucket */}
-              {unmappedFiles.length > 0 && (
-                <>
-                  <Separator className="my-2" />
-                  <div className="px-2 py-1.5">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                      <span className="text-xs font-semibold text-amber-600">Unmapped Files ({unmappedFiles.length})</span>
-                    </div>
-                    <div className="space-y-px ml-1">
-                      {unmappedFiles.slice(0, 10).map(file => (
-                        <div key={file.id} className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
-                          {getFileIcon(file.name)}
-                          <span className="truncate">{file.name}</span>
-                        </div>
-                      ))}
-                      {unmappedFiles.length > 10 && (
-                        <span className="text-[10px] text-muted-foreground px-2">+{unmappedFiles.length - 10} more</span>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* CENTER PANE: File list / upload area */}
-        <div className="col-span-4 border rounded-lg overflow-hidden flex flex-col">
-          <div className="p-2 border-b bg-muted/30 flex items-center justify-between">
-            <span className="text-xs font-semibold">
-              {selectedItem ? `Files for: ${selectedItem.name}` : `All Files (${attachments.length})`}
-            </span>
-            {selectedItem && (
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setSelectedItemId(null)}>
-                Show All
-              </Button>
-            )}
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-2 space-y-1">
-              {(selectedItem ? selectedItemFiles : attachments).length === 0 ? (
-                <div
-                  className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg bg-muted/10 cursor-pointer hover:bg-muted/20 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {selectedItem ? 'Drop files here or click to upload' : 'No files uploaded yet'}
-                  </p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">Drag & drop or click to browse</p>
-                </div>
-              ) : (
-                (selectedItem ? selectedItemFiles : attachments).map(att => {
-                  const itemMappings = getItemsForFile(att.id);
-                  const isSelected = selectedFiles.has(att.id);
-                  return (
-                    <div
-                      key={att.id}
-                      className={cn(
-                        "flex items-center gap-2 px-2.5 py-2 rounded-md border transition-colors hover:bg-muted/30",
-                        isSelected && "ring-1 ring-primary bg-primary/5"
-                      )}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(checked) => {
-                          setSelectedFiles(prev => {
-                            const next = new Set(prev);
-                            checked ? next.add(att.id) : next.delete(att.id);
-                            return next;
-                          });
-                        }}
-                        className="shrink-0"
-                      />
-                      {getFileIcon(att.name)}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{att.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{formatBytes(att.size_bytes)}</p>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        {itemMappings.length > 0 && (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Badge variant="secondary" className="h-5 px-1.5 text-[10px] gap-0.5">
-                                <Link2 className="h-2.5 w-2.5" />
-                                {itemMappings.length}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent className="text-xs">
-                              Mapped to {itemMappings.length} checklist item(s)
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            {att.url && (
-                              <DropdownMenuItem onClick={() => window.open(att.url, '_blank')}>
-                                <Eye className="h-3.5 w-3.5 mr-2" /> View
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => handleDownloadFile(att)}>
-                              <Download className="h-3.5 w-3.5 mr-2" /> Download
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                              setFilesToMap([att]);
-                              setMappingSelections(new Set(getItemsForFile(att.id).map(m => m.checklist_item_id)));
-                              setShowMappingDialog(true);
-                            }}>
-                              <Link2 className="h-3.5 w-3.5 mr-2" /> Map to Items
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => deleteAttachment(att)}>
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </ScrollArea>
-
-          {/* Bulk actions for selected files */}
-          {selectedFiles.size > 0 && (
-            <div className="p-2 border-t bg-muted/30 flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{selectedFiles.size} selected</span>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => {
-                const files = attachments.filter(a => selectedFiles.has(a.id));
-                setFilesToMap(files);
-                setMappingSelections(new Set());
-                setShowMappingDialog(true);
-              }}>
-                <Link2 className="h-3 w-3" /> Map to Items
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedFiles(new Set())}>
-                Clear
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT PANE: Context / Details */}
-        <div className="col-span-4 border rounded-lg overflow-hidden flex flex-col">
-          <div className="p-2 border-b bg-muted/30">
-            <span className="text-xs font-semibold">
-              {selectedItem ? 'Item Details' : 'Room Summary'}
-            </span>
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-3">
-              {selectedItem ? (
-                <div className="space-y-4">
-                  {/* Item info */}
-                  <div>
-                    <h4 className="font-semibold text-sm">{selectedItem.name}</h4>
-                    {selectedItem.description && (
-                      <p className="text-xs text-muted-foreground mt-1">{selectedItem.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 mt-2">
-                      {selectedItem.is_required && <Badge variant="secondary" className="text-xs">Required</Badge>}
-                      {(selectedItem as any).is_deal_specific && <Badge variant="outline" className="text-xs">Custom</Badge>}
-                      {statusMap.get(selectedItem.id)?.isComplete || selectedItemFiles.length > 0 ? (
-                        <Badge className="text-xs bg-green-500/10 text-green-600 border-green-500/20">Complete</Badge>
-                      ) : (
-                        <Badge variant="destructive" className="text-xs">Missing</Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Attached files */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold">Attached Files ({selectedItemFiles.length})</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs gap-1"
-                        onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.multiple = true;
-                          input.onchange = (ev) => {
-                            const files = Array.from((ev.target as HTMLInputElement).files || []);
-                            if (files.length > 0) handleUploadFiles(files, selectedItem.id);
-                          };
-                          input.click();
-                        }}
-                      >
-                        <Upload className="h-3 w-3" /> Add
-                      </Button>
-                    </div>
-                    {selectedItemFiles.length === 0 ? (
-                      <div className="text-center py-4 border-2 border-dashed rounded-lg text-xs text-muted-foreground">
-                        <Paperclip className="h-5 w-5 mx-auto mb-1 opacity-50" />
-                        No files attached
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        {selectedItemFiles.map(file => (
-                          <div key={file.id} className="flex items-center gap-2 p-2 rounded-md border text-xs">
-                            {getFileIcon(file.name)}
-                            <div className="flex-1 min-w-0">
-                              <p className="truncate font-medium">{file.name}</p>
-                              <p className="text-[10px] text-muted-foreground">{formatBytes(file.size_bytes)}</p>
-                            </div>
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDownloadFile(file)}>
-                                    <Download className="h-3 w-3" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Download</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => unmapFile(file.id, selectedItem.id)}>
-                                    <Unlink className="h-3 w-3" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Unlink from item</TooltipContent>
-                              </Tooltip>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Map existing files */}
-                  {unmappedFiles.length > 0 && (
-                    <>
-                      <Separator />
-                      <div>
-                        <span className="text-xs font-semibold">Quick Map Unmapped Files</span>
-                        <div className="mt-1 space-y-px">
-                          {unmappedFiles.slice(0, 5).map(file => (
-                            <div key={file.id} className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-muted/30 rounded-md cursor-pointer"
-                              onClick={() => mapFileToItem(file.id, selectedItem.id, 'manual_picker').then(() => toast.success(`Mapped "${file.name}"`))}
-                            >
-                              {getFileIcon(file.name)}
-                              <span className="truncate flex-1">{file.name}</span>
-                              <Link2 className="h-3 w-3 text-primary shrink-0" />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                /* Room summary */
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-3 rounded-lg bg-muted/30 text-center">
-                      <p className="text-2xl font-bold">{attachments.length}</p>
-                      <p className="text-[10px] text-muted-foreground">Total Files</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/30 text-center">
-                      <p className="text-2xl font-bold">{unmappedFiles.length}</p>
-                      <p className="text-[10px] text-muted-foreground">Unmapped</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/30 text-center">
-                      <p className="text-2xl font-bold text-green-600">{progressData.completedItems}</p>
-                      <p className="text-[10px] text-muted-foreground">Items Satisfied</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/30 text-center">
-                      <p className="text-2xl font-bold text-amber-600">{progressData.totalItems - progressData.completedItems}</p>
-                      <p className="text-[10px] text-muted-foreground">Items Pending</p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <span className="text-xs font-semibold mb-2 block">Section Progress</span>
-                    <div className="space-y-2">
-                      {categories.map(cat => {
-                        const sp = progressData.sections[cat];
-                        const pct = sp ? Math.round((sp.completed / sp.total) * 100) : 0;
-                        return (
-                          <div key={cat}>
-                            <div className="flex items-center justify-between text-xs mb-0.5">
-                              <span className="text-muted-foreground">{cat}</span>
-                              <span className={cn("font-medium", pct === 100 ? "text-green-600" : "text-foreground")}>{sp?.completed}/{sp?.total}</span>
-                            </div>
-                            <Progress value={pct} className={cn("h-1.5", pct === 100 && "[&>div]:bg-green-500")} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Missing required items */}
-                  {progressData.requiredTotal > progressData.requiredCompleted && (
-                    <>
-                      <Separator />
-                      <div>
-                        <span className="text-xs font-semibold text-amber-600 flex items-center gap-1 mb-1">
-                          <AlertCircle className="h-3 w-3" />
-                          Missing Required Items
-                        </span>
-                        <div className="space-y-0.5">
-                          {allItems.filter(i => i.is_required && !statusMap.get(i.id)?.isComplete && getFilesForItem(i.id).length === 0).slice(0, 10).map(item => (
-                            <button
-                              key={item.id}
-                              className="w-full text-left px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded-md transition-colors"
-                              onClick={() => setSelectedItemId(item.id)}
-                            >
-                              {item.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
+        <ContextPane
+          selectedItem={selectedItem}
+          selectedItemFiles={selectedItemFiles}
+          statusMap={statusMap}
+          progressData={progressData}
+          categories={categories}
+          allItems={allItems}
+          attachments={attachments}
+          unmappedFiles={unmappedFiles}
+          getFilesForItem={getFilesForItem}
+          mapFileToItem={mapFileToItem}
+          unmapFile={unmapFile}
+          handleUploadFiles={handleUploadFiles}
+          handleDownloadFile={handleDownloadFile}
+          setSelectedItemId={setSelectedItemId}
+          setPreviewFile={setPreviewFile}
+          onExportIndex={handleExportIndex}
+          onDownloadSection={handleDownloadSection}
+          onDownloadAll={handleDownloadAll}
+        />
       </div>
 
       {/* Upload progress toast */}
@@ -748,67 +373,55 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       )}
 
       {/* Mapping Dialog */}
-      <Dialog open={showMappingDialog} onOpenChange={setShowMappingDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Map Files to Checklist Items</DialogTitle>
-          </DialogHeader>
-          <div className="text-xs text-muted-foreground mb-2">
-            Select which checklist items these {filesToMap.length} file(s) should be linked to.
-            A file can be mapped to multiple items.
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <div className="mb-3 space-y-1 max-h-20 overflow-y-auto">
-              {filesToMap.map(f => (
-                <div key={f.id} className="flex items-center gap-2 text-xs p-1 bg-muted/30 rounded-md">
-                  {getFileIcon(f.name)}
-                  <span className="truncate">{f.name}</span>
-                </div>
-              ))}
-            </div>
-            <Separator className="mb-2" />
-            <ScrollArea className="h-[300px]">
-              <div className="space-y-1 pr-2">
-                {categories.map(cat => (
-                  <div key={cat} className="mb-2">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{cat}</span>
-                    <div className="mt-0.5 space-y-px">
-                      {grouped[cat].map(item => (
-                        <label
-                          key={item.id}
-                          className={cn(
-                            "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors text-xs",
-                            mappingSelections.has(item.id) ? "bg-primary/10" : "hover:bg-muted/50"
-                          )}
-                        >
-                          <Checkbox
-                            checked={mappingSelections.has(item.id)}
-                            onCheckedChange={(checked) => {
-                              setMappingSelections(prev => {
-                                const next = new Set(prev);
-                                checked ? next.add(item.id) : next.delete(item.id);
-                                return next;
-                              });
-                            }}
-                          />
-                          <span className="truncate">{item.name}</span>
-                          {item.is_required && <Badge variant="secondary" className="text-[9px] h-4 px-1">REQ</Badge>}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowMappingDialog(false)}>Skip</Button>
-            <Button size="sm" onClick={handleConfirmMapping} disabled={mappingSelections.size === 0}>
-              Map to {mappingSelections.size} Item(s)
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MappingDialog
+        open={showMappingDialog}
+        onOpenChange={setShowMappingDialog}
+        filesToMap={filesToMap}
+        categories={categories}
+        grouped={grouped}
+        allItems={allItems}
+        getItemsForFile={getItemsForFile}
+        mapFileToItems={mapFileToItems}
+      />
+
+      {/* File Preview */}
+      {previewFile && (
+        <FilePreviewPanel
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+          onDownload={handleDownloadFile}
+        />
+      )}
     </div>
   );
+}
+
+// ZIP download utility
+async function downloadAsZip(files: DealAttachment[], zipName: string) {
+  const loadingToast = toast.loading(`Preparing ${zipName}...`);
+  try {
+    const zip = new JSZip();
+    const fetchPromises = files.map(async (file) => {
+      if (!file.url) return;
+      try {
+        const response = await fetch(file.url);
+        const blob = await response.blob();
+        zip.file(file.name, blob);
+      } catch (err) {
+        console.error(`Failed to fetch ${file.name}:`, err);
+      }
+    });
+    await Promise.all(fetchPromises);
+    const content = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(content);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = zipName;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Downloaded ${zipName}`, { id: loadingToast });
+  } catch (err) {
+    console.error('ZIP download error:', err);
+    toast.error('Failed to create download', { id: loadingToast });
+  }
 }
