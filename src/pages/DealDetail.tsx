@@ -3989,7 +3989,7 @@ export default function DealDetail() {
                             Activity
                           </CardTitle>
                       </CardHeader>
-                        <CardContent className="pt-0 max-h-[600px] overflow-y-auto">
+                        <CardContent className="pt-0 max-h-[600px] overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }} onMouseEnter={(e) => { e.currentTarget.style.scrollbarColor = 'hsl(var(--border)) transparent'; }} onMouseLeave={(e) => { e.currentTarget.style.scrollbarColor = 'transparent transparent'; }}>
                           <ActivityTimeline activities={activities} />
                         </CardContent>
                     </Card>
