@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Check, Loader2, ArrowRight } from 'lucide-react';
+import { Check, Loader2, ArrowRight, Plus, Trash2, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -18,12 +19,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useLenderStages, StageOption } from '@/contexts/LenderStagesContext';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAllMilestones } from '@/hooks/useAllMilestones';
+import { useStatusNotes } from '@/hooks/useStatusNotes';
 import { toast } from '@/hooks/use-toast';
 import { DealSuggestion } from '@/hooks/useAllDealsSuggestions';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 interface SuggestionActionDialogProps {
   suggestion: DealSuggestion | null;
@@ -41,10 +46,15 @@ export function SuggestionActionDialog({
   const { stages } = useLenderStages();
   const { getDealById, updateLender, refreshDeals } = useDealsContext();
   const { milestonesMap, refetch: refetchMilestones } = useAllMilestones();
+  const { statusNotes, addStatusNote, deleteStatusNote } = useStatusNotes(suggestion?.dealId);
+
   const [note, setNote] = useState('');
   const [selectedStage, setSelectedStage] = useState<string>('');
   const [completeMilestone, setCompleteMilestone] = useState(false);
+  const [milestoneTitle, setMilestoneTitle] = useState('');
+  const [newStatusNote, setNewStatusNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingStatusNote, setIsAddingStatusNote] = useState(false);
 
   // Get deal and lender info
   const deal = suggestion ? getDealById(suggestion.dealId) : null;
@@ -58,8 +68,28 @@ export function SuggestionActionDialog({
       setNote('');
       setSelectedStage(lender?.stage || '');
       setCompleteMilestone(false);
+      setMilestoneTitle(milestone?.title || '');
+      setNewStatusNote('');
     }
-  }, [open, suggestion, lender?.stage]);
+  }, [open, suggestion, lender?.stage, milestone?.title]);
+
+  const handleAddStatusNote = async () => {
+    if (!newStatusNote.trim()) return;
+    setIsAddingStatusNote(true);
+    try {
+      await addStatusNote(newStatusNote.trim());
+      setNewStatusNote('');
+      toast({ title: 'Status note added' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Failed to add status note' });
+    } finally {
+      setIsAddingStatusNote(false);
+    }
+  };
+
+  const handleDeleteStatusNote = async (noteId: string) => {
+    await deleteStatusNote(noteId);
+  };
 
   const handleSubmit = async () => {
     if (!suggestion) return;
@@ -70,13 +100,10 @@ export function SuggestionActionDialog({
       if (suggestion.lenderId && lender) {
         const lenderUpdates: Record<string, unknown> = {};
         
-        // Set the new note - this will trigger the history logic in updateLender
-        // which automatically saves the previous note to lender_notes_history
         if (note.trim()) {
           lenderUpdates.notes = note.trim();
         }
 
-        // Update stage if changed
         if (selectedStage && selectedStage !== lender.stage) {
           lenderUpdates.stage = selectedStage;
           const targetStage = stages.find(s => s.id === selectedStage);
@@ -90,6 +117,15 @@ export function SuggestionActionDialog({
         }
       }
 
+      // Update milestone title if changed
+      if (suggestion.milestoneId && milestone && milestoneTitle.trim() && milestoneTitle !== milestone.title) {
+        const { error } = await supabase
+          .from('deal_milestones')
+          .update({ title: milestoneTitle.trim() })
+          .eq('id', suggestion.milestoneId);
+        if (error) throw error;
+      }
+
       // Complete milestone if requested
       if (suggestion.milestoneId && completeMilestone) {
         const { error } = await supabase
@@ -99,7 +135,6 @@ export function SuggestionActionDialog({
             completed_at: new Date().toISOString() 
           })
           .eq('id', suggestion.milestoneId);
-        
         if (error) throw error;
       }
 
@@ -130,11 +165,12 @@ export function SuggestionActionDialog({
 
   const hasLenderContext = !!suggestion?.lenderId;
   const hasMilestoneContext = !!suggestion?.milestoneId;
-  const hasChanges = note.trim() || (selectedStage && selectedStage !== lender?.stage) || completeMilestone;
+  const milestoneTitleChanged = milestone && milestoneTitle.trim() && milestoneTitle !== milestone.title;
+  const hasChanges = note.trim() || (selectedStage && selectedStage !== lender?.stage) || completeMilestone || milestoneTitleChanged;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-lg">
             {suggestion?.title}
@@ -144,65 +180,147 @@ export function SuggestionActionDialog({
           </p>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          {/* Note input */}
-          <div className="space-y-2">
-            <Label htmlFor="note">Add an update note</Label>
-            <Textarea
-              id="note"
-              placeholder="Enter your update or notes here..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-              className="resize-none"
-            />
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-4 py-2">
+            {/* Lender note input */}
+            {hasLenderContext && (
+              <div className="space-y-2">
+                <Label htmlFor="note">Lender note</Label>
+                {lender?.notes && (
+                  <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2 break-words">
+                    Current: {lender.notes}
+                  </p>
+                )}
+                <Textarea
+                  id="note"
+                  placeholder="Add or replace lender note..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
+            )}
+
+            {/* Lender stage selector */}
+            {hasLenderContext && lender && (
+              <div className="space-y-2">
+                <Label>Lender stage</Label>
+                <Select value={selectedStage} onValueChange={setSelectedStage}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stages.map((stage) => (
+                      <SelectItem key={stage.id} value={stage.id}>
+                        {stage.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedStage && selectedStage !== lender.stage && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <span>{stages.find(s => s.id === lender.stage)?.label || lender.stage}</span>
+                    <ArrowRight className="h-3 w-3" />
+                    <span className="font-medium text-primary">
+                      {stages.find(s => s.id === selectedStage)?.label || selectedStage}
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Milestone editing */}
+            {hasMilestoneContext && milestone && (
+              <div className="space-y-2">
+                <Label>Milestone</Label>
+                <Input
+                  value={milestoneTitle}
+                  onChange={(e) => setMilestoneTitle(e.target.value)}
+                  placeholder="Milestone title"
+                  className="h-9"
+                />
+                {!milestone.completed && (
+                  <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/30">
+                    <Checkbox
+                      id="complete-milestone"
+                      checked={completeMilestone}
+                      onCheckedChange={(checked) => setCompleteMilestone(checked === true)}
+                    />
+                    <Label 
+                      htmlFor="complete-milestone" 
+                      className="text-sm font-normal cursor-pointer flex-1"
+                    >
+                      Mark as complete
+                    </Label>
+                  </div>
+                )}
+                {milestone.completed && (
+                  <p className="text-xs text-muted-foreground">
+                    ✓ Completed {milestone.completedAt ? format(new Date(milestone.completedAt), 'MMM d, yyyy') : ''}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Status Notes Section */}
+            {suggestion?.dealId && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <StickyNote className="h-3.5 w-3.5" />
+                    Status Notes
+                  </Label>
+                  
+                  {/* Add new status note */}
+                  <div className="flex gap-2">
+                    <Textarea
+                      placeholder="Add a status note..."
+                      value={newStatusNote}
+                      onChange={(e) => setNewStatusNote(e.target.value)}
+                      rows={2}
+                      className="resize-none flex-1"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="shrink-0 self-end h-9 w-9"
+                      onClick={handleAddStatusNote}
+                      disabled={!newStatusNote.trim() || isAddingStatusNote}
+                    >
+                      {isAddingStatusNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+
+                  {/* Existing status notes */}
+                  {statusNotes.length > 0 && (
+                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto">
+                      {statusNotes.map((sn) => (
+                        <div key={sn.id} className="group flex items-start gap-2 text-xs p-2 rounded bg-muted/40 border border-border/50">
+                          <span className="flex-1 text-muted-foreground break-words">
+                            <span className="text-foreground">{sn.note}</span>
+                            <span className="block text-[10px] mt-0.5 opacity-60">
+                              {format(new Date(sn.created_at), 'MMM d, h:mm a')}
+                            </span>
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteStatusNote(sn.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
-
-          {/* Lender stage selector */}
-          {hasLenderContext && lender && (
-            <div className="space-y-2">
-              <Label>Update lender stage</Label>
-              <Select value={selectedStage} onValueChange={setSelectedStage}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.id}>
-                      {stage.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedStage && selectedStage !== lender.stage && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <span>{stages.find(s => s.id === lender.stage)?.label || lender.stage}</span>
-                  <ArrowRight className="h-3 w-3" />
-                  <span className="font-medium text-primary">
-                    {stages.find(s => s.id === selectedStage)?.label || selectedStage}
-                  </span>
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Milestone completion */}
-          {hasMilestoneContext && milestone && !milestone.completed && (
-            <div className="flex items-center space-x-2 p-3 rounded-lg border bg-muted/30">
-              <Checkbox
-                id="complete-milestone"
-                checked={completeMilestone}
-                onCheckedChange={(checked) => setCompleteMilestone(checked === true)}
-              />
-              <Label 
-                htmlFor="complete-milestone" 
-                className="text-sm font-normal cursor-pointer flex-1"
-              >
-                Mark "{milestone.title}" as complete
-              </Label>
-            </div>
-          )}
-        </div>
+        </ScrollArea>
 
         <DialogFooter className="gap-2">
           <Button 
