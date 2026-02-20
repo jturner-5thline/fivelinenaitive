@@ -444,9 +444,10 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       )}
 
       {/* Three-pane resizable layout */}
-      <ResizablePanelGroup direction="horizontal" className="h-[400px]">
+      <ResizablePanelGroup direction="horizontal" className="h-[400px]" style={{ overflow: 'hidden' }}>
         <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
-          <div className="h-full min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+          <div className="h-full min-w-0 pr-1">
+            <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
             <ContextPane
               selectedItem={selectedItem}
               selectedItemFiles={selectedItemFiles}
@@ -472,13 +473,15 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
               getCommentsForItem={getCommentsForItem}
               currentUserId={user?.id}
             />
+            </div>
           </div>
         </ResizablePanel>
 
-        <ResizableHandle className="bg-transparent w-2 shrink-0" />
+        <ResizableHandle className="bg-transparent w-0" />
 
         <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
-          <div className="h-full min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+          <div className="h-full min-w-0 px-1">
+            <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
             <ChecklistTreePane
               categories={categories}
               grouped={grouped}
@@ -495,13 +498,15 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
               unmappedFiles={unmappedFiles}
               handleUploadFiles={handleUploadFiles}
             />
+            </div>
           </div>
         </ResizablePanel>
 
-        <ResizableHandle className="bg-transparent w-2 shrink-0" />
+        <ResizableHandle className="bg-transparent w-0" />
 
         <ResizablePanel defaultSize={40} minSize={25}>
-          <div className="h-full min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+          <div className="h-full min-w-0 pl-1">
+            <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
             <FileListPane
               selectedItem={selectedItem}
               selectedItemFiles={selectedItemFiles}
@@ -519,6 +524,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
               fileInputRef={fileInputRef}
               allItems={allItems}
             />
+            </div>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
