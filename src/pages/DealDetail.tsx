@@ -3983,13 +3983,13 @@ export default function DealDetail() {
 
               <div className="w-[30%]">
                    {/* Activity Timeline */}
-                    <Card className="min-h-[500px]">
+                    <Card>
                       <CardHeader className="pb-3">
                           <CardTitle className="text-lg">
                             Activity
                           </CardTitle>
                       </CardHeader>
-                        <CardContent className="pt-0 max-h-[430px] overflow-y-auto">
+                        <CardContent className="pt-0">
                           <ActivityTimeline activities={activities} />
                         </CardContent>
                     </Card>
