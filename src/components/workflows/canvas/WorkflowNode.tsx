@@ -12,7 +12,7 @@ const categoryColors: Record<string, string> = {
   utility: 'border-chart-5/50 bg-chart-5/10',
 };
 
-const handleStyle = { width: 10, height: 10 };
+const handleStyle = { width: 12, height: 12, borderRadius: '50%' };
 
 function WorkflowNodeComponent({ data, selected }: NodeProps & { data: CanvasNodeData }) {
   const catConfig = NODE_CATEGORIES.find(c => c.key === data.category);
@@ -58,23 +58,27 @@ function WorkflowNodeComponent({ data, selected }: NodeProps & { data: CanvasNod
         </div>
       )}
 
-      {/* Port labels */}
-      <div className="px-3 py-1.5 flex justify-between gap-2">
-        <div className="space-y-0.5">
-          {data.inputs.map(input => (
-            <div key={input.key} className="text-[10px] text-muted-foreground">
-              {input.label || input.key}
-            </div>
-          ))}
+      {/* Port labels - only show if few ports to keep nodes clean */}
+      {(data.inputs.length + data.outputs.length <= 4) && (
+        <div className="px-3 py-1.5 flex justify-between gap-2">
+          <div className="space-y-0.5">
+            {data.inputs.map(input => (
+              <div key={input.key} className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+                {input.label || input.key}
+              </div>
+            ))}
+          </div>
+          <div className="space-y-0.5 text-right">
+            {data.outputs.map(output => (
+              <div key={output.key} className="text-[10px] text-muted-foreground flex items-center justify-end gap-1">
+                {output.label || output.key}
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="space-y-0.5 text-right">
-          {data.outputs.map(output => (
-            <div key={output.key} className="text-[10px] text-muted-foreground">
-              {output.label || output.key}
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Output handles */}
       {data.outputs.map((output, i) => (
