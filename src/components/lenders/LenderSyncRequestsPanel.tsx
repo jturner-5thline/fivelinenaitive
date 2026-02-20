@@ -284,7 +284,8 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     setSelectedIds(new Set());
   };
 
-  const handleBulkApprove = async () => {
+  const handleBulkApprove = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (selectedApprovable.length === 0) return;
     
     setIsBulkProcessing(true);
@@ -318,7 +319,8 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     }
   };
 
-  const handleBulkReject = async () => {
+  const handleBulkReject = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (selectedApprovable.length === 0) return;
     
     setIsBulkProcessing(true);
