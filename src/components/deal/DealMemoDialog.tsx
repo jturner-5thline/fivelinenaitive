@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Save, Loader2, Plus, X, FolderOpen } from 'lucide-react';
+import { FileText, Save, Loader2, Plus, X, FolderOpen, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -57,7 +57,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
   });
   const [highlightsList, setHighlightsList] = useState<string[]>([]);
   const [newHighlight, setNewHighlight] = useState('');
-  const [hurdlesList, setHurdlesList] = useState<{ hurdle: string; remedy: string }[]>([]);
+  const [hurdlesList, setHurdlesList] = useState<{ hurdle: string; remedy: string; resolved: boolean }[]>([]);
   const [newHurdle, setNewHurdle] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [editingHighlight, setEditingHighlight] = useState<number | null>(null);
@@ -71,17 +71,20 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
   };
 
   // Parse hurdles with remedies (stored as "hurdle||remedy")
-  const parseHurdles = (str: string | null): { hurdle: string; remedy: string }[] => {
+  const parseHurdles = (str: string | null): { hurdle: string; remedy: string; resolved: boolean }[] => {
     if (!str) return [];
     return str.split('\n').filter(h => h.trim() !== '').map(line => {
       const parts = line.split('||');
-      return { hurdle: parts[0] || '', remedy: parts[1] || '' };
+      return { hurdle: parts[0] || '', remedy: parts[1] || '', resolved: parts[2] === 'true' };
     });
   };
 
-  // Stringify hurdles with remedies
-  const stringifyHurdles = (items: { hurdle: string; remedy: string }[]): string => {
-    return items.map(h => h.remedy ? `${h.hurdle}||${h.remedy}` : h.hurdle).join('\n');
+  // Stringify hurdles with remedies and resolved state
+  const stringifyHurdles = (items: { hurdle: string; remedy: string; resolved: boolean }[]): string => {
+    return items.map(h => {
+      const parts = [h.hurdle, h.remedy, h.resolved ? 'true' : 'false'];
+      return parts.join('||');
+    }).join('\n');
   };
 
   // Helper to convert list array to string
@@ -152,7 +155,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
 
   const handleAddHurdle = () => {
     if (newHurdle.trim()) {
-      const updated = [...hurdlesList, { hurdle: newHurdle.trim(), remedy: '' }];
+      const updated = [...hurdlesList, { hurdle: newHurdle.trim(), remedy: '', resolved: false }];
       setHurdlesList(updated);
       setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
       setNewHurdle('');
@@ -180,6 +183,14 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
   const handleEditRemedy = (index: number, value: string) => {
     const updated = [...hurdlesList];
     updated[index] = { ...updated[index], remedy: value };
+    setHurdlesList(updated);
+    setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
+    setHasChanges(true);
+  };
+
+  const handleToggleHurdleResolved = (index: number) => {
+    const updated = [...hurdlesList];
+    updated[index] = { ...updated[index], resolved: !updated[index].resolved };
     setHurdlesList(updated);
     setLocalValues(prev => ({ ...prev, hurdles: stringifyHurdles(updated) }));
     setHasChanges(true);
@@ -431,12 +442,20 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                     {hurdlesList.map((item, index) => (
                       <li 
                         key={index}
-                        className="p-2 bg-muted/50 rounded-md group"
+                        className={`p-2 rounded-md group ${item.resolved ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50'}`}
                       >
                         <div className="flex items-start gap-2">
-                          <span className="text-sm font-medium text-muted-foreground min-w-[20px] mt-0.5">
-                            {index + 1}.
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleHurdleResolved(index)}
+                            className={`mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors ${
+                              item.resolved 
+                                ? 'bg-primary border-primary text-primary-foreground' 
+                                : 'border-muted-foreground/30 hover:border-primary'
+                            }`}
+                          >
+                            {item.resolved && <Check className="h-3 w-3" />}
+                          </button>
                           <div className="flex-1 min-w-0">
                             {editingHurdle === index ? (
                               <Input
@@ -452,7 +471,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                               />
                             ) : (
                               <span
-                                className="text-sm cursor-pointer hover:text-primary transition-colors block"
+                                className={`text-sm cursor-pointer hover:text-primary transition-colors block ${item.resolved ? 'line-through text-muted-foreground' : ''}`}
                                 onClick={() => setEditingHurdle(index)}
                               >
                                 {item.hurdle}
@@ -474,7 +493,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                               />
                             ) : (
                               <span
-                                className="text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors block mt-1"
+                                className={`text-xs cursor-pointer hover:text-primary transition-colors block mt-1 ${item.resolved ? 'line-through text-muted-foreground/60' : 'text-muted-foreground'}`}
                                 onClick={() => setEditingRemedy(index)}
                               >
                                 {item.remedy ? `Remedy: ${item.remedy}` : '+ Add remedy'}
