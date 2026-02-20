@@ -358,7 +358,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-      <Card className="border-amber-500/30 bg-amber-500/5">
+      <Card className="relative border-0 bg-card overflow-hidden before:absolute before:inset-0 before:rounded-xl before:p-[1px] before:bg-gradient-to-r before:from-red-500 before:to-red-800 before:[mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] before:[mask-composite:exclude] before:pointer-events-none">
         <CollapsibleTrigger asChild>
           <CardHeader className="py-4 cursor-pointer hover:bg-muted/50 transition-colors">
             <div className="flex items-center justify-between">
