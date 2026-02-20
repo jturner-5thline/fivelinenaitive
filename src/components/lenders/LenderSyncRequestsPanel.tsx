@@ -154,7 +154,7 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
                   <Button size="sm" variant="ghost" onClick={handleReject} disabled={isProcessing}>
                     <X className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" variant="default" onClick={handleApprove} disabled={isProcessing}>
+                  <Button size="sm" className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground hover:from-primary/90 hover:to-primary/60 shadow-sm" onClick={handleApprove} disabled={isProcessing}>
                     <Check className="h-3 w-3 mr-1" />
                     Approve
                   </Button>
@@ -420,6 +420,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     </Button>
                     <Button 
                       size="sm" 
+                      className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground hover:from-primary/90 hover:to-primary/60 shadow-sm"
                       onClick={handleBulkApprove}
                       disabled={isBulkProcessing}
                     >
