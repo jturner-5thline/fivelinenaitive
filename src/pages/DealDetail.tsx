@@ -3092,7 +3092,7 @@ export default function DealDetail() {
                                           </div>
                                           <Tooltip>
                                             <TooltipTrigger asChild>
-                                              <span className="text-xs text-muted-foreground whitespace-nowrap flex-1 text-right cursor-help">
+                                               <span className="text-sm text-muted-foreground whitespace-nowrap flex-1 text-right cursor-help">
                                                 <span className="font-medium text-foreground">{(() => {
                                                   const total = deal.totalFee ?? 0;
                                                   const milestone = deal.milestoneFee ?? 0;
