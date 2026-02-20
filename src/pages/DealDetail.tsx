@@ -130,6 +130,8 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
+import type { StatusReportEditableContent } from '@/utils/dealExport';
+import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { Label } from '@/components/ui/label';
@@ -458,6 +460,7 @@ export default function DealDetail() {
   const [mentionTaskUsers, setMentionTaskUsers] = useState<MentionedUser[]>([]);
   const [mentionNoteContext, setMentionNoteContext] = useState('');
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [showStatusReportPreview, setShowStatusReportPreview] = useState(false);
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();
@@ -2129,10 +2132,7 @@ export default function DealDetail() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover">
-                  <DropdownMenuItem onClick={() => {
-                    exportStatusReportToPDF(deal, configuredStages, configuredSubstages, outstandingItems);
-                    toast({ title: "PDF exported", description: "Status report exported to PDF." });
-                  }}>
+                  <DropdownMenuItem onClick={() => setShowStatusReportPreview(true)}>
                     <FileText className="h-4 w-4 mr-2" />
                     Export as PDF
                   </DropdownMenuItem>
@@ -4996,6 +4996,21 @@ export default function DealDetail() {
         onCancel={handleChecklistDialogCancel}
       />
 
+      {deal && (
+        <StatusReportPreviewModal
+          open={showStatusReportPreview}
+          onOpenChange={setShowStatusReportPreview}
+          deal={deal}
+          configuredStages={configuredStages}
+          configuredSubstages={configuredSubstages}
+          outstandingItems={outstandingItems}
+          onExport={(editableContent) => {
+            exportStatusReportToPDF(deal, configuredStages, configuredSubstages, outstandingItems, editableContent);
+            setShowStatusReportPreview(false);
+            toast({ title: "PDF exported", description: "Status report exported to PDF." });
+          }}
+        />
+      )}
       {/* Floating AI Deal Assistant */}
       {deal && <FloatingDealAssistant dealId={deal.id} dealName={deal.company} />}
 
