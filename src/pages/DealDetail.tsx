@@ -3025,7 +3025,9 @@ export default function DealDetail() {
 
                 </TabsContent>
 
-                <TabsContent value="lenders" className={cn("mt-6 space-y-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
+                <TabsContent value="lenders" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
+              <div className="flex gap-6">
+              <div className="w-[70%] space-y-6">
               {/* Lenders Card */}
               <Collapsible open={isLendersExpanded} onOpenChange={setIsLendersExpanded}>
                 <Card>
@@ -3986,8 +3988,10 @@ export default function DealDetail() {
                   </CollapsibleContent>
                 </Card>
               </Collapsible>
+              </div>
 
-                  {/* Activity Timeline */}
+              <div className="w-[30%]">
+                   {/* Activity Timeline */}
                   <Collapsible defaultOpen>
                     <Card>
                       <CardHeader className="pb-3">
@@ -4004,7 +4008,9 @@ export default function DealDetail() {
                         </CardContent>
                       </CollapsibleContent>
                     </Card>
-                  </Collapsible>
+                   </Collapsible>
+              </div>
+              </div>
                 </TabsContent>
 
                 <TabsContent value="deal-management" className={cn("mt-6 space-y-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
