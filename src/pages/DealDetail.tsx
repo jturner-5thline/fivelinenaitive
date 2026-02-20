@@ -3090,17 +3090,24 @@ export default function DealDetail() {
                                             />
                                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                                           </div>
-                                          <span className="text-xs text-muted-foreground whitespace-nowrap flex-1 text-right">
-                                            <span className="font-medium text-foreground">{(() => {
-                                              const total = deal.totalFee ?? 0;
-                                              const milestone = deal.milestoneFee ?? 0;
-                                              const retainer = deal.retainerFee ?? 0;
-                                              const closing = Math.max(0, total - milestone - retainer);
-                                              if (closing >= 1_000_000) return `$${(closing / 1_000_000).toFixed(1)}M`;
-                                              if (closing >= 1_000) return `$${(closing / 1_000).toFixed(1)}K`;
-                                              return `$${Math.round(closing).toLocaleString()}`;
-                                            })()}</span>
-                                          </span>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="text-xs text-muted-foreground whitespace-nowrap flex-1 text-right cursor-help">
+                                                <span className="font-medium text-foreground">{(() => {
+                                                  const total = deal.totalFee ?? 0;
+                                                  const milestone = deal.milestoneFee ?? 0;
+                                                  const retainer = deal.retainerFee ?? 0;
+                                                  const closing = Math.max(0, total - milestone - retainer);
+                                                  if (closing >= 1_000_000) return `$${(closing / 1_000_000).toFixed(1)}M`;
+                                                  if (closing >= 1_000) return `$${(closing / 1_000).toFixed(1)}K`;
+                                                  return `$${Math.round(closing).toLocaleString()}`;
+                                                })()}</span>
+                                              </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="max-w-[200px] text-center">
+                                              <p className="text-xs">Amount due at closing of the facility, less fees already paid</p>
+                                            </TooltipContent>
+                                          </Tooltip>
                                         </div>
                                       </div>
                                       <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
