@@ -444,76 +444,82 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       )}
 
       {/* Three-pane resizable layout */}
-      <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
+      <ResizablePanelGroup direction="horizontal" className="min-h-[500px]">
         <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
-          <ChecklistTreePane
-            categories={categories}
-            grouped={grouped}
-            progressData={progressData}
-            statusMap={statusMap}
-            selectedItemId={selectedItemId}
-            setSelectedItemId={setSelectedItemId}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            getFilesForItem={getFilesForItem}
-            getCategoryByName={getCategoryByName}
-            unmappedFiles={unmappedFiles}
-            handleUploadFiles={handleUploadFiles}
-          />
+          <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+            <ChecklistTreePane
+              categories={categories}
+              grouped={grouped}
+              progressData={progressData}
+              statusMap={statusMap}
+              selectedItemId={selectedItemId}
+              setSelectedItemId={setSelectedItemId}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              getFilesForItem={getFilesForItem}
+              getCategoryByName={getCategoryByName}
+              unmappedFiles={unmappedFiles}
+              handleUploadFiles={handleUploadFiles}
+            />
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         <ResizablePanel defaultSize={40} minSize={25}>
-          <FileListPane
-            selectedItem={selectedItem}
-            selectedItemFiles={selectedItemFiles}
-            attachments={attachments}
-            selectedFiles={selectedFiles}
-            setSelectedFiles={setSelectedFiles}
-            getItemsForFile={getItemsForFile}
-            getFilesForItem={getFilesForItem}
-            handleDownloadFile={handleDownloadFile}
-            handleUploadFiles={handleUploadFiles}
-            deleteAttachment={deleteAttachment}
-            setSelectedItemId={setSelectedItemId}
-            setPreviewFile={handleSetPreviewFile}
-            onOpenMappingDialog={openMappingDialog}
-            fileInputRef={fileInputRef}
-            allItems={allItems}
-          />
+          <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+            <FileListPane
+              selectedItem={selectedItem}
+              selectedItemFiles={selectedItemFiles}
+              attachments={attachments}
+              selectedFiles={selectedFiles}
+              setSelectedFiles={setSelectedFiles}
+              getItemsForFile={getItemsForFile}
+              getFilesForItem={getFilesForItem}
+              handleDownloadFile={handleDownloadFile}
+              handleUploadFiles={handleUploadFiles}
+              deleteAttachment={deleteAttachment}
+              setSelectedItemId={setSelectedItemId}
+              setPreviewFile={handleSetPreviewFile}
+              onOpenMappingDialog={openMappingDialog}
+              fileInputRef={fileInputRef}
+              allItems={allItems}
+            />
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         <ResizablePanel defaultSize={30} minSize={20} maxSize={45}>
-          <ContextPane
-            selectedItem={selectedItem}
-            selectedItemFiles={selectedItemFiles}
-            statusMap={statusMap}
-            progressData={progressData}
-            categories={categories}
-            allItems={allItems}
-            attachments={attachments}
-            unmappedFiles={unmappedFiles}
-            getFilesForItem={getFilesForItem}
-            mapFileToItem={mapFileToItem}
-            unmapFile={unmapFile}
-            handleUploadFiles={handleUploadFiles}
-            handleDownloadFile={handleDownloadFile}
-            setSelectedItemId={setSelectedItemId}
-            setPreviewFile={handleSetPreviewFile}
-            onExportIndex={handleExportIndex}
-            onDownloadSection={handleDownloadSection}
-            onDownloadAll={handleDownloadAll}
-            comments={comments}
-            onAddComment={addComment}
-            onDeleteComment={deleteComment}
-            getCommentsForItem={getCommentsForItem}
-            currentUserId={user?.id}
-          />
+          <div className="h-full rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
+            <ContextPane
+              selectedItem={selectedItem}
+              selectedItemFiles={selectedItemFiles}
+              statusMap={statusMap}
+              progressData={progressData}
+              categories={categories}
+              allItems={allItems}
+              attachments={attachments}
+              unmappedFiles={unmappedFiles}
+              getFilesForItem={getFilesForItem}
+              mapFileToItem={mapFileToItem}
+              unmapFile={unmapFile}
+              handleUploadFiles={handleUploadFiles}
+              handleDownloadFile={handleDownloadFile}
+              setSelectedItemId={setSelectedItemId}
+              setPreviewFile={handleSetPreviewFile}
+              onExportIndex={handleExportIndex}
+              onDownloadSection={handleDownloadSection}
+              onDownloadAll={handleDownloadAll}
+              comments={comments}
+              onAddComment={addComment}
+              onDeleteComment={deleteComment}
+              getCommentsForItem={getCommentsForItem}
+              currentUserId={user?.id}
+            />
+          </div>
         </ResizablePanel>
       </ResizablePanelGroup>
 
