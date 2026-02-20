@@ -444,7 +444,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       )}
 
       {/* Three-pane resizable layout */}
-      <div className="grid grid-cols-[30%_30%_1fr] gap-2 h-[480px]">
+      <div className="grid grid-cols-[30%_30%_1fr] gap-2 h-[624px]">
         <div className="min-w-0 rounded-lg border border-border/70 bg-gradient-to-br from-card via-card/90 to-background/40 dark:border-[hsl(263,45%,40%,0.6)] dark:shadow-[0_0_12px_hsl(263,60%,50%,0.1)] overflow-hidden">
           <ContextPane
             selectedItem={selectedItem}
