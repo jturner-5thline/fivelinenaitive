@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Upload, Download, Settings, Share2, History, Keyboard } from 'lucide-react';
+import { Upload, Download, Settings, Share2, History, Keyboard, Send, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
+import { supabase } from '@/integrations/supabase/client';
 
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
@@ -62,6 +63,46 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
   const [showChecklistEditor, setShowChecklistEditor] = useState(false);
   const [showShareLinks, setShowShareLinks] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [isPushingToFlex, setIsPushingToFlex] = useState(false);
+
+  const handlePushToFlex = useCallback(async () => {
+    if (!attachments || attachments.length === 0) {
+      toast.error('No files to push', { description: 'Upload files to the data room first.' });
+      return;
+    }
+    setIsPushingToFlex(true);
+    try {
+      const attachmentData = await Promise.all(
+        attachments.map(async (att) => {
+          const { data: signedData } = await supabase.storage
+            .from('deal-attachments')
+            .createSignedUrl(att.file_path, 3600);
+          return {
+            name: att.name,
+            category: att.category,
+            url: signedData?.signedUrl || null,
+            size_bytes: att.size_bytes,
+            content_type: att.content_type,
+          };
+        })
+      );
+      const { error } = await supabase.functions.invoke('push-to-flex', {
+        body: {
+          dealId,
+          action: 'sync_data_room',
+          dataRoomFiles: attachmentData.filter(a => a.url !== null),
+        },
+      });
+      if (error) throw error;
+      toast.success('Data Room pushed to FLEx', { description: `${attachments.length} file(s) synced successfully.` });
+      logAction('push_to_flex', 'room', undefined, undefined, { file_count: attachments.length });
+    } catch (error) {
+      console.error('Error pushing data room to FLEx:', error);
+      toast.error('Failed to push to FLEx', { description: error instanceof Error ? error.message : 'An error occurred' });
+    } finally {
+      setIsPushingToFlex(false);
+    }
+  }, [dealId, attachments, logAction]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -362,6 +403,21 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             <Upload className="h-3 w-3" />
             Upload
           </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePushToFlex}
+                disabled={isPushingToFlex || attachments.length === 0}
+                className="gap-1.5 h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
+              >
+                {isPushingToFlex ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                Push to FLEx
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Push data room files to FLEx</TooltipContent>
+          </Tooltip>
           <input
             ref={fileInputRef}
             type="file"
