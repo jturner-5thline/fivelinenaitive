@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { AGENT_NODE_REGISTRY, AGENT_NODE_CATEGORIES } from './agentNodeRegistry';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AgentNodePaletteProps {
@@ -7,15 +10,34 @@ interface AgentNodePaletteProps {
 }
 
 export function AgentNodePalette({ onDragStart }: AgentNodePaletteProps) {
+  const [search, setSearch] = useState('');
+
+  const filteredRegistry = search.trim()
+    ? AGENT_NODE_REGISTRY.filter(n =>
+        n.label.toLowerCase().includes(search.toLowerCase()) ||
+        n.description.toLowerCase().includes(search.toLowerCase()) ||
+        n.category.toLowerCase().includes(search.toLowerCase())
+      )
+    : AGENT_NODE_REGISTRY;
+
   return (
     <div className="w-56 border-r border-border bg-card flex flex-col">
-      <div className="px-3 py-2 border-b border-border">
+      <div className="px-3 py-2 border-b border-border space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Components</h3>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search nodes..."
+            className="h-7 pl-7 text-xs"
+          />
+        </div>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-4">
           {AGENT_NODE_CATEGORIES.map(cat => {
-            const items = AGENT_NODE_REGISTRY.filter(n => n.category === cat.key);
+            const items = filteredRegistry.filter(n => n.category === cat.key);
             if (items.length === 0) return null;
 
             return (
@@ -48,6 +70,11 @@ export function AgentNodePalette({ onDragStart }: AgentNodePaletteProps) {
               </div>
             );
           })}
+          {filteredRegistry.length === 0 && (
+            <div className="text-center py-4 text-xs text-muted-foreground">
+              No matching components
+            </div>
+          )}
         </div>
       </ScrollArea>
     </div>
