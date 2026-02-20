@@ -3076,18 +3076,29 @@ export default function DealDetail() {
                                       </div>
                                       <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
                                         <span className="text-muted-foreground text-sm">Success Fee %</span>
-                                        <div className="relative w-full">
-                                          <Input
-                                            type="number"
-                                            value={deal.successFeePercent ?? ''}
-                                            onChange={(e) => updateDeal('successFeePercent', e.target.value ? Number(e.target.value) : 0)}
-                                            placeholder="0"
-                                            className="pr-6 h-8 text-sm w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            min={0}
-                                            max={100}
-                                            step={0.1}
-                                          />
-                                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                                        <div className="flex items-center gap-2">
+                                          <div className="relative w-20 shrink-0">
+                                            <Input
+                                              type="number"
+                                              value={deal.successFeePercent ?? ''}
+                                              onChange={(e) => updateDeal('successFeePercent', e.target.value ? Number(e.target.value) : 0)}
+                                              placeholder="0"
+                                              className="pr-6 h-8 text-sm w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                              min={0}
+                                              max={100}
+                                              step={0.1}
+                                            />
+                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                                          </div>
+                                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                            Closing: <span className="font-medium text-foreground">${(() => {
+                                              const total = deal.totalFee ?? 0;
+                                              const milestone = deal.milestoneFee ?? 0;
+                                              const retainer = deal.retainerFee ?? 0;
+                                              const closing = Math.max(0, total - milestone - retainer);
+                                              return Math.round(closing).toLocaleString();
+                                            })()}</span>
+                                          </span>
                                         </div>
                                       </div>
                                       <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
