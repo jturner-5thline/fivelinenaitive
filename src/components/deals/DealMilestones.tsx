@@ -210,10 +210,17 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                           </svg>
                         ) : isOverdue(milestone) ? (
                           <svg 
-                            className="h-10 w-10 fill-current text-destructive" 
+                            className="h-10 w-10" 
                             viewBox="0 0 24 24"
                           >
-                            <path d="M12 2L22 12L12 22L2 12L12 2Z" />
+                            <defs>
+                              <linearGradient id={`diamond-overdue-${milestone.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#7f1d1d" />
+                                <stop offset="50%" stopColor="#dc2626" />
+                                <stop offset="100%" stopColor="#ef4444" />
+                              </linearGradient>
+                            </defs>
+                            <path d="M12 2L22 12L12 22L2 12L12 2Z" fill={`url(#diamond-overdue-${milestone.id})`} />
                           </svg>
                         ) : (
                           <svg 
