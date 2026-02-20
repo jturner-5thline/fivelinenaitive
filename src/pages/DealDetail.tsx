@@ -2125,10 +2125,8 @@ export default function DealDetail() {
               <CreateTaskButton dealId={id!} dealName={deal?.company} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="icon" className="h-9 w-9">
                     <FileText className="h-4 w-4" />
-                    Status Report
-                    <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover">
@@ -2147,10 +2145,8 @@ export default function DealDetail() {
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="icon" className="h-9 w-9">
                     <Download className="h-4 w-4" />
-                    Export
-                    <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover">
