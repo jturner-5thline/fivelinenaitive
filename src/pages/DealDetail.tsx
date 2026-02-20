@@ -3983,13 +3983,13 @@ export default function DealDetail() {
 
               <div className="w-[30%]">
                    {/* Activity Timeline */}
-                    <Card className="h-full">
-                      <CardHeader className="pb-3">
+                    <Card className="h-full flex flex-col">
+                      <CardHeader className="pb-3 flex-shrink-0">
                           <CardTitle className="text-lg">
                             Activity
                           </CardTitle>
                       </CardHeader>
-                        <CardContent className="pt-0 max-h-[600px] overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }} onMouseEnter={(e) => { e.currentTarget.style.scrollbarColor = 'hsl(var(--border)) transparent'; }} onMouseLeave={(e) => { e.currentTarget.style.scrollbarColor = 'transparent transparent'; }}>
+                        <CardContent className="pt-0 overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }} onMouseEnter={(e) => { e.currentTarget.style.scrollbarColor = 'hsl(var(--border)) transparent'; }} onMouseLeave={(e) => { e.currentTarget.style.scrollbarColor = 'transparent transparent'; }}>
                           <ActivityTimeline activities={activities} />
                         </CardContent>
                     </Card>
