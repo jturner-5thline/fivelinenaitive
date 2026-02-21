@@ -6,8 +6,9 @@ import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
   Undo2, Redo2, DollarSign, Percent, Hash,
   PaintBucket, Type, Rows3, Columns3,
-  Plus, Minus, BarChart3, Grid3x3, Minus as MinusIcon,
-  ArrowDown, ArrowUp,
+  Plus, Minus, BarChart3, Grid3x3,
+  ArrowDown, ArrowUp, Search, Merge, SplitSquareHorizontal,
+  Lock, Palette, ShieldCheck, MessageSquare, FileDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CellFormat } from '@/hooks/useSpreadsheetWorkbook';
@@ -26,6 +27,16 @@ interface SpreadsheetToolbarProps {
   onDeleteColumn: () => void;
   onAddChart?: () => void;
   hasRangeSelection?: boolean;
+  onFindReplace?: () => void;
+  onMerge?: () => void;
+  onUnmerge?: () => void;
+  onFreezeRows?: () => void;
+  onFreezeCols?: () => void;
+  frozenRows?: number;
+  frozenCols?: number;
+  onConditionalFormat?: () => void;
+  onDataValidation?: () => void;
+  onExportPdf?: () => void;
 }
 
 function ToolbarButton({ 
@@ -75,6 +86,16 @@ export function SpreadsheetToolbar({
   onDeleteColumn,
   onAddChart,
   hasRangeSelection,
+  onFindReplace,
+  onMerge,
+  onUnmerge,
+  onFreezeRows,
+  onFreezeCols,
+  frozenRows,
+  frozenCols,
+  onConditionalFormat,
+  onDataValidation,
+  onExportPdf,
 }: SpreadsheetToolbarProps) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -166,6 +187,27 @@ export function SpreadsheetToolbar({
 
         <Separator orientation="vertical" className="h-5 mx-1" />
 
+        {/* Merge */}
+        {onMerge && <ToolbarButton icon={Merge} label="Merge Cells" onClick={onMerge} disabled={!hasRangeSelection} />}
+        {onUnmerge && <ToolbarButton icon={SplitSquareHorizontal} label="Unmerge Cells" onClick={onUnmerge} />}
+
+        {/* Freeze */}
+        {onFreezeRows && <ToolbarButton icon={Lock} label={frozenRows ? `Unfreeze Rows (${frozenRows})` : 'Freeze Row'} active={!!frozenRows} onClick={onFreezeRows} />}
+        {onFreezeCols && <ToolbarButton icon={Lock} label={frozenCols ? `Unfreeze Cols (${frozenCols})` : 'Freeze Column'} active={!!frozenCols} onClick={onFreezeCols} />}
+
+        <Separator orientation="vertical" className="h-5 mx-1" />
+
+        {/* Conditional formatting & validation */}
+        {onConditionalFormat && <ToolbarButton icon={Palette} label="Conditional Formatting" onClick={onConditionalFormat} />}
+        {onDataValidation && <ToolbarButton icon={ShieldCheck} label="Data Validation" onClick={onDataValidation} />}
+
+        <Separator orientation="vertical" className="h-5 mx-1" />
+
+        {/* Find */}
+        {onFindReplace && <ToolbarButton icon={Search} label="Find & Replace (Ctrl+F)" onClick={onFindReplace} />}
+
+        <Separator orientation="vertical" className="h-5 mx-1" />
+
         {/* Row/Column operations */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -217,6 +259,14 @@ export function SpreadsheetToolbar({
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">{hasRangeSelection ? 'Create chart from selection' : 'Select a range first'}</TooltipContent>
             </Tooltip>
+          </>
+        )}
+
+        {/* PDF Export */}
+        {onExportPdf && (
+          <>
+            <Separator orientation="vertical" className="h-5 mx-1" />
+            <ToolbarButton icon={FileDown} label="Export as PDF" onClick={onExportPdf} />
           </>
         )}
       </div>

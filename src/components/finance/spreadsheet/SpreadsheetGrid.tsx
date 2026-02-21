@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { SpreadsheetSheet, CellSelection, CellRange, CellFormat } from '@/hooks/useSpreadsheetWorkbook';
+import { SpreadsheetSheet, CellSelection, CellRange, CellFormat, MergedCell } from '@/hooks/useSpreadsheetWorkbook';
 import { evaluateCell, isFormula } from '@/lib/formulaEngine';
+import { evaluateConditionalFormat } from './ConditionalFormatDialog';
+import { MessageSquare } from 'lucide-react';
 
 interface SpreadsheetGridProps {
   sheet: SpreadsheetSheet;
@@ -46,6 +48,25 @@ function formatCellDisplay(value: string | number | null, format: CellFormat): s
   return String(value);
 }
 
+function isCellHiddenByMerge(row: number, col: number, mergedCells: MergedCell[]): MergedCell | null {
+  for (const m of mergedCells) {
+    if (row >= m.startRow && row <= m.endRow && col >= m.startCol && col <= m.endCol) {
+      if (row === m.startRow && col === m.startCol) return null; // this is the merge anchor
+      return m; // hidden by merge
+    }
+  }
+  return null;
+}
+
+function getMergeSpan(row: number, col: number, mergedCells: MergedCell[]): { rowSpan: number; colSpan: number } | null {
+  for (const m of mergedCells) {
+    if (row === m.startRow && col === m.startCol) {
+      return { rowSpan: m.endRow - m.startRow + 1, colSpan: m.endCol - m.startCol + 1 };
+    }
+  }
+  return null;
+}
+
 export function SpreadsheetGrid({
   sheet,
   selectedCell,
@@ -65,13 +86,13 @@ export function SpreadsheetGrid({
   const [resizeStartWidth, setResizeStartWidth] = useState(0);
   const [isFillDragging, setIsFillDragging] = useState(false);
   const [fillTarget, setFillTarget] = useState<CellSelection | null>(null);
+  const [showValidationDropdown, setShowValidationDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const maxCols = useMemo(() => Math.max(...sheet.data.map(r => r.length), 1), [sheet.data]);
   const visibleRows = sheet.data.length;
 
-  // Compute evaluated data for display
   const evaluatedData = useMemo(() => {
     return sheet.data.map((row, r) =>
       row.map((_, c) => evaluateCell(r, c, sheet.data))
@@ -102,6 +123,7 @@ export function SpreadsheetGrid({
     }
     setEditingCell(null);
     setEditValue('');
+    setShowValidationDropdown(false);
   }, [editingCell, editValue, sheet.data, onCellChange]);
 
   const handleCellClick = useCallback((row: number, col: number, e: React.MouseEvent) => {
@@ -124,7 +146,12 @@ export function SpreadsheetGrid({
     const value = sheet.data[row]?.[col];
     setEditingCell({ row, col });
     setEditValue(value !== null && value !== undefined ? String(value) : '');
-  }, [sheet.data]);
+    // Check if cell has list validation
+    const validation = sheet.validations[`${row}-${col}`];
+    if (validation?.type === 'list') {
+      setShowValidationDropdown(true);
+    }
+  }, [sheet.data, sheet.validations]);
 
   const handleMouseDown = useCallback((row: number, col: number, e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -149,7 +176,6 @@ export function SpreadsheetGrid({
 
   const handleMouseUp = useCallback(() => {
     if (isFillDragging && fillTarget) {
-      // Execute fill
       const sourceRow = selectedCell.row;
       const sourceCol = selectedCell.col;
       const sourceValue = sheet.data[sourceRow]?.[sourceCol];
@@ -158,7 +184,6 @@ export function SpreadsheetGrid({
         const isNum = typeof sourceValue === 'number' || (!isNaN(Number(sourceValue)) && sourceValue !== '');
         const baseNum = isNum ? Number(sourceValue) : 0;
         
-        // Fill vertically
         const startR = Math.min(sourceRow, fillTarget.row);
         const endR = Math.max(sourceRow, fillTarget.row);
         const startC = Math.min(sourceCol, fillTarget.col);
@@ -192,7 +217,6 @@ export function SpreadsheetGrid({
     }
   }, [isDragging, isFillDragging, handleMouseUp]);
 
-  // Fill handle mouse down
   const handleFillHandleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -237,7 +261,6 @@ export function SpreadsheetGrid({
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Copy/paste shortcuts
     if ((e.ctrlKey || e.metaKey) && !editingCell) {
       if (e.key === 'c') { e.preventDefault(); handleCopy(); return; }
       if (e.key === 'v') { e.preventDefault(); handlePaste(); return; }
@@ -263,6 +286,7 @@ export function SpreadsheetGrid({
       } else if (e.key === 'Escape') {
         setEditingCell(null);
         setEditValue('');
+        setShowValidationDropdown(false);
       }
       return;
     }
@@ -345,10 +369,12 @@ export function SpreadsheetGrid({
     };
   }, [resizingCol, resizeStartX, resizeStartWidth, onColumnResize]);
 
-  // Determine fill handle position
   const fillHandleCell = selectionRange
     ? { row: Math.max(selectionRange.startRow, selectionRange.endRow), col: Math.max(selectionRange.startCol, selectionRange.endCol) }
     : selectedCell;
+
+  const frozenRows = sheet.frozenRows || 0;
+  const frozenCols = sheet.frozenCols || 0;
 
   return (
     <div
@@ -366,9 +392,14 @@ export function SpreadsheetGrid({
                 key={colIndex}
                 className={cn(
                   "bg-muted border border-border text-center text-muted-foreground font-medium relative",
-                  selectedCell.col === colIndex && "bg-primary/10 text-primary"
+                  selectedCell.col === colIndex && "bg-primary/10 text-primary",
+                  colIndex < frozenCols && "sticky z-[15]",
                 )}
-                style={{ minWidth: sheet.colWidths[colIndex] || 100, height: HEADER_HEIGHT }}
+                style={{ 
+                  minWidth: sheet.colWidths[colIndex] || 100, 
+                  height: HEADER_HEIGHT,
+                  left: colIndex < frozenCols ? ROW_NUM_WIDTH + sheet.colWidths.slice(0, colIndex).reduce((a, b) => a + (b || 100), 0) : undefined,
+                }}
               >
                 {getColumnLabel(colIndex)}
                 <div
@@ -381,7 +412,7 @@ export function SpreadsheetGrid({
         </thead>
         <tbody>
           {sheet.data.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+            <tr key={rowIndex} className={cn(rowIndex < frozenRows && "sticky z-[8]")} style={rowIndex < frozenRows ? { top: HEADER_HEIGHT + rowIndex * ROW_HEIGHT } : undefined}>
               <td
                 className={cn(
                   "sticky left-0 z-10 bg-muted border border-border text-center text-muted-foreground font-medium",
@@ -392,6 +423,11 @@ export function SpreadsheetGrid({
                 {rowIndex + 1}
               </td>
               {Array.from({ length: maxCols }).map((_, colIndex) => {
+                // Check if this cell is hidden by a merge
+                const hiddenByMerge = isCellHiddenByMerge(rowIndex, colIndex, sheet.mergedCells);
+                if (hiddenByMerge) return null;
+
+                const mergeSpan = getMergeSpan(rowIndex, colIndex, sheet.mergedCells);
                 const rawValue = row[colIndex];
                 const displayValue = evaluatedData[rowIndex]?.[colIndex] ?? null;
                 const isSelected = selectedCell.row === rowIndex && selectedCell.col === colIndex;
@@ -399,7 +435,13 @@ export function SpreadsheetGrid({
                 const isEditing = editingCell?.row === rowIndex && editingCell?.col === colIndex;
                 const format = sheet.formats[`${rowIndex}-${colIndex}`] || {};
                 const showFillHandle = isSelected && !isEditing && fillHandleCell.row === rowIndex && fillHandleCell.col === colIndex;
-                const hasFormula = isFormula(rawValue);
+                const hasComments = (sheet.comments[`${rowIndex}-${colIndex}`] || []).length > 0;
+                const validation = sheet.validations[`${rowIndex}-${colIndex}`];
+                
+                // Conditional formatting
+                const condFormat = evaluateConditionalFormat(displayValue, sheet.conditionalFormats);
+                const effectiveBg = condFormat?.bgColor || format.bgColor || undefined;
+                const effectiveFontColor = condFormat?.fontColor || format.fontColor || undefined;
 
                 return (
                   <td
@@ -413,31 +455,57 @@ export function SpreadsheetGrid({
                       format.borderBottom && "border-b-2 border-b-foreground",
                       format.borderLeft && "border-l-2 border-l-foreground",
                       format.borderRight && "border-r-2 border-r-foreground",
+                      colIndex < frozenCols && "sticky z-[6]",
                     )}
                     style={{
                       minWidth: sheet.colWidths[colIndex] || 100,
-                      height: ROW_HEIGHT,
-                      backgroundColor: format.bgColor || undefined,
+                      height: mergeSpan ? ROW_HEIGHT * mergeSpan.rowSpan : ROW_HEIGHT,
+                      backgroundColor: effectiveBg,
+                      left: colIndex < frozenCols ? ROW_NUM_WIDTH + sheet.colWidths.slice(0, colIndex).reduce((a, b) => a + (b || 100), 0) : undefined,
                     }}
+                    rowSpan={mergeSpan?.rowSpan}
+                    colSpan={mergeSpan?.colSpan}
                     onMouseDown={(e) => handleMouseDown(rowIndex, colIndex, e)}
                     onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
                     onDoubleClick={() => handleCellDoubleClick(rowIndex, colIndex)}
                   >
                     {isEditing ? (
-                      <input
-                        ref={inputRef}
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={commitEdit}
-                        className="w-full h-full border-0 outline-none bg-background px-1.5 text-xs font-mono"
-                        style={{
-                          fontWeight: format.bold ? 'bold' : undefined,
-                          fontStyle: format.italic ? 'italic' : undefined,
-                          textDecoration: format.underline ? 'underline' : undefined,
-                          textAlign: format.align || 'left',
-                          color: format.fontColor || undefined,
-                        }}
-                      />
+                      <div className="relative">
+                        <input
+                          ref={inputRef}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={commitEdit}
+                          className="w-full h-full border-0 outline-none bg-background px-1.5 text-xs font-mono"
+                          style={{
+                            fontWeight: format.bold ? 'bold' : undefined,
+                            fontStyle: format.italic ? 'italic' : undefined,
+                            textDecoration: format.underline ? 'underline' : undefined,
+                            textAlign: format.align || 'left',
+                            color: effectiveFontColor,
+                          }}
+                        />
+                        {/* Validation dropdown */}
+                        {showValidationDropdown && validation?.type === 'list' && validation.options && (
+                          <div className="absolute top-full left-0 z-50 bg-background border rounded shadow-lg max-h-32 overflow-y-auto min-w-[120px]">
+                            {validation.options.map((opt, i) => (
+                              <button
+                                key={i}
+                                className="w-full text-left px-2 py-1 text-xs hover:bg-muted transition-colors"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setEditValue(opt);
+                                  onCellChange(rowIndex, colIndex, opt);
+                                  setEditingCell(null);
+                                  setShowValidationDropdown(false);
+                                }}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div
                         className="w-full h-full px-1.5 flex items-center overflow-hidden whitespace-nowrap"
@@ -448,13 +516,21 @@ export function SpreadsheetGrid({
                           textAlign: format.align || (typeof displayValue === 'number' ? 'right' : 'left'),
                           color: typeof displayValue === 'string' && displayValue.startsWith('#') && displayValue.includes('!')
                             ? 'hsl(var(--destructive))' 
-                            : (format.fontColor || undefined),
+                            : effectiveFontColor,
                           fontSize: format.fontSize ? `${format.fontSize}px` : undefined,
                           justifyContent: format.align === 'center' ? 'center' : format.align === 'right' || (!format.align && typeof displayValue === 'number') ? 'flex-end' : 'flex-start',
                         }}
                       >
                         {formatCellDisplay(displayValue, format)}
+                        {/* Validation dropdown trigger for list type */}
+                        {validation?.type === 'list' && (
+                          <span className="ml-auto text-muted-foreground text-[8px]">▼</span>
+                        )}
                       </div>
+                    )}
+                    {/* Comment indicator */}
+                    {hasComments && (
+                      <div className="absolute top-0 right-0 w-0 h-0 border-l-[6px] border-l-transparent border-t-[6px] border-t-primary" title="Has comments" />
                     )}
                     {/* Fill handle */}
                     {showFillHandle && (

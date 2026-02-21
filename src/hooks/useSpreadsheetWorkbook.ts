@@ -29,6 +29,37 @@ export interface CellFormat {
   borderRight?: boolean;
 }
 
+export interface MergedCell {
+  startRow: number;
+  startCol: number;
+  endRow: number;
+  endCol: number;
+}
+
+export interface CellCommentData {
+  id: string;
+  text: string;
+  author: string;
+  timestamp: Date;
+}
+
+export interface DataValidationRule {
+  type: 'list' | 'number' | 'date' | 'text_length';
+  options?: string[];
+  min?: number;
+  max?: number;
+  errorMessage?: string;
+}
+
+export interface ConditionalFormatRule {
+  id: string;
+  condition: 'greater_than' | 'less_than' | 'equal_to' | 'not_empty' | 'contains' | 'between';
+  value1: string;
+  value2?: string;
+  bgColor: string;
+  fontColor: string;
+}
+
 export interface SpreadsheetWorkbook {
   id: string;
   name: string;
@@ -43,6 +74,10 @@ export interface SpreadsheetSheet extends ParsedSheet {
   formats: Record<string, CellFormat>; // key: "row-col"
   frozenRows?: number;
   frozenCols?: number;
+  mergedCells: MergedCell[];
+  comments: Record<string, CellCommentData[]>; // key: "row-col"
+  validations: Record<string, DataValidationRule>; // key: "row-col"
+  conditionalFormats: ConditionalFormatRule[];
 }
 
 export interface UndoEntry {
@@ -65,6 +100,10 @@ function createEmptySheet(name: string): SpreadsheetSheet {
     data,
     colWidths: Array(DEFAULT_COLS).fill(100),
     formats: {},
+    mergedCells: [],
+    comments: {},
+    validations: {},
+    conditionalFormats: [],
   };
 }
 
@@ -105,6 +144,10 @@ export function useSpreadsheetWorkbook() {
       const sheets: SpreadsheetSheet[] = result.sheets.map(s => ({
         ...s,
         formats: {},
+        mergedCells: [],
+        comments: {},
+        validations: {},
+        conditionalFormats: [],
         // Ensure minimum grid size
         data: ensureMinSize(s.data, DEFAULT_ROWS, DEFAULT_COLS),
         colWidths: s.colWidths.length < DEFAULT_COLS 
@@ -143,6 +186,10 @@ export function useSpreadsheetWorkbook() {
     const sheets: SpreadsheetSheet[] = result.sheets.map(s => ({
       ...s,
       formats: {},
+      mergedCells: [],
+      comments: {},
+      validations: {},
+      conditionalFormats: [],
       data: ensureMinSize(s.data, DEFAULT_ROWS, DEFAULT_COLS),
       colWidths: s.colWidths.length < DEFAULT_COLS
         ? [...s.colWidths, ...Array(DEFAULT_COLS - s.colWidths.length).fill(100)]
@@ -318,6 +365,10 @@ export function useSpreadsheetWorkbook() {
         data: source.data.map(row => [...row]),
         colWidths: [...source.colWidths],
         formats: { ...source.formats },
+        mergedCells: source.mergedCells.map(m => ({ ...m })),
+        comments: { ...source.comments },
+        validations: { ...source.validations },
+        conditionalFormats: source.conditionalFormats.map(r => ({ ...r })),
       };
       const newSheets = [...prev.sheets];
       newSheets.splice(index + 1, 0, newSheet);
@@ -459,6 +510,124 @@ export function useSpreadsheetWorkbook() {
     });
   }, []);
 
+  // Freeze panes
+  const setFrozenRows = useCallback((count: number) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, frozenRows: count || undefined };
+      return { ...prev, sheets: newSheets };
+    });
+  }, []);
+
+  const setFrozenCols = useCallback((count: number) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, frozenCols: count || undefined };
+      return { ...prev, sheets: newSheets };
+    });
+  }, []);
+
+  // Merge cells
+  const mergeCells = useCallback((range: CellRange) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const merged: MergedCell = {
+        startRow: Math.min(range.startRow, range.endRow),
+        startCol: Math.min(range.startCol, range.endCol),
+        endRow: Math.max(range.startRow, range.endRow),
+        endCol: Math.max(range.startCol, range.endCol),
+      };
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, mergedCells: [...sheet.mergedCells, merged] };
+      return { ...prev, sheets: newSheets, isDirty: true };
+    });
+  }, []);
+
+  const unmergeCells = useCallback((row: number, col: number) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const newMerged = sheet.mergedCells.filter(m =>
+        !(row >= m.startRow && row <= m.endRow && col >= m.startCol && col <= m.endCol)
+      );
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, mergedCells: newMerged };
+      return { ...prev, sheets: newSheets, isDirty: true };
+    });
+  }, []);
+
+  // Comments
+  const addComment = useCallback((row: number, col: number, text: string, author: string = 'User') => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const key = `${row}-${col}`;
+      const existing = sheet.comments[key] || [];
+      const newComment: CellCommentData = { id: crypto.randomUUID(), text, author, timestamp: new Date() };
+      const newComments = { ...sheet.comments, [key]: [...existing, newComment] };
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, comments: newComments };
+      return { ...prev, sheets: newSheets, isDirty: true };
+    });
+  }, []);
+
+  const deleteComment = useCallback((row: number, col: number, commentId: string) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const key = `${row}-${col}`;
+      const existing = sheet.comments[key] || [];
+      const newComments = { ...sheet.comments, [key]: existing.filter(c => c.id !== commentId) };
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, comments: newComments };
+      return { ...prev, sheets: newSheets, isDirty: true };
+    });
+  }, []);
+
+  // Data validation
+  const setCellValidation = useCallback((row: number, col: number, rule: DataValidationRule | null) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const key = `${row}-${col}`;
+      const newValidations = { ...sheet.validations };
+      if (rule) {
+        newValidations[key] = rule;
+      } else {
+        delete newValidations[key];
+      }
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, validations: newValidations };
+      return { ...prev, sheets: newSheets, isDirty: true };
+    });
+  }, []);
+
+  // Conditional formatting
+  const addConditionalFormat = useCallback((rule: ConditionalFormatRule) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, conditionalFormats: [...sheet.conditionalFormats, rule] };
+      return { ...prev, sheets: newSheets, isDirty: true };
+    });
+  }, []);
+
+  const deleteConditionalFormat = useCallback((ruleId: string) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, conditionalFormats: sheet.conditionalFormats.filter(r => r.id !== ruleId) };
+      return { ...prev, sheets: newSheets, isDirty: true };
+    });
+  }, []);
+
   // Get active sheet
   const activeSheet = workbook?.sheets[workbook.activeSheetIndex] ?? null;
 
@@ -493,6 +662,15 @@ export function useSpreadsheetWorkbook() {
     insertColumn,
     deleteRow,
     deleteColumn,
+    setFrozenRows,
+    setFrozenCols,
+    mergeCells,
+    unmergeCells,
+    addComment,
+    deleteComment,
+    setCellValidation,
+    addConditionalFormat,
+    deleteConditionalFormat,
   };
 }
 
