@@ -13,7 +13,8 @@ import {
   FileSpreadsheet,
   FileType,
   Loader2,
-  CheckCircle
+  CheckCircle,
+  Plus,
 } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,9 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { reportGenerators } from '@/utils/reportGenerator';
 import { CustomReportBuilder } from '@/components/reports/CustomReportBuilder';
+import { SavedReportsList } from '@/components/reports/SavedReportsList';
+import { ScheduledReportsManager } from '@/components/reports/ScheduledReportsManager';
+import { ReportBuilderDialog } from '@/components/reports/ReportBuilderDialog';
 
 interface ReportType {
   id: string;
@@ -138,6 +142,7 @@ export default function Reports() {
   const [selectedPeriod, setSelectedPeriod] = useState('last-30-days');
   const [generatingReport, setGeneratingReport] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showBuilder, setShowBuilder] = useState(false);
 
   const getPeriodDates = () => {
     const now = new Date();
@@ -243,6 +248,10 @@ export default function Reports() {
                   Generate detailed reports for your pipeline, lenders, and financials
                 </p>
               </div>
+              <Button onClick={() => setShowBuilder(true)} className="gap-2 shrink-0">
+                <Plus className="h-4 w-4" />
+                New Report
+              </Button>
             </div>
           </div>
 
@@ -350,12 +359,26 @@ export default function Reports() {
             ))}
           </div>
 
-          {/* Custom Report Builder */}
+          {/* Saved Custom Reports */}
+          <div className="mt-8">
+            <SavedReportsList />
+          </div>
+
+          {/* Scheduled Reports */}
+          <div className="mt-8">
+            <ScheduledReportsManager />
+          </div>
+
+          {/* Legacy Custom Report Builder */}
           <div className="mt-8">
             <CustomReportBuilder deals={deals} />
           </div>
         </main>
       </div>
+
+      {showBuilder && (
+        <ReportBuilderDialog open={showBuilder} onOpenChange={setShowBuilder} />
+      )}
     </>
   );
 }
