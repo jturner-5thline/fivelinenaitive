@@ -1,5 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
+import { useTaskLabels, useTaskLabelAssignments } from '@/hooks/useTaskLabels';
+import { useTaskDependencies } from '@/hooks/useTaskDependencies';
+import { useTaskTimeEntries } from '@/hooks/useTaskTimeEntries';
+import { useTaskAttachments } from '@/hooks/useTaskAttachments';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useMyTasks } from '@/hooks/useTasks';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
@@ -11,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -19,8 +25,12 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
+  Tag, Link2, Timer, Paperclip, Download, FileText, Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
@@ -50,6 +60,18 @@ function fireCelebration() {
   });
 }
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+function formatMinutes(mins: number) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDetailDrawerProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(task.title);
@@ -57,10 +79,21 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
   const [commentText, setCommentText] = useState('');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
+  const [timeMinutes, setTimeMinutes] = useState('');
+  const [timeDescription, setTimeDescription] = useState('');
+  const [showTimeInput, setShowTimeInput] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { comments, addComment } = useTaskComments(task.id);
   const { activity } = useTaskActivity(task.id);
   const { subtasks, createSubtask } = useSubtasks(task.id);
+  const { labels } = useTaskLabels();
+  const { assignedLabelIds, toggleLabel } = useTaskLabelAssignments(task.id);
+  const { blockedBy, blocking, addDependency, removeDependency } = useTaskDependencies(task.id);
+  const { entries: timeEntries, totalMinutes, logTime, deleteEntry } = useTaskTimeEntries(task.id);
+  const { attachments, uploadAttachment, deleteAttachment, getDownloadUrl } = useTaskAttachments(task.id);
+  const members = useTeamMembers();
+  const { tasks: allTasks } = useMyTasks();
 
   const handleSaveTitle = () => {
     if (titleValue.trim() && titleValue !== task.title) {
@@ -87,6 +120,26 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
     setNewSubtaskTitle('');
   };
 
+  const handleLogTime = () => {
+    const mins = parseInt(timeMinutes);
+    if (!mins || mins <= 0) return;
+    logTime.mutate({ duration_minutes: mins, description: timeDescription || undefined });
+    setTimeMinutes('');
+    setTimeDescription('');
+    setShowTimeInput(false);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadAttachment.mutate(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDownload = async (filePath: string, fileName: string) => {
+    const url = await getDownloadUrl(filePath);
+    if (url) window.open(url, '_blank');
+  };
+
   const handleToggleComplete = () => {
     const newStatus = isComplete ? 'not_started' : 'complete';
     onUpdate({ status: newStatus } as any);
@@ -95,10 +148,12 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
 
   const isComplete = task.status === 'complete';
 
-  // Quick date helpers
   const today = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
   const nextMon = format(nextMonday(new Date()), 'yyyy-MM-dd');
+
+  const assignedLabels = labels.filter(l => assignedLabelIds.includes(l.id));
+  const availableDeps = allTasks.filter(t => t.id !== task.id && !blockedBy.some(d => d.depends_on_task_id === t.id));
 
   return (
     <div className="w-[420px] border-l bg-background flex flex-col h-full shrink-0">
@@ -148,19 +203,40 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
 
           {/* Meta fields */}
           <div className="space-y-2.5">
-            {/* Assignee */}
+            {/* Assignee - now with team picker */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
                 <User className="h-3 w-3" /> Assignee
               </div>
-              <div className="flex items-center gap-1.5">
-                <Avatar className="h-5 w-5">
-                  <AvatarFallback className="text-[9px] bg-primary text-primary-foreground">
-                    {task.assignee_profile?.display_name?.slice(0, 2).toUpperCase() || '??'}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs">{task.assignee_profile?.display_name || 'Unassigned'}</span>
-              </div>
+              <Select
+                value={task.assigned_to}
+                onValueChange={v => onUpdate({ assigned_to: v } as any)}
+              >
+                <SelectTrigger className="h-7 text-xs border-none bg-transparent px-1 w-auto min-w-[120px]">
+                  <div className="flex items-center gap-1.5">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={task.assignee_profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-[9px] bg-primary text-primary-foreground">
+                        {task.assignee_profile?.display_name?.slice(0, 2).toUpperCase() || '??'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs">{task.assignee_profile?.display_name || 'Unassigned'}</span>
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {members.map(m => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Avatar className="h-4 w-4">
+                          <AvatarImage src={m.avatar_url || undefined} />
+                          <AvatarFallback className="text-[8px]">{m.display_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        {m.display_name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Due date with quick shortcuts */}
@@ -182,31 +258,19 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[160px] p-1" align="start">
-                    <button
-                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
-                      onClick={() => onUpdate({ due_date: today } as any)}
-                    >
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted" onClick={() => onUpdate({ due_date: today } as any)}>
                       <Sun className="h-3 w-3 text-orange-500" /> Today
                     </button>
-                    <button
-                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
-                      onClick={() => onUpdate({ due_date: tomorrow } as any)}
-                    >
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted" onClick={() => onUpdate({ due_date: tomorrow } as any)}>
                       <Sunrise className="h-3 w-3 text-amber-500" /> Tomorrow
                     </button>
-                    <button
-                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
-                      onClick={() => onUpdate({ due_date: nextMon } as any)}
-                    >
+                    <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted" onClick={() => onUpdate({ due_date: nextMon } as any)}>
                       <ArrowRight className="h-3 w-3 text-primary" /> Next Monday
                     </button>
                     {task.due_date && (
                       <>
                         <div className="border-t my-1" />
-                        <button
-                          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted text-destructive"
-                          onClick={() => onUpdate({ due_date: null } as any)}
-                        >
+                        <button className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted text-destructive" onClick={() => onUpdate({ due_date: null } as any)}>
                           Remove
                         </button>
                       </>
@@ -222,9 +286,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                 <Flag className="h-3 w-3" /> Priority
               </div>
               <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
-                <SelectTrigger className="h-7 w-[100px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-7 w-[100px] text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low" className="text-xs">Low</SelectItem>
                   <SelectItem value="medium" className="text-xs">Medium</SelectItem>
@@ -243,9 +305,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                 onUpdate({ status: v } as any);
                 if (v === 'complete') fireCelebration();
               }}>
-                <SelectTrigger className="h-7 w-[120px] text-xs">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
                   <SelectItem value="in_progress" className="text-xs">In Progress</SelectItem>
@@ -255,11 +315,133 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
               </Select>
             </div>
 
+            {/* Labels */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+                <Tag className="h-3 w-3" /> Labels
+              </div>
+              <div className="flex items-center gap-1 flex-wrap">
+                {assignedLabels.map(l => (
+                  <Badge
+                    key={l.id}
+                    variant="outline"
+                    className="text-[10px] h-5 px-1.5 gap-1 cursor-pointer hover:line-through"
+                    style={{ borderColor: l.color, color: l.color }}
+                    onClick={() => toggleLabel.mutate(l.id)}
+                  >
+                    {l.name}
+                  </Badge>
+                ))}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0">
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[180px] p-1" align="start">
+                    {labels.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground p-2">No labels yet</p>
+                    )}
+                    {labels.map(l => (
+                      <button
+                        key={l.id}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                        onClick={() => toggleLabel.mutate(l.id)}
+                      >
+                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: l.color }} />
+                        {l.name}
+                        {assignedLabelIds.includes(l.id) && <span className="ml-auto text-primary">✓</span>}
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* Time tracked */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+                <Timer className="h-3 w-3" /> Time
+              </div>
+              <span className="text-xs">{totalMinutes > 0 ? formatMinutes(totalMinutes) : 'No time logged'}</span>
+              <Button variant="ghost" size="sm" className="h-5 text-[10px] ml-auto" onClick={() => setShowTimeInput(!showTimeInput)}>
+                + Log
+              </Button>
+            </div>
+
             {/* Deal link */}
-            {task.deal_id && (
-              <DealLinkField dealId={task.deal_id} />
+            {task.deal_id && <DealLinkField dealId={task.deal_id} />}
+
+            {/* Dependencies */}
+            {(blockedBy.length > 0 || blocking.length > 0) && (
+              <div className="flex items-start gap-3">
+                <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0 mt-0.5">
+                  <Link2 className="h-3 w-3" /> Depends
+                </div>
+                <div className="space-y-1 text-xs">
+                  {blockedBy.map(d => {
+                    const depTask = allTasks.find(t => t.id === d.depends_on_task_id);
+                    return (
+                      <div key={d.id} className="flex items-center gap-1 text-destructive/80">
+                        <span>Blocked by: {depTask?.title || 'Unknown'}</span>
+                        <button className="text-muted-foreground hover:text-destructive" onClick={() => removeDependency.mutate(d.id)}>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {blocking.map(d => {
+                    const depTask = allTasks.find(t => t.id === d.task_id);
+                    return (
+                      <div key={d.id} className="flex items-center gap-1 text-amber-600">
+                        <span>Blocking: {depTask?.title || 'Unknown'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
+
+          {/* Time logging form */}
+          {showTimeInput && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Log Time</label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={timeMinutes}
+                    onChange={e => setTimeMinutes(e.target.value)}
+                    placeholder="Minutes"
+                    className="h-7 text-xs w-20"
+                    min={1}
+                  />
+                  <Input
+                    value={timeDescription}
+                    onChange={e => setTimeDescription(e.target.value)}
+                    placeholder="What did you work on?"
+                    className="h-7 text-xs flex-1"
+                    onKeyDown={e => { if (e.key === 'Enter') handleLogTime(); }}
+                  />
+                  <Button size="sm" className="h-7 text-xs" onClick={handleLogTime}>Log</Button>
+                </div>
+                {timeEntries.length > 0 && (
+                  <div className="space-y-1 mt-1">
+                    {timeEntries.slice(0, 5).map(e => (
+                      <div key={e.id} className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>{formatMinutes(e.duration_minutes)} — {e.description || 'No description'}</span>
+                        <button onClick={() => deleteEntry.mutate(e.id)} className="hover:text-destructive">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           <Separator />
 
@@ -288,17 +470,10 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                   </span>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-xs gap-1"
-                onClick={() => setShowSubtaskInput(true)}
-              >
+              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => setShowSubtaskInput(true)}>
                 <Plus className="h-3 w-3" /> Add
               </Button>
             </div>
-
-            {/* Progress bar for subtasks */}
             {subtasks.length > 0 && (
               <div className="h-1 bg-muted rounded-full mb-2 overflow-hidden">
                 <div
@@ -307,13 +482,9 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                 />
               </div>
             )}
-
             {subtasks.map(sub => (
               <div key={sub.id} className="flex items-center gap-2 py-1 group">
-                <Checkbox
-                  checked={sub.status === 'complete'}
-                  className="h-3.5 w-3.5 rounded-full"
-                />
+                <Checkbox checked={sub.status === 'complete'} className="h-3.5 w-3.5 rounded-full" />
                 <span className={cn('text-xs flex-1', sub.status === 'complete' && 'line-through text-muted-foreground')}>
                   {sub.title}
                 </span>
@@ -341,6 +512,73 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
             )}
             {subtasks.length === 0 && !showSubtaskInput && (
               <p className="text-[11px] text-muted-foreground/50">No subtasks</p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Attachments */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Paperclip className="h-3 w-3" /> Attachments ({attachments.length})
+              </span>
+              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => fileInputRef.current?.click()}>
+                <Plus className="h-3 w-3" /> Upload
+              </Button>
+              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
+            </div>
+            {attachments.map(a => (
+              <div key={a.id} className="flex items-center gap-2 py-1 group text-xs">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate flex-1">{a.file_name}</span>
+                <span className="text-[10px] text-muted-foreground">{formatFileSize(a.file_size)}</span>
+                <button onClick={() => handleDownload(a.file_path, a.file_name)} className="opacity-0 group-hover:opacity-100">
+                  <Download className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                </button>
+                <button onClick={() => deleteAttachment.mutate(a)} className="opacity-0 group-hover:opacity-100">
+                  <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                </button>
+              </div>
+            ))}
+            {attachments.length === 0 && (
+              <p className="text-[11px] text-muted-foreground/50">No files attached</p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Dependencies - add new */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Link2 className="h-3 w-3" /> Dependencies
+              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs gap-1">
+                    <Plus className="h-3 w-3" /> Add
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[240px] p-1 max-h-[200px] overflow-auto" align="end">
+                  <p className="text-[10px] text-muted-foreground px-2 py-1">Blocked by...</p>
+                  {availableDeps.map(t => (
+                    <button
+                      key={t.id}
+                      className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-muted truncate"
+                      onClick={() => addDependency.mutate(t.id)}
+                    >
+                      {t.title}
+                    </button>
+                  ))}
+                  {availableDeps.length === 0 && (
+                    <p className="text-[11px] text-muted-foreground p-2">No tasks available</p>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
+            {blockedBy.length === 0 && blocking.length === 0 && (
+              <p className="text-[11px] text-muted-foreground/50">No dependencies</p>
             )}
           </div>
 
@@ -381,7 +619,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                 <Textarea
                   value={commentText}
                   onChange={e => setCommentText(e.target.value)}
-                  placeholder="Write a comment..."
+                  placeholder="Write a comment... (use @name to mention)"
                   className="min-h-[60px] text-xs flex-1"
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); }
@@ -390,9 +628,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
               </div>
               {commentText.trim() && (
                 <div className="flex justify-end">
-                  <Button size="sm" className="h-7 text-xs" onClick={handleAddComment}>
-                    Post
-                  </Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={handleAddComment}>Post</Button>
                 </div>
               )}
             </TabsContent>

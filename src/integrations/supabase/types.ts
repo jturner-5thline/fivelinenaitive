@@ -5831,6 +5831,47 @@ export type Database = {
           },
         ]
       }
+      task_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          task_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          task_id: string
+          uploaded_by: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          task_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_comments: {
         Row: {
           author_id: string
@@ -5872,6 +5913,45 @@ export type Database = {
           },
         ]
       }
+      task_dependencies: {
+        Row: {
+          created_at: string
+          dependency_type: string
+          depends_on_task_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          dependency_type?: string
+          depends_on_task_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          dependency_type?: string
+          depends_on_task_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_dependencies_depends_on_task_id_fkey"
+            columns: ["depends_on_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_followers: {
         Row: {
           created_at: string
@@ -5897,6 +5977,77 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_label_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          label_id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label_id: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_label_assignments_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "task_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_label_assignments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_labels: {
+        Row: {
+          color: string
+          company_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          company_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_labels_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -5936,6 +6087,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      task_saved_views: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+          view_config: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+          view_config?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+          view_config?: Json
+        }
+        Relationships: []
       }
       task_tag_assignments: {
         Row: {
@@ -6005,6 +6189,85 @@ export type Database = {
           },
         ]
       }
+      task_templates: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          template_tasks: Json
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          template_tasks?: Json
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          template_tasks?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_time_entries: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          logged_date: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes: number
+          id?: string
+          logged_date?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          logged_date?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_time_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           archived_at: string | null
@@ -6018,10 +6281,13 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_recurring: boolean
           parent_task_id: string | null
           position: number
           priority: string
           project_id: string | null
+          recurrence_parent_id: string | null
+          recurrence_rule: string | null
           section_id: string | null
           start_date: string | null
           status: string
@@ -6041,10 +6307,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_recurring?: boolean
           parent_task_id?: string | null
           position?: number
           priority?: string
           project_id?: string | null
+          recurrence_parent_id?: string | null
+          recurrence_rule?: string | null
           section_id?: string | null
           start_date?: string | null
           status?: string
@@ -6064,10 +6333,13 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_recurring?: boolean
           parent_task_id?: string | null
           position?: number
           priority?: string
           project_id?: string | null
+          recurrence_parent_id?: string | null
+          recurrence_rule?: string | null
           section_id?: string | null
           start_date?: string | null
           status?: string
@@ -6102,6 +6374,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_recurrence_parent_id_fkey"
+            columns: ["recurrence_parent_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
           {
