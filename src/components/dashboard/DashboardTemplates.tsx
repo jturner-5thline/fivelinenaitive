@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { Briefcase, ListTodo, Bell, Calendar, Mail, Sparkles, Activity, Newspaper, Zap, Bot, LayoutTemplate, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Briefcase, ListTodo, Bell, Calendar, Mail, Activity, Newspaper, Zap, Bot, LayoutTemplate, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import {
   Dialog,
   DialogContent,

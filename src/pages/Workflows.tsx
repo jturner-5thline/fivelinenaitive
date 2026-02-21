@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity, Sparkles, MessageSquare, Lightbulb, Send, BarChart3, RotateCcw, Timer, Bookmark } from 'lucide-react';
+import { ArrowLeft, Workflow, Plus, MoreVertical, Trash2, Edit, Zap, Clock, Bell, Mail, History, CheckCircle2, XCircle, AlertCircle, Loader2, Play, FileText, Copy, TrendingUp, Activity, MessageSquare, Lightbulb, Send, BarChart3, RotateCcw, Timer, Bookmark } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { formatDistanceToNow, format, subDays, startOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';

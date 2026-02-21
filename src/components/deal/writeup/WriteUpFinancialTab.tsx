@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, CalendarIcon, Sparkles, Loader2, Check, X } from 'lucide-react';
+import { Plus, Trash2, CalendarIcon, Loader2, Check, X } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';

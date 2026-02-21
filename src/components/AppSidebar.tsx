@@ -1,4 +1,5 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Sparkles, Workflow, Bot, DollarSign, Menu } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu } from "lucide-react";
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useTheme } from "next-themes";
 import naitiveIconLight from "@/assets/naitive-icon-light.png";
 import naitiveIconDark from "@/assets/naitive-icon-dark.png";

@@ -1,4 +1,5 @@
-import { Mail, Tag, ArrowRight, Sparkles } from 'lucide-react';
+import { Mail, Tag, ArrowRight } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

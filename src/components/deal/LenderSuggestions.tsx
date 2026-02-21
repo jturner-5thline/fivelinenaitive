@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
-import { Sparkles, ChevronDown, ChevronUp, Plus, Search, Building2, Mail, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Search, Building2, Mail, MapPin, DollarSign, AlertTriangle, CheckCircle2, Info, Filter, X, Loader2 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';

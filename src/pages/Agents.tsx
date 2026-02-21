@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Sparkles, Workflow } from 'lucide-react';
+import { Bot, Plus, Search, Users, Globe, Lock, Zap, History, Workflow } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent, useDuplicateAgent, type Agent, type CreateAgentData } from '@/hooks/useAgents';
 import { useAuth } from '@/contexts/AuthContext';
 import { AgentCard } from '@/components/agents/AgentCard';

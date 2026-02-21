@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sparkles, ClipboardList, ArrowLeft, AlertCircle } from 'lucide-react';
+import { ClipboardList, ArrowLeft, AlertCircle } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {

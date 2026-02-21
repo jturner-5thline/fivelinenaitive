@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Loader2, Sparkles, Bot, User, History, X } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

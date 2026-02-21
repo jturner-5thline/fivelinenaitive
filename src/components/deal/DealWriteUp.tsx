@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
-import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, Sparkles, AlertTriangle } from 'lucide-react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, AlertTriangle } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

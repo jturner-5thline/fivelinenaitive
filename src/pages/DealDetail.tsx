@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Sparkles, Pencil, ArrowDownUp, Filter } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { supabase } from '@/integrations/supabase/client';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';

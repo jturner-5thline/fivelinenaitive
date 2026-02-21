@@ -1,5 +1,6 @@
 import React from 'react';
-import { Briefcase, ListTodo, Bell, Calendar, Mail, Sparkles, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare } from 'lucide-react';
+import { Briefcase, ListTodo, Bell, Calendar, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { lazyRetry } from '@/lib/lazyRetry';
 
 export interface WidgetDefinition {

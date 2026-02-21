@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bot, Sparkles, X, ChevronRight, RefreshCw, Zap, Clock, Target, Shield, TrendingUp, Users, Info } from 'lucide-react';
+import { Bot, X, ChevronRight, RefreshCw, Zap, Clock, Target, Shield, TrendingUp, Users, Info } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

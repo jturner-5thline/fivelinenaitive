@@ -23,7 +23,8 @@ import '@xyflow/react/dist/style.css';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, Loader2, X, Undo2, Redo2, LayoutGrid, Sparkles, FileText, Play, Copy, Keyboard, Download, Upload } from 'lucide-react';
+import { Save, Loader2, X, Undo2, Redo2, LayoutGrid, FileText, Play, Copy, Keyboard, Download, Upload } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from 'sonner';
 
 import { AgentNode } from './AgentNode';

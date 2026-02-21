@@ -6,7 +6,7 @@ import {
   TermSheetBenchmarkPanel, 
   RateTrackingPanel 
 } from '@/components/research';
-import { Sparkles } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 
 export default function Research() {
   return (

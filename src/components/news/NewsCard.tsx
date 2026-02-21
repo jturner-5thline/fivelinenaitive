@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
-import { ExternalLink, Building2, Users, Clock, Bookmark, BookmarkCheck, Eye, EyeOff, Sparkles, Pin } from 'lucide-react';
+import { ExternalLink, Building2, Users, Clock, Bookmark, BookmarkCheck, Eye, EyeOff, Pin } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

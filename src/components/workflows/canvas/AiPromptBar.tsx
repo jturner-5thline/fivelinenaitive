@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, Send } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';

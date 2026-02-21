@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Sparkles, X, ChevronRight, AlertTriangle, Lightbulb, TrendingUp, Clock, RefreshCw, Zap } from 'lucide-react';
+import { X, ChevronRight, AlertTriangle, Lightbulb, TrendingUp, Clock, RefreshCw, Zap } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

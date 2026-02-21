@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, Sparkles, TrendingUp, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
+import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, TrendingUp, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

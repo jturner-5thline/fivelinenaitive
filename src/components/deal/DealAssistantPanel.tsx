@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, Fragment } from 'react';
-import { Send, Trash2, Sparkles, User, Bot, Loader2 } from 'lucide-react';
+import { Send, Trash2, User, Bot, Loader2 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';

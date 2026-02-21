@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Search, Briefcase, Users, FileText, Settings, Lightbulb, BarChart3,
-  Sparkles, Loader2, TrendingUp, Target, Scale, Building2, Bell, Calendar,
+  Loader2, TrendingUp, Target, Scale, Building2, Bell, Calendar,
   HelpCircle, BookOpen, Shield, ExternalLink, ArrowRight
 } from "lucide-react";
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";

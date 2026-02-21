@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
-import { Bell, AlertCircle, Calendar, FileText, Users, ChevronLeft, ChevronRight, Clock, Expand, Activity, Zap, Sparkles, Bot, X } from 'lucide-react';
+import { Bell, AlertCircle, Calendar, FileText, Users, ChevronLeft, ChevronRight, Clock, Expand, Activity, Zap, Bot, X } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lightbulb, Zap, TrendingUp, Clock, Sparkles, ArrowRight, Maximize2, Edit3, LayoutList, GalleryHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Lightbulb, Zap, TrendingUp, Clock, ArrowRight, Maximize2, Edit3, LayoutList, GalleryHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
