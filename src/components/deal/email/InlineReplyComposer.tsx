@@ -4,8 +4,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   Send,
   Paperclip,
@@ -17,10 +27,14 @@ import {
   Maximize2,
   Minimize2,
   GripHorizontal,
+  Check,
+  AlertCircle,
+  Cloud,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
+import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 
 export interface ReplyDraft {
   to: string;
@@ -39,9 +53,28 @@ interface InlineReplyComposerProps {
   onDiscard: () => void;
   onPopOut: (draft: ReplyDraft) => void;
   initialDraft?: ReplyDraft | null;
+  onDraftChange?: (draft: ReplyDraft) => void;
+  onFieldBlur?: () => void;
+  saveStatus?: DraftSaveStatus;
 }
 
-export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, initialDraft }: InlineReplyComposerProps) {
+function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
+  if (status === 'idle') return null;
+  return (
+    <span className={cn(
+      'flex items-center gap-1 text-[10px] transition-opacity duration-300',
+      status === 'saving' && 'text-muted-foreground',
+      status === 'saved' && 'text-success',
+      status === 'error' && 'text-destructive',
+    )}>
+      {status === 'saving' && <><Cloud className="h-2.5 w-2.5 animate-pulse" />Saving…</>}
+      {status === 'saved' && <><Check className="h-2.5 w-2.5" />Draft saved</>}
+      {status === 'error' && <><AlertCircle className="h-2.5 w-2.5" />Save failed</>}
+    </span>
+  );
+}
+
+export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, initialDraft, onDraftChange, onFieldBlur, saveStatus = 'idle' }: InlineReplyComposerProps) {
   const [to, setTo] = useState(initialDraft?.to ?? replyTo.to_email);
   const [cc, setCc] = useState(initialDraft?.cc ?? '');
   const [bcc, setBcc] = useState(initialDraft?.bcc ?? '');
@@ -63,6 +96,13 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
     threadId: replyTo.threadId,
     toName: replyTo.to_name,
   }), [to, cc, bcc, subject, body, attachments, replyTo]);
+
+  // Notify parent of draft changes for autosave
+  useEffect(() => {
+    onDraftChange?.(getCurrentDraft());
+  }, [to, cc, bcc, subject, body, attachments]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasContent = body.trim().length > 0 || attachments.length > 0;
 
   const handleSend = async () => {
     if (!to.trim()) { toast.error('Please add a recipient'); return; }
@@ -107,12 +147,50 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Cmd/Ctrl+Enter to send
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSend();
     }
   };
+
+  const handleBlur = () => {
+    onFieldBlur?.();
+  };
+
+  const discardButton = (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {hasContent ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete your in-progress email. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                <AlertDialogAction onClick={onDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Discard
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={onDiscard}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">Discard draft</TooltipContent>
+    </Tooltip>
+  );
 
   return (
     <div className={cn(
@@ -125,6 +203,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
         <span className="text-xs font-medium text-foreground flex-1">
           Reply to {replyTo.to_name}
         </span>
+        <DraftStatusIndicator status={saveStatus} />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setExpanded(!expanded)}>
@@ -143,11 +222,29 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={onDiscard}>
-              <X className="h-3 w-3" />
+            <Button variant="ghost" size="icon" className="h-6 w-6 hover:text-destructive" onClick={() => hasContent ? undefined : onDiscard()}>
+              {hasContent ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <span className="inline-flex"><X className="h-3 w-3" /></span>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                      <AlertDialogDescription>Your in-progress email will be permanently deleted.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep editing</AlertDialogCancel>
+                      <AlertDialogAction onClick={onDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Discard</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <X className="h-3 w-3" onClick={onDiscard} />
+              )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">Discard</TooltipContent>
+          <TooltipContent side="top" className="text-xs">Close</TooltipContent>
         </Tooltip>
       </div>
 
@@ -158,6 +255,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
           <Input
             value={to}
             onChange={e => setTo(e.target.value)}
+            onBlur={handleBlur}
             placeholder="recipient@example.com"
             className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent"
           />
@@ -169,11 +267,11 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
           <>
             <div className="flex items-center gap-2">
               <Label className="text-[11px] text-muted-foreground w-8 shrink-0">Cc</Label>
-              <Input value={cc} onChange={e => setCc(e.target.value)} placeholder="cc@example.com" className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
+              <Input value={cc} onChange={e => setCc(e.target.value)} onBlur={handleBlur} placeholder="cc@example.com" className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-[11px] text-muted-foreground w-8 shrink-0">Bcc</Label>
-              <Input value={bcc} onChange={e => setBcc(e.target.value)} placeholder="bcc@example.com" className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
+              <Input value={bcc} onChange={e => setBcc(e.target.value)} onBlur={handleBlur} placeholder="bcc@example.com" className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent" />
             </div>
           </>
         )}
@@ -186,6 +284,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
           value={body}
           onChange={e => setBody(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           placeholder="Write your reply..."
           className={cn(
             'border-0 resize-none focus-visible:ring-0 p-0 text-sm bg-transparent w-full',
@@ -225,9 +324,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
         </Button>
         <span className="text-[10px] text-muted-foreground ml-1">⌘↵ to send</span>
         <div className="flex-1" />
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={onDiscard}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        {discardButton}
       </div>
     </div>
   );

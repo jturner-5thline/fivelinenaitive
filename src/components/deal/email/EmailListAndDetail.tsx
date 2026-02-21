@@ -22,11 +22,13 @@ import {
   MinusCircle,
   MessageSquare,
   Archive,
+  FileText,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
 import { InlineReplyComposer, type ReplyDraft } from './InlineReplyComposer';
 import { PopOutComposer } from './PopOutComposer';
+import { useEmailDraft, useUnsavedDraftGuard } from '@/hooks/useEmailDraft';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -308,6 +310,35 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [popOutDraft, setPopOutDraft] = useState<ReplyDraft | null>(null);
   const [inlineDraft, setInlineDraft] = useState<ReplyDraft | null>(null);
 
+  // Draft persistence
+  const { loadDraft, updateDraft, flushSave, discardDraft, clearDraftOnSend, hasSavedDraft, saveStatus } = useEmailDraft(thread.threadId);
+  const hasActiveDraft = !!(replyTo || popOutDraft);
+  useUnsavedDraftGuard(hasActiveDraft);
+
+  // On thread load, check for saved draft and show resume banner
+  const [showResumeBanner, setShowResumeBanner] = useState(false);
+  useEffect(() => {
+    if (!replyTo && !popOutDraft && hasSavedDraft()) {
+      setShowResumeBanner(true);
+    } else {
+      setShowResumeBanner(false);
+    }
+  }, [thread.threadId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleResumeDraft = useCallback(() => {
+    const saved = loadDraft();
+    if (saved) {
+      setInlineDraft(saved);
+      setReplyTo({
+        subject: thread.subject,
+        to_email: saved.to,
+        to_name: saved.toName,
+        threadId: thread.threadId,
+      });
+      setShowResumeBanner(false);
+    }
+  }, [loadDraft, thread]);
+
   const getReplyTarget = useCallback(() => {
     const latest = thread.latestEmail;
     return latest.from_name === 'You'
@@ -316,23 +347,39 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, [thread]);
 
   const handleReply = useCallback(() => {
-    if (popOutDraft) return; // Don't open inline if pop-out is active
+    if (popOutDraft) return;
+    // If there's a saved draft, resume it
+    const saved = loadDraft();
+    if (saved) {
+      setInlineDraft(saved);
+    }
     setReplyTo(getReplyTarget());
-  }, [getReplyTarget, popOutDraft]);
+    setShowResumeBanner(false);
+  }, [getReplyTarget, popOutDraft, loadDraft]);
+
+  const handleDraftChange = useCallback((draft: ReplyDraft) => {
+    updateDraft(draft);
+  }, [updateDraft]);
+
+  const handleFieldBlur = useCallback(() => {
+    flushSave();
+  }, [flushSave]);
 
   const handleSendFromComposer = useCallback((emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
     onSendReply(emailData, thread.threadId);
+    clearDraftOnSend();
     setReplyTo(null);
     setPopOutDraft(null);
     setInlineDraft(null);
-  }, [onSendReply, thread.threadId]);
+  }, [onSendReply, thread.threadId, clearDraftOnSend]);
 
   const handleDiscard = useCallback(() => {
+    discardDraft();
     setReplyTo(null);
     setPopOutDraft(null);
     setInlineDraft(null);
     toast.info('Draft discarded');
-  }, []);
+  }, [discardDraft]);
 
   const handlePopOut = useCallback((draft: ReplyDraft) => {
     setReplyTo(null);
@@ -454,8 +501,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 />
               ))}
 
+              {/* Resume draft banner */}
+              {showResumeBanner && !replyTo && !popOutDraft && (
+                <div className="mx-4 mb-3">
+                  <button
+                    onClick={handleResumeDraft}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-lg border border-primary/30 bg-primary/5 text-foreground hover:bg-primary/10 transition-all"
+                  >
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Resume draft</span>
+                    <span className="text-xs text-muted-foreground ml-1">— You have an unsaved reply for this thread</span>
+                    <kbd className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded">R</kbd>
+                  </button>
+                </div>
+              )}
+
               {/* Reply prompt at bottom of thread when no composer is open */}
-              {!replyTo && !popOutDraft && (
+              {!replyTo && !popOutDraft && !showResumeBanner && (
                 <div className="mx-4 mb-3">
                   <button
                     onClick={handleReply}
@@ -478,6 +540,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               onDiscard={handleDiscard}
               onPopOut={handlePopOut}
               initialDraft={inlineDraft}
+              onDraftChange={handleDraftChange}
+              onFieldBlur={handleFieldBlur}
+              saveStatus={saveStatus}
             />
           )}
         </div>
@@ -490,6 +555,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           onSend={handleSendFromComposer}
           onDiscard={handleDiscard}
           onPopIn={handlePopIn}
+          onDraftChange={handleDraftChange}
+          onFieldBlur={handleFieldBlur}
+          saveStatus={saveStatus}
         />
       )}
     </>
