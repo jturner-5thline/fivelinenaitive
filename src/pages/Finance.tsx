@@ -11,10 +11,14 @@ import { DriverInputsPanel, useDriverInputs, DriverInputs } from "@/components/f
 import { FinancialKPIDashboard } from "@/components/finance/FinancialKPIDashboard";
 import { FinanceLayoutToggle, DriverLayout } from "@/components/finance/FinanceLayoutToggle";
 import { SpreadsheetWorkspace } from "@/components/finance/spreadsheet/SpreadsheetWorkspace";
+import { ScenarioManager } from "@/components/finance/ScenarioManager";
+import { RevenueForecast } from "@/components/finance/RevenueForecast";
+import { BudgetVsActuals } from "@/components/finance/BudgetVsActuals";
+import { SensitivityAnalysis } from "@/components/finance/SensitivityAnalysis";
 import { useFinanceDataRange, FinancePeriodType } from "@/hooks/useFinanceDataRange";
 import { useCompany } from "@/hooks/useCompany";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, TrendingUp, Wallet, ArrowDownUp, History, BarChart3, FileSpreadsheet } from "lucide-react";
+import { Building2, TrendingUp, Wallet, ArrowDownUp, History, BarChart3, FileSpreadsheet, GitBranch, Target, Grid3X3 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -114,34 +118,46 @@ export default function Finance() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full max-w-[900px] grid-cols-6">
+          <TabsList className="grid w-full max-w-[1100px] grid-cols-9">
             <TabsTrigger value="workbook" className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4" />
-              <span className="hidden sm:inline">Workbook</span>
+              <span className="hidden lg:inline">Workbook</span>
             </TabsTrigger>
             <TabsTrigger value="pnl" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">P&L</span>
+              <span className="hidden lg:inline">P&L</span>
             </TabsTrigger>
             <TabsTrigger value="balance" className="flex items-center gap-2">
               <Wallet className="h-4 w-4" />
-              <span className="hidden sm:inline">Balance Sheet</span>
+              <span className="hidden lg:inline">Balance</span>
             </TabsTrigger>
             <TabsTrigger value="cashflow" className="flex items-center gap-2">
               <ArrowDownUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Cash Flow</span>
+              <span className="hidden lg:inline">Cash Flow</span>
             </TabsTrigger>
             <TabsTrigger value="kpis" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">KPIs</span>
+              <span className="hidden lg:inline">KPIs</span>
+            </TabsTrigger>
+            <TabsTrigger value="forecast" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden lg:inline">Forecast</span>
+            </TabsTrigger>
+            <TabsTrigger value="scenarios" className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              <span className="hidden lg:inline">Scenarios</span>
+            </TabsTrigger>
+            <TabsTrigger value="variance" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              <span className="hidden lg:inline">Variance</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-2">
               <History className="h-4 w-4" />
-              <span className="hidden sm:inline">Log</span>
+              <span className="hidden lg:inline">Log</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* Workbook Tab - Full spreadsheet experience */}
+          {/* Workbook Tab */}
           <TabsContent value="workbook" className="mt-0">
             <SpreadsheetWorkspace />
           </TabsContent>
@@ -230,6 +246,21 @@ export default function Finance() {
                   driverInputs={driverInputs}
                   showFormulas={showFormulas}
                 />
+              </TabsContent>
+
+              <TabsContent value="forecast">
+                <RevenueForecast />
+              </TabsContent>
+
+              <TabsContent value="scenarios">
+                <div className="space-y-4">
+                  <ScenarioManager />
+                  <SensitivityAnalysis />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="variance">
+                <BudgetVsActuals />
               </TabsContent>
 
               <TabsContent value="history">
