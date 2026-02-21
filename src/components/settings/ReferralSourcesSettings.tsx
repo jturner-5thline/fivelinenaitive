@@ -101,14 +101,10 @@ export function ReferralSourcesSettings({ isAdmin = true }: ReferralSourcesSetti
     }
   };
 
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('settings-referral-sources-open');
-    return saved !== null ? saved === 'true' : false;
-  });
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    localStorage.setItem('settings-referral-sources-open', String(open));
   };
 
   return (

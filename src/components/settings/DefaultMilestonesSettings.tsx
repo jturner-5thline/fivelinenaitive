@@ -156,10 +156,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
     reorderDefaultMilestones,
   } = useDefaultMilestones();
 
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('settings-default-milestones-open');
-    return saved !== null ? saved === 'true' : false;
-  });
+  const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -174,7 +171,6 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    localStorage.setItem('settings-default-milestones-open', String(open));
   };
 
   const openAddDialog = () => {

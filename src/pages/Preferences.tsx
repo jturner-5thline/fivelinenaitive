@@ -146,7 +146,7 @@ export default function Preferences() {
                     <ProfileSettings />
                   )}
                   {isVisible('appearance') && (
-                    <Collapsible defaultOpen>
+                    <Collapsible>
                       <Card>
                         <CollapsibleTrigger className="w-full group">
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -206,7 +206,7 @@ export default function Preferences() {
                 {/* Alerts & Thresholds Tab */}
                 <TabsContent value="alerts" className="space-y-4 mt-4">
                   {isVisible('lenderAlerts') && (
-                    <Collapsible defaultOpen>
+                    <Collapsible>
                       <Card>
                         <CollapsibleTrigger className="w-full group">
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -260,7 +260,7 @@ export default function Preferences() {
                   )}
 
                   {isVisible('staleDeals') && (
-                    <Collapsible defaultOpen>
+                    <Collapsible>
                       <Card>
                         <CollapsibleTrigger className="w-full group">
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -306,7 +306,7 @@ export default function Preferences() {
                   )}
 
                   {isVisible('lenderDefaults') && (
-                    <Collapsible defaultOpen>
+                    <Collapsible>
                       <Card>
                         <CollapsibleTrigger className="w-full group">
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -356,7 +356,7 @@ export default function Preferences() {
                 {/* Formatting Tab */}
                 <TabsContent value="formatting" className="space-y-4 mt-4">
                   {isVisible('currency') && (
-                    <Collapsible defaultOpen>
+                    <Collapsible>
                       <Card>
                         <CollapsibleTrigger className="w-full group">
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
@@ -412,7 +412,7 @@ export default function Preferences() {
                   )}
 
                   {isVisible('regional') && (
-                    <Collapsible defaultOpen>
+                    <Collapsible>
                       <Card>
                         <CollapsibleTrigger className="w-full group">
                           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">

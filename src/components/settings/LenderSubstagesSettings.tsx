@@ -153,15 +153,11 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
 
   const hasUnsavedChanges = JSON.stringify(localSubstages) !== JSON.stringify(savedSubstages);
 
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('settings-lender-milestones-open');
-    return saved !== null ? saved === 'true' : false;
-  });
+  const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    localStorage.setItem('settings-lender-milestones-open', String(open));
   };
   const [editingSubstage, setEditingSubstage] = useState<SubstageOption | null>(null);
   const [label, setLabel] = useState('');
