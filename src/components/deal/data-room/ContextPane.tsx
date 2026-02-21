@@ -293,24 +293,40 @@ function RoomSummaryView({
   setSelectedItemId: (id: string | null) => void;
   onDownloadSection: (category: string) => void;
 }) {
+  // Calculate readiness
+  const requiredPct = progressData.requiredTotal > 0
+    ? Math.round((progressData.requiredCompleted / progressData.requiredTotal) * 100)
+    : 100;
+  const readinessLabel = requiredPct === 100 ? 'Ready' : requiredPct >= 75 ? 'Almost Ready' : requiredPct >= 50 ? 'In Progress' : 'Needs Attention';
+  const readinessColor = requiredPct === 100 ? 'text-green-600' : requiredPct >= 75 ? 'text-blue-600' : requiredPct >= 50 ? 'text-amber-600' : 'text-destructive';
+
   return (
     <div className="space-y-4">
+      {/* Readiness Score */}
+      <div className="p-3 rounded-lg border bg-muted/20 text-center">
+        <p className={cn("text-3xl font-bold", readinessColor)}>{requiredPct}%</p>
+        <p className={cn("text-xs font-semibold", readinessColor)}>{readinessLabel}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          {progressData.requiredCompleted}/{progressData.requiredTotal} required items complete
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
-        <div className="p-3 rounded-lg bg-muted/30 text-center">
-          <p className="text-2xl font-bold">{attachments.length}</p>
+        <div className="p-2.5 rounded-lg bg-muted/30 text-center">
+          <p className="text-xl font-bold">{attachments.length}</p>
           <p className="text-[10px] text-muted-foreground">Total Files</p>
         </div>
-        <div className="p-3 rounded-lg bg-muted/30 text-center">
-          <p className="text-2xl font-bold">{unmappedFiles.length}</p>
+        <div className="p-2.5 rounded-lg bg-muted/30 text-center">
+          <p className={cn("text-xl font-bold", unmappedFiles.length > 0 ? "text-amber-600" : "text-green-600")}>{unmappedFiles.length}</p>
           <p className="text-[10px] text-muted-foreground">Unmapped</p>
         </div>
-        <div className="p-3 rounded-lg bg-muted/30 text-center">
-          <p className="text-2xl font-bold text-green-600">{progressData.completedItems}</p>
-          <p className="text-[10px] text-muted-foreground">Items Satisfied</p>
+        <div className="p-2.5 rounded-lg bg-muted/30 text-center">
+          <p className="text-xl font-bold text-green-600">{progressData.completedItems}</p>
+          <p className="text-[10px] text-muted-foreground">Satisfied</p>
         </div>
-        <div className="p-3 rounded-lg bg-muted/30 text-center">
-          <p className="text-2xl font-bold text-amber-600">{progressData.totalItems - progressData.completedItems}</p>
-          <p className="text-[10px] text-muted-foreground">Items Pending</p>
+        <div className="p-2.5 rounded-lg bg-muted/30 text-center">
+          <p className="text-xl font-bold text-amber-600">{progressData.totalItems - progressData.completedItems}</p>
+          <p className="text-[10px] text-muted-foreground">Pending</p>
         </div>
       </div>
 
