@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { SaveIndicator } from '@/components/ui/save-indicator';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 
 interface LenderMetrics {
   activeDealCount: number;
@@ -107,7 +107,7 @@ function DraggableLenderTile({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card border border-border/50 rounded-lg p-3.5 shadow-sm cursor-grab active:cursor-grabbing relative select-none",
+        "bg-card border border-border/50 rounded-lg p-3.5 shadow-sm cursor-grab active:cursor-grabbing relative select-none overflow-hidden",
         !isDragging && "transition-shadow transition-opacity duration-200 ease-out hover:shadow-lg hover:border-primary/30",
         isDragging && "opacity-40 scale-[1.03] shadow-2xl ring-2 ring-primary/40",
         hasFailed && "border-destructive/50 bg-destructive/5"
@@ -200,17 +200,17 @@ function DraggableLenderTile({
 
       {/* Notes preview */}
       {lender.notes && (
-        <div className="flex items-start gap-1 text-xs text-muted-foreground mt-1">
+        <div className="flex items-start gap-1 text-xs text-muted-foreground mt-1 min-w-0">
           <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
-          <span className="line-clamp-2">{lender.notes}</span>
+          <span className="line-clamp-2 break-words min-w-0">{lender.notes}</span>
         </div>
       )}
 
       {/* Pass reasons */}
       {lender.passReason && (
-        <div className="mt-2 flex flex-wrap gap-1 items-center">
+        <div className="mt-2 flex flex-wrap gap-1 items-center overflow-hidden">
           {lender.passReason.split(', ').map((reason, idx) => (
-            <span key={idx} className="text-[10px] text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+            <span key={idx} className="text-[10px] text-destructive bg-destructive/10 px-1.5 py-0.5 rounded truncate max-w-full">
               {reason}
             </span>
           ))}
@@ -260,19 +260,19 @@ function DroppableColumn({
   });
 
   return (
-    <div className="flex flex-col min-w-0">
+    <div className="flex flex-col min-w-0 overflow-hidden">
       <div className="flex items-center gap-2 mb-3 px-1">
-        <div className={cn("w-3 h-3 rounded-full", group.color)} />
-        <h3 className="font-medium text-sm">{group.label}</h3>
-        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+        <div className={cn("w-3 h-3 rounded-full shrink-0", group.color)} />
+        <h3 className="font-medium text-sm truncate">{group.label}</h3>
+        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
           {lenders.length}
         </span>
       </div>
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div
           ref={setNodeRef}
           className={cn(
-            "bg-muted/20 rounded-lg p-3 min-h-[400px] space-y-2.5 transition-all duration-200",
+            "bg-muted/20 rounded-lg p-2 min-h-[400px] space-y-2.5 transition-all duration-200",
             isOver && "bg-primary/10 ring-2 ring-primary/40 shadow-inner"
           )}
         >
@@ -300,7 +300,7 @@ function DroppableColumn({
             />
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
@@ -415,7 +415,7 @@ export function LendersKanban({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-4 gap-4 overflow-auto py-2">
+        <div className="grid grid-cols-4 gap-4 overflow-hidden py-2">
           {STAGE_GROUPS.map((group) => (
             <DroppableColumn
               key={group.id}
