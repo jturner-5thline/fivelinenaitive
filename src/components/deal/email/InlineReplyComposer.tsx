@@ -34,6 +34,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
+import { SnippetPicker } from './SnippetPicker';
+import type { TokenContext } from '@/hooks/useEmailSnippets';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 
 export interface ReplyDraft {
@@ -56,6 +58,7 @@ interface InlineReplyComposerProps {
   onDraftChange?: (draft: ReplyDraft) => void;
   onFieldBlur?: () => void;
   saveStatus?: DraftSaveStatus;
+  tokenContext?: TokenContext;
 }
 
 function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
@@ -74,7 +77,7 @@ function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
   );
 }
 
-export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, initialDraft, onDraftChange, onFieldBlur, saveStatus = 'idle' }: InlineReplyComposerProps) {
+export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, initialDraft, onDraftChange, onFieldBlur, saveStatus = 'idle', tokenContext }: InlineReplyComposerProps) {
   const [to, setTo] = useState(initialDraft?.to ?? replyTo.to_email);
   const [cc, setCc] = useState(initialDraft?.cc ?? '');
   const [bcc, setBcc] = useState(initialDraft?.bcc ?? '');
@@ -144,6 +147,29 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
       setAttachments(prev => [...prev, randomName]);
       toast.info(`Attached: ${randomName}`);
     }
+  };
+
+  const handleInsertSnippet = useCallback((text: string) => {
+    const ta = textareaRef.current;
+    if (ta) {
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const newBody = body.slice(0, start) + text + body.slice(end);
+      setBody(newBody);
+      // Restore cursor after insertion
+      setTimeout(() => {
+        ta.focus();
+        ta.setSelectionRange(start + text.length, start + text.length);
+      }, 0);
+    } else {
+      setBody(prev => prev + text);
+    }
+  }, [body]);
+
+  const defaultTokenContext: TokenContext = tokenContext || {
+    recipientName: replyTo.to_name,
+    recipientEmail: replyTo.to_email,
+    senderName: 'You',
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -322,6 +348,7 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
         <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground h-7 text-xs" onClick={handleAddAttachment}>
           <Paperclip className="h-3 w-3" />Attach
         </Button>
+        <SnippetPicker onInsert={handleInsertSnippet} tokenContext={defaultTokenContext} />
         <span className="text-[10px] text-muted-foreground ml-1">⌘↵ to send</span>
         <div className="flex-1" />
         {discardButton}

@@ -399,6 +399,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const hasActiveDraft = !!(replyTo || popOutDraft);
   useUnsavedDraftGuard(hasActiveDraft);
 
+  // Token context for snippet resolution
+  const snippetTokenContext = {
+    recipientName: thread.latestEmail.from_name === 'You' ? thread.latestEmail.to_name : thread.latestEmail.from_name,
+    recipientEmail: thread.latestEmail.from_name === 'You' ? thread.latestEmail.to_email : thread.latestEmail.from_email,
+    dealName: thread.dealName || undefined,
+    senderName: 'You',
+  };
+
   // On thread load, check for saved draft and show resume banner
   const [showResumeBanner, setShowResumeBanner] = useState(false);
   useEffect(() => {
@@ -703,6 +711,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               onDraftChange={handleDraftChange}
               onFieldBlur={handleFieldBlur}
               saveStatus={saveStatus}
+              tokenContext={snippetTokenContext}
             />
           )}
         </div>
@@ -718,6 +727,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           onDraftChange={handleDraftChange}
           onFieldBlur={handleFieldBlur}
           saveStatus={saveStatus}
+          tokenContext={snippetTokenContext}
         />
       )}
     </>
