@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState } from 'react';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
-  CheckSquare, Trash2, Clock,
+  CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
+import confetti from 'canvas-confetti';
 
 const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
   urgent: { label: 'Urgent', className: 'bg-destructive/10 text-destructive' },
@@ -31,6 +35,16 @@ interface TaskDetailDrawerProps {
   onClose: () => void;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete: () => void;
+}
+
+function fireCelebration() {
+  confetti({
+    particleCount: 60,
+    spread: 55,
+    origin: { y: 0.7 },
+    colors: ['#10b981', '#059669', '#34d399'],
+    disableForReducedMotion: true,
+  });
 }
 
 export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDetailDrawerProps) {
@@ -70,8 +84,18 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
     setNewSubtaskTitle('');
   };
 
+  const handleToggleComplete = () => {
+    const newStatus = isComplete ? 'not_started' : 'complete';
+    onUpdate({ status: newStatus } as any);
+    if (newStatus === 'complete') fireCelebration();
+  };
+
   const isComplete = task.status === 'complete';
-  const priorityConf = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
+
+  // Quick date helpers
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+  const nextMon = format(nextMonday(new Date()), 'yyyy-MM-dd');
 
   return (
     <div className="w-[420px] border-l bg-background flex flex-col h-full shrink-0">
@@ -80,8 +104,8 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
         <div className="flex items-center gap-2">
           <Checkbox
             checked={isComplete}
-            onCheckedChange={() => onUpdate({ status: isComplete ? 'not_started' : 'complete' } as any)}
-            className="h-4 w-4"
+            onCheckedChange={handleToggleComplete}
+            className={cn('h-4 w-4 rounded-full', isComplete && 'bg-emerald-500 border-emerald-500')}
           />
           <span className="text-xs text-muted-foreground capitalize">{task.task_type}</span>
         </div>
@@ -136,17 +160,57 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
               </div>
             </div>
 
-            {/* Due date */}
+            {/* Due date with quick shortcuts */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
                 <Calendar className="h-3 w-3" /> Due date
               </div>
-              <Input
-                type="date"
-                value={task.due_date || ''}
-                onChange={e => onUpdate({ due_date: e.target.value || null } as any)}
-                className="h-7 text-xs w-auto"
-              />
+              <div className="flex items-center gap-1">
+                <Input
+                  type="date"
+                  value={task.due_date || ''}
+                  onChange={e => onUpdate({ due_date: e.target.value || null } as any)}
+                  className="h-7 text-xs w-[130px]"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                      <Clock className="h-3 w-3" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[160px] p-1" align="start">
+                    <button
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                      onClick={() => onUpdate({ due_date: today } as any)}
+                    >
+                      <Sun className="h-3 w-3 text-orange-500" /> Today
+                    </button>
+                    <button
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                      onClick={() => onUpdate({ due_date: tomorrow } as any)}
+                    >
+                      <Sunrise className="h-3 w-3 text-amber-500" /> Tomorrow
+                    </button>
+                    <button
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                      onClick={() => onUpdate({ due_date: nextMon } as any)}
+                    >
+                      <ArrowRight className="h-3 w-3 text-primary" /> Next Monday
+                    </button>
+                    {task.due_date && (
+                      <>
+                        <div className="border-t my-1" />
+                        <button
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted text-destructive"
+                          onClick={() => onUpdate({ due_date: null } as any)}
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             {/* Priority */}
@@ -172,7 +236,10 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
               <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
                 <CheckSquare className="h-3 w-3" /> Status
               </div>
-              <Select value={task.status} onValueChange={v => onUpdate({ status: v } as any)}>
+              <Select value={task.status} onValueChange={v => {
+                onUpdate({ status: v } as any);
+                if (v === 'complete') fireCelebration();
+              }}>
                 <SelectTrigger className="h-7 w-[120px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -205,7 +272,14 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
           {/* Subtasks */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Subtasks</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Subtasks</span>
+                {subtasks.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {subtasks.filter(s => s.status === 'complete').length}/{subtasks.length}
+                  </span>
+                )}
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -215,15 +289,31 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                 <Plus className="h-3 w-3" /> Add
               </Button>
             </div>
+
+            {/* Progress bar for subtasks */}
+            {subtasks.length > 0 && (
+              <div className="h-1 bg-muted rounded-full mb-2 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all"
+                  style={{ width: `${(subtasks.filter(s => s.status === 'complete').length / subtasks.length) * 100}%` }}
+                />
+              </div>
+            )}
+
             {subtasks.map(sub => (
-              <div key={sub.id} className="flex items-center gap-2 py-1">
+              <div key={sub.id} className="flex items-center gap-2 py-1 group">
                 <Checkbox
                   checked={sub.status === 'complete'}
-                  className="h-3.5 w-3.5"
+                  className="h-3.5 w-3.5 rounded-full"
                 />
-                <span className={cn('text-xs', sub.status === 'complete' && 'line-through text-muted-foreground')}>
+                <span className={cn('text-xs flex-1', sub.status === 'complete' && 'line-through text-muted-foreground')}>
                   {sub.title}
                 </span>
+                {sub.due_date && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(new Date(sub.due_date + 'T00:00:00'), 'MMM d')}
+                  </span>
+                )}
               </div>
             ))}
             {showSubtaskInput && (
@@ -305,12 +395,16 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
               )}
               {activity.map(a => (
                 <div key={a.id} className="flex items-start gap-2 py-1">
-                  <Clock className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                    <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <span className="text-[11px] text-muted-foreground">
+                    <p className="text-xs">
+                      <span className="font-medium">{a.event_type.replace(/_/g, ' ')}</span>
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">
                       {formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
                     </span>
-                    <p className="text-xs">{a.event_type.replace(/_/g, ' ')}</p>
                   </div>
                 </div>
               ))}
