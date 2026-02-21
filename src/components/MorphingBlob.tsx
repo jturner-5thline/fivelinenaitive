@@ -68,8 +68,8 @@ function BlobMesh({ isActive }: BlobMeshProps) {
   return (
     <mesh ref={meshRef} geometry={geometry}>
       <meshStandardMaterial
-        color="#7c3aed"
-        emissive="#4338ca"
+        color="#6d28d9"
+        emissive="#1e3a5f"
         emissiveIntensity={isActive ? 1.2 : 0.8}
         roughness={0.2}
         metalness={0.8}
@@ -125,8 +125,8 @@ export function MorphingBlob({ isActive, onClick }: MorphingBlobProps) {
       >
         <ambientLight intensity={0.4} />
         <pointLight position={[5, 5, 5]} intensity={1} color="#ffffff" />
-        <pointLight position={[-5, -5, -5]} intensity={0.5} color="#6d28d9" />
-        <pointLight position={[3, -3, 4]} intensity={0.3} color="#3730a3" />
+        <pointLight position={[-5, -5, -5]} intensity={0.6} color="#38BDF8" />
+        <pointLight position={[3, -3, 4]} intensity={0.4} color="#2563eb" />
         <GlowAura isActive={isActive} />
         <BlobMesh isActive={isActive} />
       </Canvas>
