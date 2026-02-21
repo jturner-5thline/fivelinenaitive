@@ -248,6 +248,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const [selectedItem, setSelectedItem] = useState<OutstandingItem | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [showAllItems, setShowAllItems] = useState(true);
+  const [requesterPopoverOpen, setRequesterPopoverOpen] = useState(false);
 
   const handleItemClick = (item: OutstandingItem) => {
     if (editingId) return; // Don't open dialog while editing
@@ -361,6 +362,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
       onAdd(newItemText.trim(), updatedRequestedBy);
       setNewItemText('');
       setNewRequestedBy([]);
+      setRequesterPopoverOpen(false);
     }
   };
 
@@ -917,7 +919,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 }}
                 className="flex-1"
               />
-              <Popover>
+              <Popover open={requesterPopoverOpen} onOpenChange={setRequesterPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
