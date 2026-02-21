@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
-import { GripVertical, Clock, MessageSquare, Search, RefreshCw, Settings2 } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Clock, MessageSquare, Search, RefreshCw, Settings2, ListChecks, CheckSquare, Briefcase, User, AlertTriangle } from 'lucide-react';
 import { LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
+import { OutstandingItem } from '@/hooks/useOutstandingItems';
 import { STAGE_GROUPS, StageGroup, PassReasonOption } from '@/contexts/LenderStagesContext';
 import { cn } from '@/lib/utils';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -15,61 +16,67 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { SaveIndicator } from '@/components/ui/save-indicator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+interface LenderMetrics {
+  activeDealCount: number;
+  outstandingItemsCount: number;
+  openTasksCount: number;
+  contactName?: string;
+  notesOutSince?: string;
+}
 
 interface LendersKanbanProps {
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
   passReasons: PassReasonOption[];
   onUpdateLenderGroup: (lenderId: string, newGroup: StageGroup, passReason?: string) => void;
-  /** Optional: called when user wants to edit pass reasons on an already-passed lender */
   onEditPassReasons?: (lenderId: string) => void;
-  /** Optional: function to check if a lender is being saved */
   isSaving?: (id: string) => boolean;
-  /** Optional: set of lender IDs that failed to save */
   failedSaves?: Set<string>;
-  /** Optional: retry handler for failed saves */
   onRetry?: (lenderId: string) => void;
+  /** Metrics per lender, keyed by lender name (lowercase) */
+  lenderMetrics?: Record<string, LenderMetrics>;
+  /** Callback when a lender card is clicked for detail view */
+  onCardClick?: (lender: DealLender) => void;
 }
 
 // Helper to get relative time string
 const getRelativeTime = (updatedAt?: string) => {
   if (!updatedAt) return '';
-  
   const date = new Date(updatedAt);
   const now = new Date();
-  
   const minutes = differenceInMinutes(now, date);
   const hours = differenceInHours(now, date);
   const days = differenceInDays(now, date);
   const weeks = differenceInWeeks(now, date);
-  
-  if (minutes < 60) {
-    return `${minutes}m ago`;
-  } else if (hours < 24) {
-    return `${hours}h ago`;
-  } else if (days < 7) {
-    return `${days}d ago`;
-  } else {
-    return `${weeks}w ago`;
-  }
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return `${weeks}w ago`;
 };
 
-// Draggable Lender Tile
-function DraggableLenderTile({ 
-  lender, 
-  configuredStages, 
-  isSaving, 
-  hasFailed, 
+// Enriched Draggable Lender Tile
+function DraggableLenderTile({
+  lender,
+  configuredStages,
+  isSaving,
+  hasFailed,
   onRetry,
   onEditPassReasons,
-}: { 
-  lender: DealLender; 
-  configuredStages: { id: string; label: string; group: StageGroup }[]; 
+  metrics,
+  onClick,
+}: {
+  lender: DealLender;
+  configuredStages: { id: string; label: string; group: StageGroup }[];
   isSaving?: boolean;
   hasFailed?: boolean;
   onRetry?: () => void;
   onEditPassReasons?: () => void;
+  metrics?: LenderMetrics;
+  onClick?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lender.id,
@@ -78,6 +85,7 @@ function DraggableLenderTile({
 
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    zIndex: 50,
   } : undefined;
 
   const stageConfig = configuredStages.find(s => s.id === lender.stage);
@@ -85,27 +93,36 @@ function DraggableLenderTile({
   const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender.trackingStatus === 'passed' || lender.trackingStatus === 'on-deck';
   const timeAgo = hideTime ? '' : getRelativeTime(lender.updatedAt);
 
+  const handleClick = (e: React.MouseEvent) => {
+    // Only trigger click if not dragging
+    if (!isDragging && onClick) {
+      e.stopPropagation();
+      onClick();
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-gradient-to-br from-[hsl(230,25%,12%)] to-[hsl(260,15%,5%)] border border-transparent rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing relative [background-clip:padding-box] before:absolute before:inset-0 before:rounded-lg before:p-[1px] before:bg-gradient-to-r before:from-blue-500/30 before:to-blue-400/10 before:-z-10 before:[mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] before:[mask-composite:exclude]",
-        isDragging && "opacity-50 shadow-lg",
+        "bg-gradient-to-br from-[hsl(230,25%,12%)] to-[hsl(260,15%,5%)] border border-transparent rounded-lg p-3.5 shadow-sm cursor-grab active:cursor-grabbing relative select-none",
+        "[background-clip:padding-box] before:absolute before:inset-0 before:rounded-lg before:p-[1px] before:bg-gradient-to-r before:from-blue-500/30 before:to-blue-400/10 before:-z-10 before:[mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] before:[mask-composite:exclude]",
+        "transition-all duration-200 ease-out",
+        isDragging && "opacity-40 scale-[1.05] shadow-2xl ring-2 ring-primary/40 rotate-1",
+        !isDragging && "hover:shadow-lg hover:before:from-blue-500/50 hover:before:to-blue-400/20",
         hasFailed && "border-destructive/50 bg-destructive/5"
       )}
+      onClick={handleClick}
       {...listeners}
       {...attributes}
     >
       {/* Save status indicator */}
-      <div className="absolute right-2 top-2 flex items-center gap-1">
+      <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
         {isSaving && <SaveIndicator isSaving={true} size="sm" />}
         {hasFailed && !isSaving && onRetry && (
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRetry();
-            }}
+            onClick={(e) => { e.stopPropagation(); onRetry(); }}
             className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors"
             title="Retry save"
           >
@@ -114,123 +131,193 @@ function DraggableLenderTile({
         )}
       </div>
 
-      <div className="flex items-start gap-2">
-        <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-        <div className="flex-1 min-w-0 pr-6">
-          <p className="text-sm font-medium mb-1 truncate flex items-center gap-1">
-            {lender.name}
-            <LenderFlagIndicator lenderName={lender.name} />
+      {/* Lender name + contact */}
+      <div className="pr-8 mb-2">
+        <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+          {lender.name}
+          <LenderFlagIndicator lenderName={lender.name} />
+        </p>
+        {metrics?.contactName && (
+          <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+            <User className="h-3 w-3 shrink-0" />
+            {metrics.contactName}
           </p>
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span className="bg-secondary px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1.5">
-                {lender.trackingStatus === 'passed' && (
-                  <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
-                )}
-                {stageLabel}
-              </span>
-            {timeAgo && (
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {timeAgo}
-              </span>
-            )}
-          </div>
-          {lender.notes && (
-            <div className="flex items-start gap-1 mt-2 text-xs text-muted-foreground">
-              <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
-              <span className="line-clamp-2">{lender.notes}</span>
-            </div>
+        )}
+      </div>
+
+      {/* Stage pill + time */}
+      <div className="flex flex-wrap items-center gap-1.5 mb-2">
+        <Badge
+          variant="secondary"
+          className={cn(
+            "text-[10px] font-medium px-2 py-0.5",
+            lender.trackingStatus === 'passed' && "bg-destructive/15 text-destructive border-destructive/20",
+            lender.trackingStatus === 'active' && "bg-green-500/15 text-green-400 border-green-500/20",
+            lender.trackingStatus === 'on-deck' && "bg-blue-500/15 text-blue-400 border-blue-500/20",
+            lender.trackingStatus === 'on-hold' && "bg-yellow-500/15 text-yellow-400 border-yellow-500/20"
           )}
-          {lender.passReason && (
-            <div className="mt-2 flex flex-wrap gap-1 items-center">
-              {lender.passReason.split(', ').map((reason, idx) => (
-                <span key={idx} className="text-xs text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
-                  {reason}
-                </span>
-              ))}
-              {onEditPassReasons && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEditPassReasons();
-                  }}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-1"
-                  title="Edit pass reasons"
-                >
-                  <Settings2 className="h-3 w-3" />
-                </button>
-              )}
-            </div>
+        >
+          {stageLabel}
+        </Badge>
+        {timeAgo && (
+          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+            <Clock className="h-2.5 w-2.5" />
+            {timeAgo}
+          </span>
+        )}
+      </div>
+
+      {/* Metrics row */}
+      {metrics && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground mb-2">
+          {metrics.activeDealCount > 0 && (
+            <span className="flex items-center gap-0.5" title="Active deals">
+              <Briefcase className="h-2.5 w-2.5" />
+              {metrics.activeDealCount} deal{metrics.activeDealCount !== 1 ? 's' : ''}
+            </span>
           )}
-          {hasFailed && (
-            <p className="text-xs text-destructive mt-2">Save failed — tap retry</p>
+          {metrics.outstandingItemsCount > 0 && (
+            <span className="flex items-center gap-0.5 text-yellow-400" title="Outstanding items">
+              <ListChecks className="h-2.5 w-2.5" />
+              {metrics.outstandingItemsCount} outstanding
+            </span>
+          )}
+          {metrics.openTasksCount > 0 && (
+            <span className="flex items-center gap-0.5" title="Open tasks">
+              <CheckSquare className="h-2.5 w-2.5" />
+              {metrics.openTasksCount} task{metrics.openTasksCount !== 1 ? 's' : ''}
+            </span>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Notes out indicator */}
+      {metrics?.notesOutSince && (
+        <div className="flex items-center gap-1 text-[10px] text-amber-400 mb-2">
+          <AlertTriangle className="h-2.5 w-2.5" />
+          Notes out since {metrics.notesOutSince}
+        </div>
+      )}
+
+      {/* Notes preview */}
+      {lender.notes && (
+        <div className="flex items-start gap-1 text-xs text-muted-foreground mt-1">
+          <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+          <span className="line-clamp-2">{lender.notes}</span>
+        </div>
+      )}
+
+      {/* Pass reasons */}
+      {lender.passReason && (
+        <div className="mt-2 flex flex-wrap gap-1 items-center">
+          {lender.passReason.split(', ').map((reason, idx) => (
+            <span key={idx} className="text-[10px] text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
+              {reason}
+            </span>
+          ))}
+          {onEditPassReasons && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEditPassReasons(); }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-1"
+              title="Edit pass reasons"
+            >
+              <Settings2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {hasFailed && (
+        <p className="text-xs text-destructive mt-2">Save failed — tap retry</p>
+      )}
     </div>
   );
 }
 
-// Droppable Kanban Column
-function DroppableColumn({ 
-  group, 
+// Droppable Kanban Column with larger drop target
+function DroppableColumn({
+  group,
   lenders,
   configuredStages,
   isSaving,
   failedSaves,
   onRetry,
   onEditPassReasons,
-}: { 
-  group: { id: StageGroup; label: string; color: string }; 
+  lenderMetrics,
+  onCardClick,
+}: {
+  group: { id: StageGroup; label: string; color: string };
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
   isSaving?: (id: string) => boolean;
   failedSaves?: Set<string>;
   onRetry?: (lenderId: string) => void;
   onEditPassReasons?: (lenderId: string) => void;
+  lenderMetrics?: Record<string, LenderMetrics>;
+  onCardClick?: (lender: DealLender) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: group.id,
   });
 
   return (
-    <div className="flex flex-col min-w-[220px]">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="flex flex-col min-w-[240px]">
+      <div className="flex items-center gap-2 mb-3 px-1">
         <div className={cn("w-3 h-3 rounded-full", group.color)} />
         <h3 className="font-medium text-sm">{group.label}</h3>
-        <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
           {lenders.length}
         </span>
       </div>
-      <div 
-        ref={setNodeRef}
-        className={cn(
-          "flex-1 bg-muted/30 rounded-lg p-2 min-h-[300px] space-y-2 transition-colors",
-          isOver && "bg-primary/10 ring-2 ring-primary/30"
-        )}
-      >
-        {lenders.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-4">
-            Drop lenders here
-          </p>
-        )}
-        {lenders.map((lender) => (
-          <DraggableLenderTile 
-            key={lender.id} 
-            lender={lender} 
-            configuredStages={configuredStages}
-            isSaving={isSaving?.(`lender-stage-${lender.id}`)}
-            hasFailed={failedSaves?.has(lender.id)}
-            onRetry={onRetry ? () => onRetry(lender.id) : undefined}
-            onEditPassReasons={onEditPassReasons ? () => onEditPassReasons(lender.id) : undefined}
-          />
-        ))}
-      </div>
+      <ScrollArea className="flex-1">
+        <div
+          ref={setNodeRef}
+          className={cn(
+            "bg-muted/20 rounded-lg p-2.5 min-h-[400px] space-y-2.5 transition-all duration-200",
+            isOver && "bg-primary/10 ring-2 ring-primary/40 shadow-inner"
+          )}
+        >
+          {lenders.length === 0 && (
+            <div className={cn(
+              "border-2 border-dashed rounded-lg py-8 text-center transition-colors",
+              isOver ? "border-primary/50 bg-primary/5" : "border-muted-foreground/20"
+            )}>
+              <p className="text-xs text-muted-foreground">
+                Drop lenders here
+              </p>
+            </div>
+          )}
+          {lenders.map((lender) => (
+            <DraggableLenderTile
+              key={lender.id}
+              lender={lender}
+              configuredStages={configuredStages}
+              isSaving={isSaving?.(`lender-stage-${lender.id}`)}
+              hasFailed={failedSaves?.has(lender.id)}
+              onRetry={onRetry ? () => onRetry(lender.id) : undefined}
+              onEditPassReasons={onEditPassReasons ? () => onEditPassReasons(lender.id) : undefined}
+              metrics={lenderMetrics?.[lender.name.toLowerCase().trim()]}
+              onClick={onCardClick ? () => onCardClick(lender) : undefined}
+            />
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
 
-export function LendersKanban({ lenders, configuredStages, passReasons, onUpdateLenderGroup, onEditPassReasons, isSaving, failedSaves, onRetry }: LendersKanbanProps) {
+export function LendersKanban({
+  lenders,
+  configuredStages,
+  passReasons,
+  onUpdateLenderGroup,
+  onEditPassReasons,
+  isSaving,
+  failedSaves,
+  onRetry,
+  lenderMetrics,
+  onCardClick,
+}: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
   const [pendingPassChange, setPendingPassChange] = useState<{ lenderId: string } | null>(null);
@@ -239,31 +326,29 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
 
   const filteredPassReasons = useMemo(() => {
     if (!passReasonSearch.trim()) return passReasons;
-    return passReasons.filter(reason => 
+    return passReasons.filter(reason =>
       reason.label.toLowerCase().includes(passReasonSearch.toLowerCase())
     );
   }, [passReasons, passReasonSearch]);
-  
+
+  // Reduced activation distance for smoother DnD
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200,
+        delay: 150,
         tolerance: 5,
       },
     })
   );
 
   const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    const lender = lenders.find(l => l.id === active.id);
-    if (lender) {
-      setActiveLender(lender);
-    }
+    const lender = lenders.find(l => l.id === event.active.id);
+    if (lender) setActiveLender(lender);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -273,7 +358,6 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
     if (over && active.id !== over.id) {
       const targetGroup = over.id as StageGroup;
       if (STAGE_GROUPS.some(g => g.id === targetGroup)) {
-        // Check if dropping to passed column
         if (targetGroup === 'passed') {
           setPendingPassChange({ lenderId: active.id as string });
           setSelectedPassReasons([]);
@@ -287,10 +371,7 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
 
   const handleConfirmPass = () => {
     if (pendingPassChange && selectedPassReasons.length > 0) {
-      const reasonStr = selectedPassReasons.join(', ');
-      onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', reasonStr);
-
-      // Auto-update lender notes is handled by the parent via onUpdateLenderGroup
+      onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', selectedPassReasons.join(', '));
       setPassReasonDialogOpen(false);
       setPendingPassChange(null);
       setSelectedPassReasons([]);
@@ -306,12 +387,8 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
 
   const togglePassReason = (reasonLabel: string) => {
     setSelectedPassReasons(prev => {
-      if (prev.includes(reasonLabel)) {
-        return prev.filter(r => r !== reasonLabel);
-      }
-      if (prev.length >= 3) {
-        return prev; // Don't add more than 3
-      }
+      if (prev.includes(reasonLabel)) return prev.filter(r => r !== reasonLabel);
+      if (prev.length >= 3) return prev;
       return [...prev, reasonLabel];
     });
   };
@@ -321,55 +398,56 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
 
   const getLendersByGroup = (groupId: StageGroup) => {
     return lenders.filter((lender) => {
-      // Prefer persisted trackingStatus (group) if available.
-      // This prevents “Passed” lenders from reverting on refresh when stage config
-      // doesn’t include a dedicated “passed” stage.
-      if (isStageGroup(lender.trackingStatus) && lender.trackingStatus === groupId) {
-        return true;
-      }
-
-      // Fallback to deriving group from configured stage.
+      if (isStageGroup(lender.trackingStatus) && lender.trackingStatus === groupId) return true;
       const stage = configuredStages.find((s) => s.id === lender.stage);
       return stage?.group === groupId;
     });
   };
 
-  const stageLabel = activeLender ? configuredStages.find(s => s.id === activeLender.stage)?.label || activeLender.stage : '';
+  const overlayStageLabel = activeLender ? configuredStages.find(s => s.id === activeLender.stage)?.label || activeLender.stage : '';
+  const overlayMetrics = activeLender ? lenderMetrics?.[activeLender.name.toLowerCase().trim()] : undefined;
   const pendingLenderName = pendingPassChange ? lenders.find(l => l.id === pendingPassChange.lenderId)?.name : '';
 
   return (
     <>
-      <DndContext 
+      <DndContext
         sensors={sensors}
-        onDragStart={handleDragStart} 
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-4 gap-4 overflow-auto py-4">
+        <div className="grid grid-cols-4 gap-4 overflow-auto py-2">
           {STAGE_GROUPS.map((group) => (
-            <DroppableColumn 
-              key={group.id} 
-              group={group} 
+            <DroppableColumn
+              key={group.id}
+              group={group}
               lenders={getLendersByGroup(group.id)}
               configuredStages={configuredStages}
               isSaving={isSaving}
               failedSaves={failedSaves}
               onRetry={onRetry}
               onEditPassReasons={onEditPassReasons}
+              lenderMetrics={lenderMetrics}
+              onCardClick={onCardClick}
             />
           ))}
         </div>
-        <DragOverlay>
+        <DragOverlay dropAnimation={{
+          duration: 200,
+          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+        }}>
           {activeLender ? (
-            <div className="bg-card border border-primary rounded-lg p-3 shadow-xl rotate-3">
-              <div className="flex items-start gap-2">
-                <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium mb-1">{activeLender.name}</p>
-                  <span className="bg-secondary px-1.5 py-0.5 rounded text-[10px]">
-                    {stageLabel}
-                  </span>
-                </div>
-              </div>
+            <div className="bg-gradient-to-br from-[hsl(230,25%,14%)] to-[hsl(260,15%,8%)] border border-primary/40 rounded-lg p-3.5 shadow-2xl rotate-2 scale-105 w-[240px]">
+              <p className="text-sm font-semibold mb-1 truncate">{activeLender.name}</p>
+              {overlayMetrics?.contactName && (
+                <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mb-1.5">
+                  <User className="h-3 w-3" />
+                  {overlayMetrics.contactName}
+                </p>
+              )}
+              <Badge variant="secondary" className="text-[10px]">
+                {overlayStageLabel}
+              </Badge>
             </div>
           ) : null}
         </DragOverlay>
@@ -416,13 +494,8 @@ export function LendersKanban({ lenders, configuredStages, passReasons, onUpdate
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancelPass}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleConfirmPass}
-              disabled={selectedPassReasons.length === 0}
-            >
+            <Button variant="outline" onClick={handleCancelPass}>Cancel</Button>
+            <Button onClick={handleConfirmPass} disabled={selectedPassReasons.length === 0}>
               Confirm ({selectedPassReasons.length} selected)
             </Button>
           </DialogFooter>

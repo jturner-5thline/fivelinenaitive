@@ -4645,7 +4645,7 @@ export default function DealDetail() {
 
       {/* Lenders Kanban Dialog */}
       <Dialog open={isLendersKanbanOpen} onOpenChange={setIsLendersKanbanOpen}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-auto">
+        <DialogContent className="max-w-[90vw] w-full max-h-[90vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Lenders Kanban View</DialogTitle>
           </DialogHeader>
@@ -4674,6 +4674,35 @@ export default function DealDetail() {
               isSaving={isSaving}
               failedSaves={failedLenderSaves}
               onRetry={retryLenderSave}
+              lenderMetrics={(() => {
+                const metrics: Record<string, { activeDealCount: number; outstandingItemsCount: number; openTasksCount: number; contactName?: string; notesOutSince?: string }> = {};
+                deal.lenders?.forEach(l => {
+                  const key = l.name.toLowerCase().trim();
+                  const masterLender = masterLenders.find(ml => ml.name.toLowerCase().trim() === key);
+                  const lenderOutstanding = outstandingItems.filter(oi => !oi.completed && oi.requestedBy?.some(r => r.toLowerCase().trim() === key));
+                  // Count active deals for this lender across all deals
+                  let activeDealCount = 0;
+                  deals.forEach(d => {
+                    d.lenders?.forEach(dl => {
+                      if (dl.name.toLowerCase().trim() === key && dl.trackingStatus !== 'passed' && dl.trackingStatus !== 'on-deck') {
+                        activeDealCount++;
+                      }
+                    });
+                  });
+                  metrics[key] = {
+                    activeDealCount,
+                    outstandingItemsCount: lenderOutstanding.length,
+                    openTasksCount: 0, // Tasks don't have lender association currently
+                    contactName: masterLender?.contact_name || undefined,
+                    notesOutSince: l.notesUpdatedAt ? new Date(l.notesUpdatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : undefined,
+                  };
+                });
+                return metrics;
+              })()}
+              onCardClick={(lender) => {
+                setSelectedLenderName(lender.name);
+                setIsLendersKanbanOpen(false);
+              }}
             />
           )}
         </DialogContent>
