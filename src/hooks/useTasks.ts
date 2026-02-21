@@ -145,7 +145,7 @@ export function useMyTasks() {
       if (updates.title !== undefined) updateData.title = updates.title;
       if (updates.status !== undefined) {
         updateData.status = updates.status;
-        if (updates.status === 'complete') {
+        if (updates.status === 'complete' || updates.status === 'completed') {
           updateData.completed_at = new Date().toISOString();
           const { data: { user: u } } = await supabase.auth.getUser();
           updateData.completed_by = u?.id;
