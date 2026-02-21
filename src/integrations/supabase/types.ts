@@ -5470,8 +5470,72 @@ export type Database = {
         }
         Relationships: []
       }
+      report_definitions: {
+        Row: {
+          ai_regenerate_on_run: boolean | null
+          ai_summary_enabled: boolean | null
+          company_id: string | null
+          created_at: string
+          data_sources: string[]
+          description: string | null
+          global_filters: Json | null
+          id: string
+          is_locked: boolean | null
+          layout_config: Json | null
+          name: string
+          owner_user_id: string
+          shared_with_user_ids: string[] | null
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          ai_regenerate_on_run?: boolean | null
+          ai_summary_enabled?: boolean | null
+          company_id?: string | null
+          created_at?: string
+          data_sources?: string[]
+          description?: string | null
+          global_filters?: Json | null
+          id?: string
+          is_locked?: boolean | null
+          layout_config?: Json | null
+          name: string
+          owner_user_id: string
+          shared_with_user_ids?: string[] | null
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          ai_regenerate_on_run?: boolean | null
+          ai_summary_enabled?: boolean | null
+          company_id?: string | null
+          created_at?: string
+          data_sources?: string[]
+          description?: string | null
+          global_filters?: Json | null
+          id?: string
+          is_locked?: boolean | null
+          layout_config?: Json | null
+          name?: string
+          owner_user_id?: string
+          shared_with_user_ids?: string[] | null
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_definitions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_runs: {
         Row: {
+          ai_narrative: string | null
+          ai_sources: Json | null
           completed_at: string | null
           created_at: string
           delivery_response: Json | null
@@ -5480,6 +5544,7 @@ export type Database = {
           error_message: string | null
           id: string
           report_data: Json | null
+          run_type: string | null
           scheduled_report_id: string
           started_at: string | null
           status: string
@@ -5487,6 +5552,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_narrative?: string | null
+          ai_sources?: Json | null
           completed_at?: string | null
           created_at?: string
           delivery_response?: Json | null
@@ -5495,6 +5562,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           report_data?: Json | null
+          run_type?: string | null
           scheduled_report_id: string
           started_at?: string | null
           status?: string
@@ -5502,6 +5570,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_narrative?: string | null
+          ai_sources?: Json | null
           completed_at?: string | null
           created_at?: string
           delivery_response?: Json | null
@@ -5510,6 +5580,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           report_data?: Json | null
+          run_type?: string | null
           scheduled_report_id?: string
           started_at?: string | null
           status?: string
@@ -5522,6 +5593,59 @@ export type Database = {
             columns: ["scheduled_report_id"]
             isOneToOne: false
             referencedRelation: "scheduled_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_widgets: {
+        Row: {
+          ai_annotation: string | null
+          ai_annotation_sources: Json | null
+          created_at: string
+          id: string
+          position: number
+          query_config: Json | null
+          report_id: string
+          title: string | null
+          type: string
+          updated_at: string
+          visualization_config: Json | null
+          width: number
+        }
+        Insert: {
+          ai_annotation?: string | null
+          ai_annotation_sources?: Json | null
+          created_at?: string
+          id?: string
+          position?: number
+          query_config?: Json | null
+          report_id: string
+          title?: string | null
+          type: string
+          updated_at?: string
+          visualization_config?: Json | null
+          width?: number
+        }
+        Update: {
+          ai_annotation?: string | null
+          ai_annotation_sources?: Json | null
+          created_at?: string
+          id?: string
+          position?: number
+          query_config?: Json | null
+          report_id?: string
+          title?: string | null
+          type?: string
+          updated_at?: string
+          visualization_config?: Json | null
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_widgets_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "report_definitions"
             referencedColumns: ["id"]
           },
         ]
@@ -5606,6 +5730,7 @@ export type Database = {
           name: string
           next_run_at: string | null
           report_config: Json
+          report_definition_id: string | null
           report_type: string
           schedule_cron: string
           schedule_timezone: string | null
@@ -5625,6 +5750,7 @@ export type Database = {
           name: string
           next_run_at?: string | null
           report_config?: Json
+          report_definition_id?: string | null
           report_type: string
           schedule_cron?: string
           schedule_timezone?: string | null
@@ -5644,6 +5770,7 @@ export type Database = {
           name?: string
           next_run_at?: string | null
           report_config?: Json
+          report_definition_id?: string | null
           report_type?: string
           schedule_cron?: string
           schedule_timezone?: string | null
@@ -5663,6 +5790,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_reports_report_definition_id_fkey"
+            columns: ["report_definition_id"]
+            isOneToOne: false
+            referencedRelation: "report_definitions"
             referencedColumns: ["id"]
           },
         ]
