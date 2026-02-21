@@ -17,7 +17,7 @@ export const HomepageValueProp = () => {
             Intelligence is embedded directly into execution, surfacing bottlenecks, highlighting risk, and keeping work moving without adding more tools or manual oversight.
           </p>
           <p className="text-xl md:text-2xl lg:text-3xl font-medium text-white leading-relaxed">
-            Your data remains yours. n<span className="bg-gradient-to-b from-[hsl(292,46%,72%)] to-[hsl(280,60%,45%)] bg-clip-text text-transparent">ai</span>tive does not sell or monetize customer data.
+            Your data remains yours. n<span className="bg-gradient-to-r from-[hsl(270,65%,55%)] to-[hsl(220,70%,72%)] bg-clip-text text-transparent">ai</span>tive does not sell or monetize customer data.
           </p>
         </div>
       </div>
