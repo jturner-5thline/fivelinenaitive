@@ -68,8 +68,8 @@ function BlobMesh({ isActive }: BlobMeshProps) {
   return (
     <mesh ref={meshRef} geometry={geometry}>
       <meshStandardMaterial
-        color="#9333ea"
-        emissive="#7c3aed"
+        color="#7c3aed"
+        emissive="#4338ca"
         emissiveIntensity={isActive ? 0.8 : 0.5}
         roughness={0.3}
         metalness={0.7}
@@ -97,7 +97,7 @@ function GlowAura({ isActive }: { isActive: boolean }) {
     <mesh ref={meshRef}>
       <sphereGeometry args={[0.9, 32, 32]} />
       <meshBasicMaterial
-        color="#a855f7"
+        color="#6d28d9"
         transparent
         opacity={0.2}
         side={THREE.BackSide}
@@ -125,7 +125,8 @@ export function MorphingBlob({ isActive, onClick }: MorphingBlobProps) {
       >
         <ambientLight intensity={0.4} />
         <pointLight position={[5, 5, 5]} intensity={1} color="#ffffff" />
-        <pointLight position={[-5, -5, -5]} intensity={0.5} color="#a855f7" />
+        <pointLight position={[-5, -5, -5]} intensity={0.5} color="#6d28d9" />
+        <pointLight position={[3, -3, 4]} intensity={0.3} color="#3730a3" />
         <GlowAura isActive={isActive} />
         <BlobMesh isActive={isActive} />
       </Canvas>
