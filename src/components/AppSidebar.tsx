@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useTheme } from "next-themes";
 import naitiveIconLight from "@/assets/naitive-icon-light.png";
@@ -34,6 +34,7 @@ import {
 // Map page URLs to feature flag names
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare, featureKey: null }, // Always visible
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
   { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
   { title: "AI Research", url: "/research", icon: Sparkles, featureKey: "ai_research" },
@@ -78,6 +79,7 @@ export function AppSidebar() {
   const isActive = (url: string) => {
     if (url === "/dashboard") return currentPath === "/dashboard";
     if (url === "/deals") return currentPath === "/deals";
+    if (url === "/tasks") return currentPath === "/tasks";
     if (url === "/deal") return currentPath.startsWith("/deal/");
     return currentPath.startsWith(url);
   };
