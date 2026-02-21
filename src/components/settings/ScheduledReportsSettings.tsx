@@ -230,21 +230,27 @@ function ReportCard({ report }: { report: ScheduledReport }) {
 export function ScheduledReportsSettings() {
   const { data: reports, isLoading } = useScheduledReports();
   const [showCreate, setShowCreate] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Scheduled Reports
-            </CardTitle>
-            <CardDescription>Automated AI-powered reports delivered on schedule</CardDescription>
-          </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-left flex-1">
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Scheduled Reports
+                </CardTitle>
+                <CardDescription>Automated AI-powered reports delivered on schedule</CardDescription>
+              </div>
+            </button>
+          </CollapsibleTrigger>
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
+              <Button size="sm" className="gap-2" onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}>
                 <Plus className="h-4 w-4" />
                 New Schedule
               </Button>
@@ -256,9 +262,9 @@ export function ScheduledReportsSettings() {
               <CreateReportDialog onClose={() => setShowCreate(false)} />
             </DialogContent>
           </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent>
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Loading reports...</div>
         ) : !reports?.length ? (
@@ -274,7 +280,9 @@ export function ScheduledReportsSettings() {
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

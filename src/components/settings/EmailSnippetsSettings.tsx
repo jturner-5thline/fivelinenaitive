@@ -17,7 +17,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Edit2, X, Check, Zap, Copy, Hash } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Check, Zap, Copy, Hash, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useEmailSnippets, SNIPPET_TOKENS, type EmailSnippetInsert } from '@/hooks/useEmailSnippets';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -26,6 +27,7 @@ export function EmailSnippetsSettings() {
   const { snippets, isLoading, createSnippet, updateSnippet, deleteSnippet } = useEmailSnippets();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [formName, setFormName] = useState('');
   const [formBody, setFormBody] = useState('');
 
@@ -63,27 +65,32 @@ export function EmailSnippetsSettings() {
   const isFormOpen = showCreate || editingId;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" />
-              Email Snippets
-            </CardTitle>
-            <CardDescription>
-              Create reusable email templates with dynamic tokens like {'{First Name}'}
-            </CardDescription>
-          </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-left flex-1">
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary" />
+                  Email Snippets
+                </CardTitle>
+                <CardDescription>
+                  Create reusable email templates with dynamic tokens like {'{First Name}'}
+                </CardDescription>
+              </div>
+            </button>
+          </CollapsibleTrigger>
           {!isFormOpen && (
-            <Button size="sm" onClick={() => setShowCreate(true)} className="gap-1.5">
+            <Button size="sm" onClick={(e) => { e.stopPropagation(); setIsOpen(true); setShowCreate(true); }} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               New Snippet
             </Button>
           )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
         {/* Create/Edit Form */}
         {isFormOpen && (
           <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
@@ -229,7 +236,9 @@ export function EmailSnippetsSettings() {
             </div>
           </ScrollArea>
         )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

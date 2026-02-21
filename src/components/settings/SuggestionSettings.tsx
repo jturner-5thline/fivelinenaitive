@@ -86,7 +86,7 @@ const suggestionOptions: Array<{
   },
 ];
 
-export function SuggestionSettings({ collapsible = false, open, onOpenChange }: SuggestionSettingsProps) {
+export function SuggestionSettings({ collapsible = true, open, onOpenChange }: SuggestionSettingsProps) {
   const { preferences, updatePreference } = usePreferences();
   
   // Local state for pending changes
@@ -120,7 +120,7 @@ export function SuggestionSettings({ collapsible = false, open, onOpenChange }: 
     setLocalSuggestions({ ...preferences.suggestions });
   };
 
-  const isOpen = open ?? true;
+  const isOpen = open ?? false;
 
   const SaveBar = () => {
     if (!hasUnsavedChanges && !isSaving) return null;
