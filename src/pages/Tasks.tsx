@@ -171,12 +171,25 @@ export default function Tasks() {
     setNewLabelName('');
   };
 
+  const [customSections, setCustomSections] = useState<{ key: string; label: string }[]>([]);
+
   const statusGroups = [
     { key: 'not_started', label: 'Not Started' },
     { key: 'in_progress', label: 'In Progress' },
     { key: 'blocked', label: 'Blocked' },
     { key: 'complete', label: 'Complete' },
   ];
+
+  const allBoardColumns = [...statusGroups, ...customSections];
+
+  const handleAddSection = (name: string) => {
+    const key = `custom_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now()}`;
+    setCustomSections(prev => [...prev, { key, label: name }]);
+  };
+
+  const handleRemoveSection = (key: string) => {
+    setCustomSections(prev => prev.filter(s => s.key !== key));
+  };
 
   return (
     <>
@@ -379,11 +392,14 @@ export default function Tasks() {
             {viewMode === 'board' && (
               <TaskBoardView
                 tasks={filtered}
-                statusGroups={statusGroups}
+                statusGroups={allBoardColumns}
                 onSelectTask={setSelectedTaskId}
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
                 onCreateTask={(title, status) => createTask.mutate({ title, status })}
                 selectedTaskId={selectedTaskId}
+                onAddSection={handleAddSection}
+                onRemoveSection={handleRemoveSection}
+                customSectionKeys={customSections.map(s => s.key)}
               />
             )}
             {viewMode === 'calendar' && (
@@ -440,19 +456,33 @@ export default function Tasks() {
 }
 
 // Board view component (inline)
-function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCreateTask, selectedTaskId }: {
+function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCreateTask, selectedTaskId, onAddSection, onRemoveSection, customSectionKeys }: {
   tasks: Task[];
   statusGroups: { key: string; label: string }[];
   onSelectTask: (id: string) => void;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
   onCreateTask: (title: string, status: string) => void;
   selectedTaskId: string | null;
+  onAddSection: (name: string) => void;
+  onRemoveSection: (key: string) => void;
+  customSectionKeys: string[];
 }) {
+  const [isAddingSection, setIsAddingSection] = useState(false);
+  const [newSectionName, setNewSectionName] = useState('');
+  const sectionInputRef = useRef<HTMLInputElement>(null);
+
   const priorityColors: Record<string, string> = {
     urgent: 'border-l-destructive',
     high: 'border-l-orange-500',
     medium: 'border-l-primary',
     low: 'border-l-muted-foreground/30',
+  };
+
+  const handleAddSection = () => {
+    if (!newSectionName.trim()) { setIsAddingSection(false); return; }
+    onAddSection(newSectionName.trim());
+    setNewSectionName('');
+    setIsAddingSection(false);
   };
 
   return (
@@ -467,13 +497,43 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
           selectedTaskId={selectedTaskId}
           onSelectTask={onSelectTask}
           onCreateTask={onCreateTask}
+          isCustom={customSectionKeys.includes(group.key)}
+          onRemove={() => onRemoveSection(group.key)}
         />
       ))}
+      {/* Add Section column */}
+      {isAddingSection ? (
+        <div className="flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg">
+          <div className="px-3 py-2.5 border-b">
+            <Input
+              ref={sectionInputRef}
+              value={newSectionName}
+              onChange={e => setNewSectionName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); handleAddSection(); }
+                if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); }
+              }}
+              onBlur={handleAddSection}
+              placeholder="Section name..."
+              className="h-8 text-sm"
+              autoFocus
+            />
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => { setIsAddingSection(true); setNewSectionName(''); }}
+          className="flex flex-col items-center justify-center min-w-[280px] w-[280px] rounded-lg border border-dashed border-border/50 hover:border-border hover:bg-muted/20 transition-colors gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <Plus className="h-5 w-5" />
+          <span className="text-sm">Add Section</span>
+        </button>
+      )}
     </div>
   );
 }
 
-function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selectedTaskId, onSelectTask, onCreateTask }: {
+function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selectedTaskId, onSelectTask, onCreateTask, isCustom, onRemove }: {
   groupKey: string;
   label: string;
   tasks: Task[];
@@ -481,6 +541,8 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selec
   selectedTaskId: string | null;
   onSelectTask: (id: string) => void;
   onCreateTask: (title: string, status: string) => void;
+  isCustom?: boolean;
+  onRemove?: () => void;
 }) {
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -513,9 +575,16 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selec
             {groupTasks.length}
           </span>
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={startAdding}>
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {isCustom && onRemove && (
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onRemove}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={startAdding}>
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
       <div className="flex-1 overflow-auto p-2 space-y-2">
         {isAdding && (
