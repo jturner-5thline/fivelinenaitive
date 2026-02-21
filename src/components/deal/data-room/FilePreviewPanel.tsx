@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { X, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatBytes } from './helpers';
@@ -14,15 +13,10 @@ export function FilePreviewPanel({ file, onClose, onDownload }: FilePreviewPanel
   const ext = file.name.split('.').pop()?.toLowerCase();
   const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '');
   const isPdf = ext === 'pdf';
-  const [pdfError, setPdfError] = useState(false);
 
-  // For PDFs, try direct embed first; fall back to Google Docs Viewer
   const getPdfSrc = () => {
     if (!file.url) return '';
-    if (pdfError) {
-      return `https://docs.google.com/viewer?url=${encodeURIComponent(file.url)}&embedded=true`;
-    }
-    return file.url;
+    return `https://docs.google.com/viewer?url=${encodeURIComponent(file.url)}&embedded=true`;
   };
 
   return (
@@ -66,18 +60,6 @@ export function FilePreviewPanel({ file, onClose, onDownload }: FilePreviewPanel
               src={getPdfSrc()}
               className="w-full h-full border-0"
               title={file.name}
-              onError={() => setPdfError(true)}
-              onLoad={(e) => {
-                // If the iframe loaded but is empty/blocked, try Google Docs fallback
-                try {
-                  const iframe = e.target as HTMLIFrameElement;
-                  if (!pdfError && iframe.contentDocument?.body?.childElementCount === 0) {
-                    setPdfError(true);
-                  }
-                } catch {
-                  // Cross-origin - can't inspect, which means it loaded fine
-                }
-              }}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
