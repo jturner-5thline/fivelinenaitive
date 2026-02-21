@@ -380,13 +380,9 @@ export default function Tasks() {
               <TaskBoardView
                 tasks={filtered}
                 statusGroups={statusGroups}
-                isCreating={isCreating}
-                newTaskTitle={newTaskTitle}
-                newTaskRef={newTaskRef}
-                onNewTaskChange={setNewTaskTitle}
-                onNewTaskKeyDown={handleNewTaskKeyDown}
                 onSelectTask={setSelectedTaskId}
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
+                onCreateTask={(title, status) => createTask.mutate({ title, status })}
                 selectedTaskId={selectedTaskId}
               />
             )}
@@ -444,16 +440,12 @@ export default function Tasks() {
 }
 
 // Board view component (inline)
-function TaskBoardView({ tasks, statusGroups, isCreating, newTaskTitle, newTaskRef, onNewTaskChange, onNewTaskKeyDown, onSelectTask, onUpdateTask, selectedTaskId }: {
+function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCreateTask, selectedTaskId }: {
   tasks: Task[];
   statusGroups: { key: string; label: string }[];
-  isCreating: boolean;
-  newTaskTitle: string;
-  newTaskRef: React.RefObject<HTMLInputElement>;
-  onNewTaskChange: (v: string) => void;
-  onNewTaskKeyDown: (e: KeyboardEvent) => void;
   onSelectTask: (id: string) => void;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
+  onCreateTask: (title: string, status: string) => void;
   selectedTaskId: string | null;
 }) {
   const priorityColors: Record<string, string> = {
@@ -465,48 +457,114 @@ function TaskBoardView({ tasks, statusGroups, isCreating, newTaskTitle, newTaskR
 
   return (
     <div className="flex gap-4 p-4 overflow-x-auto h-full">
-      {statusGroups.map(group => {
-        const groupTasks = tasks.filter(t => t.status === group.key);
-        return (
-          <div key={group.key} className="flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg">
-            <div className="flex items-center justify-between px-3 py-2.5 border-b">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{group.label}</span>
-                <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">
-                  {groupTasks.length}
+      {statusGroups.map(group => (
+        <BoardColumn
+          key={group.key}
+          groupKey={group.key}
+          label={group.label}
+          tasks={tasks.filter(t => t.status === group.key)}
+          priorityColors={priorityColors}
+          selectedTaskId={selectedTaskId}
+          onSelectTask={onSelectTask}
+          onCreateTask={onCreateTask}
+        />
+      ))}
+    </div>
+  );
+}
+
+function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selectedTaskId, onSelectTask, onCreateTask }: {
+  groupKey: string;
+  label: string;
+  tasks: Task[];
+  priorityColors: Record<string, string>;
+  selectedTaskId: string | null;
+  onSelectTask: (id: string) => void;
+  onCreateTask: (title: string, status: string) => void;
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startAdding = () => {
+    setIsAdding(true);
+    setNewTitle('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleSubmit = () => {
+    if (!newTitle.trim()) { setIsAdding(false); return; }
+    onCreateTask(newTitle.trim(), groupKey);
+    setNewTitle('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
+    if (e.key === 'Escape') { setIsAdding(false); setNewTitle(''); }
+  };
+
+  return (
+    <div className="flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{label}</span>
+          <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">
+            {groupTasks.length}
+          </span>
+        </div>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={startAdding}>
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-auto p-2 space-y-2">
+        {isAdding && (
+          <div className="rounded-md border bg-card p-2">
+            <Input
+              ref={inputRef}
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleSubmit}
+              placeholder="Task name..."
+              className="h-7 text-sm border-0 shadow-none focus-visible:ring-0 px-1"
+            />
+          </div>
+        )}
+        {groupTasks.map(task => (
+          <div
+            key={task.id}
+            className={`rounded-md border bg-card p-3 cursor-pointer hover:shadow-sm transition-all border-l-[3px] ${priorityColors[task.priority] || ''} ${
+              selectedTaskId === task.id ? 'ring-1 ring-primary' : ''
+            }`}
+            onClick={() => onSelectTask(task.id)}
+          >
+            <p className={`text-sm font-medium ${task.status === 'complete' ? 'line-through text-muted-foreground' : ''}`}>
+              {task.title}
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              {task.due_date && (
+                <span className="text-[10px] text-muted-foreground">
+                  {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto p-2 space-y-2">
-              {groupTasks.map(task => (
-                <div
-                  key={task.id}
-                  className={`rounded-md border bg-card p-3 cursor-pointer hover:shadow-sm transition-all border-l-[3px] ${priorityColors[task.priority] || ''} ${
-                    selectedTaskId === task.id ? 'ring-1 ring-primary' : ''
-                  }`}
-                  onClick={() => onSelectTask(task.id)}
-                >
-                  <p className={`text-sm font-medium ${task.status === 'complete' ? 'line-through text-muted-foreground' : ''}`}>
-                    {task.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    {task.due_date && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </span>
-                    )}
-                    {task.assignee_profile && (
-                      <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[100px]">
-                        {task.assignee_profile.display_name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+              )}
+              {task.assignee_profile && (
+                <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[100px]">
+                  {task.assignee_profile.display_name}
+                </span>
+              )}
             </div>
           </div>
-        );
-      })}
+        ))}
+        {!isAdding && (
+          <button
+            onClick={startAdding}
+            className="w-full flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground py-1.5 px-2 rounded hover:bg-muted/50 transition-colors"
+          >
+            <Plus className="h-3 w-3" /> Add task
+          </button>
+        )}
+      </div>
     </div>
   );
 }
