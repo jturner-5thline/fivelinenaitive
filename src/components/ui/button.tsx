@@ -19,7 +19,7 @@ const buttonVariants = cva(
         success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]",
         hero: "bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 hover:-translate-y-0.5 dark:hover:shadow-[0_0_25px_hsl(199,80%,55%,0.4)]",
         "hero-outline": "border-2 border-primary bg-transparent text-primary hover:bg-primary/10 hover:border-primary/60 dark:hover:shadow-[0_0_20px_hsl(199,80%,55%,0.2)]",
-        gradient: "bg-[linear-gradient(135deg,hsl(195,90%,60%),hsl(230,70%,55%),hsl(270,55%,45%),hsl(240,30%,10%))] text-white hover:bg-[linear-gradient(135deg,hsl(195,90%,65%),hsl(230,70%,60%),hsl(270,55%,50%),hsl(240,30%,15%))] shadow-sm dark:hover:shadow-[0_0_20px_hsl(230,70%,55%,0.3)]",
+        gradient: "bg-[linear-gradient(135deg,hsl(260,20%,8%),hsl(270,60%,35%),hsl(265,80%,55%),hsl(220,90%,75%),hsl(260,50%,40%),hsl(270,30%,10%))] text-white hover:bg-[linear-gradient(135deg,hsl(260,20%,12%),hsl(270,60%,40%),hsl(265,80%,60%),hsl(220,90%,80%),hsl(260,50%,45%),hsl(270,30%,14%))] shadow-sm dark:hover:shadow-[0_0_20px_hsl(265,80%,55%,0.3)]",
       },
       size: {
         default: "h-10 px-4 py-2",
