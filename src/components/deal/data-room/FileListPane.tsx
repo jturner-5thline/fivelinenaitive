@@ -219,8 +219,12 @@ export function FileListPane({
                       ) : (
                         <p
                           className="text-xs font-medium truncate cursor-pointer hover:underline"
-                          onDoubleClick={() => onRenameFile && startRename(att)}
-                          title="Double-click to rename"
+                          onClick={() => setPreviewFile(att)}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            onRenameFile && startRename(att);
+                          }}
+                          title="Click to preview · Double-click to rename"
                         >
                           {att.name}
                         </p>
