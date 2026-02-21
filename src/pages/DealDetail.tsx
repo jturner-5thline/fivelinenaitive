@@ -3,6 +3,7 @@ import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'reac
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
+import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { supabase } from '@/integrations/supabase/client';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -4180,7 +4181,10 @@ export default function DealDetail() {
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
         <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader className="shrink-0">
-            <DialogTitle>{selectedLenderName}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedLenderName}
+              <LenderFlagIndicator lenderName={selectedLenderName || ''} />
+            </DialogTitle>
           </DialogHeader>
           {selectedLenderName && (() => {
             // Look up lender from the master lenders directory (database)
@@ -4308,6 +4312,20 @@ export default function DealDetail() {
                 </TabsContent>
                 
                 <TabsContent value="about" className="space-y-6 mt-4">
+                  {/* Internal Lender Notes */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold">Internal Notes</h4>
+                      <LenderNotesPopover lenderName={selectedLenderName} masterLenderId={masterLender?.id} side="left">
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                          <MessageSquare className="h-3 w-3" />
+                          View / Add Notes
+                        </Button>
+                      </LenderNotesPopover>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-2">Internal only — not visible to lenders or borrowers</p>
+                  </div>
+
                   {/* Contact Information - from lender directory */}
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Contact Information</h4>

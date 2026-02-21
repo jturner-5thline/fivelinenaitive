@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react';
 import { Pencil, Trash2, Upload, Loader2, FileCheck, Megaphone, Building2 } from 'lucide-react';
+import { LenderNotesPopover, LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -95,8 +96,9 @@ export const LenderListCard = memo(function LenderListCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="font-medium truncate">{lender.name}</h3>
+          <LenderFlagIndicator lenderName={lender.name} />
           {lender.tier && (
-            <Badge 
+            <Badge
               className={`text-xs shrink-0 ${
                 lender.tier === 'T1' ? 'bg-[#d1fae5] text-[#047857] hover:bg-[#d1fae5]' :
                 lender.tier === 'T2' ? 'bg-[#d0e7ff] text-[#1d4ed8] hover:bg-[#d0e7ff]' :
@@ -190,6 +192,7 @@ export const LenderListCard = memo(function LenderListCard({
         )}
       </div>
       <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
+        <LenderNotesPopover lenderName={lender.name} masterLenderId={lender.id} side="left" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
