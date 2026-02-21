@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
+import { usePreSendChecks } from './usePreSendChecks';
+import { PreSendAlertDialog } from './PreSendAlertDialog';
 
 interface ComposeEmailDialogProps {
   open: boolean;
@@ -41,6 +43,8 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const subjectInputRef = useRef<HTMLInputElement>(null);
+  const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
 
   const resetForm = () => {
     setTo(replyTo?.to_email || '');
@@ -52,13 +56,10 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     setAttachments([]);
   };
 
-  const handleSend = async () => {
+  const executeSend = async () => {
+    clearPreSendAlert();
     if (!to.trim()) {
       toast.error('Please add a recipient');
-      return;
-    }
-    if (!subject.trim()) {
-      toast.error('Please add a subject');
       return;
     }
 
@@ -96,6 +97,12 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     });
     resetForm();
     onOpenChange(false);
+  };
+
+  const handleSend = () => {
+    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    const passed = runChecks({ subject, body, attachments });
+    if (passed) executeSend();
   };
 
   const handleAddAttachment = () => {
@@ -176,6 +183,7 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground w-10 shrink-0">Subj</Label>
             <Input
+              ref={subjectInputRef}
               value={subject}
               onChange={e => setSubject(e.target.value)}
               placeholder="Subject"
@@ -265,6 +273,14 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           </Button>
         </div>
       </DialogContent>
+
+      <PreSendAlertDialog
+        alert={preSendAlert}
+        onClose={clearPreSendAlert}
+        onSendAnyway={executeSend}
+        onAddAttachment={() => { clearPreSendAlert(); handleAddAttachment(); }}
+        onAddSubject={() => { clearPreSendAlert(); subjectInputRef.current?.focus(); }}
+      />
     </Dialog>
   );
 }
