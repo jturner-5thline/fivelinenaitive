@@ -10,10 +10,11 @@ import { FinanceChangeLog } from "@/components/finance/FinanceChangeLog";
 import { DriverInputsPanel, useDriverInputs, DriverInputs } from "@/components/finance/DriverInputsPanel";
 import { FinancialKPIDashboard } from "@/components/finance/FinancialKPIDashboard";
 import { FinanceLayoutToggle, DriverLayout } from "@/components/finance/FinanceLayoutToggle";
+import { SpreadsheetWorkspace } from "@/components/finance/spreadsheet/SpreadsheetWorkspace";
 import { useFinanceDataRange, FinancePeriodType } from "@/hooks/useFinanceDataRange";
 import { useCompany } from "@/hooks/useCompany";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, TrendingUp, Wallet, ArrowDownUp, History, BarChart3 } from "lucide-react";
+import { Building2, TrendingUp, Wallet, ArrowDownUp, History, BarChart3, FileSpreadsheet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -23,11 +24,10 @@ export default function Finance() {
   const [periodType, setPeriodType] = useState<FinancePeriodType>('monthly');
   const [startDate, setStartDate] = useState<Date>(() => startOfMonth(subMonths(new Date(), 5)));
   const [endDate, setEndDate] = useState<Date>(() => endOfMonth(new Date()));
-  const [activeTab, setActiveTab] = useState("pnl");
+  const [activeTab, setActiveTab] = useState("workbook");
   const [driverLayout, setDriverLayout] = useState<DriverLayout>('sidebar');
   const [showFormulas, setShowFormulas] = useState(false);
   
-  // Driver inputs state
   const { inputs: driverInputs, handleInputChange, resetToDefaults } = useDriverInputs();
 
   const { 
@@ -79,92 +79,102 @@ export default function Finance() {
     );
   }
 
-  const showDriversPanel = driverLayout !== 'hidden';
+  const isStatementTab = ['pnl', 'balance', 'cashflow', 'kpis', 'history'].includes(activeTab);
+  const showDriversPanel = driverLayout !== 'hidden' && isStatementTab;
   const isSidebarLayout = driverLayout === 'sidebar';
 
   return (
     <AppLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
               Finance
             </h1>
-            <p className="text-muted-foreground">
-              Financial forecasting and tracking for {company.name}
+            <p className="text-muted-foreground text-sm">
+              Financial modeling, forecasting, and analysis for {company.name}
             </p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <FinanceLayoutToggle 
-              layout={driverLayout} 
-              onLayoutChange={setDriverLayout}
-            />
-            <FinanceDateRangePicker
-              periodType={periodType}
-              setPeriodType={setPeriodType}
-              startDate={startDate}
-              setStartDate={setStartDate}
-              endDate={endDate}
-              setEndDate={setEndDate}
-            />
-          </div>
+          {isStatementTab && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <FinanceLayoutToggle 
+                layout={driverLayout} 
+                onLayoutChange={setDriverLayout}
+              />
+              <FinanceDateRangePicker
+                periodType={periodType}
+                setPeriodType={setPeriodType}
+                startDate={startDate}
+                setStartDate={setStartDate}
+                endDate={endDate}
+                setEndDate={setEndDate}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Driver Inputs - Top Layout */}
-        {showDriversPanel && !isSidebarLayout && (
-          <DriverInputsPanel
-            inputs={driverInputs}
-            onInputChange={handleInputChange}
-            onApplyDrivers={handleApplyDrivers}
-            showFormulas={showFormulas}
-            onToggleFormulas={setShowFormulas}
-            layout="top"
-          />
-        )}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full max-w-[900px] grid-cols-6">
+            <TabsTrigger value="workbook" className="flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden sm:inline">Workbook</span>
+            </TabsTrigger>
+            <TabsTrigger value="pnl" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">P&L</span>
+            </TabsTrigger>
+            <TabsTrigger value="balance" className="flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              <span className="hidden sm:inline">Balance Sheet</span>
+            </TabsTrigger>
+            <TabsTrigger value="cashflow" className="flex items-center gap-2">
+              <ArrowDownUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Cash Flow</span>
+            </TabsTrigger>
+            <TabsTrigger value="kpis" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">KPIs</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">Log</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Main content with optional sidebar */}
-        <div className={cn(
-          "flex gap-6",
-          isSidebarLayout && showDriversPanel ? "flex-row" : "flex-col"
-        )}>
-          {/* Driver Inputs - Sidebar Layout */}
-          {showDriversPanel && isSidebarLayout && (
+          {/* Workbook Tab - Full spreadsheet experience */}
+          <TabsContent value="workbook" className="mt-0">
+            <SpreadsheetWorkspace />
+          </TabsContent>
+
+          {/* Driver Inputs - Top Layout (for statement tabs) */}
+          {showDriversPanel && !isSidebarLayout && (
             <DriverInputsPanel
               inputs={driverInputs}
               onInputChange={handleInputChange}
               onApplyDrivers={handleApplyDrivers}
               showFormulas={showFormulas}
               onToggleFormulas={setShowFormulas}
-              layout="sidebar"
+              layout="top"
             />
           )}
 
-          {/* Statements Tabs */}
-          <div className="flex-1 min-w-0">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full max-w-[750px] grid-cols-5">
-                <TabsTrigger value="pnl" className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="hidden sm:inline">P&L</span>
-                </TabsTrigger>
-                <TabsTrigger value="balance" className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4" />
-                  <span className="hidden sm:inline">Balance Sheet</span>
-                </TabsTrigger>
-                <TabsTrigger value="cashflow" className="flex items-center gap-2">
-                  <ArrowDownUp className="h-4 w-4" />
-                  <span className="hidden sm:inline">Cash Flow</span>
-                </TabsTrigger>
-                <TabsTrigger value="kpis" className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  <span className="hidden sm:inline">KPIs & Ratios</span>
-                </TabsTrigger>
-                <TabsTrigger value="history" className="flex items-center gap-2">
-                  <History className="h-4 w-4" />
-                  <span className="hidden sm:inline">Change Log</span>
-                </TabsTrigger>
-              </TabsList>
+          {/* Statement tabs with optional sidebar */}
+          <div className={cn(
+            "flex gap-6",
+            isSidebarLayout && showDriversPanel ? "flex-row" : "flex-col"
+          )}>
+            {showDriversPanel && isSidebarLayout && (
+              <DriverInputsPanel
+                inputs={driverInputs}
+                onInputChange={handleInputChange}
+                onApplyDrivers={handleApplyDrivers}
+                showFormulas={showFormulas}
+                onToggleFormulas={setShowFormulas}
+                layout="sidebar"
+              />
+            )}
 
+            <div className="flex-1 min-w-0">
               <TabsContent value="pnl">
                 <ProfitAndLossStatementRange
                   companyId={company.id}
@@ -230,9 +240,9 @@ export default function Finance() {
                   isLoading={isLoading}
                 />
               </TabsContent>
-            </Tabs>
+            </div>
           </div>
-        </div>
+        </Tabs>
       </div>
     </AppLayout>
   );
