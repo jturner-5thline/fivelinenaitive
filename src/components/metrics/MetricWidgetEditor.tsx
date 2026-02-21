@@ -44,6 +44,14 @@ const CHART_TYPE_OPTIONS: { value: MetricChartType; label: string }[] = [
   { value: 'pie', label: 'Pie Chart' },
   { value: 'area', label: 'Area Chart' },
   { value: 'composed', label: 'Composed Chart' },
+  { value: 'waterfall', label: 'Waterfall Chart' },
+  { value: 'gauge', label: 'Gauge Chart' },
+  { value: 'bullet', label: 'Bullet Chart' },
+  { value: 'treemap', label: 'Treemap' },
+  { value: 'funnel', label: 'Funnel Chart' },
+  { value: 'radar', label: 'Radar Chart' },
+  { value: 'heatmap', label: 'Heatmap Calendar' },
+  { value: 'forecast', label: 'Forecast Trendline' },
 ];
 
 const COLOR_OPTIONS = [

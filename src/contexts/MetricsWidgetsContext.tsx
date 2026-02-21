@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export type MetricWidgetType = 'stat' | 'chart';
-export type MetricChartType = 'bar' | 'line' | 'pie' | 'area' | 'composed';
+export type MetricChartType = 'bar' | 'line' | 'pie' | 'area' | 'composed' | 'waterfall' | 'gauge' | 'bullet' | 'treemap' | 'funnel' | 'radar' | 'heatmap' | 'forecast';
 export type MetricWidgetSize = 'small' | 'medium' | 'large' | 'full';
 
 export interface MetricWidgetConfig {
@@ -52,6 +52,14 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'pipeline-by-type', label: 'Pipeline by Deal Type', type: 'chart' },
   { id: 'manager-performance', label: 'Manager Performance', type: 'chart' },
   { id: 'stage-breakdown', label: 'Pipeline Stage Breakdown', type: 'chart' },
+  { id: 'revenue-waterfall', label: 'Revenue Waterfall', type: 'chart' },
+  { id: 'pipeline-gauge', label: 'Pipeline Health Gauge', type: 'chart' },
+  { id: 'kpi-bullet', label: 'KPI Bullet Charts', type: 'chart' },
+  { id: 'pipeline-treemap', label: 'Pipeline Treemap', type: 'chart' },
+  { id: 'conversion-funnel', label: 'Conversion Funnel', type: 'chart' },
+  { id: 'performance-radar', label: 'Performance Radar', type: 'chart' },
+  { id: 'activity-heatmap', label: 'Activity Heatmap', type: 'chart' },
+  { id: 'revenue-forecast', label: 'Revenue Forecast', type: 'chart' },
 ] as const;
 
 export type MetricDataSource = typeof METRIC_WIDGET_DATA_SOURCES[number]['id'];

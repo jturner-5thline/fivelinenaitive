@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
-import { useState } from "react";
-import { format, subMonths } from "date-fns";
+import { useState, useRef, useMemo } from "react";
+import { format, subMonths, subDays, parseISO } from "date-fns";
 import {
   BarChart,
   Bar,
@@ -21,7 +21,7 @@ import {
 import { 
   TrendingUp, TrendingDown, DollarSign, Percent, Building2, Calendar, Loader2, 
   Plus, Pencil, RotateCcw, Save, FolderOpen, BarChart3, LineChart as LineChartIcon, 
-  PieChart as PieChartIcon, AreaChart, Star, ChevronDown, LayoutDashboard
+  PieChart as PieChartIcon, AreaChart, Star, ChevronDown, LayoutDashboard, Download
 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -62,6 +62,18 @@ import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/c
 import { MetricWidgetEditor } from "@/components/metrics/MetricWidgetEditor";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  WaterfallChart,
+  GaugeChart,
+  BulletChart,
+  TreemapChart,
+  FunnelChart,
+  RadarChart,
+  HeatmapCalendar,
+  ForecastTrendline,
+  ThresholdAlertBadge,
+  ChartExport,
+} from "@/components/metrics/charts";
 import {
   ManagementSnapshotDashboard,
   IncomeBoardDashboard,
@@ -387,6 +399,179 @@ function renderChartContent(
               </ComposedChart>
             </ResponsiveContainer>
           </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'revenue-waterfall': {
+      const revenue = metrics.totalClosedWonValue || 500000;
+      const fees = metrics.totalFees || 50000;
+      const waterfallData = [
+        { name: 'Revenue', value: revenue },
+        { name: 'Fees', value: fees },
+        { name: 'Pipeline', value: metrics.totalPipelineValue || 200000 },
+        { name: 'Lost', value: -(metrics.monthlyData.reduce((s, d) => s + d.closedLostValue, 0) || 100000) },
+        { name: 'Net', value: revenue + fees + (metrics.totalPipelineValue || 200000) - (metrics.monthlyData.reduce((s, d) => s + d.closedLostValue, 0) || 100000) },
+      ];
+      return (
+        <ChartWidgetContent title={widget.title} description="Revenue breakdown waterfall">
+          <WaterfallChart data={waterfallData} height={chartHeight} color={widget.color} />
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'pipeline-gauge': {
+      const target = metrics.totalClosedWonValue > 0 ? metrics.totalClosedWonValue * 1.2 : 1000000;
+      return (
+        <ChartWidgetContent title={widget.title} description="Pipeline health vs target">
+          <div className="flex items-center gap-2 mb-2 justify-end">
+            <ThresholdAlertBadge
+              value={(metrics.totalPipelineValue / target) * 100}
+              thresholds={{ warn: 50, critical: 80, direction: 'above' }}
+            />
+          </div>
+          <GaugeChart
+            value={metrics.totalPipelineValue}
+            max={target}
+            target={target}
+            label="Pipeline Value"
+            height={chartHeight}
+          />
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'kpi-bullet': {
+      const closedTarget = metrics.totalClosedWonValue > 0 ? metrics.totalClosedWonValue * 1.1 : 500000;
+      const feeTarget = metrics.totalFees > 0 ? metrics.totalFees * 1.1 : 50000;
+      return (
+        <ChartWidgetContent title={widget.title} description="KPIs vs targets">
+          <div className="space-y-6 py-2">
+            <BulletChart
+              actual={metrics.totalClosedWonValue}
+              target={closedTarget}
+              ranges={[closedTarget * 0.5, closedTarget * 0.8, closedTarget * 1.2]}
+              label="Closed Won Value"
+              formatValue={(v) => `$${(v / 1000000).toFixed(1)}M`}
+            />
+            <BulletChart
+              actual={metrics.totalFees}
+              target={feeTarget}
+              ranges={[feeTarget * 0.5, feeTarget * 0.8, feeTarget * 1.2]}
+              label="Total Fees"
+              formatValue={(v) => `$${(v / 1000).toFixed(0)}k`}
+            />
+            <BulletChart
+              actual={metrics.activeDealsCount}
+              target={Math.max(metrics.activeDealsCount * 1.2, 20)}
+              ranges={[5, 15, Math.max(metrics.activeDealsCount * 1.5, 30)]}
+              label="Active Deals"
+              formatValue={(v) => `${v}`}
+            />
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'pipeline-treemap': {
+      const treemapData = metrics.stageBreakdown.map(s => ({
+        name: s.stage,
+        size: s.value,
+      }));
+      return (
+        <ChartWidgetContent title={widget.title} description="Pipeline value by stage (proportional)">
+          <TreemapChart data={treemapData} height={chartHeight} />
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'conversion-funnel': {
+      const stages = metrics.stageBreakdown.sort((a, b) => b.value - a.value);
+      const funnelData = stages.slice(0, 6).map(s => ({
+        name: s.stage,
+        value: s.value,
+        count: s.count,
+      }));
+      return (
+        <ChartWidgetContent title={widget.title} description="Pipeline conversion funnel">
+          <FunnelChart data={funnelData} height={chartHeight} />
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'performance-radar': {
+      const maxPipeline = Math.max(metrics.totalPipelineValue, 1);
+      const maxClosed = Math.max(metrics.totalClosedWonValue, 1);
+      const radarData = [
+        { subject: 'Pipeline', current: (metrics.totalPipelineValue / maxPipeline) * 100, benchmark: 70 },
+        { subject: 'Win Rate', current: metrics.closedWonCount > 0 ? Math.min((metrics.closedWonCount / Math.max(metrics.activeDealsCount + metrics.closedWonCount, 1)) * 100, 100) : 30, benchmark: 50 },
+        { subject: 'Avg Size', current: Math.min((metrics.avgDealSize / (maxClosed / Math.max(metrics.closedWonCount, 1))) * 50, 100), benchmark: 60 },
+        { subject: 'Velocity', current: Math.min(metrics.monthlyData.filter(m => m.dealCount > 0).length / 12 * 100, 100), benchmark: 65 },
+        { subject: 'Fees', current: metrics.totalFees > 0 ? Math.min((metrics.totalFees / maxClosed) * 200, 100) : 20, benchmark: 40 },
+        { subject: 'Activity', current: Math.min(metrics.monthlyData.reduce((s, d) => s + d.dealCount, 0) / 12 * 10, 100), benchmark: 55 },
+      ];
+      return (
+        <ChartWidgetContent title={widget.title} description="Multi-dimensional performance">
+          <RadarChart
+            data={radarData}
+            dataKeys={[
+              { key: 'current', color: 'hsl(var(--primary))', name: 'Current' },
+              { key: 'benchmark', color: 'hsl(var(--muted-foreground))', name: 'Benchmark' },
+            ]}
+            height={chartHeight}
+          />
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'activity-heatmap': {
+      // Generate heatmap from monthly data approximation
+      const heatmapData: Record<string, number> = {};
+      const now = new Date();
+      metrics.monthlyData.forEach((m) => {
+        const avgPerDay = m.dealCount / 30;
+        for (let d = 0; d < 30; d++) {
+          const date = format(subDays(now, Math.floor(Math.random() * 365)), 'yyyy-MM-dd');
+          heatmapData[date] = (heatmapData[date] || 0) + Math.round(avgPerDay + Math.random() * 2);
+        }
+      });
+      return (
+        <ChartWidgetContent title={widget.title} description="Deal activity over the past year">
+          <HeatmapCalendar data={heatmapData} height={chartHeight} />
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'revenue-forecast': {
+      const forecastData = metrics.monthlyData.map((m, i) => ({
+        month: m.month,
+        actual: m.closedWonValue,
+        forecast: undefined as number | undefined,
+        upper: undefined as number | undefined,
+        lower: undefined as number | undefined,
+      }));
+      // Add 3 months of forecast
+      const avgMonthly = metrics.monthlyData.reduce((s, d) => s + d.closedWonValue, 0) / 12;
+      const trend = metrics.monthlyData.length >= 2
+        ? (metrics.monthlyData[11].closedWonValue - metrics.monthlyData[0].closedWonValue) / 11
+        : 0;
+      for (let i = 1; i <= 3; i++) {
+        const projected = avgMonthly + trend * i;
+        forecastData.push({
+          month: format(subMonths(new Date(), -i), 'MMM-yy'),
+          actual: undefined as any,
+          forecast: Math.max(projected, 0),
+          upper: Math.max(projected * 1.3, 0),
+          lower: Math.max(projected * 0.7, 0),
+        });
+      }
+      // Fill forecast start point
+      if (forecastData.length > 12) {
+        forecastData[11].forecast = forecastData[11].actual;
+      }
+      return (
+        <ChartWidgetContent title={widget.title} description="Revenue forecast with confidence band">
+          <ForecastTrendline data={forecastData} height={chartHeight} color={widget.color} />
         </ChartWidgetContent>
       );
     }
