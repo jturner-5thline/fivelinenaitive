@@ -15,10 +15,17 @@ import { ScenarioManager } from "@/components/finance/ScenarioManager";
 import { RevenueForecast } from "@/components/finance/RevenueForecast";
 import { BudgetVsActuals } from "@/components/finance/BudgetVsActuals";
 import { SensitivityAnalysis } from "@/components/finance/SensitivityAnalysis";
+import { PnLTrendCharts } from "@/components/finance/PnLTrendCharts";
+import { CashFlowWaterfall } from "@/components/finance/CashFlowWaterfall";
+import { GoalSeek, CashFlowStressTests, CovenantCompliance } from "@/components/finance/GoalSeekAndStress";
+import { FinanceExport } from "@/components/finance/FinanceExport";
 import { useFinanceDataRange, FinancePeriodType } from "@/hooks/useFinanceDataRange";
 import { useCompany } from "@/hooks/useCompany";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, TrendingUp, Wallet, ArrowDownUp, History, BarChart3, FileSpreadsheet, GitBranch, Target, Grid3X3 } from "lucide-react";
+import { 
+  Building2, TrendingUp, Wallet, ArrowDownUp, History, BarChart3, 
+  FileSpreadsheet, GitBranch, Target, Zap, Download
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -87,6 +94,10 @@ export default function Finance() {
   const showDriversPanel = driverLayout !== 'hidden' && isStatementTab;
   const isSidebarLayout = driverLayout === 'sidebar';
 
+  const pnlLineItems = lineItems.filter(li => li.statement_type === 'pnl');
+  const bsLineItems = lineItems.filter(li => li.statement_type === 'balance_sheet');
+  const cfLineItems = lineItems.filter(li => li.statement_type === 'cash_flow');
+
   return (
     <AppLayout>
       <div className="p-6 space-y-4">
@@ -118,44 +129,54 @@ export default function Finance() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full max-w-[1100px] grid-cols-9">
-            <TabsTrigger value="workbook" className="flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
-              <span className="hidden lg:inline">Workbook</span>
-            </TabsTrigger>
-            <TabsTrigger value="pnl" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden lg:inline">P&L</span>
-            </TabsTrigger>
-            <TabsTrigger value="balance" className="flex items-center gap-2">
-              <Wallet className="h-4 w-4" />
-              <span className="hidden lg:inline">Balance</span>
-            </TabsTrigger>
-            <TabsTrigger value="cashflow" className="flex items-center gap-2">
-              <ArrowDownUp className="h-4 w-4" />
-              <span className="hidden lg:inline">Cash Flow</span>
-            </TabsTrigger>
-            <TabsTrigger value="kpis" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden lg:inline">KPIs</span>
-            </TabsTrigger>
-            <TabsTrigger value="forecast" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden lg:inline">Forecast</span>
-            </TabsTrigger>
-            <TabsTrigger value="scenarios" className="flex items-center gap-2">
-              <GitBranch className="h-4 w-4" />
-              <span className="hidden lg:inline">Scenarios</span>
-            </TabsTrigger>
-            <TabsTrigger value="variance" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              <span className="hidden lg:inline">Variance</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              <span className="hidden lg:inline">Log</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="inline-flex w-auto min-w-full sm:min-w-0">
+              <TabsTrigger value="workbook" className="flex items-center gap-1.5 px-3">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Workbook</span>
+              </TabsTrigger>
+              <TabsTrigger value="pnl" className="flex items-center gap-1.5 px-3">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">P&L</span>
+              </TabsTrigger>
+              <TabsTrigger value="balance" className="flex items-center gap-1.5 px-3">
+                <Wallet className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Balance</span>
+              </TabsTrigger>
+              <TabsTrigger value="cashflow" className="flex items-center gap-1.5 px-3">
+                <ArrowDownUp className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Cash Flow</span>
+              </TabsTrigger>
+              <TabsTrigger value="kpis" className="flex items-center gap-1.5 px-3">
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">KPIs</span>
+              </TabsTrigger>
+              <TabsTrigger value="forecast" className="flex items-center gap-1.5 px-3">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Forecast</span>
+              </TabsTrigger>
+              <TabsTrigger value="scenarios" className="flex items-center gap-1.5 px-3">
+                <GitBranch className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Scenarios</span>
+              </TabsTrigger>
+              <TabsTrigger value="variance" className="flex items-center gap-1.5 px-3">
+                <Target className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Variance</span>
+              </TabsTrigger>
+              <TabsTrigger value="analysis" className="flex items-center gap-1.5 px-3">
+                <Zap className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Analysis</span>
+              </TabsTrigger>
+              <TabsTrigger value="export" className="flex items-center gap-1.5 px-3">
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Export</span>
+              </TabsTrigger>
+              <TabsTrigger value="history" className="flex items-center gap-1.5 px-3">
+                <History className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Log</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Workbook Tab */}
           <TabsContent value="workbook" className="mt-0">
@@ -192,18 +213,25 @@ export default function Finance() {
 
             <div className="flex-1 min-w-0">
               <TabsContent value="pnl">
-                <ProfitAndLossStatementRange
-                  companyId={company.id}
-                  periodType={periodType}
-                  periodColumns={periodColumns}
-                  categories={categories.filter(c => c.statement_type === 'pnl')}
-                  lineItems={lineItems.filter(li => li.statement_type === 'pnl')}
-                  financialData={financialData}
-                  isLoading={isLoading}
-                  onUpdateData={updateFinancialData}
-                  onCreatePeriod={createPeriod}
-                  onRefresh={refreshData}
-                />
+                <div className="space-y-4">
+                  <ProfitAndLossStatementRange
+                    companyId={company.id}
+                    periodType={periodType}
+                    periodColumns={periodColumns}
+                    categories={categories.filter(c => c.statement_type === 'pnl')}
+                    lineItems={pnlLineItems}
+                    financialData={financialData}
+                    isLoading={isLoading}
+                    onUpdateData={updateFinancialData}
+                    onCreatePeriod={createPeriod}
+                    onRefresh={refreshData}
+                  />
+                  <PnLTrendCharts
+                    periodColumns={periodColumns}
+                    financialData={financialData}
+                    lineItems={[...pnlLineItems, ...bsLineItems]}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="balance">
@@ -212,7 +240,7 @@ export default function Finance() {
                   periodType={periodType}
                   periodColumns={periodColumns}
                   categories={categories.filter(c => c.statement_type === 'balance_sheet')}
-                  lineItems={lineItems.filter(li => li.statement_type === 'balance_sheet')}
+                  lineItems={bsLineItems}
                   financialData={financialData}
                   isLoading={isLoading}
                   onUpdateData={updateFinancialData}
@@ -222,27 +250,32 @@ export default function Finance() {
               </TabsContent>
 
               <TabsContent value="cashflow">
-                <CashFlowStatementRange
-                  companyId={company.id}
-                  periodType={periodType}
-                  periodColumns={periodColumns}
-                  categories={categories.filter(c => c.statement_type === 'cash_flow')}
-                  lineItems={lineItems.filter(li => li.statement_type === 'cash_flow')}
-                  financialData={financialData}
-                  isLoading={isLoading}
-                  onUpdateData={updateFinancialData}
-                  onCreatePeriod={createPeriod}
-                  onRefresh={refreshData}
-                />
+                <div className="space-y-4">
+                  <CashFlowStatementRange
+                    companyId={company.id}
+                    periodType={periodType}
+                    periodColumns={periodColumns}
+                    categories={categories.filter(c => c.statement_type === 'cash_flow')}
+                    lineItems={cfLineItems}
+                    financialData={financialData}
+                    isLoading={isLoading}
+                    onUpdateData={updateFinancialData}
+                    onCreatePeriod={createPeriod}
+                    onRefresh={refreshData}
+                  />
+                  <CashFlowWaterfall
+                    periodColumns={periodColumns}
+                    financialData={financialData}
+                    lineItems={cfLineItems}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="kpis">
                 <FinancialKPIDashboard
                   periodColumns={periodColumns}
                   financialData={financialData}
-                  lineItems={lineItems.filter(li => 
-                    li.statement_type === 'pnl' || li.statement_type === 'balance_sheet'
-                  )}
+                  lineItems={[...pnlLineItems, ...bsLineItems]}
                   driverInputs={driverInputs}
                   showFormulas={showFormulas}
                 />
@@ -261,6 +294,18 @@ export default function Finance() {
 
               <TabsContent value="variance">
                 <BudgetVsActuals />
+              </TabsContent>
+
+              <TabsContent value="analysis">
+                <div className="space-y-4">
+                  <GoalSeek />
+                  <CashFlowStressTests />
+                  <CovenantCompliance />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="export">
+                <FinanceExport />
               </TabsContent>
 
               <TabsContent value="history">
