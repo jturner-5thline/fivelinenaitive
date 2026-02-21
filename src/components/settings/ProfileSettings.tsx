@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { AvatarCropper } from './AvatarCropper';
 
 interface ProfileSettingsProps {
   collapsible?: boolean;
@@ -23,6 +24,8 @@ export function ProfileSettings({ collapsible = false, open, onOpenChange }: Pro
   const [lastName, setLastName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize fields when profile loads
@@ -48,19 +51,20 @@ export function ProfileSettings({ collapsible = false, open, onOpenChange }: Pro
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      return;
-    }
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 5 * 1024 * 1024) return;
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      return;
-    }
+    setSelectedFile(file);
+    setCropperOpen(true);
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
+  };
 
+  const handleCropComplete = async (croppedFile: File) => {
     setIsUploading(true);
-    await uploadAvatar(file);
+    await uploadAvatar(croppedFile);
     setIsUploading(false);
+    setSelectedFile(null);
   };
 
   const getInitials = () => {
@@ -189,43 +193,58 @@ export function ProfileSettings({ collapsible = false, open, onOpenChange }: Pro
 
   const isOpen = open ?? true;
 
+  const cropper = (
+    <AvatarCropper
+      open={cropperOpen}
+      onOpenChange={setCropperOpen}
+      imageFile={selectedFile}
+      onCropComplete={handleCropComplete}
+    />
+  );
+
   if (collapsible) {
     return (
-      <Collapsible open={isOpen} onOpenChange={onOpenChange}>
-        <Card>
-          <CollapsibleTrigger className="w-full group">
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  <div className="text-left">
-                    <CardTitle>Profile</CardTitle>
-                    <CardDescription>
-                      Manage your profile information and avatar
-                    </CardDescription>
+      <>
+        <Collapsible open={isOpen} onOpenChange={onOpenChange}>
+          <Card>
+            <CollapsibleTrigger className="w-full group">
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    <div className="text-left">
+                      <CardTitle>Profile</CardTitle>
+                      <CardDescription>
+                        Manage your profile information and avatar
+                      </CardDescription>
+                    </div>
                   </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
-                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            {cardContent}
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {cardContent}
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+        {cropper}
+      </>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Profile</CardTitle>
-        <CardDescription>
-          Manage your profile information and avatar
-        </CardDescription>
-      </CardHeader>
-      {cardContent}
-    </Card>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+          <CardDescription>
+            Manage your profile information and avatar
+          </CardDescription>
+        </CardHeader>
+        {cardContent}
+      </Card>
+      {cropper}
+    </>
   );
 }
