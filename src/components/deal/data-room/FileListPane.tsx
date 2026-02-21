@@ -180,23 +180,26 @@ export function FileListPane({
                   key={att.id}
                   draggable={!isEditing}
                   onDragStart={(e) => handleDragStart(e, att)}
+                  onClick={() => !isEditing && setPreviewFile(att)}
                   className={cn(
-                    "flex items-center gap-2 px-2.5 py-2 rounded-md border transition-colors hover:bg-muted/30",
-                    isEditing ? '' : 'cursor-grab active:cursor-grabbing',
+                    "flex items-center gap-2 px-2.5 py-2 rounded-md border transition-colors hover:bg-muted/30 cursor-pointer",
+                    isEditing && 'cursor-default',
                     isSelected && "ring-1 ring-primary bg-primary/5"
                   )}
                 >
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={(checked) => {
-                      setSelectedFiles(prev => {
-                        const next = new Set(prev);
-                        checked ? next.add(att.id) : next.delete(att.id);
-                        return next;
-                      });
-                    }}
-                    className="shrink-0"
-                  />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => {
+                        setSelectedFiles(prev => {
+                          const next = new Set(prev);
+                          checked ? next.add(att.id) : next.delete(att.id);
+                          return next;
+                        });
+                      }}
+                      className="shrink-0"
+                    />
+                  </div>
                   <div className="cursor-grab shrink-0 text-muted-foreground/50">
                     <GripVertical className="h-3.5 w-3.5" />
                   </div>
@@ -239,7 +242,7 @@ export function FileListPane({
                       {formatBytes(att.size_bytes)} · {formatRelativeTime(att.created_at)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
+                  <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {itemMappings.length > 0 && (
                       <Tooltip>
                         <TooltipTrigger>
