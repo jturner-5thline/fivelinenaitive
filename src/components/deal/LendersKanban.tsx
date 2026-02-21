@@ -268,11 +268,11 @@ function DroppableColumn({
           {lenders.length}
         </span>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-visible">
         <div
           ref={setNodeRef}
           className={cn(
-            "bg-muted/20 rounded-lg p-2.5 min-h-[400px] space-y-2.5 transition-all duration-200",
+            "bg-muted/20 rounded-lg p-3 min-h-[400px] space-y-2.5 transition-all duration-200",
             isOver && "bg-primary/10 ring-2 ring-primary/40 shadow-inner"
           )}
         >
