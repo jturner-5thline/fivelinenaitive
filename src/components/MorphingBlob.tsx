@@ -70,9 +70,9 @@ function BlobMesh({ isActive }: BlobMeshProps) {
       <meshStandardMaterial
         color="#7c3aed"
         emissive="#4338ca"
-        emissiveIntensity={isActive ? 0.8 : 0.5}
-        roughness={0.3}
-        metalness={0.7}
+        emissiveIntensity={isActive ? 1.2 : 0.8}
+        roughness={0.2}
+        metalness={0.8}
       />
     </mesh>
   );
@@ -86,7 +86,7 @@ function GlowAura({ isActive }: { isActive: boolean }) {
     if (meshRef.current) {
       const time = state.clock.elapsedTime;
       const material = meshRef.current.material as THREE.MeshBasicMaterial;
-      material.opacity = 0.15 + Math.sin(time * 2) * 0.05 + (isActive ? 0.1 : 0);
+      material.opacity = 0.25 + Math.sin(time * 2) * 0.08 + (isActive ? 0.15 : 0);
       
       const scale = 1.3 + Math.sin(time * 1.5) * 0.1;
       meshRef.current.scale.setScalar(scale);
@@ -114,7 +114,7 @@ interface MorphingBlobProps {
 export function MorphingBlob({ isActive, onClick }: MorphingBlobProps) {
   return (
     <div 
-      className="w-14 h-14 cursor-pointer transition-transform duration-200 hover:scale-110"
+      className="w-16 h-16 cursor-pointer transition-transform duration-200 hover:scale-110"
       onClick={onClick}
       style={{ background: 'transparent' }}
     >
