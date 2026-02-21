@@ -6052,6 +6052,57 @@ export type Database = {
           },
         ]
       }
+      task_mentions: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          mentioned_by: string
+          mentioned_user_id: string
+          read_at: string | null
+          source: string
+          task_id: string
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          mentioned_by: string
+          mentioned_user_id: string
+          read_at?: string | null
+          source?: string
+          task_id: string
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          mentioned_by?: string
+          mentioned_user_id?: string
+          read_at?: string | null
+          source?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_mentions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "task_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_mentions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_projects: {
         Row: {
           created_at: string
