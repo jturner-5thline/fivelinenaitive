@@ -68,6 +68,7 @@ export interface SpreadsheetWorkbook {
   rawWorkbook: ExcelJS.Workbook | null;
   isDirty: boolean;
   source: 'platform' | 'uploaded' | 'new';
+  namedRanges: Record<string, string>; // name -> "Sheet1!A1:B10"
 }
 
 export interface SpreadsheetSheet extends ParsedSheet {
@@ -128,6 +129,7 @@ export function useSpreadsheetWorkbook() {
       rawWorkbook: null,
       isDirty: false,
       source: 'new',
+      namedRanges: {},
     };
     setWorkbook(wb);
     setSelectedCell({ row: 0, col: 0 });
@@ -163,6 +165,7 @@ export function useSpreadsheetWorkbook() {
         rawWorkbook: result.workbook,
         isDirty: false,
         source: 'uploaded',
+        namedRanges: {},
       };
       setWorkbook(wb);
       setSelectedCell({ row: 0, col: 0 });
@@ -204,6 +207,7 @@ export function useSpreadsheetWorkbook() {
       rawWorkbook: result.workbook,
       isDirty: false,
       source: 'uploaded',
+      namedRanges: {},
     };
     setWorkbook(wb);
     setSelectedCell({ row: 0, col: 0 });
@@ -676,6 +680,23 @@ export function useSpreadsheetWorkbook() {
     });
   }, []);
 
+  // Named ranges
+  const addNamedRange = useCallback((name: string, range: string) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      return { ...prev, namedRanges: { ...prev.namedRanges, [name]: range }, isDirty: true };
+    });
+  }, []);
+
+  const deleteNamedRange = useCallback((name: string) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const nr = { ...prev.namedRanges };
+      delete nr[name];
+      return { ...prev, namedRanges: nr, isDirty: true };
+    });
+  }, []);
+
   // Get active sheet
   const activeSheet = workbook?.sheets[workbook.activeSheetIndex] ?? null;
 
@@ -722,6 +743,8 @@ export function useSpreadsheetWorkbook() {
     sortColumn,
     reorderSheets,
     setTabColor,
+    addNamedRange,
+    deleteNamedRange,
   };
 }
 
