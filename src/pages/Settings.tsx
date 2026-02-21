@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronRight, Search, X } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LenderStagesSettings } from '@/components/settings/LenderStagesSettings';
 import { LenderSubstagesSettings } from '@/components/settings/LenderSubstagesSettings';
 import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
@@ -110,8 +110,33 @@ const SETTINGS_SECTIONS = [
   },
 ];
 
+// Tab definitions with which section IDs belong to each
+const TABS = [
+  { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'waitlist', 'database'] },
+  { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist'] },
+  { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
+  { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules'] },
+  { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels'] },
+];
+
+function LinkCard({ to, title, description }: { to: string; title: string; description: string }) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors border"
+    >
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+    </Link>
+  );
+}
+
 export default function Settings() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('general');
   const { isAdmin } = useCompany();
 
   const visibleSections = useMemo(() => {
@@ -129,6 +154,21 @@ export default function Settings() {
   }, [searchQuery]);
 
   const isVisible = (id: string) => visibleSections.includes(id);
+
+  // When searching, find the first tab that has matching results and switch to it
+  const filteredTabs = useMemo(() => {
+    if (!searchQuery.trim()) return TABS;
+    return TABS.filter(tab => tab.sectionIds.some(id => visibleSections.includes(id)));
+  }, [searchQuery, visibleSections]);
+
+  // Auto-switch to first matching tab when searching
+  const effectiveTab = useMemo(() => {
+    if (!searchQuery.trim()) return activeTab;
+    if (filteredTabs.length > 0 && !filteredTabs.find(t => t.id === activeTab)) {
+      return filteredTabs[0].id;
+    }
+    return activeTab;
+  }, [searchQuery, filteredTabs, activeTab]);
 
   return (
     <>
@@ -175,7 +215,7 @@ export default function Settings() {
               </div>
             </div>
 
-            {visibleSections.length === 0 && (
+            {filteredTabs.length === 0 && searchQuery && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No settings found matching "{searchQuery}"</p>
                 <Button variant="link" onClick={() => setSearchQuery('')} className="mt-2">
@@ -184,184 +224,69 @@ export default function Settings() {
               </div>
             )}
 
-            {isVisible('account') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Account
-                  </CardTitle>
-                  <CardDescription>Manage your personal profile</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link
-                    to="/account"
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">Profile Settings</p>
-                      <p className="text-sm text-muted-foreground">
-                        Your personal info and account details
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
+            {filteredTabs.length > 0 && (
+              <Tabs value={effectiveTab} onValueChange={setActiveTab}>
+                <TabsList className="w-full justify-start overflow-x-auto">
+                  {filteredTabs.map(tab => (
+                    <TabsTrigger key={tab.id} value={tab.id}>
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
 
-            {isVisible('company') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Company
-                  </CardTitle>
-                  <CardDescription>Manage your company and team</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link
-                    to="/company"
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">Company Settings</p>
-                      <p className="text-sm text-muted-foreground">
-                        Company profile, team members, and roles
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
+                {/* General Tab */}
+                <TabsContent value="general" className="space-y-4 mt-4">
+                  {isVisible('account') && (
+                    <LinkCard to="/account" title="Account" description="Your personal profile, security, and notification preferences" />
+                  )}
+                  {isVisible('company') && (
+                    <LinkCard to="/company" title="Company" description="Company profile, team members, and roles" />
+                  )}
+                  {isVisible('preferences') && (
+                    <LinkCard to="/preferences" title="Preferences" description="Theme, notifications, and regional settings" />
+                  )}
+                  {isVisible('waitlist') && (
+                    <LinkCard to="/waitlist-admin" title="Waitlist" description="View signups and export to CSV" />
+                  )}
+                  {isVisible('database') && (
+                    <LinkCard to="/database" title="Database" description="View and manage your directories and data" />
+                  )}
+                </TabsContent>
 
-            {isVisible('waitlist') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Waitlist
-                  </CardTitle>
-                  <CardDescription>View and manage waitlist signups</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link
-                    to="/waitlist-admin"
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">Waitlist Admin</p>
-                      <p className="text-sm text-muted-foreground">
-                        View signups and export to CSV
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
+                {/* Deals Tab */}
+                <TabsContent value="deals" className="space-y-4 mt-4">
+                  {isVisible('deal-types') && <DealTypesSettings isAdmin={isAdmin} />}
+                  {isVisible('pipelines') && <PipelineSettings isAdmin={isAdmin} />}
+                  {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
+                  {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
+                  {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
+                  {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
+                </TabsContent>
 
-            {isVisible('database') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Database
-                  </CardTitle>
-                  <CardDescription>Manage your directories and data</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link
-                    to="/database"
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">Referral Sources</p>
-                      <p className="text-sm text-muted-foreground">
-                        View and manage your referral sources
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                </CardContent>
-            </Card>
-            )}
+                {/* Lenders Tab */}
+                <TabsContent value="lenders" className="space-y-4 mt-4">
+                  {isVisible('lender-stages') && <LenderStagesSettings isAdmin={isAdmin} />}
+                  {isVisible('lender-milestones') && <LenderSubstagesSettings isAdmin={isAdmin} />}
+                  {isVisible('pass-reasons') && <PassReasonsSettings isAdmin={isAdmin} />}
+                  {isVisible('lender-matching') && <LenderMatchingSettings />}
+                </TabsContent>
 
-            {isVisible('workflows') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Workflows
-                  </CardTitle>
-                  <CardDescription>Automate your deal and lender processes</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link
-                    to="/workflows"
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">Manage Workflows</p>
-                      <p className="text-sm text-muted-foreground">
-                        Create and manage automated workflows
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
+                {/* Automation Tab */}
+                <TabsContent value="automation" className="space-y-4 mt-4">
+                  {isVisible('workflows') && (
+                    <LinkCard to="/workflows" title="Workflows" description="Create and manage automated workflows" />
+                  )}
+                  {isVisible('suggestions') && <SuggestionSettings />}
+                  {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
+                  {isVisible('sla-rules') && <SLARulesSettings />}
+                </TabsContent>
 
-            {isVisible('lender-stages') && <LenderStagesSettings isAdmin={isAdmin} />}
-
-            {isVisible('lender-milestones') && <LenderSubstagesSettings isAdmin={isAdmin} />}
-
-            {isVisible('pass-reasons') && <PassReasonsSettings isAdmin={isAdmin} />}
-
-            {isVisible('deal-types') && <DealTypesSettings isAdmin={isAdmin} />}
-
-            {isVisible('pipelines') && <PipelineSettings isAdmin={isAdmin} />}
-
-            {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
-
-            {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
-
-            {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
-
-            {isVisible('suggestions') && <SuggestionSettings />}
-
-            {isVisible('lender-matching') && <LenderMatchingSettings />}
-
-            {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
-
-            {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
-
-            {isVisible('sla-rules') && <SLARulesSettings />}
-
-            {isVisible('email-snippets') && <EmailSnippetsSettings />}
-
-            {isVisible('email-labels') && <EmailLabelsSettings />}
-
-            {isVisible('preferences') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Preferences
-                  </CardTitle>
-                  <CardDescription>Customize your personal preferences</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link
-                    to="/preferences"
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">User Preferences</p>
-                      <p className="text-sm text-muted-foreground">
-                        Theme, notifications, and regional settings
-                      </p>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                </CardContent>
-              </Card>
+                {/* Email Tab */}
+                <TabsContent value="email" className="space-y-4 mt-4">
+                  {isVisible('email-snippets') && <EmailSnippetsSettings />}
+                  {isVisible('email-labels') && <EmailLabelsSettings />}
+                </TabsContent>
+              </Tabs>
             )}
           </div>
         </main>
