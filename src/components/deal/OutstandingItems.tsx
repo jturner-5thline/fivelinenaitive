@@ -349,11 +349,19 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   };
 
   const toggleRequestedBy = (option: string) => {
-    setNewRequestedBy(prev => 
-      prev.includes(option) 
-        ? prev.filter(o => o !== option)
-        : [...prev, option]
-    );
+    const isRemoving = newRequestedBy.includes(option);
+    const updatedRequestedBy = isRemoving
+      ? newRequestedBy.filter(o => o !== option)
+      : [...newRequestedBy, option];
+    
+    setNewRequestedBy(updatedRequestedBy);
+
+    // Auto-add: if user typed text and just selected a requester (not removing), submit automatically
+    if (!isRemoving && newItemText.trim()) {
+      onAdd(newItemText.trim(), updatedRequestedBy);
+      setNewItemText('');
+      setNewRequestedBy([]);
+    }
   };
 
   const toggleEditingRequestedBy = (option: string) => {
