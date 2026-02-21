@@ -1,7 +1,7 @@
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task } from '@/hooks/useTasks';
-import { TaskListView } from '@/components/tasks/TaskListView';
+import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   ListTodo, LayoutGrid, Calendar, GanttChart, Plus, Search, Filter,
-  SlidersHorizontal,
+  SlidersHorizontal, Group, Trash2, CheckSquare, ArrowUpDown,
 } from 'lucide-react';
 
 type ViewMode = 'list' | 'board' | 'calendar' | 'timeline';
@@ -25,8 +28,10 @@ export default function Tasks() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [sortBy, setSortBy] = useState<SortBy>('due_date');
+  const [groupBy, setGroupBy] = useState<GroupBy>('status');
   const [isCreating, setIsCreating] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const newTaskRef = useRef<HTMLInputElement>(null);
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
@@ -61,7 +66,6 @@ export default function Tasks() {
     if (!newTaskTitle.trim()) return;
     createTask.mutate({ title: newTaskTitle.trim() });
     setNewTaskTitle('');
-    // Keep focus for rapid entry
     setTimeout(() => newTaskRef.current?.focus(), 50);
   };
 
@@ -76,7 +80,23 @@ export default function Tasks() {
     }
   };
 
-  // Group tasks by status for sections
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleBulkAction = (action: 'complete' | 'delete') => {
+    selectedTaskIds.forEach(id => {
+      if (action === 'complete') updateTask.mutate({ id, status: 'complete' });
+      if (action === 'delete') deleteTask.mutate(id);
+    });
+    setSelectedTaskIds(new Set());
+  };
+
   const statusGroups = [
     { key: 'not_started', label: 'Not Started' },
     { key: 'in_progress', label: 'In Progress' },
@@ -97,7 +117,6 @@ export default function Tasks() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {/* View mode tabs */}
             <Tabs value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
               <TabsList className="h-8">
                 <TabsTrigger value="list" className="text-xs gap-1 px-2 h-7">
@@ -153,7 +172,53 @@ export default function Tasks() {
               <SelectItem value="title" className="text-xs">Name</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Group by */}
+          <Select value={groupBy} onValueChange={v => setGroupBy(v as GroupBy)}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <Group className="h-3 w-3 mr-1.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="status" className="text-xs">By Status</SelectItem>
+              <SelectItem value="time" className="text-xs">By Due Date</SelectItem>
+              <SelectItem value="priority" className="text-xs">By Priority</SelectItem>
+            </SelectContent>
+          </Select>
+
           <div className="flex-1" />
+
+          {/* Bulk actions */}
+          {selectedTaskIds.size > 0 && (
+            <div className="flex items-center gap-1.5 mr-2">
+              <span className="text-xs text-muted-foreground">{selectedTaskIds.size} selected</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => handleBulkAction('complete')}
+              >
+                <CheckSquare className="h-3 w-3" /> Complete
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1 text-destructive"
+                onClick={() => handleBulkAction('delete')}
+              >
+                <Trash2 className="h-3 w-3" /> Delete
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setSelectedTaskIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
+
           <Button
             size="sm"
             className="h-8 text-xs gap-1.5"
@@ -183,6 +248,9 @@ export default function Tasks() {
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
                 onDeleteTask={id => deleteTask.mutate(id)}
                 selectedTaskId={selectedTaskId}
+                groupBy={groupBy}
+                selectedTaskIds={selectedTaskIds}
+                onToggleSelect={handleToggleSelect}
               />
             )}
             {viewMode === 'board' && (
@@ -201,7 +269,6 @@ export default function Tasks() {
             )}
           </div>
 
-          {/* Task detail drawer */}
           {selectedTask && (
             <TaskDetailDrawer
               task={selectedTask}
