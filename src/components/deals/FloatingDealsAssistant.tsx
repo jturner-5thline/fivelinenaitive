@@ -88,9 +88,11 @@ export function FloatingDealsAssistant() {
         <PopoverTrigger asChild>
           <div className="relative">
             <Button
-              variant="gradient"
               size="sm"
-              className="relative rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-visible flex items-center justify-center"
+              className="relative rounded-full h-12 min-w-12 group-hover:px-4 px-0 shadow-lg animate-fade-in transition-all duration-300 overflow-visible flex items-center justify-center border-0"
+              style={{
+                background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 72%))',
+              }}
             >
               <span 
                 className="absolute inset-0 rounded-full overflow-hidden pointer-events-none"
