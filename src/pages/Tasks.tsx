@@ -6,6 +6,9 @@ import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
 import { TaskReportingView } from '@/components/tasks/TaskReportingView';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
+import { useTaskSavedViews, type TaskSavedView } from '@/hooks/useTaskSavedViews';
+import { useTaskTemplates } from '@/hooks/useTaskTemplates';
+import { useTaskLabels } from '@/hooks/useTaskLabels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,18 +16,34 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  ListTodo, LayoutGrid, Calendar, GanttChart, Plus, Search, Filter,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, CheckSquare, BarChart3, Bell,
+  Bookmark, BookmarkPlus, Download, FileDown, Star, MoreVertical,
+  Zap, Tag, ClipboardList,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { isToday, isPast } from 'date-fns';
 
-type ViewMode = 'list' | 'board' | 'calendar' | 'reporting';
+type ViewMode = 'list' | 'board' | 'calendar' | 'reporting' | 'focus';
 type FilterStatus = 'all' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title';
 
 export default function Tasks() {
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks();
   const { overdueCount, dueTodayCount } = useTaskNotifications();
+  const { savedViews, saveView, deleteView } = useTaskSavedViews();
+  const { templates, applyTemplate } = useTaskTemplates();
+  const { labels, createLabel } = useTaskLabels();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [search, setSearch] = useState('');
@@ -34,12 +53,25 @@ export default function Tasks() {
   const [isCreating, setIsCreating] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [showSaveViewDialog, setShowSaveViewDialog] = useState(false);
+  const [newViewName, setNewViewName] = useState('');
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#6366f1');
   const newTaskRef = useRef<HTMLInputElement>(null);
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
 
+  // Focus view: today's tasks + overdue + high priority
+  const focusTasks = tasks.filter(t => {
+    if (t.status === 'complete') return false;
+    if (t.due_date && isToday(new Date(t.due_date + 'T00:00:00'))) return true;
+    if (t.due_date && isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00'))) return true;
+    if (t.priority === 'urgent' || t.priority === 'high') return true;
+    return false;
+  });
+
   // Filter and sort
-  const filtered = tasks
+  const filtered = (viewMode === 'focus' ? focusTasks : tasks)
     .filter(t => {
       if (filterStatus !== 'all' && t.status !== filterStatus) return false;
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -72,21 +104,14 @@ export default function Tasks() {
   };
 
   const handleNewTaskKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleCreateTask();
-    }
-    if (e.key === 'Escape') {
-      setIsCreating(false);
-      setNewTaskTitle('');
-    }
+    if (e.key === 'Enter') { e.preventDefault(); handleCreateTask(); }
+    if (e.key === 'Escape') { setIsCreating(false); setNewTaskTitle(''); }
   };
 
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedTaskIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }, []);
@@ -97,6 +122,53 @@ export default function Tasks() {
       if (action === 'delete') deleteTask.mutate(id);
     });
     setSelectedTaskIds(new Set());
+  };
+
+  const handleSaveView = () => {
+    if (!newViewName.trim()) return;
+    saveView.mutate({
+      name: newViewName.trim(),
+      view_config: { viewMode, filterStatus, sortBy, groupBy, search },
+    });
+    setNewViewName('');
+    setShowSaveViewDialog(false);
+  };
+
+  const handleLoadView = (view: TaskSavedView) => {
+    const c = view.view_config;
+    if (c.viewMode) setViewMode(c.viewMode as ViewMode);
+    if (c.filterStatus) setFilterStatus(c.filterStatus as FilterStatus);
+    if (c.sortBy) setSortBy(c.sortBy as SortBy);
+    if (c.groupBy) setGroupBy(c.groupBy as GroupBy);
+    if (c.search !== undefined) setSearch(c.search);
+    toast.success(`Loaded view: ${view.name}`);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Title', 'Status', 'Priority', 'Due Date', 'Assignee', 'Created'];
+    const rows = filtered.map(t => [
+      t.title,
+      t.status,
+      t.priority,
+      t.due_date || '',
+      t.assignee_profile?.display_name || '',
+      t.created_at.split('T')[0],
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tasks-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Tasks exported');
+  };
+
+  const handleCreateLabel = () => {
+    if (!newLabelName.trim()) return;
+    createLabel.mutate({ name: newLabelName.trim(), color: newLabelColor });
+    setNewLabelName('');
   };
 
   const statusGroups = [
@@ -113,7 +185,9 @@ export default function Tasks() {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold">My Tasks</h1>
+            <h1 className="text-xl font-semibold">
+              {viewMode === 'focus' ? '🎯 My Focus' : 'My Tasks'}
+            </h1>
             <span className="text-sm text-muted-foreground">
               {filtered.length} task{filtered.length !== 1 ? 's' : ''}
             </span>
@@ -135,6 +209,9 @@ export default function Tasks() {
           <div className="flex items-center gap-2">
             <Tabs value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
               <TabsList className="h-8">
+                <TabsTrigger value="focus" className="text-xs gap-1 px-2 h-7">
+                  <Star className="h-3.5 w-3.5" /> Focus
+                </TabsTrigger>
                 <TabsTrigger value="list" className="text-xs gap-1 px-2 h-7">
                   <ListTodo className="h-3.5 w-3.5" /> List
                 </TabsTrigger>
@@ -156,17 +233,11 @@ export default function Tasks() {
         <div className="flex items-center gap-2 px-6 py-2 border-b bg-muted/20">
           <div className="relative flex-1 max-w-[280px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search tasks..."
-              className="h-8 text-xs pl-8"
-            />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." className="h-8 text-xs pl-8" />
           </div>
           <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
             <SelectTrigger className="h-8 w-[140px] text-xs">
-              <Filter className="h-3 w-3 mr-1.5" />
-              <SelectValue />
+              <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All statuses</SelectItem>
@@ -178,8 +249,7 @@ export default function Tasks() {
           </Select>
           <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
             <SelectTrigger className="h-8 w-[130px] text-xs">
-              <SlidersHorizontal className="h-3 w-3 mr-1.5" />
-              <SelectValue />
+              <SlidersHorizontal className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="due_date" className="text-xs">Due date</SelectItem>
@@ -188,12 +258,9 @@ export default function Tasks() {
               <SelectItem value="title" className="text-xs">Name</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* Group by */}
           <Select value={groupBy} onValueChange={v => setGroupBy(v as GroupBy)}>
             <SelectTrigger className="h-8 w-[130px] text-xs">
-              <Group className="h-3 w-3 mr-1.5" />
-              <SelectValue />
+              <Group className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="status" className="text-xs">By Status</SelectItem>
@@ -204,36 +271,76 @@ export default function Tasks() {
 
           <div className="flex-1" />
 
+          {/* Saved Views */}
+          {savedViews.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                  <Bookmark className="h-3 w-3" /> Views
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel className="text-xs">Saved Views</DropdownMenuLabel>
+                {savedViews.map(v => (
+                  <DropdownMenuItem key={v.id} className="text-xs flex items-center justify-between" onClick={() => handleLoadView(v)}>
+                    {v.name}
+                    <button onClick={e => { e.stopPropagation(); deleteView.mutate(v.id); }} className="ml-2 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {/* Bulk actions */}
           {selectedTaskIds.size > 0 && (
             <div className="flex items-center gap-1.5 mr-2">
               <span className="text-xs text-muted-foreground">{selectedTaskIds.size} selected</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => handleBulkAction('complete')}
-              >
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => handleBulkAction('complete')}>
                 <CheckSquare className="h-3 w-3" /> Complete
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1 text-destructive"
-                onClick={() => handleBulkAction('delete')}
-              >
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => handleBulkAction('delete')}>
                 <Trash2 className="h-3 w-3" /> Delete
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setSelectedTaskIds(new Set())}
-              >
-                Clear
-              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedTaskIds(new Set())}>Clear</Button>
             </div>
           )}
+
+          {/* More menu: Save view, Export, Templates, Labels */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem className="text-xs gap-2" onClick={() => setShowSaveViewDialog(true)}>
+                <BookmarkPlus className="h-3.5 w-3.5" /> Save current view
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs gap-2" onClick={handleExportCSV}>
+                <FileDown className="h-3.5 w-3.5" /> Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Templates</DropdownMenuLabel>
+              {templates.map(t => (
+                <DropdownMenuItem key={t.id} className="text-xs gap-2" onClick={() => applyTemplate.mutate(t.id)}>
+                  <ClipboardList className="h-3.5 w-3.5" /> {t.name}
+                </DropdownMenuItem>
+              ))}
+              {templates.length === 0 && (
+                <DropdownMenuItem disabled className="text-xs text-muted-foreground">No templates yet</DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Labels</DropdownMenuLabel>
+              {labels.map(l => (
+                <DropdownMenuItem key={l.id} className="text-xs gap-2">
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: l.color }} />
+                  {l.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button
             size="sm"
@@ -248,7 +355,7 @@ export default function Tasks() {
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-auto">
-            {viewMode === 'list' && (
+            {(viewMode === 'list' || viewMode === 'focus') && (
               <TaskListView
                 tasks={filtered}
                 statusGroups={statusGroups}
@@ -264,7 +371,7 @@ export default function Tasks() {
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
                 onDeleteTask={id => deleteTask.mutate(id)}
                 selectedTaskId={selectedTaskId}
-                groupBy={groupBy}
+                groupBy={viewMode === 'focus' ? 'time' : groupBy}
                 selectedTaskIds={selectedTaskIds}
                 onToggleSelect={handleToggleSelect}
               />
@@ -305,6 +412,32 @@ export default function Tasks() {
             />
           )}
         </div>
+
+        {/* Save View Dialog */}
+        <Dialog open={showSaveViewDialog} onOpenChange={setShowSaveViewDialog}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-sm">Save Current View</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input
+                value={newViewName}
+                onChange={e => setNewViewName(e.target.value)}
+                placeholder="View name..."
+                className="text-sm"
+                onKeyDown={e => { if (e.key === 'Enter') handleSaveView(); }}
+                autoFocus
+              />
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>Will save: {viewMode} view, {filterStatus} filter, {sortBy} sort, {groupBy} group</p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowSaveViewDialog(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleSaveView}>Save</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
