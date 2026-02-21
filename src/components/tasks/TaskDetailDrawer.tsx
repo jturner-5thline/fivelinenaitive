@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -251,6 +254,11 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Deal link */}
+            {task.deal_id && (
+              <DealLinkField dealId={task.deal_id} />
+            )}
           </div>
 
           <Separator />
@@ -412,6 +420,43 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
           </Tabs>
         </div>
       </ScrollArea>
+    </div>
+  );
+}
+
+// Deal link sub-component
+function DealLinkField({ dealId }: { dealId: string }) {
+  const { data: deal } = useQuery({
+    queryKey: ['deal-name', dealId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, company')
+        .eq('id', dealId)
+        .single();
+      if (error) return null;
+      return data;
+    },
+  });
+
+  if (!deal) return null;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+        Deal
+      </div>
+      <Link
+        to={`/deal/${deal.id}`}
+        className="text-xs text-primary hover:underline"
+        onClick={e => e.stopPropagation()}
+      >
+        {deal.company}
+      </Link>
     </div>
   );
 }
