@@ -144,15 +144,11 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
 
   const hasUnsavedChanges = JSON.stringify(localPassReasons) !== JSON.stringify(savedPassReasons);
 
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('settings-pass-reasons-open');
-    return saved !== null ? saved === 'true' : false;
-  });
+  const [isOpen, setIsOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    localStorage.setItem('settings-pass-reasons-open', String(open));
   };
   const [editingReason, setEditingReason] = useState<PassReasonOption | null>(null);
   const [newReasonLabel, setNewReasonLabel] = useState('');

@@ -174,10 +174,7 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
   const [editingStage, setEditingStage] = useState<DealStageOption | null>(null);
   const [label, setLabel] = useState('');
   const [color, setColor] = useState('bg-slate-500');
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('dealStagesSettingsOpen');
-    return saved ? JSON.parse(saved) : true;
-  });
+  const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Load from database on mount

@@ -71,10 +71,7 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
     return DEFAULT_DEAL_TYPES;
   });
 
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('settings-deal-types-open');
-    return saved !== null ? saved === 'true' : false;
-  });
+  const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState('');
@@ -84,7 +81,6 @@ export function DealTypesSettings({ isAdmin = true }: DealTypesSettingsProps) {
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    localStorage.setItem('settings-deal-types-open', String(open));
   };
 
   const openAddDialog = () => {

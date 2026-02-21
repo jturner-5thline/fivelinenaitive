@@ -186,15 +186,11 @@ export function LenderStagesSettings({ isAdmin = true }: LenderStagesSettingsPro
 
   const hasUnsavedChanges = JSON.stringify(localStages) !== JSON.stringify(savedStages);
 
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('settings-lender-stages-open');
-    return saved !== null ? saved === 'true' : false;
-  });
+  const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    localStorage.setItem('settings-lender-stages-open', String(open));
   };
   const [editingStage, setEditingStage] = useState<StageOption | null>(null);
   const [label, setLabel] = useState('');

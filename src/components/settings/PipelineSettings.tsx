@@ -84,10 +84,7 @@ function SortableStageItem({ stage, onEdit, onDelete }: {
 export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
   const { pipelines, createPipeline, updatePipeline, deletePipeline, refetch, isLoading } = usePipelineContext();
 
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('pipelineSettingsOpen');
-    return saved ? JSON.parse(saved) : true;
-  });
+  const [isOpen, setIsOpen] = useState(false);
 
   // Pipeline create/edit dialog
   const [pipelineDialogOpen, setPipelineDialogOpen] = useState(false);
@@ -320,7 +317,7 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={(v) => { setIsOpen(v); localStorage.setItem('pipelineSettingsOpen', JSON.stringify(v)); }}>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <Card>
           <CollapsibleTrigger asChild>
             <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
