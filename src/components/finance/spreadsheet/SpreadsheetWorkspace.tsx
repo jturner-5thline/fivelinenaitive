@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/components/ui/dropdown-menu';
 import { 
   FileSpreadsheet, Download, Plus, Sparkles,
-  FileDown, FileUp, ChevronDown, Save, Clock, Table2, Tag, Cloud,
+  FileDown, FileUp, ChevronDown, Save, Clock, Table2, Tag, Cloud, Keyboard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSpreadsheetWorkbook } from '@/hooks/useSpreadsheetWorkbook';
@@ -16,10 +16,13 @@ import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { ChartPanel, ChartConfig } from './SpreadsheetCharts';
 import { FindReplaceDialog } from './FindReplaceDialog';
 import { ConditionalFormatDialog, ConditionalFormatRule } from './ConditionalFormatDialog';
+import { ConditionalFormatRulesPanel } from './ConditionalFormatRulesPanel';
 import { DataValidationDialog } from './DataValidationDialog';
 import { StatusBar } from './StatusBar';
 import { PivotTablePanel } from './PivotTablePanel';
 import { NamedRangesDialog } from './NamedRangesDialog';
+import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
+import { MiniToolbar } from './MiniToolbar';
 import { isFormula } from '@/lib/formulaEngine';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -38,11 +41,15 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   const [showChartCreator, setShowChartCreator] = useState(false);
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [condFormatOpen, setCondFormatOpen] = useState(false);
+  const [condFormatRulesOpen, setCondFormatRulesOpen] = useState(false);
   const [dataValidationOpen, setDataValidationOpen] = useState(false);
   const [pivotOpen, setPivotOpen] = useState(false);
   const [namedRangesOpen, setNamedRangesOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cloudWorkbooks, setCloudWorkbooks] = useState<any[]>([]);
+  const [miniToolbarPos, setMiniToolbarPos] = useState({ x: 0, y: 0 });
+  const [showMiniToolbar, setShowMiniToolbar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -53,10 +60,30 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); setFindReplaceOpen(true); }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSave(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') { e.preventDefault(); setShortcutsOpen(true); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [wb.workbook]);
+
+  // Show mini toolbar on mouse up after text selection in grid
+  useEffect(() => {
+    const handleMouseUp = (e: MouseEvent) => {
+      if (wb.selectionRange) {
+        setMiniToolbarPos({ x: e.clientX, y: e.clientY });
+        setShowMiniToolbar(true);
+      } else {
+        setShowMiniToolbar(false);
+      }
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, [wb.selectionRange]);
+
+  // Hide mini toolbar on cell select change
+  useEffect(() => {
+    if (!wb.selectionRange) setShowMiniToolbar(false);
+  }, [wb.selectedCell]);
 
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -204,7 +231,6 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
                       <DropdownMenuItem key={w.id} onClick={async () => {
                         try {
                           const loaded = await cloud.loadWorkbook(w.id);
-                          // We'd need a setWorkbook method - for now just notify
                           toast.success(`Loaded: ${loaded.name}`);
                         } catch { toast.error('Failed to load'); }
                       }} className="text-xs">
@@ -221,6 +247,8 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setNamedRangesOpen(true)}><Tag className="h-3.5 w-3.5 mr-2" /> Named Ranges</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setPivotOpen(!pivotOpen)}><Table2 className="h-3.5 w-3.5 mr-2" /> Pivot Table</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShortcutsOpen(true)}><Keyboard className="h-3.5 w-3.5 mr-2" /> Keyboard Shortcuts</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -251,7 +279,7 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
         onFreezeCols={handleFreezeCols}
         frozenRows={wb.activeSheet?.frozenRows}
         frozenCols={wb.activeSheet?.frozenCols}
-        onConditionalFormat={() => setCondFormatOpen(true)}
+        onConditionalFormat={() => setCondFormatRulesOpen(true)}
         onDataValidation={() => setDataValidationOpen(true)}
         onExportPdf={handleExportPdf}
         onSort={handleSort}
@@ -313,11 +341,21 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
         <StatusBar sheet={wb.activeSheet} selectedCell={wb.selectedCell} selectionRange={wb.selectionRange} currentRawValue={currentRawValue} />
       )}
 
+      {/* Mini Toolbar (floating near selection) */}
+      <MiniToolbar
+        visible={showMiniToolbar}
+        position={miniToolbarPos}
+        currentFormat={currentFormat}
+        onFormatChange={wb.applyFormatToSelection}
+      />
+
       <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
 
       {wb.activeSheet && <FindReplaceDialog open={findReplaceOpen} onOpenChange={setFindReplaceOpen} sheet={wb.activeSheet} onCellSelect={(row, col) => wb.setSelectedCell({ row, col })} onCellChange={handleCellChange} />}
       <ConditionalFormatDialog open={condFormatOpen} onOpenChange={setCondFormatOpen} rules={wb.activeSheet?.conditionalFormats || []} onAddRule={handleAddCondFormat} onDeleteRule={handleDeleteCondFormat} />
+      <ConditionalFormatRulesPanel open={condFormatRulesOpen} onOpenChange={setCondFormatRulesOpen} rules={wb.activeSheet?.conditionalFormats || []} onAddRule={handleAddCondFormat} onDeleteRule={handleDeleteCondFormat} />
       <DataValidationDialog open={dataValidationOpen} onOpenChange={setDataValidationOpen} currentRule={wb.activeSheet?.validations[`${wb.selectedCell.row}-${wb.selectedCell.col}`]} onApply={handleApplyValidation} />
+      <KeyboardShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       
       <NamedRangesDialog
         open={namedRangesOpen}

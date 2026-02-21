@@ -402,7 +402,7 @@ export function SpreadsheetGrid({
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >
-        {/* Marching ants CSS */}
+        {/* Marching ants + freeze pane CSS */}
         <style>{`
           @keyframes marching-ants {
             0% { background-position: 0 0, 100% 0, 0 100%, 0 0; }
@@ -418,6 +418,8 @@ export function SpreadsheetGrid({
             background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
             animation: marching-ants 0.5s linear infinite;
           }
+          .freeze-border-right { border-right: 2.5px solid hsl(var(--primary) / 0.5) !important; }
+          .freeze-border-bottom { border-bottom: 2.5px solid hsl(var(--primary) / 0.5) !important; }
         `}</style>
         <table className="border-collapse text-xs w-max min-w-full" style={{ userSelect: isDragging || isFillDragging || resizingCol !== null || resizingRow !== null ? 'none' : undefined }}>
           <thead className="sticky top-0 z-10">
@@ -515,6 +517,8 @@ export function SpreadsheetGrid({
                           format.borderLeft && "border-l-2 border-l-foreground",
                           format.borderRight && "border-r-2 border-r-foreground",
                           colIndex < frozenCols && "sticky z-[6]",
+                          frozenCols > 0 && colIndex === frozenCols - 1 && "freeze-border-right",
+                          frozenRows > 0 && rowIndex === frozenRows - 1 && "freeze-border-bottom",
                         )}
                         style={{
                           minWidth: sheet.colWidths[colIndex] || 100,
