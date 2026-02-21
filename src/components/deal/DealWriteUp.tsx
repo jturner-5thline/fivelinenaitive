@@ -300,6 +300,9 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const [showAutoFillDialog, setShowAutoFillDialog] = useState(false);
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
   const [autoFillDocumentCount, setAutoFillDocumentCount] = useState(0);
+  const [autoFillSourceCount, setAutoFillSourceCount] = useState(0);
+  // Store citations per field for persistent display
+  const [fieldCitations, setFieldCitations] = useState<Record<string, any[]>>({});
 
   // AI Memo generation
   const { isGenerating: isMemoGenerating, isRegenerating, memoContent, memoSections, generateFullMemo, regenerateSection } = useDealSpaceMemo(dealId);
@@ -908,30 +911,37 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     const result = await extractWriteUpData();
     if (result && result.extractedFields.length > 0) {
       setAutoFillDocumentCount(result.documentCount);
+      setAutoFillSourceCount(result.sourceCount);
       setShowAutoFillDialog(true);
     } else if (result) {
-      toast.info('No extractable data found in Deal Space documents');
+      toast.info('No extractable data found in Deal Space');
     }
   };
 
   const handleApplyAutoFill = (selectedFields: ExtractedWriteUpField[]) => {
     const newData = { ...data };
     const appliedFieldNames = new Set<string>();
+    const citations: Record<string, any[]> = {};
 
     for (const field of selectedFields) {
       const fieldName = field.field as keyof DealWriteUpData;
       if (fieldName in newData) {
         (newData as Record<string, unknown>)[fieldName] = field.value;
         appliedFieldNames.add(fieldName);
+        // Store citations for persistent display
+        if ((field as any).sources && (field as any).sources.length > 0) {
+          citations[fieldName] = (field as any).sources;
+        }
       }
     }
 
     onChange(newData);
     setAutoFilledFields(appliedFieldNames);
+    setFieldCitations(prev => ({ ...prev, ...citations }));
     clearExtractedFields();
     
     toast.success(`Auto-filled ${selectedFields.length} field${selectedFields.length !== 1 ? 's' : ''}`, {
-      description: 'Review the highlighted fields and make any adjustments',
+      description: 'Review the highlighted fields — hover citation chips to see sources',
     });
   };
 
@@ -1431,6 +1441,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         currentData={data}
         onApply={handleApplyAutoFill}
         documentCount={autoFillDocumentCount}
+        sourceCount={autoFillSourceCount}
       />
 
       {/* Empty Fields Warning Dialog */}
