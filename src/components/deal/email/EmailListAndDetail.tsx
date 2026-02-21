@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Reply,
   Forward,
   AlertCircle,
@@ -23,6 +24,8 @@ import {
   MessageSquare,
   Archive,
   FileText,
+  ChevronsUpDown,
+  MoreHorizontal,
 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
@@ -234,20 +237,55 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
   );
 }
 
+// ─── Quoted content detection ────────────────────────────────
+const QUOTED_PATTERNS = [
+  /^On .+ wrote:$/m,
+  /^-{3,}\s*Original Message\s*-{3,}$/m,
+  /^>{1,}\s/m,
+  /^From:\s/m,
+];
+
+function splitQuotedContent(body: string): { main: string; quoted: string | null } {
+  for (const pattern of QUOTED_PATTERNS) {
+    const match = body.search(pattern);
+    if (match > 0) {
+      return { main: body.slice(0, match).trimEnd(), quoted: body.slice(match) };
+    }
+  }
+  return { main: body, quoted: null };
+}
+
 // ─── Thread Message Card ─────────────────────────────────────
-function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail; isLatest: boolean; defaultExpanded: boolean }) {
+function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange }: { 
+  email: MockEmail; 
+  isLatest: boolean; 
+  defaultExpanded: boolean;
+  onExpandChange?: (expanded: boolean) => void;
+}) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [showQuoted, setShowQuoted] = useState(false);
+  const messageRef = useRef<HTMLDivElement>(null);
   const displayName = email.from_name === 'You' ? 'You' : email.from_name;
+  const { main: bodyMain, quoted: bodyQuoted } = splitQuotedContent(email.body_preview || '');
+
+  const toggleExpand = () => {
+    const next = !expanded;
+    setExpanded(next);
+    onExpandChange?.(next);
+    if (next && messageRef.current) {
+      setTimeout(() => messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    }
+  };
 
   return (
-    <div className={cn(
+    <div ref={messageRef} className={cn(
       'rounded-lg border transition-all duration-150 mx-4 mb-3',
       expanded
         ? 'bg-card/60 border-border/50 shadow-sm'
         : 'bg-card/30 border-border/30 hover:bg-muted/30 hover:border-border/50'
     )}>
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggleExpand}
         className="w-full flex items-center gap-3 px-4 py-3 text-left"
       >
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} size="sm" />
@@ -274,8 +312,34 @@ function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail;
             {email.has_attachments && <Paperclip className="h-3 w-3" />}
           </div>
           <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">
-            {email.body_preview}
+            {bodyMain}
           </div>
+          {bodyQuoted && (
+            <div className="mt-3">
+              {!showQuoted ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowQuoted(true); }}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                  <span>Show quoted text</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowQuoted(false); }}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 mb-2"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    <span>Hide quoted text</span>
+                  </button>
+                  <div className="border-l-2 border-muted-foreground/20 pl-3 text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                    {bodyQuoted}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {email.has_attachments && (
             <div className="mt-3 flex gap-2">
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/20 text-sm hover:bg-muted/40 transition-colors cursor-pointer">
@@ -288,6 +352,26 @@ function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail;
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Collapsed older messages expander ───────────────────────
+function CollapsedMessagesBar({ count, onExpand }: { count: number; onExpand: () => void }) {
+  return (
+    <button
+      onClick={onExpand}
+      className="mx-4 mb-3 w-[calc(100%-2rem)] flex items-center gap-3 px-4 py-2.5 rounded-lg border border-dashed border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-border transition-all group"
+    >
+      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted/60 group-hover:bg-muted">
+        <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+          {count} older message{count !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 ml-auto" />
+    </button>
   );
 }
 
@@ -393,6 +477,37 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setReplyTo(getReplyTarget());
   }, [getReplyTarget]);
 
+  // ─── Thread collapse/expand state ────────────────────────────
+  const VISIBLE_RECENT = 3; // Number of recent messages shown by default
+  const totalMessages = thread.emails.length;
+  const shouldAutoCollapse = totalMessages > 5;
+  const [olderExpanded, setOlderExpanded] = useState(false);
+  const [userExpandedMessages, setUserExpandedMessages] = useState<Set<string>>(new Set());
+
+  // Reset collapse state when thread changes
+  useEffect(() => {
+    setOlderExpanded(false);
+    setUserExpandedMessages(new Set());
+  }, [thread.threadId]);
+
+  const hiddenCount = shouldAutoCollapse && !olderExpanded
+    ? totalMessages - VISIBLE_RECENT
+    : 0;
+
+  const handleExpandAll = () => {
+    setOlderExpanded(true);
+    // Mark all messages as user-expanded
+    const allIds = new Set(thread.emails.map(e => e.id));
+    setUserExpandedMessages(allIds);
+  };
+
+  const handleCollapseAll = () => {
+    setOlderExpanded(false);
+    setUserExpandedMessages(new Set());
+  };
+
+  const isFullyExpanded = olderExpanded || !shouldAutoCollapse;
+
   // Keyboard shortcut for reply
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -488,16 +603,61 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           {/* Thread content - scrollable */}
           <ScrollArea className="flex-1">
             <div className="py-3 space-y-0">
-              <div className="mx-4 mb-3">
+              <div className="mx-4 mb-3 flex items-center justify-between">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
 
-              {thread.emails.map((email, idx) => (
+              {/* Expand/Collapse all control for long threads */}
+              {shouldAutoCollapse && (
+                <div className="mx-4 mb-2 flex items-center justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                    onClick={isFullyExpanded ? handleCollapseAll : handleExpandAll}
+                  >
+                    <ChevronsUpDown className="h-3 w-3" />
+                    {isFullyExpanded ? 'Collapse thread' : 'Expand all'}
+                  </Button>
+                </div>
+              )}
+
+              {/* Newest messages — always visible */}
+              {thread.emails.slice(0, shouldAutoCollapse && !olderExpanded ? VISIBLE_RECENT : undefined).map((email, idx) => (
                 <ThreadMessage
                   key={email.id}
                   email={email}
                   isLatest={idx === 0}
-                  defaultExpanded={idx === 0}
+                  defaultExpanded={idx === 0 || userExpandedMessages.has(email.id)}
+                  onExpandChange={(exp) => {
+                    setUserExpandedMessages(prev => {
+                      const next = new Set(prev);
+                      if (exp) next.add(email.id); else next.delete(email.id);
+                      return next;
+                    });
+                  }}
+                />
+              ))}
+
+              {/* Collapsed older messages bar */}
+              {hiddenCount > 0 && (
+                <CollapsedMessagesBar count={hiddenCount} onExpand={() => setOlderExpanded(true)} />
+              )}
+
+              {/* Older messages — shown when expanded */}
+              {olderExpanded && shouldAutoCollapse && thread.emails.slice(VISIBLE_RECENT).map((email) => (
+                <ThreadMessage
+                  key={email.id}
+                  email={email}
+                  isLatest={false}
+                  defaultExpanded={userExpandedMessages.has(email.id)}
+                  onExpandChange={(exp) => {
+                    setUserExpandedMessages(prev => {
+                      const next = new Set(prev);
+                      if (exp) next.add(email.id); else next.delete(email.id);
+                      return next;
+                    });
+                  }}
                 />
               ))}
 
