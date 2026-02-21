@@ -13,6 +13,7 @@ import {
   Plug,
   Workflow,
   FlaskConical,
+  User,
   Rocket,
   Ban,
   Bot,
@@ -136,6 +137,11 @@ const statusConfig: Record<
     variant: "secondary",
     icon: <FlaskConical className="h-3 w-3" />,
   },
+  james_only: {
+    label: "James Only",
+    variant: "destructive",
+    icon: <User className="h-3 w-3" />,
+  },
   disabled: {
     label: "Disabled",
     variant: "outline",
@@ -206,6 +212,13 @@ export function PageAccessPanel() {
             <span className="text-muted-foreground">Staging - internal only</span>
           </div>
           <div className="flex items-center gap-2">
+            <Badge variant="destructive" className="gap-1">
+              <User className="h-3 w-3" />
+              James Only
+            </Badge>
+            <span className="text-muted-foreground">Only jturner@5thline.co</span>
+          </div>
+          <div className="flex items-center gap-2">
             <Badge variant="outline" className="gap-1">
               <Ban className="h-3 w-3" />
               Disabled
@@ -258,6 +271,12 @@ export function PageAccessPanel() {
                       <div className="flex items-center gap-2">
                         <FlaskConical className="h-3 w-3" />
                         5thLine Only (Staging)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="james_only">
+                      <div className="flex items-center gap-2">
+                        <User className="h-3 w-3" />
+                        James Only
                       </div>
                     </SelectItem>
                     <SelectItem value="disabled">
