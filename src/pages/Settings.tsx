@@ -20,6 +20,7 @@ import { ScheduledReportsSettings } from '@/components/settings/ScheduledReports
 import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
 import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
+import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -102,6 +103,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'email-snippets',
     keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'],
+  },
+  {
+    id: 'email-labels',
+    keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'],
   },
 ];
 
@@ -331,6 +336,8 @@ export default function Settings() {
             {isVisible('sla-rules') && <SLARulesSettings />}
 
             {isVisible('email-snippets') && <EmailSnippetsSettings />}
+
+            {isVisible('email-labels') && <EmailLabelsSettings />}
 
             {isVisible('preferences') && (
               <Card>
