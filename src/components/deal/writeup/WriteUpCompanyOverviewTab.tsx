@@ -19,7 +19,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { DealWriteUpData, TeamMember } from '../DealWriteUp';
-import { Check, ChevronsUpDown, Loader2, Sparkles, Plus, Trash2, Linkedin, GripVertical } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Plus, Trash2, Linkedin, GripVertical } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

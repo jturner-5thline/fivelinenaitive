@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
-import { Lightbulb, AlertTriangle, TrendingUp, Sparkles, RefreshCw, Target, Activity, History, ChevronDown, Trash2, ArrowLeftRight } from "lucide-react";
+import { Lightbulb, AlertTriangle, TrendingUp, RefreshCw, Target, Activity, History, ChevronDown, Trash2, ArrowLeftRight } from "lucide-react";
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

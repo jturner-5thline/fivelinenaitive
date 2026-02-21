@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sparkles, DollarSign, FileText, StickyNote } from 'lucide-react';
+import { DollarSign, FileText, StickyNote } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
 import { DealSpaceFinancialsTab } from './DealSpaceFinancialsTab';
 import { DealSpaceDocumentsTab } from './DealSpaceDocumentsTab';

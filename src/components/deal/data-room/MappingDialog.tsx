@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Link2, Sparkles } from 'lucide-react';
+import { Link2 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';

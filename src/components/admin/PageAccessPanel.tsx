@@ -17,8 +17,8 @@ import {
   Ban,
   Bot,
   DollarSign,
-  Sparkles
 } from "lucide-react";
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from "sonner";
 import {
   useFeatureFlags,

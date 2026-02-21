@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, Building2, Landmark, TrendingUp, RefreshCw, ExternalLink, Sparkles, Globe, BarChart3, DollarSign, Zap, Loader2 } from 'lucide-react';
+import { Search, Building2, Landmark, TrendingUp, RefreshCw, ExternalLink, Globe, BarChart3, DollarSign, Zap, Loader2 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';

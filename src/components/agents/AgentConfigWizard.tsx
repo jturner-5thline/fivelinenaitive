@@ -10,11 +10,11 @@ import {
   Wand2,
   Target,
   Database,
-  Sparkles,
   ChevronRight,
   ChevronLeft,
   Loader2,
 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { cn } from '@/lib/utils';
 
 interface WizardAnswers {

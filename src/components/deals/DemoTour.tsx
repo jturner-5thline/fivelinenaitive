@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft, Sparkles, LayoutDashboard, BarChart3, Settings2, Plus } from 'lucide-react';
+import { ChevronRight, ChevronLeft, LayoutDashboard, BarChart3, Settings2, Plus } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

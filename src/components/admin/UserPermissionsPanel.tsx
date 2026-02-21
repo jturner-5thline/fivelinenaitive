@@ -23,7 +23,6 @@ import {
   LayoutDashboard,
   Briefcase,
   Newspaper,
-  Sparkles,
   BarChart3,
   Lightbulb,
   Users,
@@ -44,6 +43,7 @@ import {
   LucideIcon,
   MessageCircle
 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 
 interface UserProfile {
   id: string;
@@ -115,7 +115,7 @@ const PAGE_SECTIONS: SectionConfig[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Main overview and stats' },
   { key: 'deals', label: 'Deals', icon: Briefcase, description: 'Deal management and pipeline' },
   { key: 'newsFeed', label: 'News Feed', icon: Newspaper, description: 'Industry news and updates' },
-  { key: 'research', label: 'AI Research', icon: Sparkles, description: 'AI-powered research tools' },
+  { key: 'research', label: 'AI Research', icon: Sparkles as any, description: 'AI-powered research tools' },
   { key: 'metrics', label: 'Metrics', icon: BarChart3, description: 'Performance metrics and KPIs' },
   { key: 'insights', label: 'Insights', icon: Lightbulb, description: 'AI-generated insights' },
   { key: 'salesBd', label: 'Sales & BD', icon: Users, description: 'Sales and business development' },

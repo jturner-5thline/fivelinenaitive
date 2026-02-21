@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, Sparkles, TrendingUp, ChevronRight, ChevronDown, Bell, Edit3 } from 'lucide-react';
+import { AlertTriangle, Building2, Users, Zap, Activity, CalendarClock, Target, Clock, TrendingUp, ChevronRight, ChevronDown, Bell, Edit3 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Sparkles, RefreshCw, CheckCircle, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, CheckCircle, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';

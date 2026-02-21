@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Download, ExternalLink, Sparkles, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { X, Download, ExternalLink, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatBytes } from './helpers';

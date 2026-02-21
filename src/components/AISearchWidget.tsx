@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sparkles, Loader2, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase } from 'lucide-react';
+import { Search, Loader2, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';

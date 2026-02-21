@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Sparkles, Check, X, AlertCircle, FileText, ChevronRight, Loader2 } from 'lucide-react';
+import { Check, X, AlertCircle, FileText, ChevronRight, Loader2 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, Plus, Globe, Sparkles, Loader2, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase } from 'lucide-react';
+import { Send, Plus, Globe, Loader2, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
