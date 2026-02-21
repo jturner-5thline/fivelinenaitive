@@ -21,7 +21,7 @@ export function FilePreviewPanel({ file, onClose, onDownload }: FilePreviewPanel
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="bg-card border rounded-lg shadow-xl w-[90vw] max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+      <div className="bg-card border rounded-lg shadow-xl w-[90vw] max-w-4xl h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
           <div className="flex-1 min-w-0">
