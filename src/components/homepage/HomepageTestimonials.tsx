@@ -24,7 +24,7 @@ export const HomepageTestimonials = () => {
         {/* Section header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-6xl font-bold text-white mb-4">
-            Who n<span className="bg-gradient-to-b from-[hsl(292,46%,72%)] to-[hsl(280,60%,45%)] bg-clip-text text-transparent">ai</span>tive is built for
+            Who n<span className="bg-gradient-to-r from-[hsl(270,65%,55%)] to-[hsl(220,70%,72%)] bg-clip-text text-transparent">ai</span>tive is built for
           </h2>
         </div>
 
