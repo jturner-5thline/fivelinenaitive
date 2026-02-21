@@ -8000,7 +8000,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       company_role: "owner" | "admin" | "member"
       data_access_scope: "all" | "team" | "own" | "none"
-      feature_status: "disabled" | "staging" | "deployed"
+      feature_status: "disabled" | "staging" | "deployed" | "james_only"
       financial_period_type: "monthly" | "quarterly" | "annual"
       financial_statement_type: "pnl" | "balance_sheet" | "cash_flow"
       lender_pass_reason_category:
@@ -8142,7 +8142,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       company_role: ["owner", "admin", "member"],
       data_access_scope: ["all", "team", "own", "none"],
-      feature_status: ["disabled", "staging", "deployed"],
+      feature_status: ["disabled", "staging", "deployed", "james_only"],
       financial_period_type: ["monthly", "quarterly", "annual"],
       financial_statement_type: ["pnl", "balance_sheet", "cash_flow"],
       lender_pass_reason_category: [
