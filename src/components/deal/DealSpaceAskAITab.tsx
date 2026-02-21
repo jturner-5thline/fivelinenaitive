@@ -99,10 +99,10 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   }, [clearMessages]);
 
   const suggestedQuestions = [
-    "What are the key terms in this deal?",
-    "Summarize the main risks mentioned",
-    "What are the financial highlights?",
-    "List all action items from the notes",
+    "Generate a full lender-ready memo for this deal",
+    "What are the key risks & hurdles for this deal?",
+    "Summarize the current lender process & status",
+    "What are the key credit strengths?",
   ];
 
   return (

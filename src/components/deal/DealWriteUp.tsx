@@ -10,6 +10,7 @@ import { useLatestFlexSync } from '@/hooks/useFlexSyncHistory';
 import { useFlexChangedFields } from '@/hooks/useFlexChangedFields';
 import { useDealOwnership } from '@/hooks/useDealOwnership';
 import { useDealSpaceAutoFill, ExtractedWriteUpField } from '@/hooks/useDealSpaceAutoFill';
+import { useDealSpaceMemo, MEMO_SECTIONS } from '@/hooks/useDealSpaceMemo';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -29,6 +30,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import ReactMarkdown from 'react-markdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -290,6 +300,10 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const [showAutoFillDialog, setShowAutoFillDialog] = useState(false);
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
   const [autoFillDocumentCount, setAutoFillDocumentCount] = useState(0);
+
+  // AI Memo generation
+  const { isGenerating: isMemoGenerating, isRegenerating, memoContent, memoSections, generateFullMemo, regenerateSection } = useDealSpaceMemo(dealId);
+  const [showMemoDialog, setShowMemoDialog] = useState(false);
   
   // View mode state: 'tabs', 'long', or 'carousel'
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -996,6 +1010,32 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
                   <TooltipContent>Extract data from uploaded Deal Space documents</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const result = await generateFullMemo();
+                        if (result && result.content) {
+                          setShowMemoDialog(true);
+                        }
+                      }}
+                      disabled={isMemoGenerating}
+                      className="gap-2"
+                    >
+                      {isMemoGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 text-primary" />
+                      )}
+                      Generate AI Memo
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Generate a structured lender-ready memo from all deal data</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {autoFilledFields.size > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
                   <Sparkles className="h-3 w-3" />
@@ -1435,6 +1475,75 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AI Memo Dialog */}
+      <Dialog open={showMemoDialog} onOpenChange={setShowMemoDialog}>
+        <DialogContent className="sm:max-w-[750px] max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI-Generated Lender Memo
+            </DialogTitle>
+            <DialogDescription>
+              Structured memo generated from all deal data. You can regenerate individual sections.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 max-h-[60vh] pr-4">
+            {memoContent ? (
+              <div className="space-y-4">
+                {MEMO_SECTIONS.map((section) => {
+                  const sectionContent = memoSections[section.key];
+                  if (!sectionContent && !memoContent.includes(section.heading)) return null;
+                  return (
+                    <div key={section.key} className="group relative border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-sm">{section.heading}</h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1.5 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => regenerateSection(section.key)}
+                          disabled={isRegenerating === section.key}
+                        >
+                          {isRegenerating === section.key ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3" />
+                          )}
+                          Regenerate
+                        </Button>
+                      </div>
+                      <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                        <ReactMarkdown>{sectionContent || ''}</ReactMarkdown>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Sparkles className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                <p>Generating memo...</p>
+              </div>
+            )}
+          </ScrollArea>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowMemoDialog(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                navigator.clipboard.writeText(memoContent);
+                toast.success('Memo copied to clipboard');
+              }}
+              disabled={!memoContent}
+              className="gap-2"
+            >
+              Copy Memo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </Card>
   );

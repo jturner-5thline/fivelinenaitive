@@ -15,56 +15,113 @@ interface ExtractedContent {
   slides?: { slideNumber: number; content: string }[];
 }
 
-// Extract text from PDF - simple text extraction without pdf-parse
-// This approach extracts readable text from the PDF binary
+// ─── Canonical Memo Section Schema ───────────────────────────────────
+const MEMO_SECTIONS = [
+  { key: "executive_overview", heading: "Executive / Deal Overview" },
+  { key: "facility_overview", heading: "Facility Overview" },
+  { key: "financial_profile", heading: "Financial Profile" },
+  { key: "credit_strengths", heading: "Key Credit Strengths" },
+  { key: "key_risks", heading: "Key Risks & Hurdles" },
+  { key: "lender_status", heading: "Lender Process & Status" },
+  { key: "recommendation", heading: "Recommendation / Next Steps" },
+] as const;
+
+const RISK_SUB_SECTIONS = [
+  "Financial Risks",
+  "Lender Sentiment & Market Risks",
+  "Operational & Strategic Risks",
+];
+
+function getMemoSectionHeadings(): string {
+  return MEMO_SECTIONS.map((s, i) => `${i + 1}. ${s.heading}`).join("\n");
+}
+
+// ─── Reusable prompt fragments ──────────────────────────────────────
+
+const FORMATTING_RULES = `
+CRITICAL FORMATTING RULES — every response MUST follow this structure:
+- Use ## for the section headings listed below and ### for sub-headings.
+- Use bullet points (- ) for all lists. Use indented bullets (  - ) for sub-items.
+- Use **bold** for key terms, labels, and emphasis within bullets.
+- NEVER output plain paragraphs when the content has multiple items — always use headings and lists.
+- Omit a section entirely if there is genuinely no data; do NOT hallucinate content.
+`;
+
+const MEMO_TEMPLATE_INSTRUCTIONS = `
+You MUST output your response using exactly these section headings, in this order:
+
+## Executive / Deal Overview
+A concise 2-3 sentence summary of the company, deal type, capital ask, and strategic rationale.
+
+## Facility Overview
+- **Requested Amount:** [capital ask]
+- **Proposed Structure:** [deal type / term / rate if available]
+- **Use of Funds:** [use of funds]
+- **Collateral / Security:** [if available]
+
+## Financial Profile
+- **Revenue:** [last year → this year, growth %]
+- **Gross Margins:** [%]
+- **Profitability:** [status]
+- **Liquidity / Cash Position:** [if available]
+- **Leverage / Existing Debt:** [if available]
+- **Equity Raised to Date:** [if available]
+
+## Key Credit Strengths
+- Concise bullets highlighting the strongest aspects of the credit.
+
+## Key Risks & Hurdles
+Output exactly these three sub-headings with concise bullets under each:
+
+### Financial Risks
+- e.g., High cash burn, declining revenue, thin margins, covenant risk
+
+### Lender Sentiment & Market Risks
+- e.g., Early rejections, limited lender appetite, sector headwinds, concentration risk
+
+### Operational & Strategic Risks
+- e.g., Management gaps, governance concerns, customer concentration, regulatory exposure
+
+Pull risk data from: deal memo hurdles, analyst notes, lender pass reasons, lender feedback/notes, and deal flag notes. Be specific — cite the lender name when referencing a pass reason.
+
+## Lender Process & Status
+- **Pipeline Stage:** [current deal stage]
+- **Flagged:** [Yes/No + reason if flagged]
+- **Lenders Active ([count]):** [names + current substage]
+- **Lenders Passed ([count]):** [names + pass reason]
+- **Quotes Received:** [lender name, amount, rate, term — if any]
+If lender data is missing, state "No lender engagement data available" rather than inventing data.
+
+## Recommendation / Next Steps
+Actionable bullets: what should the deal team do next based on the current state of the deal.
+`;
+
+// ─── File extraction helpers (unchanged) ────────────────────────────
+
 async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<ExtractedContent> {
   try {
     const uint8Array = new Uint8Array(arrayBuffer);
     const decoder = new TextDecoder('utf-8', { fatal: false });
     const rawText = decoder.decode(uint8Array);
-    
-    // Extract text between stream markers (common PDF text location)
     const textParts: string[] = [];
-    
-    // Method 1: Extract text from stream objects
     const streamMatches = rawText.matchAll(/stream\s*([\s\S]*?)endstream/g);
     for (const match of streamMatches) {
       const content = match[1];
-      // Try to extract readable ASCII text
-      const readable = content.replace(/[^\x20-\x7E\n\r\t]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      if (readable.length > 20 && !/^[\s\d\.\-\[\]\/]+$/.test(readable)) {
-        textParts.push(readable);
-      }
+      const readable = content.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (readable.length > 20 && !/^[\s\d\.\-\[\]\/]+$/.test(readable)) textParts.push(readable);
     }
-    
-    // Method 2: Extract text from BT/ET blocks (text objects)
     const textBlockMatches = rawText.matchAll(/BT\s*([\s\S]*?)ET/g);
     for (const match of textBlockMatches) {
-      const content = match[1];
-      // Extract text from Tj and TJ operators
-      const tjMatches = content.matchAll(/\(([^)]*)\)\s*Tj/g);
+      const tjMatches = match[1].matchAll(/\(([^)]*)\)\s*Tj/g);
       for (const tj of tjMatches) {
         const text = tj[1].replace(/\\(.)/g, '$1');
-        if (text.length > 0) {
-          textParts.push(text);
-        }
+        if (text.length > 0) textParts.push(text);
       }
     }
-    
-    // Method 3: Look for plain text patterns
     const plainTextMatches = rawText.matchAll(/\(([A-Za-z][A-Za-z0-9\s,.\-:;'"!?@#$%&*()]{10,})\)/g);
-    for (const match of plainTextMatches) {
-      textParts.push(match[1]);
-    }
-    
+    for (const match of plainTextMatches) textParts.push(match[1]);
     const extractedText = textParts.join(' ').replace(/\s+/g, ' ').trim();
-    
-    if (extractedText.length < 50) {
-      return { text: "[PDF content - text extraction limited. Upload Word or text documents for better results.]" };
-    }
-    
+    if (extractedText.length < 50) return { text: "[PDF content - text extraction limited. Upload Word or text documents for better results.]" };
     return { text: extractedText };
   } catch (error) {
     console.error("PDF extraction error:", error);
@@ -72,7 +129,6 @@ async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<ExtractedConten
   }
 }
 
-// Extract text from Word documents (.docx)
 async function extractDocxText(arrayBuffer: ArrayBuffer): Promise<ExtractedContent> {
   try {
     const result = await mammoth.extractRawText({ arrayBuffer });
@@ -83,83 +139,49 @@ async function extractDocxText(arrayBuffer: ArrayBuffer): Promise<ExtractedConte
   }
 }
 
-// Extract text from Excel files (.xlsx, .xls) using JSZip
 async function extractExcelText(arrayBuffer: ArrayBuffer): Promise<ExtractedContent> {
   try {
     const zip = await JSZip.loadAsync(arrayBuffer);
     const sheets: { sheetName: string; content: string }[] = [];
     const allText: string[] = [];
-    
-    // Get workbook.xml to find sheet names
     const workbookFile = zip.file("xl/workbook.xml");
-    if (!workbookFile) {
-      return { text: "[Excel content could not be extracted - invalid format]" };
-    }
-    
+    if (!workbookFile) return { text: "[Excel content could not be extracted - invalid format]" };
     const workbookXml = await workbookFile.async("string");
-    
-    // Extract sheet names from workbook.xml
     const sheetMatches = workbookXml.matchAll(/<sheet[^>]*name="([^"]*)"[^>]*sheetId="(\d+)"/g);
     const sheetNames: string[] = [];
-    for (const match of sheetMatches) {
-      sheetNames.push(match[1]);
-    }
-    
-    // Get shared strings (cell values are often stored here)
+    for (const match of sheetMatches) sheetNames.push(match[1]);
     let sharedStrings: string[] = [];
     const sharedStringsFile = zip.file("xl/sharedStrings.xml");
     if (sharedStringsFile) {
       const sharedStringsXml = await sharedStringsFile.async("string");
-      // Extract text from shared strings
       const stringMatches = sharedStringsXml.matchAll(/<t[^>]*>([^<]*)<\/t>/g);
-      for (const match of stringMatches) {
-        sharedStrings.push(match[1]);
-      }
+      for (const match of stringMatches) sharedStrings.push(match[1]);
     }
-    
-    // Process each sheet
     for (let i = 0; i < sheetNames.length; i++) {
       const sheetFile = zip.file(`xl/worksheets/sheet${i + 1}.xml`);
       if (!sheetFile) continue;
-      
       const sheetXml = await sheetFile.async("string");
       const cellValues: string[] = [];
-      
-      // Extract cell values
-      // Match cells with inline values (<v> tags)
       const cellMatches = sheetXml.matchAll(/<c[^>]*>.*?<v>([^<]*)<\/v>.*?<\/c>/gs);
       for (const match of cellMatches) {
         const fullCell = match[0];
         const value = match[1];
-        
-        // Check if it's a shared string reference (t="s")
         if (fullCell.includes('t="s"')) {
           const index = parseInt(value);
-          if (!isNaN(index) && index < sharedStrings.length) {
-            cellValues.push(sharedStrings[index]);
-          }
+          if (!isNaN(index) && index < sharedStrings.length) cellValues.push(sharedStrings[index]);
         } else {
           cellValues.push(value);
         }
       }
-      
-      // Also extract inline strings
       const inlineMatches = sheetXml.matchAll(/<is>.*?<t>([^<]*)<\/t>.*?<\/is>/gs);
-      for (const match of inlineMatches) {
-        cellValues.push(match[1]);
-      }
-      
+      for (const match of inlineMatches) cellValues.push(match[1]);
       const sheetContent = cellValues.join(", ");
       if (sheetContent.trim()) {
         sheets.push({ sheetName: sheetNames[i] || `Sheet${i + 1}`, content: sheetContent });
         allText.push(`### Sheet: ${sheetNames[i] || `Sheet${i + 1}`}\n${sheetContent}`);
       }
     }
-    
-    if (sheets.length === 0) {
-      return { text: "[Excel file appears to be empty]" };
-    }
-    
+    if (sheets.length === 0) return { text: "[Excel file appears to be empty]" };
     return { text: allText.join("\n\n"), sheets };
   } catch (error) {
     console.error("Excel extraction error:", error);
@@ -167,14 +189,11 @@ async function extractExcelText(arrayBuffer: ArrayBuffer): Promise<ExtractedCont
   }
 }
 
-// Extract text from PowerPoint files (.pptx)
 async function extractPptxText(arrayBuffer: ArrayBuffer): Promise<ExtractedContent> {
   try {
     const zip = await JSZip.loadAsync(arrayBuffer);
     const slides: { slideNumber: number; content: string }[] = [];
     const allText: string[] = [];
-    
-    // Get all slide files
     const slideFiles = Object.keys(zip.files)
       .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/))
       .sort((a, b) => {
@@ -182,292 +201,136 @@ async function extractPptxText(arrayBuffer: ArrayBuffer): Promise<ExtractedConte
         const numB = parseInt(b.match(/slide(\d+)/)?.[1] || "0");
         return numA - numB;
       });
-    
     for (const slideFile of slideFiles) {
       const slideXml = await zip.files[slideFile].async("string");
-      // Extract text from XML
       const textMatches = slideXml.match(/<a:t>([^<]*)<\/a:t>/g) || [];
-      const slideText = textMatches
-        .map(match => match.replace(/<\/?a:t>/g, ""))
-        .filter(text => text.trim())
-        .join(" ");
-      
+      const slideText = textMatches.map(match => match.replace(/<\/?a:t>/g, "")).filter(text => text.trim()).join(" ");
       if (slideText.trim()) {
         const slideNum = parseInt(slideFile.match(/slide(\d+)/)?.[1] || "0");
         slides.push({ slideNumber: slideNum, content: slideText });
         allText.push(`Slide ${slideNum}: ${slideText}`);
       }
     }
-    
-    return { 
-      text: allText.join("\n\n") || "[No text found in presentation]",
-      slides: slides.length > 0 ? slides : undefined
-    };
+    return { text: allText.join("\n\n") || "[No text found in presentation]", slides: slides.length > 0 ? slides : undefined };
   } catch (error) {
     console.error("PPTX extraction error:", error);
     return { text: "[PowerPoint content could not be extracted]" };
   }
 }
 
-// Main content extraction function
 async function extractContent(fileData: Blob, fileName: string): Promise<ExtractedContent> {
   const lowerName = fileName.toLowerCase();
   const arrayBuffer = await fileData.arrayBuffer();
-  
-  // Plain text files
-  if (lowerName.endsWith(".txt") || lowerName.endsWith(".md") || lowerName.endsWith(".csv")) {
-    return { text: await fileData.text() };
-  }
-  
-  // PDF files
-  if (lowerName.endsWith(".pdf")) {
-    return await extractPdfText(arrayBuffer);
-  }
-  
-  // Word documents
-  if (lowerName.endsWith(".docx")) {
-    return await extractDocxText(arrayBuffer);
-  }
-  
-  // Excel files
-  if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
-    return await extractExcelText(arrayBuffer);
-  }
-  
-  // PowerPoint files
-  if (lowerName.endsWith(".pptx")) {
-    return await extractPptxText(arrayBuffer);
-  }
-  
-  // JSON files
+  if (lowerName.endsWith(".txt") || lowerName.endsWith(".md") || lowerName.endsWith(".csv")) return { text: await fileData.text() };
+  if (lowerName.endsWith(".pdf")) return await extractPdfText(arrayBuffer);
+  if (lowerName.endsWith(".docx")) return await extractDocxText(arrayBuffer);
+  if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) return await extractExcelText(arrayBuffer);
+  if (lowerName.endsWith(".pptx")) return await extractPptxText(arrayBuffer);
   if (lowerName.endsWith(".json")) {
-    try {
-      const text = await fileData.text();
-      return { text: JSON.stringify(JSON.parse(text), null, 2) };
-    } catch {
-      return { text: await fileData.text() };
-    }
+    try { const text = await fileData.text(); return { text: JSON.stringify(JSON.parse(text), null, 2) }; } catch { return { text: await fileData.text() }; }
   }
-  
-  // Try to read as text for other formats
   try {
     const text = await fileData.text();
     const nonPrintable = (text.match(/[\x00-\x08\x0E-\x1F]/g) || []).length;
-    if (nonPrintable / text.length > 0.1) {
-      return { text: `[Binary file: ${fileName} - content type not supported]` };
-    }
+    if (nonPrintable / text.length > 0.1) return { text: `[Binary file: ${fileName} - content type not supported]` };
     return { text };
-  } catch {
-    return { text: `[Binary file: ${fileName}]` };
-  }
+  } catch { return { text: `[Binary file: ${fileName}]` }; }
 }
 
-// Build enhanced context with location references
-function buildEnhancedContext(
-  docName: string, 
-  extracted: ExtractedContent
-): string {
+function buildEnhancedContext(docName: string, extracted: ExtractedContent): string {
   let context = `### ${docName}\n`;
-  
-  if (extracted.pages && extracted.pages.length > 1) {
-    // For PDFs with pages
-    context += extracted.pages
-      .map(p => `[Page ${p.pageNumber}]\n${p.content}`)
-      .join("\n\n");
-  } else if (extracted.sheets && extracted.sheets.length > 0) {
-    // For Excel with sheets
-    context += extracted.sheets
-      .map(s => `[Sheet: ${s.sheetName}]\n${s.content}`)
-      .join("\n\n");
+  if (extracted.sheets && extracted.sheets.length > 0) {
+    context += extracted.sheets.map(s => `[Sheet: ${s.sheetName}]\n${s.content}`).join("\n\n");
   } else if (extracted.slides && extracted.slides.length > 0) {
-    // For PowerPoint with slides
-    context += extracted.slides
-      .map(s => `[Slide ${s.slideNumber}]\n${s.content}`)
-      .join("\n\n");
+    context += extracted.slides.map(s => `[Slide ${s.slideNumber}]\n${s.content}`).join("\n\n");
   } else {
     context += extracted.text;
   }
-  
   return context;
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+// ─── Deal context builder (shared across all actions) ───────────────
 
-  try {
-    const { messages, dealId, action } = await req.json();
+async function buildDealContext(supabase: any, dealId: string) {
+  const [
+    dealResult, writeupResult, lendersResult, milestonesResult,
+    activityResult, memoResult, dealSpaceDocsResult, dataRoomDocsResult, flagNotesResult,
+  ] = await Promise.all([
+    supabase.from("deals").select("company, value, stage, status, deal_type, business_model, contact, contact_info, company_url, deal_owner, manager, referred_by, engagement_type, exclusivity, created_at, updated_at, is_flagged, flag_notes, notes, pre_signing_hours, post_signing_hours, retainer_fee, milestone_fee, success_fee_percent, total_fee").eq("id", dealId).single(),
+    supabase.from("deal_writeups").select("company_name, description, industry, location, year_founded, headcount, capital_ask, use_of_funds, deal_type, b2b_b2c, revenue_type, billing_model, gross_margins, profitability, last_year_revenue, this_year_revenue, total_equity_raised, sponsorship, collateral_available, existing_debt_details, accounting_system, company_url, linkedin_url, data_room_url, company_highlights, key_items, financial_years, financial_comments").eq("deal_id", dealId).single(),
+    supabase.from("deal_lenders").select("name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
+    supabase.from("deal_milestones").select("title, completed, due_date, completed_at").eq("deal_id", dealId).order("position").limit(20),
+    supabase.from("activity_logs").select("activity_type, description, user_display_name, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(20),
+    supabase.from("deal_memos").select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes").eq("deal_id", dealId).single(),
+    supabase.from("deal_space_documents").select("id, name, content_type, size_bytes, created_at").eq("deal_id", dealId),
+    supabase.from("deal_attachments").select("id, name, content_type, category, size_bytes, created_at").eq("deal_id", dealId),
+    supabase.from("deal_flag_notes").select("note, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(10),
+  ]);
 
-    // Handle summarization action
-    if (action === "summarize") {
-      return await handleSummarize(dealId);
-    }
+  const deal = dealResult.data;
+  const writeup = writeupResult.data;
+  const lenders = lendersResult.data || [];
+  const milestones = milestonesResult.data || [];
+  const activities = activityResult.data || [];
+  const memo = memoResult.data;
+  const dealSpaceDocs = dealSpaceDocsResult.data || [];
+  const dataRoomDocs = dataRoomDocsResult.data || [];
+  const flagNotes = flagNotesResult.data || [];
 
-    // Handle write-up extraction action
-    if (action === "extract-writeup") {
-      return await handleExtractWriteUp(dealId);
-    }
+  const fmt = (val: number | null | undefined) => val != null ? `$${val.toLocaleString()}` : 'N/A';
+  const fmtDate = (d: string | null | undefined) => d ? new Date(d).toLocaleDateString() : 'N/A';
 
-    if (!dealId || !messages || !Array.isArray(messages)) {
-      return new Response(
-        JSON.stringify({ error: "dealId and messages are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Fetch comprehensive deal context in parallel
-    const [
-      dealResult,
-      writeupResult,
-      lendersResult,
-      milestonesResult,
-      activityResult,
-      memoResult,
-      dealSpaceDocsResult,
-      dataRoomDocsResult,
-    ] = await Promise.all([
-      // Deal information
-      supabase.from("deals").select("company, value, stage, status, deal_type, business_model, contact, contact_info, company_url, deal_owner, manager, referred_by, engagement_type, exclusivity, created_at, updated_at, is_flagged, flag_notes, notes, pre_signing_hours, post_signing_hours, retainer_fee, milestone_fee, success_fee_percent, total_fee").eq("id", dealId).single(),
-      // Deal write-up - only essential fields
-      supabase.from("deal_writeups").select("company_name, description, industry, location, year_founded, headcount, capital_ask, use_of_funds, deal_type, b2b_b2c, revenue_type, billing_model, gross_margins, profitability, last_year_revenue, this_year_revenue, total_equity_raised, sponsorship, collateral_available, existing_debt_details, accounting_system, company_url, linkedin_url, data_room_url, company_highlights, key_items, financial_years, financial_comments").eq("deal_id", dealId).single(),
-      // Lenders - only essential fields
-      supabase.from("deal_lenders").select("name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
-      // Milestones
-      supabase.from("deal_milestones").select("title, completed, due_date, completed_at").eq("deal_id", dealId).order("position").limit(20),
-      // Recent activity (limit to 20)
-      supabase.from("activity_logs").select("activity_type, description, user_display_name, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(20),
-      // Deal memo - only essential fields
-      supabase.from("deal_memos").select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes").eq("deal_id", dealId).single(),
-      // Deal space documents - only metadata
-      supabase.from("deal_space_documents").select("id, name, content_type, size_bytes, created_at").eq("deal_id", dealId),
-      // Data room documents - only metadata
-      supabase.from("deal_attachments").select("id, name, content_type, category, size_bytes, created_at").eq("deal_id", dealId),
-    ]);
-
-    const deal = dealResult.data;
-    const writeup = writeupResult.data;
-    const lenders = lendersResult.data || [];
-    const milestones = milestonesResult.data || [];
-    const activities = activityResult.data || [];
-    const memo = memoResult.data;
-    const dealSpaceDocs = dealSpaceDocsResult.data || [];
-    const dataRoomDocs = dataRoomDocsResult.data || [];
-
-    // Build document inventory (metadata only - no content extraction)
-    let documentInventory = '';
-    
-    if (dealSpaceDocs.length > 0) {
-      documentInventory += `**Deal Space Documents (${dealSpaceDocs.length}):**\n`;
-      documentInventory += dealSpaceDocs.map(d => `- ${d.name} (${d.content_type || 'unknown type'})`).join('\n');
-      documentInventory += '\n\n';
-    }
-    
-    if (dataRoomDocs.length > 0) {
-      // Group by category
-      const byCategory = dataRoomDocs.reduce((acc, d) => {
-        const cat = d.category || 'Uncategorized';
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(d.name);
-        return acc;
-      }, {} as Record<string, string[]>);
-      
-      documentInventory += `**Data Room Documents (${dataRoomDocs.length}):**\n`;
-      for (const [category, files] of Object.entries(byCategory)) {
-        documentInventory += `  ${category}:\n${files.map(f => `    - ${f}`).join('\n')}\n`;
-      }
-    }
-
-    if (!documentInventory) {
-      documentInventory = 'No documents have been uploaded yet.';
-    }
-
-    // Build comprehensive deal context
-    const formatCurrency = (val: number | null | undefined) => 
-      val != null ? `$${val.toLocaleString()}` : 'Not specified';
-    
-    const formatDate = (date: string | null | undefined) => 
-      date ? new Date(date).toLocaleDateString() : 'Not set';
-
-    // Deal Information Context
-    let dealInfoContext = '';
-    if (deal) {
-      dealInfoContext = `
+  // ── Deal info block ──
+  let dealInfo = '';
+  if (deal) {
+    dealInfo = `
 **DEAL INFORMATION:**
 - Company: ${deal.company || 'N/A'}
-- Deal Value: ${formatCurrency(deal.value)}
+- Deal Value: ${fmt(deal.value)}
 - Stage: ${deal.stage || 'N/A'}
 - Status: ${deal.status || 'N/A'}
 - Deal Type: ${deal.deal_type || 'Not specified'}
 - Business Model: ${deal.business_model || 'Not specified'}
-- Contact: ${deal.contact || 'Not specified'}
-- Contact Info: ${deal.contact_info || 'Not specified'}
-- Company URL: ${deal.company_url || 'Not specified'}
-- Deal Owner: ${deal.deal_owner || 'Not assigned'}
-- Manager: ${deal.manager || 'Not assigned'}
+- Contact: ${deal.contact || 'N/A'} / ${deal.contact_info || 'N/A'}
+- Company URL: ${deal.company_url || 'N/A'}
+- Deal Owner: ${deal.deal_owner || 'N/A'}
+- Manager: ${deal.manager || 'N/A'}
 - Referred By: ${deal.referred_by || 'N/A'}
-- Engagement Type: ${deal.engagement_type || 'Not specified'}
-- Exclusivity: ${deal.exclusivity || 'Not specified'}
-- Created: ${formatDate(deal.created_at)}
-- Last Updated: ${formatDate(deal.updated_at)}
-- Flagged: ${deal.is_flagged ? 'Yes' : 'No'}${deal.flag_notes ? ` - ${deal.flag_notes}` : ''}
-- Notes: ${deal.notes || 'No notes'}
-
-**Hours & Fees:**
-- Pre-Signing Hours: ${deal.pre_signing_hours ?? 'N/A'}
-- Post-Signing Hours: ${deal.post_signing_hours ?? 'N/A'}
-- Retainer Fee: ${formatCurrency(deal.retainer_fee)}
-- Milestone Fee: ${formatCurrency(deal.milestone_fee)}
-- Success Fee %: ${deal.success_fee_percent != null ? `${deal.success_fee_percent}%` : 'N/A'}
-- Total Fee: ${formatCurrency(deal.total_fee)}
+- Engagement: ${deal.engagement_type || 'N/A'} | Exclusivity: ${deal.exclusivity || 'N/A'}
+- Created: ${fmtDate(deal.created_at)} | Updated: ${fmtDate(deal.updated_at)}
+- Flagged: ${deal.is_flagged ? 'Yes' : 'No'}${deal.flag_notes ? ` — ${deal.flag_notes}` : ''}
+- Notes: ${deal.notes || 'None'}
+- Fees: Retainer ${fmt(deal.retainer_fee)} | Milestone ${fmt(deal.milestone_fee)} | Success ${deal.success_fee_percent != null ? `${deal.success_fee_percent}%` : 'N/A'} | Total ${fmt(deal.total_fee)}
 `;
-    }
+  }
 
-    // Deal Write-Up Context
-    let writeupContext = '';
-    if (writeup) {
-      writeupContext = `
+  // ── Write-up block ──
+  let writeupInfo = '';
+  if (writeup) {
+    writeupInfo = `
 **DEAL WRITE-UP:**
-- Company Name: ${writeup.company_name || 'N/A'}
-- Description: ${writeup.description || 'No description'}
-- Industry: ${writeup.industry || 'Not specified'}
-- Location: ${writeup.location || 'Not specified'}
-- Year Founded: ${writeup.year_founded || 'N/A'}
-- Headcount: ${writeup.headcount || 'N/A'}
-- Capital Ask: ${writeup.capital_ask || 'Not specified'}
-- Use of Funds: ${writeup.use_of_funds || 'Not specified'}
-- Deal Type: ${writeup.deal_type || 'Not specified'}
-- B2B/B2C: ${writeup.b2b_b2c || 'Not specified'}
-- Revenue Type: ${writeup.revenue_type || 'Not specified'}
-- Billing Model: ${writeup.billing_model || 'Not specified'}
-- Gross Margins: ${writeup.gross_margins || 'Not specified'}
-- Profitability: ${writeup.profitability || 'Not specified'}
-- Last Year Revenue: ${writeup.last_year_revenue || 'N/A'}
-- This Year Revenue: ${writeup.this_year_revenue || 'N/A'}
+- Company: ${writeup.company_name || 'N/A'} | Industry: ${writeup.industry || 'N/A'} | Location: ${writeup.location || 'N/A'}
+- Founded: ${writeup.year_founded || 'N/A'} | Headcount: ${writeup.headcount || 'N/A'}
+- Description: ${writeup.description || 'None'}
+- Capital Ask: ${writeup.capital_ask || 'N/A'} | Use of Funds: ${writeup.use_of_funds || 'N/A'}
+- Deal Type: ${writeup.deal_type || 'N/A'} | B2B/B2C: ${writeup.b2b_b2c || 'N/A'}
+- Revenue Type: ${writeup.revenue_type || 'N/A'} | Billing: ${writeup.billing_model || 'N/A'}
+- Gross Margins: ${writeup.gross_margins || 'N/A'} | Profitability: ${writeup.profitability || 'N/A'}
+- Last Year Revenue: ${writeup.last_year_revenue || 'N/A'} | This Year Revenue: ${writeup.this_year_revenue || 'N/A'}
 - Total Equity Raised: ${writeup.total_equity_raised || 'N/A'}
-- Sponsorship: ${writeup.sponsorship || 'Not specified'}
-- Collateral Available: ${writeup.collateral_available || 'Not specified'}
-- Existing Debt: ${writeup.existing_debt_details || 'None specified'}
-- Accounting System: ${writeup.accounting_system || 'Not specified'}
-- Company URL: ${writeup.company_url || 'N/A'}
-- LinkedIn: ${writeup.linkedin_url || 'N/A'}
-- Data Room URL: ${writeup.data_room_url || 'N/A'}
-${writeup.company_highlights ? `- Company Highlights: ${JSON.stringify(writeup.company_highlights)}` : ''}
-${writeup.key_items ? `- Key Items: ${JSON.stringify(writeup.key_items)}` : ''}
-${writeup.financial_years ? `- Financial Years Data: ${JSON.stringify(writeup.financial_years)}` : ''}
+- Sponsorship: ${writeup.sponsorship || 'N/A'}
+- Collateral: ${writeup.collateral_available || 'N/A'}
+- Existing Debt: ${writeup.existing_debt_details || 'None'}
+${writeup.company_highlights ? `- Highlights: ${JSON.stringify(writeup.company_highlights)}` : ''}
+${writeup.financial_years ? `- Financial Years: ${JSON.stringify(writeup.financial_years)}` : ''}
 ${writeup.financial_comments ? `- Financial Comments: ${JSON.stringify(writeup.financial_comments)}` : ''}
 `;
-    }
+  }
 
-    // Deal Memo Context
-    let memoContext = '';
-    if (memo) {
-      memoContext = `
+  // ── Memo block ──
+  let memoInfo = '';
+  if (memo) {
+    memoInfo = `
 **DEAL MEMO:**
 ${memo.narrative ? `- Narrative: ${memo.narrative}` : ''}
 ${memo.highlights ? `- Highlights: ${memo.highlights}` : ''}
@@ -476,127 +339,226 @@ ${memo.analyst_notes ? `- Analyst Notes: ${memo.analyst_notes}` : ''}
 ${memo.lender_notes ? `- Lender Notes: ${memo.lender_notes}` : ''}
 ${memo.other_notes ? `- Other Notes: ${memo.other_notes}` : ''}
 `;
-    }
+  }
 
-    // Lenders Context
-    let lendersContext = '';
-    if (lenders.length > 0) {
-      lendersContext = `
-**LENDERS (${lenders.length} total):**
-${lenders.map((l, i) => `${i + 1}. ${l.name}
+  // ── Flag notes block ──
+  let flagNotesInfo = '';
+  if (flagNotes.length > 0) {
+    flagNotesInfo = `
+**FLAG NOTES:**
+${flagNotes.map((n: any) => `- [${fmtDate(n.created_at)}] ${n.note}`).join('\n')}
+`;
+  }
+
+  // ── Lenders block (structured for risk extraction) ──
+  let lendersInfo = '';
+  const activeLenders = lenders.filter((l: any) => l.stage !== 'Passed' && l.tracking_status !== 'passed');
+  const passedLenders = lenders.filter((l: any) => l.stage === 'Passed' || l.tracking_status === 'passed');
+  if (lenders.length > 0) {
+    lendersInfo = `
+**LENDERS (${lenders.length} total — ${activeLenders.length} active, ${passedLenders.length} passed):**
+${lenders.map((l: any, i: number) => `${i + 1}. ${l.name}
    - Stage: ${l.stage || 'N/A'}${l.substage ? ` / ${l.substage}` : ''}
-   - Tracking Status: ${l.tracking_status || 'Active'}
-   ${l.quote_amount ? `- Quote Amount: ${formatCurrency(l.quote_amount)}` : ''}
-   ${l.quote_rate ? `- Quote Rate: ${l.quote_rate}%` : ''}
-   ${l.quote_term ? `- Quote Term: ${l.quote_term}` : ''}
+   - Status: ${l.tracking_status || 'Active'}
+   ${l.quote_amount ? `- Quote: ${fmt(l.quote_amount)}${l.quote_rate ? ` @ ${l.quote_rate}%` : ''}${l.quote_term ? ` / ${l.quote_term}` : ''}` : ''}
    ${l.notes ? `- Notes: ${l.notes}` : ''}
-   ${l.pass_reason ? `- Pass Reason: ${l.pass_reason}` : ''}`).join('\n')}
+   ${l.pass_reason ? `- PASS REASON: ${l.pass_reason}` : ''}`).join('\n')}
 `;
-    }
+  }
 
-    // Milestones Context
-    let milestonesContext = '';
-    if (milestones.length > 0) {
-      const completed = milestones.filter(m => m.completed).length;
-      milestonesContext = `
+  // ── Milestones block ──
+  let milestonesInfo = '';
+  if (milestones.length > 0) {
+    const completed = milestones.filter((m: any) => m.completed).length;
+    milestonesInfo = `
 **MILESTONES (${completed}/${milestones.length} completed):**
-${milestones.map((m, i) => `${i + 1}. ${m.completed ? '✓' : '○'} ${m.title}${m.due_date ? ` (Due: ${formatDate(m.due_date)})` : ''}${m.completed && m.completed_at ? ` - Completed: ${formatDate(m.completed_at)}` : ''}`).join('\n')}
+${milestones.map((m: any, i: number) => `${i + 1}. ${m.completed ? '✓' : '○'} ${m.title}${m.due_date ? ` (Due: ${fmtDate(m.due_date)})` : ''}`).join('\n')}
 `;
+  }
+
+  // ── Activity block ──
+  let activityInfo = '';
+  if (activities.length > 0) {
+    activityInfo = `
+**RECENT ACTIVITY (last ${activities.length}):**
+${activities.map((a: any) => `- [${fmtDate(a.created_at)}] ${a.activity_type}: ${a.description}${a.user_display_name ? ` (${a.user_display_name})` : ''}`).join('\n')}
+`;
+  }
+
+  // ── Document inventory ──
+  let docInventory = '';
+  if (dealSpaceDocs.length > 0) {
+    docInventory += `**Deal Space Documents (${dealSpaceDocs.length}):**\n` + dealSpaceDocs.map((d: any) => `- ${d.name}`).join('\n') + '\n\n';
+  }
+  if (dataRoomDocs.length > 0) {
+    const byCategory = dataRoomDocs.reduce((acc: Record<string, string[]>, d: any) => {
+      const cat = d.category || 'Uncategorized';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(d.name);
+      return acc;
+    }, {});
+    docInventory += `**Data Room Documents (${dataRoomDocs.length}):**\n`;
+    for (const [category, files] of Object.entries(byCategory)) {
+      docInventory += `  ${category}:\n${(files as string[]).map(f => `    - ${f}`).join('\n')}\n`;
+    }
+  }
+  if (!docInventory) docInventory = 'No documents uploaded yet.';
+
+  const fullContext = [dealInfo, writeupInfo, memoInfo, flagNotesInfo, lendersInfo, milestonesInfo, activityInfo].filter(Boolean).join('\n');
+
+  return {
+    fullContext,
+    docInventory,
+    deal,
+    writeup,
+    lenders,
+    activeLenders,
+    passedLenders,
+    memo,
+    milestones,
+    activities,
+    dealSpaceDocs,
+    dataRoomDocs,
+  };
+}
+
+// ─── Output validation / normalization ──────────────────────────────
+
+function validateAndNormalizeMemo(raw: string): { content: string; sections: Record<string, string> } {
+  const sections: Record<string, string> = {};
+  let normalized = raw;
+
+  // Normalize heading variations
+  const headingAliases: Record<string, string> = {
+    "executive overview": "Executive / Deal Overview",
+    "deal overview": "Executive / Deal Overview",
+    "executive summary": "Executive / Deal Overview",
+    "executive / deal overview": "Executive / Deal Overview",
+    "facility overview": "Facility Overview",
+    "proposed facility": "Facility Overview",
+    "requested facility": "Facility Overview",
+    "financial profile": "Financial Profile",
+    "financial summary": "Financial Profile",
+    "financials": "Financial Profile",
+    "key credit strengths": "Key Credit Strengths",
+    "credit strengths": "Key Credit Strengths",
+    "strengths": "Key Credit Strengths",
+    "key risks & hurdles": "Key Risks & Hurdles",
+    "key risks and hurdles": "Key Risks & Hurdles",
+    "risks & hurdles": "Key Risks & Hurdles",
+    "risks and hurdles": "Key Risks & Hurdles",
+    "lender process & status": "Lender Process & Status",
+    "lender process and status": "Lender Process & Status",
+    "lender status": "Lender Process & Status",
+    "current status / lender sentiment": "Lender Process & Status",
+    "lender sentiment": "Lender Process & Status",
+    "recommendation / next steps": "Recommendation / Next Steps",
+    "recommendation and next steps": "Recommendation / Next Steps",
+    "next steps": "Recommendation / Next Steps",
+    "recommendations": "Recommendation / Next Steps",
+  };
+
+  // Normalize headings in the output
+  for (const [alias, canonical] of Object.entries(headingAliases)) {
+    const regex = new RegExp(`^##\\s*${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'gmi');
+    normalized = normalized.replace(regex, `## ${canonical}`);
+  }
+
+  // Extract each section's content
+  for (const section of MEMO_SECTIONS) {
+    const pattern = new RegExp(`## ${section.heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\n([\\s\\S]*?)(?=\\n## |$)`, 'i');
+    const match = normalized.match(pattern);
+    sections[section.key] = match ? match[1].trim() : '';
+  }
+
+  return { content: normalized, sections };
+}
+
+// ─── Main server ────────────────────────────────────────────────────
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { messages, dealId, action, sectionKey } = await req.json();
+
+    if (action === "summarize") return await handleSummarize(dealId);
+    if (action === "extract-writeup") return await handleExtractWriteUp(dealId);
+    if (action === "generate-memo") return await handleGenerateMemo(dealId);
+    if (action === "regenerate-section") return await handleRegenerateSection(dealId, sectionKey);
+
+    // ── Chat mode (Ask AI) ──────────────────────────────────────────
+    if (!dealId || !messages || !Array.isArray(messages)) {
+      return new Response(
+        JSON.stringify({ error: "dealId and messages are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Activity Context (recent 20 for brevity)
-    let activityContext = '';
-    if (activities.length > 0) {
-      const recentActivities = activities.slice(0, 20);
-      activityContext = `
-**RECENT ACTIVITY (${activities.length} total, showing last ${recentActivities.length}):**
-${recentActivities.map(a => `- [${formatDate(a.created_at)}] ${a.activity_type}: ${a.description}${a.user_display_name ? ` (by ${a.user_display_name})` : ''}`).join('\n')}
-`;
-    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const ctx = await buildDealContext(supabase, dealId);
 
-    // Build the system prompt with all context
-    const systemPrompt = `You are an AI assistant with complete knowledge of this deal. You have access to:
+    const systemPrompt = `You are a senior deal analyst AI assistant with complete knowledge of this deal. Your responses must follow a structured, lender-ready memo format.
 
-${dealInfoContext}
-${writeupContext}
-${memoContext}
-${lendersContext}
-${milestonesContext}
-${activityContext}
+${ctx.fullContext}
 
 **DOCUMENT INVENTORY:**
-${documentInventory}
+${ctx.docInventory}
 
 Instructions:
-- You have FULL access to all deal information, not just documents
-- Answer questions about the deal, lenders, milestones, activity, write-up, and documents
-- When asked about the deal, provide relevant information from the appropriate section above
-- When listing documents, list them from the DOCUMENT INVENTORY above with their source location (Deal Space or Data Room category)
-- For activity questions, summarize recent events and patterns
-- For lender questions, provide status updates and quote information
-- For milestone questions, show progress and upcoming due dates
-- Be concise but thorough
-- CRITICAL FORMATTING RULES: You MUST use proper markdown formatting in every response:
-  - Use ## for main section headings and ### for sub-headings
-  - Use bullet points (- ) for all lists. Use indented bullets (  - ) for sub-items
-  - Use **bold** for key terms, labels, and emphasis
-  - Use numbered lists (1. ) for sequential steps or ranked items
-  - NEVER output plain paragraphs of text when the content has multiple items or categories — always use headings and lists
-  - Structure every response with clear sections separated by headings
-- If information isn't available, say so clearly and suggest what is available
-- Note: You can see document names but not their contents unless the user specifically asks to read a document`;
+- You have FULL access to all deal information above — not just documents.
+- Answer questions using the appropriate data from deal info, write-up, memo, lenders, milestones, and activity.
+- When generating overviews, proposals, or memos, ALWAYS use the standardized section framework:
+${getMemoSectionHeadings()}
 
-    // Call Lovable AI
+${FORMATTING_RULES}
+
+- For the "Key Risks & Hurdles" section, ALWAYS break into three sub-headings:
+  ### Financial Risks
+  ### Lender Sentiment & Market Risks
+  ### Operational & Strategic Risks
+  Pull from: memo hurdles, analyst notes, lender pass reasons, lender notes, flag notes.
+
+- For "Lender Process & Status", ALWAYS include pipeline stage, flagged status, active vs passed count with names.
+- If information isn't available, say so clearly. NEVER hallucinate data.
+- When the user asks for a "memo", "overview", "write-up", or "summary", produce the FULL standardized memo using all 7 sections.
+- For shorter queries, respond concisely but still use headings and bullets.
+`;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
+        messages: [{ role: "system", content: systemPrompt }, ...messages],
       }),
     });
 
     if (!aiResponse.ok) {
+      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const errorText = await aiResponse.text();
       console.error("AI API error:", aiResponse.status, errorText);
-      
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
       throw new Error("AI API request failed");
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content || "I couldn't generate a response.";
+    const rawContent = aiData.choices?.[0]?.message?.content || "I couldn't generate a response.";
+    
+    // Normalize any memo-style output
+    const { content } = validateAndNormalizeMemo(rawContent);
 
-    // Extract source document names mentioned in the response
-    const allDocs = [...dealSpaceDocs, ...dataRoomDocs];
+    const allDocs = [...ctx.dealSpaceDocs, ...ctx.dataRoomDocs];
     const sources: string[] = [];
     for (const d of allDocs) {
-      if (content.toLowerCase().includes(d.name.toLowerCase())) {
-        sources.push(d.name);
-      }
+      if (content.toLowerCase().includes(d.name.toLowerCase())) sources.push(d.name);
     }
 
     return new Response(
@@ -612,14 +574,161 @@ Instructions:
   }
 });
 
-// Handle document summarization
+// ─── Generate full structured memo ──────────────────────────────────
+
+async function handleGenerateMemo(dealId: string) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const ctx = await buildDealContext(supabase, dealId);
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const systemPrompt = `You are a senior credit analyst writing a lender-ready investment memo. Using ONLY the data provided below, generate a comprehensive memo following the EXACT section structure.
+
+${ctx.fullContext}
+
+${FORMATTING_RULES}
+
+${MEMO_TEMPLATE_INSTRUCTIONS}
+
+IMPORTANT: Use ONLY the data provided. If a data point is missing, write "Not available" for that line item. NEVER fabricate numbers, names, or details.`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Generate the full lender-ready memo for this deal using all available data." },
+        ],
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      throw new Error("AI API request failed");
+    }
+
+    const aiData = await aiResponse.json();
+    const rawContent = aiData.choices?.[0]?.message?.content || "";
+    const { content, sections } = validateAndNormalizeMemo(rawContent);
+
+    return new Response(
+      JSON.stringify({ content, sections }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Generate memo error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Failed to generate memo" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Regenerate a single section ────────────────────────────────────
+
+async function handleRegenerateSection(dealId: string, sectionKey: string) {
+  try {
+    if (!sectionKey) throw new Error("sectionKey is required");
+    
+    const section = MEMO_SECTIONS.find(s => s.key === sectionKey);
+    if (!section) throw new Error(`Unknown section: ${sectionKey}`);
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const ctx = await buildDealContext(supabase, dealId);
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    let sectionSpecificInstructions = '';
+    if (sectionKey === 'key_risks') {
+      sectionSpecificInstructions = `
+Output EXACTLY this structure:
+## Key Risks & Hurdles
+
+### Financial Risks
+- Concise bullets about financial risks (burn rate, margins, liquidity, leverage, covenant risk)
+
+### Lender Sentiment & Market Risks  
+- Concise bullets about lender feedback, pass reasons (cite lender names), market conditions
+
+### Operational & Strategic Risks
+- Concise bullets about management, governance, concentration, regulatory, use-of-funds concerns
+
+Pull from: memo hurdles ("${ctx.memo?.hurdles || 'none'}"), analyst notes ("${ctx.memo?.analyst_notes || 'none'}"), lender pass reasons and notes, flag notes.`;
+    } else if (sectionKey === 'lender_status') {
+      sectionSpecificInstructions = `
+Output EXACTLY this structure:
+## Lender Process & Status
+- **Pipeline Stage:** ${ctx.deal?.stage || 'N/A'}
+- **Flagged:** ${ctx.deal?.is_flagged ? 'Yes' : 'No'}${ctx.deal?.flag_notes ? ` — ${ctx.deal.flag_notes}` : ''}
+- **Lenders Active (${ctx.activeLenders.length}):** ${ctx.activeLenders.map((l: any) => l.name).join(', ') || 'None'}
+- **Lenders Passed (${ctx.passedLenders.length}):** ${ctx.passedLenders.map((l: any) => `${l.name}${l.pass_reason ? ` (${l.pass_reason})` : ''}`).join('; ') || 'None'}
+${ctx.lenders.filter((l: any) => l.quote_amount).map((l: any) => `- **Quote from ${l.name}:** $${l.quote_amount?.toLocaleString()}${l.quote_rate ? ` @ ${l.quote_rate}%` : ''}${l.quote_term ? ` / ${l.quote_term}` : ''}`).join('\n')}`;
+    } else {
+      sectionSpecificInstructions = `Output ONLY the "## ${section.heading}" section with its content, following the standardized memo format.`;
+    }
+
+    const systemPrompt = `You are a senior credit analyst. Using ONLY the data below, regenerate a single section of a lender-ready memo.
+
+${ctx.fullContext}
+
+${FORMATTING_RULES}
+
+${sectionSpecificInstructions}
+
+IMPORTANT: Output ONLY this one section. Do NOT include other sections. Use ONLY real data — never fabricate.`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Regenerate the "${section.heading}" section for this deal.` },
+        ],
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      throw new Error("AI API request failed");
+    }
+
+    const aiData = await aiResponse.json();
+    const rawContent = aiData.choices?.[0]?.message?.content || "";
+
+    return new Response(
+      JSON.stringify({ sectionKey, content: rawContent.trim() }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Regenerate section error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Failed to regenerate section" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ─── Summarize documents ────────────────────────────────────────────
+
 async function handleSummarize(dealId: string) {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get documents from the deal space
     const { data: documents, error: docsError } = await supabase
       .from("deal_space_documents")
       .select("id, name, file_path, content_type")
@@ -633,23 +742,16 @@ async function handleSummarize(dealId: string) {
       );
     }
 
-    // Extract all document contents
     const allContents: string[] = [];
     for (const doc of documents) {
       try {
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from("deal-space")
-          .download(doc.file_path);
-
+        const { data: fileData, error: downloadError } = await supabase.storage.from("deal-space").download(doc.file_path);
         if (downloadError) continue;
-
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
           allContents.push(`### ${doc.name}\n${extracted.text.substring(0, 20000)}`);
         }
-      } catch (err) {
-        console.error(`Error processing ${doc.name}:`, err);
-      }
+      } catch (err) { console.error(`Error processing ${doc.name}:`, err); }
     }
 
     if (allContents.length === 0) {
@@ -660,45 +762,36 @@ async function handleSummarize(dealId: string) {
     }
 
     const combinedContent = allContents.join("\n\n---\n\n");
-
-    // Call Lovable AI for summarization
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: `You are an expert at summarizing deal documents. Create a comprehensive summary with the following structure:
+            content: `You are an expert deal analyst. Summarize the documents using the standardized memo structure:
 
-## Executive Summary
-A 2-3 paragraph overview of the deal.
+## Executive / Deal Overview
+2-3 paragraph overview.
 
-## Key Points
-- Bullet points of the most important information
+## Financial Profile
+Key financial figures and metrics.
 
-## Financial Highlights
-Key financial figures, terms, and metrics (if available)
+## Key Risks & Hurdles
+### Financial Risks
+### Lender Sentiment & Market Risks
+### Operational & Strategic Risks
 
-## Risks & Concerns
-Any potential issues or red flags identified
+## Key Action Items
+Required next steps or pending items.
 
-## Action Items
-Any required next steps or pending items mentioned
-
-Be concise but thorough. Only include sections that have relevant content from the documents.`
+Be concise but thorough. Only include sections with relevant content.`
           },
-          {
-            role: "user",
-            content: `Please summarize the following deal documents:\n\n${combinedContent}`
-          }
+          { role: "user", content: `Summarize these deal documents:\n\n${combinedContent}` }
         ],
       }),
     });
@@ -712,22 +805,15 @@ Be concise but thorough. Only include sections that have relevant content from t
     const aiData = await aiResponse.json();
     const summary = aiData.choices?.[0]?.message?.content || "Could not generate summary.";
 
-    // Extract key points from the summary
-    const keyPointsMatch = summary.match(/## Key Points\n([\s\S]*?)(?=\n##|$)/);
+    const keyPointsMatch = summary.match(/## Key (?:Action Items|Points)\n([\s\S]*?)(?=\n##|$)/);
     const keyPoints: string[] = [];
     if (keyPointsMatch) {
       const points = keyPointsMatch[1].match(/^[-•]\s*(.+)$/gm);
-      if (points) {
-        keyPoints.push(...points.map((p: string) => p.replace(/^[-•]\s*/, '').trim()));
-      }
+      if (points) keyPoints.push(...points.map((p: string) => p.replace(/^[-•]\s*/, '').trim()));
     }
 
     return new Response(
-      JSON.stringify({ 
-        summary,
-        keyPoints,
-        documentCount: documents.length
-      }),
+      JSON.stringify({ summary, keyPoints, documentCount: documents.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -739,23 +825,17 @@ Be concise but thorough. Only include sections that have relevant content from t
   }
 }
 
-// Handle write-up extraction
+// ─── Extract write-up fields ────────────────────────────────────────
+
 async function handleExtractWriteUp(dealId: string) {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get documents from deal space documents AND financials
     const [docsResult, financialsResult] = await Promise.all([
-      supabase
-        .from("deal_space_documents")
-        .select("id, name, file_path, content_type")
-        .eq("deal_id", dealId),
-      supabase
-        .from("deal_space_financials")
-        .select("id, name, file_path, content_type")
-        .eq("deal_id", dealId)
+      supabase.from("deal_space_documents").select("id, name, file_path, content_type").eq("deal_id", dealId),
+      supabase.from("deal_space_financials").select("id, name, file_path, content_type").eq("deal_id", dealId)
     ]);
 
     const documents = docsResult.data || [];
@@ -764,60 +844,38 @@ async function handleExtractWriteUp(dealId: string) {
 
     if (allDocs.length === 0) {
       return new Response(
-        JSON.stringify({ 
-          extractedFields: [],
-          documentCount: 0,
-          error: "No documents to analyze" 
-        }),
+        JSON.stringify({ extractedFields: [], documentCount: 0, error: "No documents to analyze" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Extract all document contents
     const allContents: { name: string; content: string }[] = [];
     for (const doc of allDocs) {
       try {
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from("deal-space")
-          .download(doc.file_path);
-
+        const { data: fileData, error: downloadError } = await supabase.storage.from("deal-space").download(doc.file_path);
         if (downloadError) continue;
-
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
-          allContents.push({ 
-            name: doc.name, 
-            content: extracted.text.substring(0, 30000) 
-          });
+          allContents.push({ name: doc.name, content: extracted.text.substring(0, 30000) });
         }
-      } catch (err) {
-        console.error(`Error processing ${doc.name}:`, err);
-      }
+      } catch (err) { console.error(`Error processing ${doc.name}:`, err); }
     }
 
     if (allContents.length === 0) {
       return new Response(
-        JSON.stringify({ 
-          extractedFields: [],
-          documentCount: allDocs.length,
-          error: "Could not extract content from documents" 
-        }),
+        JSON.stringify({ extractedFields: [], documentCount: allDocs.length, error: "Could not extract content from documents" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const combinedContent = allContents.map(d => `### ${d.name}\n${d.content}`).join("\n\n---\n\n");
 
-    // Call Lovable AI for write-up extraction
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
@@ -828,42 +886,33 @@ async function handleExtractWriteUp(dealId: string) {
 Each field should have:
 - "field": the field name (use exact names from the list below)
 - "value": the extracted value
-- "confidence": "high", "medium", or "low" based on how certain you are
-- "source": the document name where you found this
+- "confidence": "high", "medium", or "low"
+- "source": the document name
 - "sourceLocation": specific location like "Page 3" or "Slide 5" (if applicable)
 
-Valid field names with examples:
-- companyName: string - The company's legal or trading name
-- companyUrl: string - Company website URL
-- linkedinUrl: string - LinkedIn company page URL
-- industries: array of strings - Business sectors like ["SaaS", "Healthcare Technology"]. MUST be an array even for single industry.
-- location: string - Headquarters location (city, state/country)
-- yearFounded: string - Year the company was founded, e.g. "2015". Extract from founding date, "since XXXX", or similar.
-- headcount: string - Number of employees, e.g. "50" or "100-200"
-- dealTypes: array of strings - Types of financing like ["Term Loan", "Revolving Credit"]
-- billingModels: array of strings - Revenue models like ["Subscription", "Usage-based"]
-- profitability: string - Current profitability status
-- grossMargins: string - Gross margin percentage
-- capitalAsk: string - Amount of capital being raised
-- useOfFunds: string - How the capital will be used
-- existingDebtDetails: string - Current debt obligations
-- accountingSystem: string - Financial software used (QuickBooks, NetSuite, etc.)
-- description: string - CRITICAL: Company Overview - comprehensive summary of what the company does, their business model, products/services, and value proposition. Look for executive summaries, about sections, or business descriptions in pitch decks and transcripts.
+Valid field names:
+- companyName: string
+- companyUrl: string
+- linkedinUrl: string
+- industries: array of strings
+- location: string
+- yearFounded: string
+- headcount: string
+- dealTypes: array of strings
+- billingModels: array of strings
+- profitability: string
+- grossMargins: string
+- capitalAsk: string
+- useOfFunds: string
+- existingDebtDetails: string
+- accountingSystem: string
+- description: string — Company overview / what the company does
 - companyHighlights: array of {id: string, title: string, description: string}
 - keyItems: array of {id: string, title: string, description: string}
 
-Return ONLY a valid JSON array. Example:
-[
-  {"field": "companyName", "value": "Acme Corp", "confidence": "high", "source": "Pitch Deck.pdf", "sourceLocation": "Slide 1"},
-  {"field": "capitalAsk", "value": "$5M", "confidence": "medium", "source": "Term Sheet.docx"}
-]
-
-Only extract fields where you find clear evidence. Skip fields with no data.`
+Return ONLY a valid JSON array. Only extract fields with clear evidence.`
           },
-          {
-            role: "user",
-            content: `Extract deal write-up information from these documents:\n\n${combinedContent}`
-          }
+          { role: "user", content: `Extract deal write-up information:\n\n${combinedContent}` }
         ],
       }),
     });
@@ -876,26 +925,19 @@ Only extract fields where you find clear evidence. Skip fields with no data.`
 
     const aiData = await aiResponse.json();
     let extractedContent = aiData.choices?.[0]?.message?.content || "[]";
-    
-    // Clean up the response - remove markdown code blocks if present
     extractedContent = extractedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
+
     let extractedFields = [];
     try {
       extractedFields = JSON.parse(extractedContent);
-      if (!Array.isArray(extractedFields)) {
-        extractedFields = [];
-      }
+      if (!Array.isArray(extractedFields)) extractedFields = [];
     } catch (e) {
       console.error("Failed to parse extracted data:", e, extractedContent);
       extractedFields = [];
     }
 
     return new Response(
-      JSON.stringify({ 
-        extractedFields,
-        documentCount: allDocs.length
-      }),
+      JSON.stringify({ extractedFields, documentCount: allDocs.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
