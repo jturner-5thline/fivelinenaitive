@@ -4,6 +4,9 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
+import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
+import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
+import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { INDUSTRY_OPTIONS } from '@/constants/industries';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverEvent, pointerWithin, rectIntersection } from '@dnd-kit/core';
@@ -621,6 +624,29 @@ export default function DealDetail() {
   const { criteria: savedMatchingCriteria } = useDealMatchingCriteria(id);
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
   const [contactPopoverOpen, setContactPopoverOpen] = useState(false);
+  const [historyDrawerLender, setHistoryDrawerLender] = useState<string | null>(null);
+
+  // Lender history warnings - build deal context for matching
+  const lenderHistoryDealContext = useMemo(() => {
+    if (!deal || !id) return null;
+    return {
+      dealId: id,
+      industry: savedMatchingCriteria?.industry || dealWriteUpData?.industries?.join(', ') || undefined,
+      dealSize: deal.value || undefined,
+      geography: dealWriteUpData?.location || undefined,
+      dealTypes: deal.dealTypes || dealWriteUpData?.dealTypes || undefined,
+    };
+  }, [id, deal?.value, deal?.dealTypes, savedMatchingCriteria?.industry, dealWriteUpData?.industries, dealWriteUpData?.location, dealWriteUpData?.dealTypes]);
+
+  const lenderNamesForWarnings = useMemo(() => 
+    (deal?.lenders || []).map(l => l.name),
+    [deal?.lenders]
+  );
+
+  const { data: lenderWarningsMap } = useLenderHistoryWarnings(
+    lenderNamesForWarnings,
+    lenderHistoryDealContext
+  );
   
   // AI panel collapsed states with localStorage persistence
   const [isResearchPanelOpen, setIsResearchPanelOpen] = useState(() => {
@@ -3608,6 +3634,19 @@ export default function DealDetail() {
                                     })()}
                                   </div>
                                 </div>
+                                {/* Lender History Warning Hint */}
+                                {(() => {
+                                  const warning = lenderWarningsMap?.get(lender.name);
+                                  if (!warning || warning.isDismissed) return null;
+                                  return (
+                                    <LenderHistoryHint
+                                      warning={warning}
+                                      dealId={deal.id}
+                                      onViewHistory={() => setHistoryDrawerLender(lender.name)}
+                                      className="mt-2"
+                                    />
+                                  );
+                                })()}
                                 {lenderOutstandingItems.length > 0 && (
                                   <div className="ml-2 mt-2 space-y-1">
                                     {lenderOutstandingItems.map((item) => (
@@ -3981,6 +4020,19 @@ export default function DealDetail() {
                                             </SelectContent>
                                           </Select>
                                         </div>
+                                        {/* Lender History Warning Hint (grouped view) */}
+                                        {(() => {
+                                          const warning = lenderWarningsMap?.get(lender.name);
+                                          if (!warning || warning.isDismissed) return null;
+                                          return (
+                                            <LenderHistoryHint
+                                              warning={warning}
+                                              dealId={deal.id}
+                                              onViewHistory={() => setHistoryDrawerLender(lender.name)}
+                                              className="mt-2"
+                                            />
+                                          );
+                                        })()}
                                         {lenderOutstandingItems.length > 0 && (
                                           <div className="ml-2 mt-2 space-y-1">
                                             {lenderOutstandingItems.map((item) => (
@@ -4578,6 +4630,18 @@ export default function DealDetail() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Lender History Warning Drawer */}
+      <LenderHistoryDrawer
+        open={!!historyDrawerLender}
+        onOpenChange={(open) => { if (!open) setHistoryDrawerLender(null); }}
+        warning={historyDrawerLender ? lenderWarningsMap?.get(historyDrawerLender) ?? null : null}
+        currentDealContext={{
+          industry: lenderHistoryDealContext?.industry,
+          dealSize: lenderHistoryDealContext?.dealSize,
+          geography: lenderHistoryDealContext?.geography,
+        }}
+      />
 
       {/* Lenders Kanban Dialog */}
       <Dialog open={isLendersKanbanOpen} onOpenChange={setIsLendersKanbanOpen}>
