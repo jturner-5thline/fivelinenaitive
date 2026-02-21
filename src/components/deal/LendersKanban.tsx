@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Clock, MessageSquare, Search, RefreshCw, Settings2, ListChecks, CheckSquare, Briefcase, User, AlertTriangle } from 'lucide-react';
 import { LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, rectIntersection } from '@dnd-kit/core';
 import { DealLender } from '@/types/deal';
 import { OutstandingItem } from '@/hooks/useOutstandingItems';
 import { STAGE_GROUPS, StageGroup, PassReasonOption } from '@/contexts/LenderStagesContext';
@@ -106,11 +106,9 @@ function DraggableLenderTile({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-gradient-to-br from-[hsl(230,25%,12%)] to-[hsl(260,15%,5%)] border border-transparent rounded-lg p-3.5 shadow-sm cursor-grab active:cursor-grabbing relative select-none",
-        "[background-clip:padding-box] before:absolute before:inset-0 before:rounded-lg before:p-[1px] before:bg-gradient-to-r before:from-blue-500/30 before:to-blue-400/10 before:-z-10 before:[mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] before:[mask-composite:exclude]",
-        "transition-all duration-200 ease-out",
-        isDragging && "opacity-40 scale-[1.05] shadow-2xl ring-2 ring-primary/40 rotate-1",
-        !isDragging && "hover:shadow-lg hover:before:from-blue-500/50 hover:before:to-blue-400/20",
+        "bg-card border border-border/50 rounded-lg p-3.5 shadow-sm cursor-grab active:cursor-grabbing relative select-none",
+        !isDragging && "transition-shadow transition-opacity duration-200 ease-out hover:shadow-lg hover:border-primary/30",
+        isDragging && "opacity-40 scale-[1.03] shadow-2xl ring-2 ring-primary/40",
         hasFailed && "border-destructive/50 bg-destructive/5"
       )}
       onClick={handleClick}
@@ -412,7 +410,7 @@ export function LendersKanban({
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={rectIntersection}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -437,7 +435,7 @@ export function LendersKanban({
           easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
         }}>
           {activeLender ? (
-            <div className="bg-gradient-to-br from-[hsl(230,25%,14%)] to-[hsl(260,15%,8%)] border border-primary/40 rounded-lg p-3.5 shadow-2xl rotate-2 scale-105 w-[240px]">
+            <div className="bg-card border border-primary/40 rounded-lg p-3.5 shadow-2xl rotate-1 scale-105 w-[240px]">
               <p className="text-sm font-semibold mb-1 truncate">{activeLender.name}</p>
               {overlayMetrics?.contactName && (
                 <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mb-1.5">
