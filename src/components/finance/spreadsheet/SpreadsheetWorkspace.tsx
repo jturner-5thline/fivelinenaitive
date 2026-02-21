@@ -2,9 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
-  FileSpreadsheet, Upload, Download, Plus, Sparkles,
-  FileDown, FileUp, Save, FolderOpen, ChevronDown,
-  BarChart3
+  FileSpreadsheet, Download, Plus, Sparkles,
+  FileDown, FileUp, ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSpreadsheetWorkbook } from '@/hooks/useSpreadsheetWorkbook';
@@ -13,6 +12,8 @@ import { FormulaBar, getCellRef } from './FormulaBar';
 import { SpreadsheetGrid } from './SpreadsheetGrid';
 import { SheetTabs } from './SheetTabs';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
+import { ChartPanel, ChartConfig } from './SpreadsheetCharts';
+import { isFormula } from '@/lib/formulaEngine';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -23,9 +24,10 @@ interface SpreadsheetWorkspaceProps {
 export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   const wb = useSpreadsheetWorkbook();
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [charts, setCharts] = useState<ChartConfig[]>([]);
+  const [showChartCreator, setShowChartCreator] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize with empty workbook if none loaded
   useEffect(() => {
     if (!wb.workbook) {
       wb.createNewWorkbook();
@@ -35,47 +37,75 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       await wb.importFromFile(file);
       toast.success('File imported', { description: `${file.name} loaded successfully` });
     } catch (err) {
       toast.error('Import failed', { description: err instanceof Error ? err.message : 'Could not parse file' });
     }
-
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [wb]);
 
-  const handleFormulaBarChange = useCallback((value: string) => {
-    // Live preview not needed
-  }, []);
+  const handleFormulaBarChange = useCallback(() => {}, []);
 
   const handleFormulaBarCommit = useCallback((value: string) => {
-    const num = parseFloat(value);
-    if (!isNaN(num) && value.trim() === String(num)) {
-      wb.setCellValue(wb.selectedCell.row, wb.selectedCell.col, num);
+    if (isFormula(value)) {
+      // Store formula as-is
+      wb.setCellValue(wb.selectedCell.row, wb.selectedCell.col, value);
     } else {
-      wb.setCellValue(wb.selectedCell.row, wb.selectedCell.col, value || null);
+      const num = parseFloat(value);
+      if (!isNaN(num) && value.trim() === String(num)) {
+        wb.setCellValue(wb.selectedCell.row, wb.selectedCell.col, num);
+      } else {
+        wb.setCellValue(wb.selectedCell.row, wb.selectedCell.col, value || null);
+      }
     }
   }, [wb]);
 
   const handleCellChange = useCallback((row: number, col: number, value: string) => {
-    const num = parseFloat(value);
-    if (!isNaN(num) && value.trim() === String(num)) {
-      wb.setCellValue(row, col, num);
+    if (isFormula(value)) {
+      wb.setCellValue(row, col, value);
     } else {
-      wb.setCellValue(row, col, value || null);
+      const num = parseFloat(value);
+      if (!isNaN(num) && value.trim() === String(num)) {
+        wb.setCellValue(row, col, num);
+      } else {
+        wb.setCellValue(row, col, value || null);
+      }
     }
   }, [wb]);
 
+  const handlePaste = useCallback((startRow: number, startCol: number, data: string[][]) => {
+    data.forEach((row, rOffset) => {
+      row.forEach((cell, cOffset) => {
+        handleCellChange(startRow + rOffset, startCol + cOffset, cell);
+      });
+    });
+  }, [handleCellChange]);
+
+  const handleAddChart = useCallback(() => {
+    setShowChartCreator(true);
+  }, []);
+
+  const handleChartAdd = useCallback((config: ChartConfig) => {
+    setCharts(prev => [...prev, config]);
+    setShowChartCreator(false);
+  }, []);
+
+  const handleChartRemove = useCallback((id: string) => {
+    setCharts(prev => prev.filter(c => c.id !== id));
+  }, []);
+
   const currentCellRef = getCellRef(wb.selectedCell.row, wb.selectedCell.col);
-  const currentCellValue = wb.getCellValue(wb.selectedCell.row, wb.selectedCell.col);
+  const currentRawValue = wb.getCellValue(wb.selectedCell.row, wb.selectedCell.col);
   const currentFormat = wb.getCellFormat(wb.selectedCell.row, wb.selectedCell.col);
+
+  // Show formula in formula bar, not evaluated value
+  const formulaBarValue = currentRawValue !== null && currentRawValue !== undefined ? String(currentRawValue) : '';
 
   return (
     <div className={cn("flex flex-col h-[calc(100vh-220px)] min-h-[600px] border rounded-lg bg-background overflow-hidden", className)}>
-      {/* Top bar with file actions */}
+      {/* Top bar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/30">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-primary" />
@@ -91,7 +121,6 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* File menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
@@ -115,7 +144,6 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* AI Panel Toggle */}
           <Button
             variant={aiPanelOpen ? 'default' : 'outline'}
             size="sm"
@@ -140,30 +168,46 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
         onInsertColumn={() => wb.insertColumn(wb.selectedCell.col)}
         onDeleteRow={() => wb.deleteRow(wb.selectedCell.row)}
         onDeleteColumn={() => wb.deleteColumn(wb.selectedCell.col)}
+        onAddChart={handleAddChart}
+        hasRangeSelection={!!wb.selectionRange}
       />
 
       {/* Formula Bar */}
       <FormulaBar
         cellRef={currentCellRef}
-        cellValue={currentCellValue !== null && currentCellValue !== undefined ? String(currentCellValue) : ''}
+        cellValue={formulaBarValue}
         onValueChange={handleFormulaBarChange}
         onValueCommit={handleFormulaBarCommit}
       />
 
-      {/* Main content area */}
-      <div className="flex flex-1 min-h-0">
-        {/* Grid */}
-        {wb.activeSheet && (
-          <SpreadsheetGrid
-            sheet={wb.activeSheet}
-            selectedCell={wb.selectedCell}
-            selectionRange={wb.selectionRange}
-            onCellSelect={wb.setSelectedCell}
-            onRangeSelect={wb.setSelectionRange}
-            onCellChange={handleCellChange}
-            onColumnResize={wb.setColumnWidth}
-          />
-        )}
+      {/* Main content */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Grid */}
+          {wb.activeSheet && (
+            <SpreadsheetGrid
+              sheet={wb.activeSheet}
+              selectedCell={wb.selectedCell}
+              selectionRange={wb.selectionRange}
+              onCellSelect={wb.setSelectedCell}
+              onRangeSelect={wb.setSelectionRange}
+              onCellChange={handleCellChange}
+              onColumnResize={wb.setColumnWidth}
+              onPaste={handlePaste}
+            />
+          )}
+
+          {/* Charts */}
+          {wb.activeSheet && (charts.length > 0 || showChartCreator) && (
+            <ChartPanel
+              charts={charts}
+              sheet={wb.activeSheet}
+              selectionRange={wb.selectionRange}
+              onAddChart={handleChartAdd}
+              onRemoveChart={handleChartRemove}
+            />
+          )}
+        </div>
 
         {/* AI Panel */}
         <AIAnalysisPanel
@@ -194,12 +238,12 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
           </span>
           <div className="flex items-center gap-3">
             <span>Cell: {currentCellRef}</span>
+            {isFormula(currentRawValue) && <span className="text-primary">ƒx</span>}
             <span>Sheet: {wb.activeSheet.name}</span>
           </div>
         </div>
       )}
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"

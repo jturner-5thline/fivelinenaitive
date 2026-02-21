@@ -6,10 +6,12 @@ import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
   Undo2, Redo2, DollarSign, Percent, Hash,
   PaintBucket, Type, Rows3, Columns3,
-  Plus, Minus,
+  Plus, Minus, BarChart3, Grid3x3, Minus as MinusIcon,
+  ArrowDown, ArrowUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CellFormat } from '@/hooks/useSpreadsheetWorkbook';
+import { ColorPickerPopover } from './ColorPickerPopover';
 
 interface SpreadsheetToolbarProps {
   currentFormat: CellFormat;
@@ -22,6 +24,8 @@ interface SpreadsheetToolbarProps {
   onInsertColumn: () => void;
   onDeleteRow: () => void;
   onDeleteColumn: () => void;
+  onAddChart?: () => void;
+  hasRangeSelection?: boolean;
 }
 
 function ToolbarButton({ 
@@ -69,6 +73,8 @@ export function SpreadsheetToolbar({
   onInsertColumn,
   onDeleteRow,
   onDeleteColumn,
+  onAddChart,
+  hasRangeSelection,
 }: SpreadsheetToolbarProps) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -117,9 +123,46 @@ export function SpreadsheetToolbar({
 
         <Separator orientation="vertical" className="h-5 mx-1" />
 
-        {/* Colors */}
-        <ToolbarButton icon={PaintBucket} label="Background Color" onClick={() => onFormatChange({ bgColor: '#FEF3C7' })} />
-        <ToolbarButton icon={Type} label="Text Color" onClick={() => onFormatChange({ fontColor: '#DC2626' })} />
+        {/* Color pickers */}
+        <ColorPickerPopover color={currentFormat.bgColor} onChange={(color) => onFormatChange({ bgColor: color || undefined })}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 relative">
+                <PaintBucket className="h-3.5 w-3.5" />
+                {currentFormat.bgColor && (
+                  <div className="absolute bottom-0.5 left-1 right-1 h-[3px] rounded-full" style={{ backgroundColor: currentFormat.bgColor }} />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Fill Color</TooltipContent>
+          </Tooltip>
+        </ColorPickerPopover>
+
+        <ColorPickerPopover color={currentFormat.fontColor} onChange={(color) => onFormatChange({ fontColor: color || undefined })}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 relative">
+                <Type className="h-3.5 w-3.5" />
+                {currentFormat.fontColor && (
+                  <div className="absolute bottom-0.5 left-1 right-1 h-[3px] rounded-full" style={{ backgroundColor: currentFormat.fontColor }} />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Text Color</TooltipContent>
+          </Tooltip>
+        </ColorPickerPopover>
+
+        <Separator orientation="vertical" className="h-5 mx-1" />
+
+        {/* Borders */}
+        <ToolbarButton icon={Grid3x3} label="All Borders" active={currentFormat.borderTop && currentFormat.borderBottom && currentFormat.borderLeft && currentFormat.borderRight} 
+          onClick={() => {
+            const allSet = currentFormat.borderTop && currentFormat.borderBottom && currentFormat.borderLeft && currentFormat.borderRight;
+            onFormatChange({ borderTop: !allSet, borderBottom: !allSet, borderLeft: !allSet, borderRight: !allSet });
+          }} 
+        />
+        <ToolbarButton icon={ArrowDown} label="Bottom Border" active={currentFormat.borderBottom} onClick={() => onFormatChange({ borderBottom: !currentFormat.borderBottom })} />
+        <ToolbarButton icon={ArrowUp} label="Top Border" active={currentFormat.borderTop} onClick={() => onFormatChange({ borderTop: !currentFormat.borderTop })} />
 
         <Separator orientation="vertical" className="h-5 mx-1" />
 
@@ -160,6 +203,22 @@ export function SpreadsheetToolbar({
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">Delete Column</TooltipContent>
         </Tooltip>
+
+        {/* Chart button */}
+        {onAddChart && (
+          <>
+            <Separator orientation="vertical" className="h-5 mx-1" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 gap-1 px-1.5 text-xs" onClick={onAddChart} disabled={!hasRangeSelection}>
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Chart
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">{hasRangeSelection ? 'Create chart from selection' : 'Select a range first'}</TooltipContent>
+            </Tooltip>
+          </>
+        )}
       </div>
     </TooltipProvider>
   );
