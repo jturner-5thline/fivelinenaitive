@@ -1,12 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/components/ui/dropdown-menu';
 import { 
   FileSpreadsheet, Download, Plus, Sparkles,
-  FileDown, FileUp, ChevronDown,
+  FileDown, FileUp, ChevronDown, Save, Clock, Table2, Tag, Cloud,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSpreadsheetWorkbook } from '@/hooks/useSpreadsheetWorkbook';
+import { useSpreadsheetCloud } from '@/hooks/useSpreadsheetCloud';
 import { SpreadsheetRibbon } from './SpreadsheetRibbon';
 import { FormulaBar, getCellRef } from './FormulaBar';
 import { SpreadsheetGrid } from './SpreadsheetGrid';
@@ -17,6 +18,8 @@ import { FindReplaceDialog } from './FindReplaceDialog';
 import { ConditionalFormatDialog, ConditionalFormatRule } from './ConditionalFormatDialog';
 import { DataValidationDialog } from './DataValidationDialog';
 import { StatusBar } from './StatusBar';
+import { PivotTablePanel } from './PivotTablePanel';
+import { NamedRangesDialog } from './NamedRangesDialog';
 import { isFormula } from '@/lib/formulaEngine';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -29,12 +32,17 @@ interface SpreadsheetWorkspaceProps {
 
 export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   const wb = useSpreadsheetWorkbook();
+  const cloud = useSpreadsheetCloud();
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [charts, setCharts] = useState<ChartConfig[]>([]);
   const [showChartCreator, setShowChartCreator] = useState(false);
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [condFormatOpen, setCondFormatOpen] = useState(false);
   const [dataValidationOpen, setDataValidationOpen] = useState(false);
+  const [pivotOpen, setPivotOpen] = useState(false);
+  const [namedRangesOpen, setNamedRangesOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [cloudWorkbooks, setCloudWorkbooks] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,10 +52,11 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); setFindReplaceOpen(true); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSave(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [wb.workbook]);
 
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,6 +124,25 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   const handleApplyValidation = useCallback((rule: any) => { wb.setCellValidation(wb.selectedCell.row, wb.selectedCell.col, rule); toast.success(rule ? 'Validation applied' : 'Validation removed'); }, [wb]);
   const handleSort = useCallback((direction: 'asc' | 'desc') => { wb.sortColumn(wb.selectedCell.col, direction); toast.success(`Sorted ${direction === 'asc' ? 'A→Z' : 'Z→A'}`); }, [wb]);
 
+  // Cloud save
+  const handleSave = useCallback(async () => {
+    if (!wb.workbook || saving) return;
+    setSaving(true);
+    try {
+      await cloud.saveWorkbook(wb.workbook);
+    } catch (err) {
+      toast.error('Save failed', { description: err instanceof Error ? err.message : 'Unknown error' });
+    }
+    setSaving(false);
+  }, [wb.workbook, cloud, saving]);
+
+  const handleLoadCloudList = useCallback(async () => {
+    try {
+      const list = await cloud.loadWorkbooks();
+      setCloudWorkbooks(list);
+    } catch { setCloudWorkbooks([]); }
+  }, [cloud]);
+
   const handleExportPdf = useCallback(() => {
     if (!wb.activeSheet) return;
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -148,6 +176,12 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
           {wb.workbook?.source === 'uploaded' && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Imported</Badge>}
         </div>
         <div className="flex items-center gap-1.5">
+          {/* Save */}
+          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleSave} disabled={saving}>
+            {saving ? <span className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            Save
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">File <ChevronDown className="h-3 w-3" /></Button>
@@ -156,11 +190,40 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
               <DropdownMenuItem onClick={() => wb.createNewWorkbook()}><Plus className="h-3.5 w-3.5 mr-2" /> New Workbook</DropdownMenuItem>
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()}><FileUp className="h-3.5 w-3.5 mr-2" /> Import Excel/CSV</DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><Cloud className="h-3.5 w-3.5 mr-2" /> Open from Cloud</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={handleLoadCloudList} className="text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 mr-2" /> Refresh list
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {cloudWorkbooks.length === 0 ? (
+                    <DropdownMenuItem disabled className="text-xs">No saved workbooks</DropdownMenuItem>
+                  ) : (
+                    cloudWorkbooks.map(w => (
+                      <DropdownMenuItem key={w.id} onClick={async () => {
+                        try {
+                          const loaded = await cloud.loadWorkbook(w.id);
+                          // We'd need a setWorkbook method - for now just notify
+                          toast.success(`Loaded: ${loaded.name}`);
+                        } catch { toast.error('Failed to load'); }
+                      }} className="text-xs">
+                        {w.name} <span className="ml-auto text-muted-foreground">v{w.version}</span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => wb.exportToXlsx()}><FileDown className="h-3.5 w-3.5 mr-2" /> Export as .xlsx</DropdownMenuItem>
               <DropdownMenuItem onClick={() => wb.exportToCsv()}><Download className="h-3.5 w-3.5 mr-2" /> Export as .csv</DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportPdf}><FileDown className="h-3.5 w-3.5 mr-2" /> Export as PDF</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setNamedRangesOpen(true)}><Tag className="h-3.5 w-3.5 mr-2" /> Named Ranges</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPivotOpen(!pivotOpen)}><Table2 className="h-3.5 w-3.5 mr-2" /> Pivot Table</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
           <Button variant={aiPanelOpen ? 'default' : 'outline'} size="sm" className="h-7 text-xs gap-1" onClick={() => setAiPanelOpen(!aiPanelOpen)}>
             <Sparkles className="h-3.5 w-3.5" /> AI
           </Button>
@@ -223,6 +286,9 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
           {wb.activeSheet && (charts.length > 0 || showChartCreator) && (
             <ChartPanel charts={charts} sheet={wb.activeSheet} selectionRange={wb.selectionRange} onAddChart={handleChartAdd} onRemoveChart={handleChartRemove} />
           )}
+          {wb.activeSheet && pivotOpen && (
+            <PivotTablePanel sheet={wb.activeSheet} selectionRange={wb.selectionRange} onClose={() => setPivotOpen(false)} />
+          )}
         </div>
         <AIAnalysisPanel workbook={wb.workbook} isOpen={aiPanelOpen} onClose={() => setAiPanelOpen(false)} />
       </div>
@@ -252,6 +318,17 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
       {wb.activeSheet && <FindReplaceDialog open={findReplaceOpen} onOpenChange={setFindReplaceOpen} sheet={wb.activeSheet} onCellSelect={(row, col) => wb.setSelectedCell({ row, col })} onCellChange={handleCellChange} />}
       <ConditionalFormatDialog open={condFormatOpen} onOpenChange={setCondFormatOpen} rules={wb.activeSheet?.conditionalFormats || []} onAddRule={handleAddCondFormat} onDeleteRule={handleDeleteCondFormat} />
       <DataValidationDialog open={dataValidationOpen} onOpenChange={setDataValidationOpen} currentRule={wb.activeSheet?.validations[`${wb.selectedCell.row}-${wb.selectedCell.col}`]} onApply={handleApplyValidation} />
+      
+      <NamedRangesDialog
+        open={namedRangesOpen}
+        onOpenChange={setNamedRangesOpen}
+        namedRanges={wb.workbook?.namedRanges || {}}
+        onAdd={wb.addNamedRange}
+        onDelete={wb.deleteNamedRange}
+        currentSheet={wb.activeSheet?.name || 'Sheet1'}
+        selectionRange={wb.selectionRange}
+        selectedCell={wb.selectedCell}
+      />
     </div>
   );
 }

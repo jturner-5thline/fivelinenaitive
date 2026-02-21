@@ -5944,6 +5944,71 @@ export type Database = {
           },
         ]
       }
+      spreadsheet_versions: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          name: string | null
+          version: number
+          workbook_id: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          id?: string
+          name?: string | null
+          version: number
+          workbook_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string | null
+          version?: number
+          workbook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spreadsheet_versions_workbook_id_fkey"
+            columns: ["workbook_id"]
+            isOneToOne: false
+            referencedRelation: "spreadsheet_workbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spreadsheet_workbooks: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       system_announcements: {
         Row: {
           created_at: string
