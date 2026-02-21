@@ -6,12 +6,14 @@ import { useTaskTimeEntries } from '@/hooks/useTaskTimeEntries';
 import { useTaskAttachments } from '@/hooks/useTaskAttachments';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
+import { useCreateMentions } from '@/hooks/useTaskMentions';
+import { MentionTextarea, MentionText } from '@/components/tasks/MentionTextarea';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -94,6 +96,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
   const { attachments, uploadAttachment, deleteAttachment, getDownloadUrl } = useTaskAttachments(task.id);
   const members = useTeamMembers();
   const { tasks: allTasks } = useMyTasks();
+  const createMentions = useCreateMentions();
 
   const handleSaveTitle = () => {
     if (titleValue.trim() && titleValue !== task.title) {
@@ -105,12 +108,16 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
   const handleSaveDesc = () => {
     if (descValue !== (task.description || '')) {
       onUpdate({ description: descValue } as any);
+      // Create mentions from description
+      createMentions.mutate({ taskId: task.id, text: descValue, source: 'description' });
     }
   };
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
     addComment.mutate(commentText.trim());
+    // Create mentions from comment
+    createMentions.mutate({ taskId: task.id, text: commentText.trim(), source: 'comment' });
     setCommentText('');
   };
 
@@ -448,13 +455,24 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
           {/* Description */}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
-            <Textarea
+            <MentionTextarea
               value={descValue}
-              onChange={e => setDescValue(e.target.value)}
-              onBlur={handleSaveDesc}
-              placeholder="Add a description..."
-              className="min-h-[80px] text-sm"
+              onChange={setDescValue}
+              placeholder="Add a description... (use @name to mention)"
+              className="min-h-[80px]"
+              minRows={3}
             />
+            <div className="flex justify-end mt-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-[10px]"
+                onClick={handleSaveDesc}
+                disabled={descValue === (task.description || '')}
+              >
+                Save
+              </Button>
+            </div>
           </div>
 
           <Separator />
@@ -611,19 +629,18 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
                       </span>
                       {c.is_edited && <span className="text-[9px] text-muted-foreground">(edited)</span>}
                     </div>
-                    <p className="text-xs mt-0.5">{c.body}</p>
+                    <MentionText text={c.body} className="text-xs mt-0.5" />
                   </div>
                 </div>
               ))}
               <div className="flex gap-2">
-                <Textarea
+                <MentionTextarea
                   value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  placeholder="Write a comment... (use @name to mention)"
-                  className="min-h-[60px] text-xs flex-1"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); }
-                  }}
+                  onChange={setCommentText}
+                  onSubmit={handleAddComment}
+                  placeholder="Write a comment... (type @ to mention)"
+                  className="min-h-[60px]"
+                  minRows={2}
                 />
               </div>
               {commentText.trim() && (
