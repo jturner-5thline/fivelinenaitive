@@ -19,6 +19,7 @@ import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSett
 import { ScheduledReportsSettings } from '@/components/settings/ScheduledReportsSettings';
 import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
 import { PipelineSettings } from '@/components/settings/PipelineSettings';
+import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -97,6 +98,10 @@ const SETTINGS_SECTIONS = [
   {
     id: 'sla-rules',
     keywords: ['sla', 'rules', 'stale', 'alert', 'monitoring', 'deal', 'activity', 'timeout'],
+  },
+  {
+    id: 'email-snippets',
+    keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'],
   },
 ];
 
@@ -324,6 +329,8 @@ export default function Settings() {
             {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
 
             {isVisible('sla-rules') && <SLARulesSettings />}
+
+            {isVisible('email-snippets') && <EmailSnippetsSettings />}
 
             {isVisible('preferences') && (
               <Card>

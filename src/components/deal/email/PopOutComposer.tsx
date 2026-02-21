@@ -36,7 +36,9 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
 import type { ReplyDraft } from './InlineReplyComposer';
+import { SnippetPicker } from './SnippetPicker';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
+import type { TokenContext } from '@/hooks/useEmailSnippets';
 
 function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
   if (status === 'idle') return null;
@@ -62,9 +64,10 @@ interface PopOutComposerProps {
   onDraftChange?: (draft: ReplyDraft) => void;
   onFieldBlur?: () => void;
   saveStatus?: DraftSaveStatus;
+  tokenContext?: TokenContext;
 }
 
-export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn, onDraftChange, onFieldBlur, saveStatus = 'idle' }: PopOutComposerProps) {
+export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn, onDraftChange, onFieldBlur, saveStatus = 'idle', tokenContext }: PopOutComposerProps) {
   const [to, setTo] = useState(initialDraft.to);
   const [cc, setCc] = useState(initialDraft.cc);
   const [bcc, setBcc] = useState(initialDraft.bcc);
@@ -79,8 +82,31 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
   const [position, setPosition] = useState({ x: window.innerWidth - 520, y: window.innerHeight - 480 });
   const [size, setSize] = useState({ width: 480, height: 400 });
   const dragRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
+
+  const handleInsertSnippet = useCallback((text: string) => {
+    const ta = textareaRef.current;
+    if (ta) {
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const newBody = body.slice(0, start) + text + body.slice(end);
+      setBody(newBody);
+      setTimeout(() => {
+        ta.focus();
+        ta.setSelectionRange(start + text.length, start + text.length);
+      }, 0);
+    } else {
+      setBody(prev => prev + text);
+    }
+  }, [body]);
+
+  const defaultTokenContext: TokenContext = tokenContext || {
+    recipientName: initialDraft.toName,
+    recipientEmail: initialDraft.to,
+    senderName: 'You',
+  };
 
   const getCurrentDraft = useCallback((): ReplyDraft => ({
     to, cc, bcc, subject, body, attachments,
@@ -288,6 +314,7 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
       {/* Body */}
       <div className="px-3 flex-1 min-h-0 overflow-y-auto">
         <Textarea
+          ref={textareaRef}
           value={body}
           onChange={e => setBody(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -322,6 +349,7 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
         <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground h-7 text-xs" onClick={handleAddAttachment}>
           <Paperclip className="h-3 w-3" />Attach
         </Button>
+        <SnippetPicker onInsert={handleInsertSnippet} tokenContext={defaultTokenContext} />
         <span className="text-[10px] text-muted-foreground ml-1">⌘↵ to send</span>
         <div className="flex-1" />
         {hasContent ? (

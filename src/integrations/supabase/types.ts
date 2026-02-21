@@ -2696,6 +2696,42 @@ export type Database = {
           },
         ]
       }
+      email_snippets: {
+        Row: {
+          body: string
+          category: string | null
+          created_at: string
+          id: string
+          is_shared: boolean | null
+          name: string
+          updated_at: string
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_shared?: boolean | null
+          name: string
+          updated_at?: string
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_shared?: boolean | null
+          name?: string
+          updated_at?: string
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           body_html: string
