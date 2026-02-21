@@ -7922,6 +7922,14 @@ export type Database = {
         }
         Returns: string
       }
+      search_lenders_keyword: {
+        Args: { _limit?: number; _offset?: number; _search_query: string }
+        Returns: {
+          lender_id: string
+          relevance_score: number
+          total_count: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
