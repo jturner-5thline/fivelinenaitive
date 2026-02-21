@@ -4184,6 +4184,60 @@ export type Database = {
           },
         ]
       }
+      lender_notes: {
+        Row: {
+          author_user_id: string
+          body: string
+          company_id: string | null
+          created_at: string
+          id: string
+          is_flag: boolean
+          lender_name: string
+          master_lender_id: string | null
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          author_user_id: string
+          body: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          is_flag?: boolean
+          lender_name: string
+          master_lender_id?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          is_flag?: boolean
+          lender_name?: string
+          master_lender_id?: string | null
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_notes_master_lender_id_fkey"
+            columns: ["master_lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_notes_history: {
         Row: {
           created_at: string

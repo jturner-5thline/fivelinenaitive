@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, DragEvent, useEffect, useCallback, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock } from 'lucide-react';
+import { Building2, Mail, Phone, User, Briefcase, ThumbsDown, CheckCircle, ExternalLink, Globe, Paperclip, Upload, Trash2, FileText, Loader2, FolderOpen, ChevronLeft, ChevronRight, ArrowRight, Pencil, DollarSign, MapPin, Tag, Banknote, X, Save, Settings2, ChevronDown, History, Clock, MessageSquare as MessageSquareIcon } from 'lucide-react';
+import { LenderNotesPopover, LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import {
   Dialog,
   DialogContent,
@@ -681,10 +682,16 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   placeholder="Lender name"
                 />
               ) : (
-                <span className="truncate">{lender.name}</span>
+                <>
+                  <span className="truncate">{lender.name}</span>
+                  <LenderFlagIndicator lenderName={lender.name} />
+                </>
               )}
             </DialogTitle>
             <div className="flex items-center gap-1 shrink-0">
+              {!isEditMode && (
+                <LenderNotesPopover lenderName={lender.name} masterLenderId={lender.id} side="bottom" />
+              )}
               {isEditMode ? (
                 <>
                   <Button
