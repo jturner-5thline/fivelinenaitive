@@ -13,9 +13,14 @@ import { SpreadsheetGrid } from './SpreadsheetGrid';
 import { SheetTabs } from './SheetTabs';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
 import { ChartPanel, ChartConfig } from './SpreadsheetCharts';
+import { FindReplaceDialog } from './FindReplaceDialog';
+import { ConditionalFormatDialog, ConditionalFormatRule } from './ConditionalFormatDialog';
+import { DataValidationDialog } from './DataValidationDialog';
 import { isFormula } from '@/lib/formulaEngine';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface SpreadsheetWorkspaceProps {
   className?: string;
@@ -26,12 +31,27 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [charts, setCharts] = useState<ChartConfig[]>([]);
   const [showChartCreator, setShowChartCreator] = useState(false);
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [condFormatOpen, setCondFormatOpen] = useState(false);
+  const [dataValidationOpen, setDataValidationOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!wb.workbook) {
       wb.createNewWorkbook();
     }
+  }, []);
+
+  // Ctrl+F shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setFindReplaceOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +70,6 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
 
   const handleFormulaBarCommit = useCallback((value: string) => {
     if (isFormula(value)) {
-      // Store formula as-is
       wb.setCellValue(wb.selectedCell.row, wb.selectedCell.col, value);
     } else {
       const num = parseFloat(value);
@@ -96,11 +115,101 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
     setCharts(prev => prev.filter(c => c.id !== id));
   }, []);
 
+  // Freeze toggle
+  const handleFreezeRows = useCallback(() => {
+    if (!wb.activeSheet) return;
+    if (wb.activeSheet.frozenRows) {
+      wb.setFrozenRows(0);
+    } else {
+      wb.setFrozenRows(wb.selectedCell.row + 1);
+    }
+  }, [wb]);
+
+  const handleFreezeCols = useCallback(() => {
+    if (!wb.activeSheet) return;
+    if (wb.activeSheet.frozenCols) {
+      wb.setFrozenCols(0);
+    } else {
+      wb.setFrozenCols(wb.selectedCell.col + 1);
+    }
+  }, [wb]);
+
+  // Merge/unmerge
+  const handleMerge = useCallback(() => {
+    if (!wb.selectionRange) return;
+    wb.mergeCells(wb.selectionRange);
+    toast.success('Cells merged');
+  }, [wb]);
+
+  const handleUnmerge = useCallback(() => {
+    wb.unmergeCells(wb.selectedCell.row, wb.selectedCell.col);
+    toast.success('Cells unmerged');
+  }, [wb]);
+
+  // Conditional format
+  const handleAddCondFormat = useCallback((rule: ConditionalFormatRule) => {
+    wb.addConditionalFormat(rule);
+  }, [wb]);
+
+  const handleDeleteCondFormat = useCallback((id: string) => {
+    wb.deleteConditionalFormat(id);
+  }, [wb]);
+
+  // Data validation
+  const handleApplyValidation = useCallback((rule: any) => {
+    wb.setCellValidation(wb.selectedCell.row, wb.selectedCell.col, rule);
+    toast.success(rule ? 'Validation applied' : 'Validation removed');
+  }, [wb]);
+
+  // PDF Export
+  const handleExportPdf = useCallback(() => {
+    if (!wb.activeSheet) return;
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const sheet = wb.activeSheet;
+
+    doc.setFontSize(14);
+    doc.text(wb.workbook?.name || 'Spreadsheet', 14, 15);
+    doc.setFontSize(8);
+    doc.text(`Sheet: ${sheet.name}`, 14, 22);
+
+    // Find non-empty bounds
+    let maxR = 0, maxC = 0;
+    sheet.data.forEach((row, r) => {
+      row.forEach((cell, c) => {
+        if (cell !== null && cell !== undefined && cell !== '') {
+          maxR = Math.max(maxR, r);
+          maxC = Math.max(maxC, c);
+        }
+      });
+    });
+
+    const head = [Array.from({ length: maxC + 1 }, (_, i) => {
+      let label = '';
+      let num = i;
+      while (num >= 0) { label = String.fromCharCode(65 + (num % 26)) + label; num = Math.floor(num / 26) - 1; }
+      return label;
+    })];
+
+    const body = sheet.data.slice(0, maxR + 1).map(row =>
+      row.slice(0, maxC + 1).map(cell => cell !== null && cell !== undefined ? String(cell) : '')
+    );
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: 26,
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [100, 100, 100] },
+      theme: 'grid',
+    });
+
+    doc.save(`${wb.workbook?.name || 'spreadsheet'} - ${sheet.name}.pdf`);
+    toast.success('PDF exported');
+  }, [wb]);
+
   const currentCellRef = getCellRef(wb.selectedCell.row, wb.selectedCell.col);
   const currentRawValue = wb.getCellValue(wb.selectedCell.row, wb.selectedCell.col);
   const currentFormat = wb.getCellFormat(wb.selectedCell.row, wb.selectedCell.col);
-
-  // Show formula in formula bar, not evaluated value
   const formulaBarValue = currentRawValue !== null && currentRawValue !== undefined ? String(currentRawValue) : '';
 
   return (
@@ -141,6 +250,9 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
               <DropdownMenuItem onClick={() => wb.exportToCsv()}>
                 <Download className="h-3.5 w-3.5 mr-2" /> Export as .csv
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPdf}>
+                <FileDown className="h-3.5 w-3.5 mr-2" /> Export as PDF
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -170,6 +282,16 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
         onDeleteColumn={() => wb.deleteColumn(wb.selectedCell.col)}
         onAddChart={handleAddChart}
         hasRangeSelection={!!wb.selectionRange}
+        onFindReplace={() => setFindReplaceOpen(true)}
+        onMerge={handleMerge}
+        onUnmerge={handleUnmerge}
+        onFreezeRows={handleFreezeRows}
+        onFreezeCols={handleFreezeCols}
+        frozenRows={wb.activeSheet?.frozenRows}
+        frozenCols={wb.activeSheet?.frozenCols}
+        onConditionalFormat={() => setCondFormatOpen(true)}
+        onDataValidation={() => setDataValidationOpen(true)}
+        onExportPdf={handleExportPdf}
       />
 
       {/* Formula Bar */}
@@ -235,10 +357,14 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
         <div className="flex items-center justify-between px-3 py-1 border-t bg-muted/30 text-[10px] text-muted-foreground">
           <span>
             {wb.activeSheet.data.length} rows × {Math.max(...wb.activeSheet.data.map(r => r.length), 1)} columns
+            {wb.activeSheet.frozenRows ? ` | Frozen: ${wb.activeSheet.frozenRows} rows` : ''}
+            {wb.activeSheet.frozenCols ? ` | ${wb.activeSheet.frozenCols} cols` : ''}
           </span>
           <div className="flex items-center gap-3">
             <span>Cell: {currentCellRef}</span>
             {isFormula(currentRawValue) && <span className="text-primary">ƒx</span>}
+            {wb.activeSheet.mergedCells.length > 0 && <span>Merged: {wb.activeSheet.mergedCells.length}</span>}
+            {wb.activeSheet.conditionalFormats.length > 0 && <span>CF: {wb.activeSheet.conditionalFormats.length}</span>}
             <span>Sheet: {wb.activeSheet.name}</span>
           </div>
         </div>
@@ -250,6 +376,32 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
         accept=".xlsx,.xls,.csv"
         className="hidden"
         onChange={handleImport}
+      />
+
+      {/* Dialogs */}
+      {wb.activeSheet && (
+        <FindReplaceDialog
+          open={findReplaceOpen}
+          onOpenChange={setFindReplaceOpen}
+          sheet={wb.activeSheet}
+          onCellSelect={(row, col) => wb.setSelectedCell({ row, col })}
+          onCellChange={handleCellChange}
+        />
+      )}
+
+      <ConditionalFormatDialog
+        open={condFormatOpen}
+        onOpenChange={setCondFormatOpen}
+        rules={wb.activeSheet?.conditionalFormats || []}
+        onAddRule={handleAddCondFormat}
+        onDeleteRule={handleDeleteCondFormat}
+      />
+
+      <DataValidationDialog
+        open={dataValidationOpen}
+        onOpenChange={setDataValidationOpen}
+        currentRule={wb.activeSheet?.validations[`${wb.selectedCell.row}-${wb.selectedCell.col}`]}
+        onApply={handleApplyValidation}
       />
     </div>
   );
