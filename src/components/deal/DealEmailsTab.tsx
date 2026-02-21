@@ -474,9 +474,13 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
                 onBack={() => setSelectedThread(null)}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
-                onCompose={(replyTo) => {
-                  setComposeReplyTo(replyTo);
-                  setComposeOpen(true);
+                onSendReply={(emailData, threadId) => {
+                  const newEmail: MockEmail = {
+                    ...emailData,
+                    id: `mock-sent-${Date.now()}`,
+                    threadId,
+                  };
+                  setEmails(prev => [newEmail, ...prev]);
                 }}
               />
             ) : (
