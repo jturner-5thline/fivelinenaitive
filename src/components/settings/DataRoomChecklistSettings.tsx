@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, FileCheck, ShieldAlert } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, FileCheck, ShieldAlert, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { useCompany } from '@/hooks/useCompany';
 
 export function DataRoomChecklistSettings() {
+  const [isOpen, setIsOpen] = useState(false);
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, reorderItems } = useDataRoomChecklist();
   const { categories, categoryNames, loading: categoriesLoading, addCategory, updateCategory, deleteCategory, reorderCategories, getCategoryByName } = useChecklistCategories();
   const { isAdmin } = useCompany();
@@ -224,24 +226,30 @@ export function DataRoomChecklistSettings() {
   const requiredCount = items.filter(i => i.is_required).length;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileCheck className="h-5 w-5" />
-              Data Room Checklist
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Define the standard information required for all deals. {items.length} items ({requiredCount} required)
-              {!isAdmin && (
-                <span className="block text-xs mt-1 text-muted-foreground/80">Only company admins can edit the default checklist.</span>
-              )}
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
+    <>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-2 text-left flex-1">
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="h-5 w-5" />
+                  Data Room Checklist
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Define the standard information required for all deals. {items.length} items ({requiredCount} required)
+                  {!isAdmin && (
+                    <span className="block text-xs mt-1 text-muted-foreground/80">Only company admins can edit the default checklist.</span>
+                  )}
+                </CardDescription>
+              </div>
+            </button>
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent>
         <Tabs defaultValue="items" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="items">Checklist Items</TabsTrigger>
@@ -414,7 +422,10 @@ export function DataRoomChecklistSettings() {
             )}
           </TabsContent>
         </Tabs>
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
 
       {/* Add/Edit Item Dialog */}
       <Dialog 
@@ -600,6 +611,6 @@ export function DataRoomChecklistSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </>
   );
 }
