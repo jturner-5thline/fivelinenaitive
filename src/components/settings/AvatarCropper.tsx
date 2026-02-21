@@ -21,20 +21,35 @@ export function AvatarCropper({ open, onOpenChange, imageFile, onCropComplete }:
   const [isProcessing, setIsProcessing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const urlRef = useRef<string | null>(null);
 
   const CROP_SIZE = 256;
   const PREVIEW_SIZE = 280;
 
   useEffect(() => {
+    // Clean up previous URL
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
+    }
+
     if (imageFile) {
       const url = URL.createObjectURL(imageFile);
+      urlRef.current = url;
       setImageSrc(url);
       setZoom(1);
       setOffset({ x: 0, y: 0 });
-      return () => URL.revokeObjectURL(url);
+      setImageSize({ width: 0, height: 0 });
     } else {
       setImageSrc(null);
     }
+
+    return () => {
+      if (urlRef.current) {
+        URL.revokeObjectURL(urlRef.current);
+        urlRef.current = null;
+      }
+    };
   }, [imageFile]);
 
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
