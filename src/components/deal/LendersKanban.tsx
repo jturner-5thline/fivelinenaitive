@@ -83,9 +83,10 @@ function DraggableLenderTile({
     data: { lender },
   });
 
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    zIndex: 50,
+  // Don't apply transform — the DragOverlay handles the moving copy
+  const style: React.CSSProperties | undefined = isDragging ? {
+    opacity: 0,
+    pointerEvents: 'none',
   } : undefined;
 
   const stageConfig = configuredStages.find(s => s.id === lender.stage);
