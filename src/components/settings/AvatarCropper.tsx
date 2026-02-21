@@ -172,7 +172,7 @@ export function AvatarCropper({ open, onOpenChange, imageFile, onCropComplete }:
                 draggable={false}
                 style={{
                   width: dims.width,
-                  height: dims.height,
+                  height: 'auto',
                   left: `calc(50% - ${dims.width / 2}px + ${offset.x}px)`,
                   top: `calc(50% - ${dims.height / 2}px + ${offset.y}px)`,
                 }}
