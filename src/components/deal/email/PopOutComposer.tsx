@@ -37,6 +37,8 @@ import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
 import type { ReplyDraft } from './InlineReplyComposer';
 import { SnippetPicker } from './SnippetPicker';
+import { usePreSendChecks } from './usePreSendChecks';
+import { PreSendAlertDialog } from './PreSendAlertDialog';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
 
@@ -144,9 +146,12 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
     };
   }, [position, size.width]);
 
-  const handleSend = async () => {
+  const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
+  const subjectInputRef = useRef<HTMLInputElement>(null);
+
+  const executeSend = async () => {
+    clearPreSendAlert();
     if (!to.trim()) { toast.error('Please add a recipient'); return; }
-    if (!subject.trim()) { toast.error('Please add a subject'); return; }
 
     setIsSending(true);
     await new Promise(r => setTimeout(r, 1200));
@@ -175,6 +180,12 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
 
     setIsSending(false);
     toast.success('Email sent successfully', { description: `To: ${to}`, icon: '✉️' });
+  };
+
+  const handleSend = () => {
+    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    const passed = runChecks({ subject, body, attachments });
+    if (passed) executeSend();
   };
 
   const handleAddAttachment = () => {
@@ -307,7 +318,7 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
         )}
         <div className="flex items-center gap-2">
           <Label className="text-[11px] text-muted-foreground w-8 shrink-0">Subj</Label>
-          <Input value={subject} onChange={e => setSubject(e.target.value)} onBlur={handleBlur} className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent font-medium" />
+          <Input ref={subjectInputRef} value={subject} onChange={e => setSubject(e.target.value)} onBlur={handleBlur} className="h-7 text-xs border-0 border-b rounded-none focus-visible:ring-0 px-0 bg-transparent font-medium" />
         </div>
       </div>
 
@@ -406,6 +417,14 @@ export function PopOutComposer({ draft: initialDraft, onSend, onDiscard, onPopIn
           <path d="M14 14L11 14L14 11Z" fill="currentColor" opacity="0.5" />
         </svg>
       </div>
+
+      <PreSendAlertDialog
+        alert={preSendAlert}
+        onClose={clearPreSendAlert}
+        onSendAnyway={executeSend}
+        onAddAttachment={() => { clearPreSendAlert(); handleAddAttachment(); }}
+        onAddSubject={() => { clearPreSendAlert(); subjectInputRef.current?.focus(); }}
+      />
     </div>
   );
 }

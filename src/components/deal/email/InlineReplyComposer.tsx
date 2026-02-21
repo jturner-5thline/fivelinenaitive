@@ -35,6 +35,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MockEmail } from './mockEmailData';
 import { SnippetPicker } from './SnippetPicker';
+import { usePreSendChecks } from './usePreSendChecks';
+import { PreSendAlertDialog } from './PreSendAlertDialog';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 
@@ -107,9 +109,11 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
 
   const hasContent = body.trim().length > 0 || attachments.length > 0;
 
-  const handleSend = async () => {
+  const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
+
+  const executeSend = async () => {
+    clearPreSendAlert();
     if (!to.trim()) { toast.error('Please add a recipient'); return; }
-    if (!subject.trim()) { toast.error('Please add a subject'); return; }
 
     setIsSending(true);
     await new Promise(r => setTimeout(r, 1200));
@@ -138,6 +142,12 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
 
     setIsSending(false);
     toast.success('Email sent successfully', { description: `To: ${to}`, icon: '✉️' });
+  };
+
+  const handleSend = () => {
+    if (!to.trim()) { toast.error('Please add a recipient'); return; }
+    const passed = runChecks({ subject, body, attachments });
+    if (passed) executeSend();
   };
 
   const handleAddAttachment = () => {
@@ -353,6 +363,14 @@ export function InlineReplyComposer({ replyTo, onSend, onDiscard, onPopOut, init
         <div className="flex-1" />
         {discardButton}
       </div>
+
+      <PreSendAlertDialog
+        alert={preSendAlert}
+        onClose={clearPreSendAlert}
+        onSendAnyway={executeSend}
+        onAddAttachment={() => { clearPreSendAlert(); handleAddAttachment(); }}
+        onAddSubject={() => { clearPreSendAlert(); }}
+      />
     </div>
   );
 }
