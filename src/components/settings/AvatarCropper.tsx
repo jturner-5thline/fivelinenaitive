@@ -45,11 +45,14 @@ export function AvatarCropper({ open, onOpenChange, imageFile, onCropComplete }:
   const getScaledDimensions = useCallback(() => {
     if (!imageSize.width || !imageSize.height) return { width: 0, height: 0 };
     const aspect = imageSize.width / imageSize.height;
+    // The image must cover the PREVIEW_SIZE circle, so scale based on the shorter side
     let width: number, height: number;
-    if (aspect > 1) {
+    if (aspect >= 1) {
+      // Landscape: height is shorter, fit height to PREVIEW_SIZE
       height = PREVIEW_SIZE * zoom;
       width = height * aspect;
     } else {
+      // Portrait: width is shorter, fit width to PREVIEW_SIZE
       width = PREVIEW_SIZE * zoom;
       height = width / aspect;
     }
@@ -109,22 +112,20 @@ export function AvatarCropper({ open, onOpenChange, imageFile, onCropComplete }:
       canvas.height = CROP_SIZE;
       const ctx = canvas.getContext('2d')!;
 
-      // Calculate source rectangle from natural image coordinates
+      // Use a single uniform scale factor (natural pixels per displayed pixel)
       const dims = getScaledDimensions();
-      const scaleX = imageSize.width / dims.width;
-      const scaleY = imageSize.height / dims.height;
+      const scale = imageSize.width / dims.width; // same as imageSize.height / dims.height
 
-      // Center of the visible area in scaled image space
+      // The visible crop center in displayed image coordinates
       const centerX = dims.width / 2 - offset.x;
       const centerY = dims.height / 2 - offset.y;
 
-      // Source rectangle in natural image coordinates
-      const srcX = (centerX - PREVIEW_SIZE / 2) * scaleX;
-      const srcY = (centerY - PREVIEW_SIZE / 2) * scaleY;
-      const srcW = PREVIEW_SIZE * scaleX;
-      const srcH = PREVIEW_SIZE * scaleY;
+      // Source rectangle in natural image pixels
+      const srcX = (centerX - PREVIEW_SIZE / 2) * scale;
+      const srcY = (centerY - PREVIEW_SIZE / 2) * scale;
+      const srcSize = PREVIEW_SIZE * scale;
 
-      ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, CROP_SIZE, CROP_SIZE);
+      ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, CROP_SIZE, CROP_SIZE);
 
       canvas.toBlob((blob) => {
         if (blob) {
