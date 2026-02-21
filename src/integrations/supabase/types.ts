@@ -4184,6 +4184,38 @@ export type Database = {
           },
         ]
       }
+      lender_history_warning_dismissals: {
+        Row: {
+          deal_id: string
+          dismissed_at: string
+          dismissed_by: string
+          id: string
+          lender_name: string
+        }
+        Insert: {
+          deal_id: string
+          dismissed_at?: string
+          dismissed_by: string
+          id?: string
+          lender_name: string
+        }
+        Update: {
+          deal_id?: string
+          dismissed_at?: string
+          dismissed_by?: string
+          id?: string
+          lender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_history_warning_dismissals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_notes: {
         Row: {
           author_user_id: string
