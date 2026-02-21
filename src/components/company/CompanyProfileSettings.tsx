@@ -109,13 +109,15 @@ export function CompanyProfileSettings() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Get signed URL (bucket is private)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('company-logos')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 year expiry
 
-      // Update company with logo URL (add cache buster)
-      const logoUrlWithCacheBuster = `${publicUrl}?t=${Date.now()}`;
+      if (signedUrlError || !signedUrlData?.signedUrl) throw signedUrlError || new Error('Failed to get signed URL');
+
+      // Update company with signed logo URL
+      const logoUrlWithCacheBuster = `${signedUrlData.signedUrl}&t=${Date.now()}`;
       await updateCompany({ logo_url: logoUrlWithCacheBuster });
       await refetch();
 
