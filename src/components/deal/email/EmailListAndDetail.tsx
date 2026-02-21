@@ -17,14 +17,16 @@ import {
   ChevronRight,
   Reply,
   Forward,
-  Sparkles,
   AlertCircle,
   CheckCircle2,
   MinusCircle,
   MessageSquare,
   Archive,
 } from 'lucide-react';
+import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
+import { InlineReplyComposer, type ReplyDraft } from './InlineReplyComposer';
+import { PopOutComposer } from './PopOutComposer';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -119,7 +121,6 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
             </span>
           </div>
 
-          {/* Deal tag + response badge row */}
           <div className="flex items-center gap-1.5 mb-0.5">
             {thread.dealName && (
               <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 gap-0.5 bg-primary/10 text-primary border-primary/20">
@@ -160,7 +161,6 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
         </div>
       </div>
 
-      {/* Hover actions */}
       {hovered && (
         <div className="absolute right-2 top-2 flex items-center gap-0.5 bg-background/95 backdrop-blur-sm border rounded-md shadow-md px-1 py-0.5">
           <Tooltip>
@@ -289,148 +289,209 @@ function ThreadMessage({ email, isLatest, defaultExpanded }: { email: MockEmail;
   );
 }
 
-// ─── Email Detail (thread view with toolbar) ─────────────────
+// ─── Email Detail (thread view with inline reply) ────────────
 interface EmailDetailProps {
   thread: EmailThread;
   dealId?: string;
   onBack: () => void;
   onToggleLink: (email: MockEmail) => void;
   onToggleStar: (email: MockEmail) => void;
-  onCompose?: (replyTo: { subject: string; to_email: string; to_name: string; threadId: string }) => void;
+  onSendReply: (email: Omit<MockEmail, 'id' | 'threadId'>, threadId: string) => void;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onCompose }: EmailDetailProps) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply }: EmailDetailProps) {
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
+  
+  // Reply state
+  const [replyTo, setReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
+  const [popOutDraft, setPopOutDraft] = useState<ReplyDraft | null>(null);
+  const [inlineDraft, setInlineDraft] = useState<ReplyDraft | null>(null);
 
+  const getReplyTarget = useCallback(() => {
+    const latest = thread.latestEmail;
+    return latest.from_name === 'You'
+      ? { subject: thread.subject, to_email: latest.to_email, to_name: latest.to_name, threadId: thread.threadId }
+      : { subject: thread.subject, to_email: latest.from_email, to_name: latest.from_name, threadId: thread.threadId };
+  }, [thread]);
+
+  const handleReply = useCallback(() => {
+    if (popOutDraft) return; // Don't open inline if pop-out is active
+    setReplyTo(getReplyTarget());
+  }, [getReplyTarget, popOutDraft]);
+
+  const handleSendFromComposer = useCallback((emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
+    onSendReply(emailData, thread.threadId);
+    setReplyTo(null);
+    setPopOutDraft(null);
+    setInlineDraft(null);
+  }, [onSendReply, thread.threadId]);
+
+  const handleDiscard = useCallback(() => {
+    setReplyTo(null);
+    setPopOutDraft(null);
+    setInlineDraft(null);
+    toast.info('Draft discarded');
+  }, []);
+
+  const handlePopOut = useCallback((draft: ReplyDraft) => {
+    setReplyTo(null);
+    setInlineDraft(null);
+    setPopOutDraft(draft);
+  }, []);
+
+  const handlePopIn = useCallback((draft: ReplyDraft) => {
+    setPopOutDraft(null);
+    setInlineDraft(draft);
+    setReplyTo(getReplyTarget());
+  }, [getReplyTarget]);
+
+  // Keyboard shortcut for reply
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
-        const latest = thread.latestEmail;
-        const replyTarget = latest.from_name === 'You'
-          ? { subject: thread.subject, to_email: latest.to_email, to_name: latest.to_name, threadId: thread.threadId }
-          : { subject: thread.subject, to_email: latest.from_email, to_name: latest.from_name, threadId: thread.threadId };
-        onCompose?.(replyTarget);
+        handleReply();
       }
       if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toast.info('Forward coming soon'); }
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [thread, onToggleLink, onCompose]);
+  }, [thread, onToggleLink, handleReply]);
 
   return (
-    <div className="flex h-full relative overflow-hidden">
-      {/* Main thread view */}
-      <div className="flex flex-col flex-1 min-w-0">
-        {/* Sticky header toolbar */}
-        <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10">
-          <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold truncate">{thread.subject}</h3>
-            <p className="text-[11px] text-muted-foreground">
-              {thread.emails.length} message{thread.emails.length !== 1 ? 's' : ''} · {thread.participants.join(', ') || 'You'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            <Popover open={smartPopoverOpen} onOpenChange={setSmartPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={smartPopoverOpen ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-8 gap-1.5 text-xs"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Smart</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent side="bottom" align="end" className="w-[320px] p-0 max-h-[70vh] overflow-hidden">
-                <SmartEmailPanel
-                  thread={thread}
-                  dealId={dealId || 'general'}
-                />
-              </PopoverContent>
-            </Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => {
-                  const latest = thread.latestEmail;
-                  const replyTarget = latest.from_name === 'You'
-                    ? { subject: thread.subject, to_email: latest.to_email, to_name: latest.to_name, threadId: thread.threadId }
-                    : { subject: thread.subject, to_email: latest.from_email, to_name: latest.from_name, threadId: thread.threadId };
-                  onCompose?.(replyTarget);
-                }}>
-                  <Reply className="h-3.5 w-3.5" />
-                  Reply
-                  <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">R</kbd>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
-                  <Forward className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Forward</span>
-                  <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">F</kbd>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
-            </Tooltip>
-            <Separator orientation="vertical" className="h-5 mx-1" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
-                  <Star className={cn('h-4 w-4', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={thread.isLinked ? 'secondary' : 'outline'}
-                  size="sm"
-                  className="h-8 gap-1.5 text-xs"
-                  onClick={() => onToggleLink(thread.latestEmail)}
-                >
-                  {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                  <span className="hidden sm:inline">{thread.isLinked ? 'Unlink' : 'Link'}</span>
-                  <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">L</kbd>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink from deal (L)' : 'Link to deal (L)'}</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* Thread content */}
-        <ScrollArea className="flex-1">
-          <div className="py-3 space-y-0">
-            {/* AI Summary as card */}
-            <div className="mx-4 mb-3">
-              <AiSummaryStrip email={thread.latestEmail} />
+    <>
+      <div className="flex h-full relative overflow-hidden">
+        {/* Main thread view */}
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Sticky header toolbar */}
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-background/60 backdrop-blur-sm sticky top-0 z-10 shrink-0">
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 md:hidden h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold truncate">{thread.subject}</h3>
+              <p className="text-[11px] text-muted-foreground">
+                {thread.emails.length} message{thread.emails.length !== 1 ? 's' : ''} · {thread.participants.join(', ') || 'You'}
+              </p>
             </div>
 
-            {/* Each message as its own card */}
-            {thread.emails.map((email, idx) => (
-              <ThreadMessage
-                key={email.id}
-                email={email}
-                isLatest={idx === 0}
-                defaultExpanded={idx === 0}
-              />
-            ))}
+            <div className="flex items-center gap-1 shrink-0">
+              <Popover open={smartPopoverOpen} onOpenChange={setSmartPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant={smartPopoverOpen ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-1.5 text-xs">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Smart</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent side="bottom" align="end" className="w-[320px] p-0 max-h-[70vh] overflow-hidden">
+                  <SmartEmailPanel thread={thread} dealId={dealId || 'general'} />
+                </PopoverContent>
+              </Popover>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleReply}>
+                    <Reply className="h-3.5 w-3.5" />
+                    Reply
+                    <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">R</kbd>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Reply (R)</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info('Forward coming soon')}>
+                    <Forward className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Forward</span>
+                    <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">F</kbd>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Forward (F)</TooltipContent>
+              </Tooltip>
+              <Separator orientation="vertical" className="h-5 mx-1" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onToggleStar(thread.latestEmail)}>
+                    <Star className={cn('h-4 w-4', thread.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground')} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Star</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={thread.isLinked ? 'secondary' : 'outline'}
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={() => onToggleLink(thread.latestEmail)}
+                  >
+                    {thread.isLinked ? <Unlink className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{thread.isLinked ? 'Unlink' : 'Link'}</span>
+                    <kbd className="hidden sm:inline-flex ml-1 text-[10px] bg-muted px-1 rounded text-muted-foreground">L</kbd>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">{thread.isLinked ? 'Unlink from deal (L)' : 'Link to deal (L)'}</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
-        </ScrollArea>
+
+          {/* Thread content - scrollable */}
+          <ScrollArea className="flex-1">
+            <div className="py-3 space-y-0">
+              <div className="mx-4 mb-3">
+                <AiSummaryStrip email={thread.latestEmail} />
+              </div>
+
+              {thread.emails.map((email, idx) => (
+                <ThreadMessage
+                  key={email.id}
+                  email={email}
+                  isLatest={idx === 0}
+                  defaultExpanded={idx === 0}
+                />
+              ))}
+
+              {/* Reply prompt at bottom of thread when no composer is open */}
+              {!replyTo && !popOutDraft && (
+                <div className="mx-4 mb-3">
+                  <button
+                    onClick={handleReply}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-lg border border-dashed border-border/50 text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-foreground transition-all"
+                  >
+                    <Reply className="h-4 w-4" />
+                    <span className="text-sm">Click to reply...</span>
+                    <kbd className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded">R</kbd>
+                  </button>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          {/* Inline reply composer - anchored at bottom */}
+          {replyTo && (
+            <InlineReplyComposer
+              replyTo={replyTo}
+              onSend={handleSendFromComposer}
+              onDiscard={handleDiscard}
+              onPopOut={handlePopOut}
+              initialDraft={inlineDraft}
+            />
+          )}
+        </div>
       </div>
 
-    </div>
+      {/* Pop-out composer - rendered as portal at fixed position */}
+      {popOutDraft && (
+        <PopOutComposer
+          draft={popOutDraft}
+          onSend={handleSendFromComposer}
+          onDiscard={handleDiscard}
+          onPopIn={handlePopIn}
+        />
+      )}
+    </>
   );
 }
