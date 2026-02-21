@@ -3,17 +3,28 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { DealWriteUpData } from '@/components/deal/DealWriteUp';
 
+export interface SourceReference {
+  source_index?: number;
+  source_type: 'document' | 'spreadsheet' | 'note' | 'memo' | 'structured_data' | 'flag_note' | 'lender';
+  source_name: string;
+  source_id?: string;
+  location?: string | null;
+  excerpt?: string;
+}
+
 export interface ExtractedWriteUpField {
   field: keyof DealWriteUpData;
   value: unknown;
   confidence: 'high' | 'medium' | 'low';
   source?: string;
   sourceLocation?: string;
+  sources?: SourceReference[];
 }
 
 export interface AutoFillResult {
   extractedFields: ExtractedWriteUpField[];
   documentCount: number;
+  sourceCount: number;
 }
 
 export function useDealSpaceAutoFill(dealId: string | undefined) {
@@ -38,6 +49,7 @@ export function useDealSpaceAutoFill(dealId: string | undefined) {
       return {
         extractedFields: fields,
         documentCount: data.documentCount || 0,
+        sourceCount: data.sourceCount || 0,
       };
     } catch (err) {
       console.error('Auto-fill extraction error:', err);

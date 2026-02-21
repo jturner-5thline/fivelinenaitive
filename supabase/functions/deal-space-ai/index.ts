@@ -825,7 +825,7 @@ Be concise but thorough. Only include sections with relevant content.`
   }
 }
 
-// ─── Extract write-up fields ────────────────────────────────────────
+// ─── Extract write-up fields (deal-scoped with citations) ───────────
 
 async function handleExtractWriteUp(dealId: string) {
   try {
@@ -833,42 +833,168 @@ async function handleExtractWriteUp(dealId: string) {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const [docsResult, financialsResult] = await Promise.all([
+    // Pull from ALL deal-scoped sources in parallel
+    const [docsResult, financialsResult, dataRoomResult, notesResult, memoResult, dealResult, flagNotesResult, lendersResult] = await Promise.all([
       supabase.from("deal_space_documents").select("id, name, file_path, content_type").eq("deal_id", dealId),
-      supabase.from("deal_space_financials").select("id, name, file_path, content_type").eq("deal_id", dealId)
+      supabase.from("deal_space_financials").select("id, name, file_path, content_type").eq("deal_id", dealId),
+      supabase.from("deal_attachments").select("id, name, file_path, content_type, category").eq("deal_id", dealId),
+      supabase.from("deal_space_notes").select("id, title, content, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(20),
+      supabase.from("deal_memos").select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes").eq("deal_id", dealId).single(),
+      supabase.from("deals").select("company, value, stage, status, deal_type, business_model, company_url, notes, contact, contact_info").eq("id", dealId).single(),
+      supabase.from("deal_flag_notes").select("note, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(10),
+      supabase.from("deal_lenders").select("name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
     ]);
 
     const documents = docsResult.data || [];
     const financials = financialsResult.data || [];
-    const allDocs = [...documents, ...financials];
+    const dataRoomDocs = dataRoomResult.data || [];
+    const notes = notesResult.data || [];
+    const memo = memoResult.data;
+    const deal = dealResult.data;
+    const flagNotes = flagNotesResult.data || [];
+    const lenders = lendersResult.data || [];
+    const allUploadedDocs = [...documents, ...financials, ...dataRoomDocs];
 
-    if (allDocs.length === 0) {
-      return new Response(
-        JSON.stringify({ extractedFields: [], documentCount: 0, error: "No documents to analyze" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Build source chunks with metadata for citation
+    const sourceChunks: { source_type: string; source_id: string; source_name: string; location?: string; content: string }[] = [];
 
-    const allContents: { name: string; content: string }[] = [];
-    for (const doc of allDocs) {
+    // 1. Extract content from uploaded documents
+    for (const doc of allUploadedDocs) {
       try {
-        const { data: fileData, error: downloadError } = await supabase.storage.from("deal-space").download(doc.file_path);
+        const bucket = documents.find(d => d.id === doc.id) || financials.find(d => d.id === doc.id) ? "deal-space" : "deal-attachments";
+        const { data: fileData, error: downloadError } = await supabase.storage.from(bucket).download(doc.file_path);
         if (downloadError) continue;
         const extracted = await extractContent(fileData, doc.name);
         if (extracted.text && !extracted.text.startsWith("[Binary file:")) {
-          allContents.push({ name: doc.name, content: extracted.text.substring(0, 30000) });
+          // Split into page/section chunks if available
+          if (extracted.pages && extracted.pages.length > 0) {
+            for (const page of extracted.pages) {
+              sourceChunks.push({
+                source_type: "document",
+                source_id: doc.id,
+                source_name: doc.name,
+                location: `Page ${page.pageNumber}`,
+                content: page.content.substring(0, 5000),
+              });
+            }
+          } else if (extracted.slides && extracted.slides.length > 0) {
+            for (const slide of extracted.slides) {
+              sourceChunks.push({
+                source_type: "document",
+                source_id: doc.id,
+                source_name: doc.name,
+                location: `Slide ${slide.slideNumber}`,
+                content: slide.content.substring(0, 5000),
+              });
+            }
+          } else if (extracted.sheets && extracted.sheets.length > 0) {
+            for (const sheet of extracted.sheets) {
+              sourceChunks.push({
+                source_type: "spreadsheet",
+                source_id: doc.id,
+                source_name: doc.name,
+                location: `Sheet: ${sheet.sheetName}`,
+                content: sheet.content.substring(0, 5000),
+              });
+            }
+          } else {
+            sourceChunks.push({
+              source_type: "document",
+              source_id: doc.id,
+              source_name: doc.name,
+              content: extracted.text.substring(0, 15000),
+            });
+          }
         }
       } catch (err) { console.error(`Error processing ${doc.name}:`, err); }
     }
 
-    if (allContents.length === 0) {
+    // 2. Include notes as source chunks
+    for (const note of notes) {
+      if (note.content && note.content.trim().length > 10) {
+        sourceChunks.push({
+          source_type: "note",
+          source_id: note.id,
+          source_name: note.title || "Untitled Note",
+          content: note.content.substring(0, 5000),
+        });
+      }
+    }
+
+    // 3. Include memo as source chunks
+    if (memo) {
+      const memoSections = [
+        { key: "narrative", label: "Narrative" },
+        { key: "highlights", label: "Highlights" },
+        { key: "hurdles", label: "Hurdles" },
+        { key: "analyst_notes", label: "Analyst Notes" },
+        { key: "lender_notes", label: "Lender Notes" },
+        { key: "other_notes", label: "Other Notes" },
+      ];
+      for (const s of memoSections) {
+        const val = (memo as any)[s.key];
+        if (val && val.trim().length > 5) {
+          sourceChunks.push({
+            source_type: "memo",
+            source_id: dealId,
+            source_name: `Deal Memo — ${s.label}`,
+            location: s.label,
+            content: val.substring(0, 5000),
+          });
+        }
+      }
+    }
+
+    // 4. Include structured deal data
+    if (deal) {
+      sourceChunks.push({
+        source_type: "structured_data",
+        source_id: dealId,
+        source_name: "Deal Record",
+        content: `Company: ${deal.company || 'N/A'}, Value: ${deal.value || 'N/A'}, Stage: ${deal.stage || 'N/A'}, Status: ${deal.status || 'N/A'}, Deal Type: ${deal.deal_type || 'N/A'}, Business Model: ${deal.business_model || 'N/A'}, Company URL: ${deal.company_url || 'N/A'}, Contact: ${deal.contact || 'N/A'}, Contact Info: ${deal.contact_info || 'N/A'}, Notes: ${deal.notes || 'None'}`,
+      });
+    }
+
+    // 5. Include flag notes
+    for (const fn of flagNotes) {
+      sourceChunks.push({
+        source_type: "flag_note",
+        source_id: dealId,
+        source_name: "Deal Flag Note",
+        content: fn.note,
+      });
+    }
+
+    // 6. Include lender feedback
+    for (const l of lenders) {
+      const parts = [`Lender: ${l.name}, Stage: ${l.stage || 'N/A'}`];
+      if (l.notes) parts.push(`Notes: ${l.notes}`);
+      if (l.pass_reason) parts.push(`Pass Reason: ${l.pass_reason}`);
+      if (l.quote_amount) parts.push(`Quote: $${l.quote_amount}${l.quote_rate ? ` @ ${l.quote_rate}%` : ''}${l.quote_term ? ` / ${l.quote_term}` : ''}`);
+      sourceChunks.push({
+        source_type: "lender",
+        source_id: l.name,
+        source_name: `Lender: ${l.name}`,
+        content: parts.join('. '),
+      });
+    }
+
+    if (sourceChunks.length === 0) {
       return new Response(
-        JSON.stringify({ extractedFields: [], documentCount: allDocs.length, error: "Could not extract content from documents" }),
+        JSON.stringify({ extractedFields: [], documentCount: 0, sourceCount: 0, error: "No content found in deal space" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const combinedContent = allContents.map(d => `### ${d.name}\n${d.content}`).join("\n\n---\n\n");
+    // Build combined context with source labels for citation tracing
+    const combinedContent = sourceChunks.map((chunk, i) => 
+      `[SOURCE_${i}] (${chunk.source_type}: "${chunk.source_name}"${chunk.location ? `, ${chunk.location}` : ''})\n${chunk.content}`
+    ).join("\n\n---\n\n");
+
+    // Build source index for the AI to reference
+    const sourceIndex = sourceChunks.map((chunk, i) => 
+      `SOURCE_${i}: type=${chunk.source_type}, name="${chunk.source_name}"${chunk.location ? `, location="${chunk.location}"` : ''}`
+    ).join("\n");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -881,38 +1007,55 @@ async function handleExtractWriteUp(dealId: string) {
         messages: [
           {
             role: "system",
-            content: `You are an expert at extracting structured deal information from documents. Extract information and return it as a JSON array of extracted fields.
+            content: `You are an expert at extracting structured deal information from a deal space. You MUST ground every extraction in the specific source material provided. Each source is labeled with a SOURCE_ID.
 
-Each field should have:
+Extract information and return it as a JSON array of extracted fields.
+
+Each field MUST have:
 - "field": the field name (use exact names from the list below)
 - "value": the extracted value
-- "confidence": "high", "medium", or "low"
-- "source": the document name
-- "sourceLocation": specific location like "Page 3" or "Slide 5" (if applicable)
+- "confidence": "high", "medium", or "low" based on how directly the source supports the value
+- "sources": an array of source references, each with:
+  - "source_index": the SOURCE_N number
+  - "source_type": "document", "spreadsheet", "note", "memo", "structured_data", "flag_note", or "lender"
+  - "source_name": the name of the source
+  - "location": page/section/sheet reference if applicable (or null)
+  - "excerpt": a 1-2 sentence direct quote or paraphrase from the source that supports this value (REQUIRED)
 
 Valid field names:
 - companyName: string
 - companyUrl: string
 - linkedinUrl: string
 - industries: array of strings
-- location: string
+- location: string (city, state)
 - yearFounded: string
 - headcount: string
-- dealTypes: array of strings
-- billingModels: array of strings
-- profitability: string
-- grossMargins: string
-- capitalAsk: string
+- dealTypes: array of strings (e.g., "Growth Capital", "Acquisition", "Refinance")
+- billingModels: array of strings (e.g., "Subscription", "Transaction")
+- profitability: string (e.g., "Profitable", "Pre-profit")
+- grossMargins: string (e.g., "75%")
+- capitalAsk: string (e.g., "$5M")
 - useOfFunds: string
 - existingDebtDetails: string
 - accountingSystem: string
-- description: string — Company overview / what the company does
-- companyHighlights: array of {id: string, title: string, description: string}
-- keyItems: array of {id: string, title: string, description: string}
+- description: string — Company overview
+- companyHighlights: array of {id: string (use random), title: string, description: string}
+- keyItems: array of {id: string (use random), title: string, description: string}
 
-Return ONLY a valid JSON array. Only extract fields with clear evidence.`
+RULES:
+- Only extract fields with clear evidence in the sources.
+- ALWAYS include at least one source reference per field.
+- If multiple sources support a field, include all of them.
+- If sources conflict for the same field, set confidence to "medium" and include all conflicting sources.
+- Prefer structured_data sources when they match, but still cite the original source (document/note) that originally contained the information.
+- NEVER fabricate values not present in the sources.
+
+SOURCE INDEX:
+${sourceIndex}
+
+Return ONLY a valid JSON array.`
           },
-          { role: "user", content: `Extract deal write-up information:\n\n${combinedContent}` }
+          { role: "user", content: `Extract deal write-up information from these deal space sources:\n\n${combinedContent.substring(0, 80000)}` }
         ],
       }),
     });
@@ -920,6 +1063,8 @@ Return ONLY a valid JSON array. Only extract fields with clear evidence.`
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error("AI extraction error:", aiResponse.status, errorText);
+      if (aiResponse.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiResponse.status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       throw new Error("Failed to extract write-up");
     }
 
@@ -931,13 +1076,40 @@ Return ONLY a valid JSON array. Only extract fields with clear evidence.`
     try {
       extractedFields = JSON.parse(extractedContent);
       if (!Array.isArray(extractedFields)) extractedFields = [];
+      
+      // Enrich source references with full metadata from sourceChunks
+      for (const field of extractedFields) {
+        if (field.sources && Array.isArray(field.sources)) {
+          for (const src of field.sources) {
+            const idx = typeof src.source_index === 'number' ? src.source_index : parseInt(String(src.source_index).replace('SOURCE_', ''));
+            if (!isNaN(idx) && idx >= 0 && idx < sourceChunks.length) {
+              const chunk = sourceChunks[idx];
+              src.source_type = src.source_type || chunk.source_type;
+              src.source_name = src.source_name || chunk.source_name;
+              src.source_id = chunk.source_id;
+              src.location = src.location || chunk.location || null;
+            }
+          }
+        }
+        // Backwards compatibility: also set source/sourceLocation from first source
+        if (field.sources && field.sources.length > 0) {
+          field.source = field.sources[0].source_name;
+          field.sourceLocation = field.sources[0].location || null;
+        }
+      }
     } catch (e) {
       console.error("Failed to parse extracted data:", e, extractedContent);
       extractedFields = [];
     }
 
+    const sourceTypes = new Set(sourceChunks.map(s => s.source_type));
     return new Response(
-      JSON.stringify({ extractedFields, documentCount: allDocs.length }),
+      JSON.stringify({
+        extractedFields,
+        documentCount: allUploadedDocs.length,
+        sourceCount: sourceChunks.length,
+        sourceTypes: Array.from(sourceTypes),
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
