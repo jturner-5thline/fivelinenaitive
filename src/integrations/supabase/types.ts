@@ -2696,6 +2696,97 @@ export type Database = {
           },
         ]
       }
+      email_label_rules: {
+        Row: {
+          created_at: string
+          field: string
+          id: string
+          is_active: boolean | null
+          label_id: string
+          operator: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          field: string
+          id?: string
+          is_active?: boolean | null
+          label_id: string
+          operator: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          field?: string
+          id?: string
+          is_active?: boolean | null
+          label_id?: string
+          operator?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_label_rules_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "email_labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_labels: {
+        Row: {
+          color: string
+          company_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          position: number | null
+          scope: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          color?: string
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          position?: number | null
+          scope?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          color?: string
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          position?: number | null
+          scope?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_labels_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_snippets: {
         Row: {
           body: string
@@ -2767,6 +2858,54 @@ export type Database = {
           variables?: string[] | null
         }
         Relationships: []
+      }
+      email_thread_labels: {
+        Row: {
+          applied_by: string | null
+          applied_via: string
+          created_at: string
+          id: string
+          is_removed: boolean | null
+          label_id: string
+          rule_id: string | null
+          thread_id: string
+        }
+        Insert: {
+          applied_by?: string | null
+          applied_via?: string
+          created_at?: string
+          id?: string
+          is_removed?: boolean | null
+          label_id: string
+          rule_id?: string | null
+          thread_id: string
+        }
+        Update: {
+          applied_by?: string | null
+          applied_via?: string
+          created_at?: string
+          id?: string
+          is_removed?: boolean | null
+          label_id?: string
+          rule_id?: string | null
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_thread_labels_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "email_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_thread_labels_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "email_label_rules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       error_logs: {
         Row: {

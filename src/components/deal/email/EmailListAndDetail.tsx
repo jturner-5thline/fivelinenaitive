@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { SmartEmailPanel } from './SmartEmailPanel';
+import { ThreadLabelsBar } from './ThreadLabelsBar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -152,16 +153,18 @@ function ThreadListItem({ thread, isSelected, onSelect, onToggleLink, onToggleSt
           
           <div className="flex items-center gap-1.5 mt-2">
             {thread.isLinked && (
-              <Badge variant="secondary" className="text-[10px] h-[18px] px-1.5 gap-0.5">
-                <Link2 className="h-2.5 w-2.5" /> Linked
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="secondary" className="text-[10px] h-[18px] px-1.5 gap-0.5">
+                    <Link2 className="h-2.5 w-2.5" /> Deal linked
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">This thread is associated with a deal in your pipeline</TooltipContent>
+              </Tooltip>
             )}
             {thread.hasAttachments && (
               <Paperclip className="h-3 w-3 text-muted-foreground" />
             )}
-            {latest.labels.slice(0, 2).map(l => (
-              <Badge key={l} variant="outline" className="text-[10px] h-[18px] px-1.5">{l}</Badge>
-            ))}
           </div>
         </div>
       </div>
@@ -613,6 +616,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             <div className="py-3 space-y-0">
               <div className="mx-4 mb-3 flex items-center justify-between">
                 <AiSummaryStrip email={thread.latestEmail} />
+              </div>
+
+              {/* Thread labels */}
+              <div className="mx-4 mb-3">
+                <ThreadLabelsBar threadId={thread.threadId} />
               </div>
 
               {/* Expand/Collapse all control for long threads */}
