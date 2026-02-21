@@ -13,6 +13,7 @@ import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoo
 import { useDealChecklistItems } from '@/hooks/useDealChecklistItems';
 import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { useDealAttachments, type DealAttachment } from '@/hooks/useDealAttachments';
+import { suggestMappings } from './data-room/helpers';
 import { useFileChecklistMap } from '@/hooks/useFileChecklistMap';
 import { useUploadJobs } from '@/hooks/useUploadJobs';
 import { useDataRoomComments } from '@/hooks/useDataRoomComments';
@@ -44,7 +45,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
   const { items: dealItems, loading: l2, addItem: addDealItem, updateItem: updateDealItem, deleteItem: deleteDealItem } = useDealChecklistItems(dealId);
   const { statuses, toggleItemStatus } = useDealChecklistStatus(dealId);
   const { getCategoryByName } = useChecklistCategories();
-  const { attachments, isLoading: l3, uploadAttachment, deleteAttachment, refetch: refetchAttachments } = useDealAttachments(dealId);
+  const { attachments, isLoading: l3, uploadAttachment, deleteAttachment, renameAttachment, refetch: refetchAttachments } = useDealAttachments(dealId);
   const { mappings, mapFileToItem, mapFileToItems, unmapFile, getFilesForItem, getItemsForFile, getUnmappedFileIds } = useFileChecklistMap(dealId);
   const { activeJob, createJob, completeJob } = useUploadJobs(dealId);
   const { comments, addComment, deleteComment, getCommentsForItem } = useDataRoomComments(dealId);
@@ -204,8 +205,28 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
       }
       toast.success(`${uploadedAttachments.length} file(s) uploaded and mapped`);
     } else if (uploadedAttachments.length > 0) {
-      setFilesToMap(uploadedAttachments);
-      setShowMappingDialog(true);
+      // Auto-map files with high-confidence matches
+      let autoMapped = 0;
+      for (const att of uploadedAttachments) {
+        const suggestions = suggestMappings(att.name, allItems, 1);
+        if (suggestions.length > 0 && suggestions[0].score > 0.6) {
+          await mapFileToItem(att.id, suggestions[0].item.id, 'auto_suggest');
+          autoMapped++;
+        }
+      }
+
+      // Show mapping dialog for remaining files
+      const unmappedUploads = autoMapped < uploadedAttachments.length
+        ? uploadedAttachments
+        : [];
+      
+      if (autoMapped > 0) {
+        toast.success(`${autoMapped} file(s) auto-mapped based on name matching`);
+      }
+      if (unmappedUploads.length > 0) {
+        setFilesToMap(unmappedUploads);
+        setShowMappingDialog(true);
+      }
     }
   }, [user, createJob, completeJob, uploadAttachment, refetchAttachments, mapFileToItem, logAction]);
 
@@ -509,6 +530,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             onOpenMappingDialog={openMappingDialog}
             fileInputRef={fileInputRef}
             allItems={allItems}
+            onRenameFile={renameAttachment}
           />
         </div>
       </div>
@@ -519,6 +541,7 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
         <span>↑↓ Navigate</span>
         <span>Esc Back</span>
         <span>⌘U Upload</span>
+        <span>Double-click filename to rename</span>
       </div>
 
       {/* Upload progress toast */}
