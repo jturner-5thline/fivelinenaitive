@@ -260,7 +260,7 @@ function DroppableColumn({
   });
 
   return (
-    <div className="flex flex-col min-w-[240px]">
+    <div className="flex flex-col min-w-0">
       <div className="flex items-center gap-2 mb-3 px-1">
         <div className={cn("w-3 h-3 rounded-full", group.color)} />
         <h3 className="font-medium text-sm">{group.label}</h3>
@@ -268,7 +268,7 @@ function DroppableColumn({
           {lenders.length}
         </span>
       </div>
-      <ScrollArea className="flex-1 overflow-visible">
+      <ScrollArea className="flex-1">
         <div
           ref={setNodeRef}
           className={cn(
