@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type FeatureStatus = "disabled" | "staging" | "deployed";
+export type FeatureStatus = "disabled" | "staging" | "deployed" | "james_only";
 
 export interface FeatureFlag {
   id: string;
@@ -41,7 +41,7 @@ export const useUpdateFeatureFlag = () => {
     }) => {
       const { error } = await supabase
         .from("feature_flags")
-        .update({ status })
+        .update({ status: status as any })
         .eq("id", id);
 
       if (error) throw error;
@@ -68,8 +68,8 @@ export const useCreateFeatureFlag = () => {
       const { error } = await supabase.from("feature_flags").insert({
         name,
         description,
-        status,
-      });
+        status: status as any,
+      } as any);
 
       if (error) throw error;
     },
@@ -106,6 +106,12 @@ export const useFeatureAccess = (featureName: string) => {
   
   // Check if user is a 5thline.co user
   const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
+  const isJames = user?.email === 'jturner@5thline.co';
+
+  // James-only features
+  if (flag?.status === "james_only") {
+    return { hasAccess: isJames, isLoading, is5thLineUser };
+  }
 
   // 5thLine users have access to deployed and staging features
   if (is5thLineUser) {
@@ -128,10 +134,14 @@ export const usePageAccessFlags = () => {
   
   const pageFlags = flags?.filter(f => f.name.startsWith('page_')) ?? [];
   
+  const isJames = user?.email === 'jturner@5thline.co';
+  
   const hasPageAccess = (pageName: string): boolean => {
     const flag = pageFlags.find(f => f.name === `page_${pageName}`);
     
     if (!flag) return true; // If no flag exists, allow access
+    
+    if (flag.status === 'james_only') return isJames;
     
     if (is5thLineUser) {
       return flag.status === 'deployed' || flag.status === 'staging';

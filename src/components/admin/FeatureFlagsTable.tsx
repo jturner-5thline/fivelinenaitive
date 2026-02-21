@@ -29,7 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, FlaskConical, Rocket, Ban } from "lucide-react";
+import { Plus, FlaskConical, Rocket, Ban, User } from "lucide-react";
 import { toast } from "sonner";
 import {
   useFeatureFlags,
@@ -51,6 +51,11 @@ const statusConfig: Record<
     label: "Staging",
     variant: "secondary",
     icon: <FlaskConical className="h-3 w-3" />,
+  },
+  james_only: {
+    label: "James Only",
+    variant: "destructive",
+    icon: <User className="h-3 w-3" />,
   },
   disabled: {
     label: "Disabled",
