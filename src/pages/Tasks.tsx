@@ -3,6 +3,9 @@ import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task } from '@/hooks/useTasks';
 import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
+import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
+import { TaskReportingView } from '@/components/tasks/TaskReportingView';
+import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,19 +13,18 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   ListTodo, LayoutGrid, Calendar, GanttChart, Plus, Search, Filter,
-  SlidersHorizontal, Group, Trash2, CheckSquare, ArrowUpDown,
+  SlidersHorizontal, Group, Trash2, CheckSquare, BarChart3, Bell,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
-type ViewMode = 'list' | 'board' | 'calendar' | 'timeline';
+type ViewMode = 'list' | 'board' | 'calendar' | 'reporting';
 type FilterStatus = 'all' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title';
 
 export default function Tasks() {
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks();
+  const { overdueCount, dueTodayCount } = useTaskNotifications();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [search, setSearch] = useState('');
@@ -115,6 +117,20 @@ export default function Tasks() {
             <span className="text-sm text-muted-foreground">
               {filtered.length} task{filtered.length !== 1 ? 's' : ''}
             </span>
+            {(overdueCount > 0 || dueTodayCount > 0) && (
+              <div className="flex items-center gap-1.5">
+                {overdueCount > 0 && (
+                  <Badge variant="destructive" className="text-[10px] h-5 px-1.5 gap-1">
+                    <Bell className="h-2.5 w-2.5" /> {overdueCount} overdue
+                  </Badge>
+                )}
+                {dueTodayCount > 0 && (
+                  <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1 border-amber-500/30 text-amber-600">
+                    {dueTodayCount} due today
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Tabs value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
@@ -125,11 +141,11 @@ export default function Tasks() {
                 <TabsTrigger value="board" className="text-xs gap-1 px-2 h-7">
                   <LayoutGrid className="h-3.5 w-3.5" /> Board
                 </TabsTrigger>
-                <TabsTrigger value="calendar" className="text-xs gap-1 px-2 h-7" disabled>
+                <TabsTrigger value="calendar" className="text-xs gap-1 px-2 h-7">
                   <Calendar className="h-3.5 w-3.5" /> Calendar
                 </TabsTrigger>
-                <TabsTrigger value="timeline" className="text-xs gap-1 px-2 h-7" disabled>
-                  <GanttChart className="h-3.5 w-3.5" /> Timeline
+                <TabsTrigger value="reporting" className="text-xs gap-1 px-2 h-7">
+                  <BarChart3 className="h-3.5 w-3.5" /> Reports
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -266,6 +282,17 @@ export default function Tasks() {
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
                 selectedTaskId={selectedTaskId}
               />
+            )}
+            {viewMode === 'calendar' && (
+              <TaskCalendarView
+                tasks={filtered}
+                onSelectTask={setSelectedTaskId}
+                onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
+                selectedTaskId={selectedTaskId}
+              />
+            )}
+            {viewMode === 'reporting' && (
+              <TaskReportingView tasks={tasks} />
             )}
           </div>
 
