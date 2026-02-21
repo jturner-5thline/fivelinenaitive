@@ -1,0 +1,1 @@
+ALTER TYPE public.feature_status ADD VALUE IF NOT EXISTS 'james_only';
