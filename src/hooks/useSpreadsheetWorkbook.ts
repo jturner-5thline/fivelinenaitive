@@ -628,6 +628,54 @@ export function useSpreadsheetWorkbook() {
     });
   }, []);
 
+  // Sort column
+  const sortColumn = useCallback((col: number, direction: 'asc' | 'desc') => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const sheet = prev.sheets[prev.activeSheetIndex];
+      const headerRow = sheet.data[0];
+      const dataRows = sheet.data.slice(1);
+      const sorted = [...dataRows].sort((a, b) => {
+        const va = a[col]; const vb = b[col];
+        if (va === null || va === undefined) return 1;
+        if (vb === null || vb === undefined) return -1;
+        const na = typeof va === 'number' ? va : parseFloat(String(va));
+        const nb = typeof vb === 'number' ? vb : parseFloat(String(vb));
+        if (!isNaN(na) && !isNaN(nb)) return direction === 'asc' ? na - nb : nb - na;
+        const sa = String(va).toLowerCase(); const sb = String(vb).toLowerCase();
+        return direction === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa);
+      });
+      const newSheets = [...prev.sheets];
+      newSheets[prev.activeSheetIndex] = { ...sheet, data: [headerRow, ...sorted] };
+      return { ...prev, sheets: newSheets, isDirty: true };
+    });
+  }, []);
+
+  // Reorder sheets
+  const reorderSheets = useCallback((fromIndex: number, toIndex: number) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const newSheets = [...prev.sheets];
+      const [moved] = newSheets.splice(fromIndex, 1);
+      newSheets.splice(toIndex, 0, moved);
+      const newActive = prev.activeSheetIndex === fromIndex ? toIndex :
+        prev.activeSheetIndex >= Math.min(fromIndex, toIndex) && prev.activeSheetIndex <= Math.max(fromIndex, toIndex)
+          ? prev.activeSheetIndex + (fromIndex > toIndex ? 1 : -1)
+          : prev.activeSheetIndex;
+      return { ...prev, sheets: newSheets, activeSheetIndex: newActive };
+    });
+  }, []);
+
+  // Tab color
+  const setTabColor = useCallback((index: number, color: string | null) => {
+    setWorkbook(prev => {
+      if (!prev) return prev;
+      const newSheets = [...prev.sheets];
+      newSheets[index] = { ...newSheets[index], tabColor: color } as any;
+      return { ...prev, sheets: newSheets };
+    });
+  }, []);
+
   // Get active sheet
   const activeSheet = workbook?.sheets[workbook.activeSheetIndex] ?? null;
 
@@ -671,6 +719,9 @@ export function useSpreadsheetWorkbook() {
     setCellValidation,
     addConditionalFormat,
     deleteConditionalFormat,
+    sortColumn,
+    reorderSheets,
+    setTabColor,
   };
 }
 
