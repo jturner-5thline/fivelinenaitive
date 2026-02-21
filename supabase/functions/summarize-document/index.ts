@@ -34,14 +34,14 @@ Deno.serve(async (req) => {
       ? `Analyze this document named "${fileName}":\n\n${textContent}\n\nProvide a concise summary with:\n1. **Document Type**: What kind of document this is\n2. **Key Information**: The most important facts, figures, and data points (bullet points)\n3. **Summary**: A 2-3 sentence overview\n\nKeep it concise and business-focused.`
       : `Based on the filename "${fileName}", provide your best assessment of:\n1. **Document Type**: What kind of document this likely is\n2. **Expected Contents**: What information this document likely contains (bullet points)\n3. **Relevance**: How this fits into a typical deal/transaction data room\n\nKeep it concise and business-focused. Note that this is an inference based on the filename only.`;
 
-    const response = await fetch("https://api.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3-flash-preview",
         messages: [
           {
             role: "system",
