@@ -48,6 +48,7 @@ import HR from "./pages/HR";
 import Operations from "./pages/Operations";
 import Database from "./pages/Database";
 import Workflows from "./pages/Workflows";
+import Tasks from "./pages/Tasks";
 import Company from "./pages/Company";
 import AcceptInvite from "./pages/AcceptInvite";
 import Notifications from "./pages/Notifications";
@@ -113,6 +114,9 @@ const App = () => (
                           } />
                           <Route path="/news-feed" element={
                             <ProtectedRoute><AppLayout><NewsFeed /></AppLayout></ProtectedRoute>
+                          } />
+                          <Route path="/tasks" element={
+                            <ProtectedRoute><AppLayout><Tasks /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/deals" element={
                             <ProtectedRoute><AppLayout><Deals /></AppLayout></ProtectedRoute>
