@@ -86,9 +86,7 @@ export function useDealTasks(dealId: string | undefined) {
           task_url: taskUrl,
         };
         fireZapierWebhook('task_created', user.id, webhookPayload);
-        if (task.assigned_to !== user.id) {
-          fireZapierWebhook('task_assigned', user.id, webhookPayload);
-        }
+        fireZapierWebhook('task_assigned', user.id, webhookPayload);
       }
 
       return data;

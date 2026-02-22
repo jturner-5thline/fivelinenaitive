@@ -15,9 +15,12 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, serviceRoleKey)
 
-    const { event_type, user_id, payload } = await req.json()
+    const body = await req.json()
+    const { event_type, user_id, payload } = body
+    console.log('Received webhook request:', JSON.stringify({ event_type, user_id }))
 
     if (!event_type || !user_id) {
+      console.log('Missing event_type or user_id')
       return new Response(
         JSON.stringify({ error: 'Missing event_type or user_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -39,10 +42,14 @@ Deno.serve(async (req) => {
       )
     }
 
+    console.log('Found webhooks:', webhooks?.length || 0)
+
     // Filter webhooks that subscribe to this event type (empty array = all events)
     const matchingWebhooks = (webhooks || []).filter(w => 
       w.event_types.length === 0 || w.event_types.includes(event_type)
     )
+
+    console.log('Matching webhooks for event', event_type, ':', matchingWebhooks.length)
 
     if (matchingWebhooks.length === 0) {
       return new Response(
