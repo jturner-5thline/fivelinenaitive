@@ -532,6 +532,65 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 </div>
               )}
 
+          {/* Always-visible input for adding new items */}
+          <div className={`${items.length > 0 ? 'pb-3 border-b border-border' : ''}`}>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Type to add an item..."
+                value={newItemText}
+                onChange={(e) => setNewItemText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newItemText.trim()) {
+                    handleAdd();
+                  }
+                  if (e.key === 'Escape') {
+                    setNewItemText('');
+                  }
+                }}
+                className="flex-1"
+              />
+              <Popover open={requesterPopoverOpen} onOpenChange={setRequesterPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-48 justify-between gap-2 font-normal',
+                      newRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 text-muted-foreground'
+                    )}
+                  >
+                    <span className="truncate">{getDisplayText(newRequestedBy, true)}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
+                  <div className="max-h-[300px] overflow-auto p-1">
+                    {requestedByOptions.map((option) => {
+                      const isSelected = newRequestedBy.includes(option);
+                      return (
+                        <div
+                          key={option}
+                          className={cn(
+                            'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                            isSelected && 'bg-accent/50'
+                          )}
+                          onClick={() => toggleRequestedBy(option)}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleRequestedBy(option)}
+                            className="pointer-events-none"
+                          />
+                          <span className="flex-1">{option}</span>
+                          {isSelected && <Check className="h-4 w-4 text-primary" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
               {filteredItems.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   {filterByLender.length > 0 ? 'No items match the filter' : 'No outstanding items'}
@@ -902,64 +961,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 </Collapsible>
               )}
 
-          {/* Always-visible input for adding new items */}
-          <div className={`${items.length > 0 ? 'pt-3 border-t border-border' : ''}`}>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Type to add an item..."
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newItemText.trim()) {
-                    handleAdd();
-                  }
-                  if (e.key === 'Escape') {
-                    setNewItemText('');
-                  }
-                }}
-                className="flex-1"
-              />
-              <Popover open={requesterPopoverOpen} onOpenChange={setRequesterPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-48 justify-between gap-2 font-normal',
-                      newRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 text-muted-foreground'
-                    )}
-                  >
-                    <span className="truncate">{getDisplayText(newRequestedBy, true)}</span>
-                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
-                  <div className="max-h-[300px] overflow-auto p-1">
-                    {requestedByOptions.map((option) => {
-                      const isSelected = newRequestedBy.includes(option);
-                      return (
-                        <div
-                          key={option}
-                          className={cn(
-                            'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                            isSelected && 'bg-accent/50'
-                          )}
-                          onClick={() => toggleRequestedBy(option)}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleRequestedBy(option)}
-                            className="pointer-events-none"
-                          />
-                          <span className="flex-1">{option}</span>
-                          {isSelected && <Check className="h-4 w-4 text-primary" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
