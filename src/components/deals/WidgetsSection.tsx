@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Plus, Settings2, PieChartIcon, BarChart3, TrendingUp, Download, Image, FileText } from 'lucide-react';
 import {
   DndContext,
@@ -62,6 +62,12 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   const { formatCurrencyValue } = usePreferences();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [isEditMode, setIsEditMode] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsEditMode(prev => !prev);
+    window.addEventListener('toggle-widgets-edit-mode', handler);
+    return () => window.removeEventListener('toggle-widgets-edit-mode', handler);
+  }, []);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<Widget | undefined>();
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
@@ -353,24 +359,6 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
 
   return (
     <div className="relative border border-border rounded-lg py-1.5 px-4">
-      {/* Settings button - top right corner */}
-      <HintTooltip
-        hint="Click the gear icon to customize these widgets. Add, remove, or rearrange metrics to match your workflow."
-        visible={isHintVisible('widgets-section')}
-        onDismiss={() => dismissHint('widgets-section')}
-        side="left"
-        align="center"
-        showDelay={3000}
-      >
-        <Button
-          variant={isEditMode ? 'default' : 'ghost'}
-          size="icon"
-          className="absolute top-2 right-2 h-6 w-6"
-          onClick={() => setIsEditMode(!isEditMode)}
-        >
-          <Settings2 className="h-3 w-3" />
-        </Button>
-      </HintTooltip>
 
       <DndContext
         sensors={sensors}
