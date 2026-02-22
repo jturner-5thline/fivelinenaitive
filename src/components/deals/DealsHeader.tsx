@@ -1,4 +1,4 @@
-import { Settings, User, SlidersHorizontal, LogOut, HelpCircle, RotateCcw, BookOpen, Shield } from 'lucide-react';
+import { Settings, Settings2, User, SlidersHorizontal, LogOut, HelpCircle, RotateCcw, BookOpen, Shield } from 'lucide-react';
 import { GlobalSearchAI } from '@/components/GlobalSearchAI';
 import { useTheme } from 'next-themes';
 
@@ -109,6 +109,19 @@ export function DealsHeader() {
           <div className="w-36 sm:w-52">
             <GlobalSearchAI />
           </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => window.dispatchEvent(new Event('toggle-widgets-edit-mode'))}
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Customize widgets</TooltipContent>
+          </Tooltip>
           <LenderSyncNotificationBell />
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
