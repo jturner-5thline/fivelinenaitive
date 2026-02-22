@@ -73,7 +73,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       {/* Liquid glass decorative background — behind all content */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
         {/* Ambient glow orbs */}
-        <div className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.15]" style={{ background: 'radial-gradient(circle, hsl(282,70%,35%) 0%, transparent 70%)' }} />
+        <div className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.15]" style={{ background: 'radial-gradient(circle, hsl(282,70%,20%) 0%, transparent 70%)' }} />
         <div className="absolute top-[40%] -right-16 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, hsl(291,48%,60%) 0%, transparent 70%)' }} />
         <div className="absolute -bottom-20 left-[20%] w-[600px] h-[400px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(ellipse, hsl(286,60%,45%) 0%, transparent 70%)' }} />
 
