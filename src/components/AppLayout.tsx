@@ -31,12 +31,46 @@ function MainContent({
     <main
       className={cn(
         "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border shadow-sm overflow-auto border-border dark:border-[hsl(263,45%,45%,0.7)] dark:shadow-[0_0_20px_hsl(263,60%,50%,0.12)]",
-        "bg-card dark:bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)]",
+        "bg-transparent",
         className,
       )}
       onClick={handleMainClick}
     >
-      {/* Liquid glass decorative background */}
+      <div className="relative z-10 flex-1 flex flex-col">
+        {children}
+      </div>
+    </main>
+  );
+}
+
+function BodyScrollLock() {
+  React.useEffect(() => {
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlHeight = document.documentElement.style.height;
+    const prevBodyHeight = document.body.style.height;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.height = "100%";
+    document.body.style.height = "100%";
+
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.height = prevHtmlHeight;
+      document.body.style.height = prevBodyHeight;
+    };
+  }, []);
+
+  return null;
+}
+
+export function AppLayout({ children, mainClassName }: AppLayoutProps) {
+  return (
+    <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
+      <BodyScrollLock />
+      {/* Liquid glass decorative background — behind all content */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
         {/* Ambient glow orbs */}
         <div className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.15]" style={{ background: 'radial-gradient(circle, hsl(263,65%,40%) 0%, transparent 70%)' }} />
@@ -90,41 +124,8 @@ function MainContent({
           <path d="M800,50 C1000,100 1150,30 1440,80" fill="none" stroke="url(#lwEdge1)" strokeWidth="1" opacity="0.3" filter="url(#lwBlur)" />
         </svg>
       </div>
-      <div className="relative z-10 flex-1 flex flex-col">
-        {children}
-      </div>
-    </main>
-  );
-}
 
-function BodyScrollLock() {
-  React.useEffect(() => {
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlHeight = document.documentElement.style.height;
-    const prevBodyHeight = document.body.style.height;
-
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.height = "100%";
-    document.body.style.height = "100%";
-
-    return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.height = prevHtmlHeight;
-      document.body.style.height = prevBodyHeight;
-    };
-  }, []);
-
-  return null;
-}
-
-export function AppLayout({ children, mainClassName }: AppLayoutProps) {
-  return (
-    <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
-      <BodyScrollLock />
-      <div className="flex w-full h-full min-h-0 bg-muted/30 dark:bg-[hsl(230,25%,5%)] p-2 gap-1">
+      <div className="relative z-10 flex w-full h-full min-h-0 bg-transparent p-2 gap-1">
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
