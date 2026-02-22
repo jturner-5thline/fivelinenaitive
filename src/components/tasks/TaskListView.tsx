@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,6 +65,9 @@ interface TaskListViewProps {
   groupBy?: GroupBy;
   selectedTaskIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  onSelectAll?: () => void;
+  onToggleStar?: (id: string, current: boolean) => void;
+  focusedTaskIndex?: number;
 }
 
 function getTimeGroups(tasks: Task[]) {
@@ -122,7 +125,8 @@ export function TaskListView({
   tasks, statusGroups, isLoading, isCreating, newTaskTitle, newTaskRef,
   onNewTaskChange, onNewTaskKeyDown, onNewTaskCreate, onCancelCreate,
   onSelectTask, onUpdateTask, onDeleteTask, selectedTaskId,
-  groupBy = 'status', selectedTaskIds, onToggleSelect,
+  groupBy = 'status', selectedTaskIds, onToggleSelect, onSelectAll,
+  onToggleStar, focusedTaskIndex,
 }: TaskListViewProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
@@ -209,10 +213,21 @@ export function TaskListView({
     >
       <div className="divide-y">
         {/* Column header */}
-        <div className="grid grid-cols-[20px_20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
+        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
           <div />
-          <div />
+          <div
+            className="cursor-pointer"
+            onClick={onSelectAll}
+            title="Select all (Ctrl+A)"
+          >
+            <Checkbox
+              checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length}
+              onCheckedChange={() => onSelectAll?.()}
+              className="h-3.5 w-3.5"
+            />
+          </div>
           <div className="w-5" />
+          <div />
           <div>Task name</div>
           <div>Due date</div>
           <div>Priority</div>
@@ -246,29 +261,36 @@ export function TaskListView({
                 {!isCollapsed && (
                   <div className="mx-3 mb-3 mt-1 rounded-lg border border-[hsl(263,40%,25%,0.6)] bg-[linear-gradient(325deg,hsl(260,20%,8%,0.85)_0%,hsl(263,18%,6%,0.9)_40%,hsl(240,15%,5%,0.95)_100%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(263,40%,35%,0.08),0_4px_24px_hsl(0,0%,0%,0.4)] relative overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,hsl(263,40%,30%,0.08)_0%,transparent_50%,hsl(263,30%,20%,0.04)_100%)]">
                     <div className="relative z-10">
-                      {group.tasks.map(task => (
-                        <SortableTaskRow
-                          key={task.id}
-                          task={task}
-                          isSelected={selectedTaskId === task.id}
-                          isMultiSelected={selectedTaskIds?.has(task.id) || false}
-                          onSelect={() => onSelectTask(task.id)}
-                          onUpdate={(updates) => onUpdateTask(task.id, updates)}
-                          onDelete={() => onDeleteTask(task.id)}
-                          onToggleComplete={() => handleCompleteWithCelebration(task.id, task.status)}
-                          onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
-                          showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
-                        />
-                      ))}
+                      {group.tasks.map((task, taskIndex) => {
+                        // Calculate global index for focus tracking
+                        const globalIndex = tasks.indexOf(task);
+                        return (
+                          <SortableTaskRow
+                            key={task.id}
+                            task={task}
+                            isSelected={selectedTaskId === task.id}
+                            isMultiSelected={selectedTaskIds?.has(task.id) || false}
+                            isFocused={focusedTaskIndex === globalIndex}
+                            onSelect={() => onSelectTask(task.id)}
+                            onUpdate={(updates) => onUpdateTask(task.id, updates)}
+                            onDelete={() => onDeleteTask(task.id)}
+                            onToggleComplete={() => handleCompleteWithCelebration(task.id, task.status)}
+                            onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
+                            onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
+                            showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
+                          />
+                        );
+                      })}
 
                       {/* Inline add for first section */}
                       {group === groups[0] && (
                         <>
                           {isCreating ? (
-                            <div className="grid grid-cols-[20px_20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
                               <div />
                               <div />
                               <div className="w-5" />
+                              <div />
                               <Input
                                 ref={newTaskRef as any}
                                 value={newTaskTitle}
@@ -410,15 +432,17 @@ function InlinePriorityPicker({ value, onChange }: { value: string; onChange: (v
 }
 
 // Sortable task row with drag handle and inline editing
-function SortableTaskRow({ task, isSelected, isMultiSelected, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, showSelectCheckbox }: {
+function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox }: {
   task: Task;
   isSelected: boolean;
   isMultiSelected: boolean;
+  isFocused?: boolean;
   onSelect: () => void;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete: () => void;
   onToggleComplete: () => void;
   onToggleSelect?: () => void;
+  onToggleStar?: () => void;
   showSelectCheckbox?: boolean;
 }) {
   const {
@@ -448,9 +472,10 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, onSelect, onUpdate
       ref={setNodeRef}
       style={style}
       className={cn(
-        'grid grid-cols-[20px_20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
+        'grid grid-cols-[20px_20px_auto_16px_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
         isSelected && 'bg-primary/5 border-r-2 border-r-primary',
         isMultiSelected && 'bg-primary/10',
+        isFocused && 'ring-1 ring-inset ring-primary/40 bg-primary/5',
         isDragging && 'z-50',
       )}
       onClick={onSelect}
@@ -477,13 +502,27 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, onSelect, onUpdate
         />
       </div>
 
-      {/* Checkbox */}
+      {/* Complete checkbox */}
       <Checkbox
         checked={isComplete}
         onCheckedChange={() => onToggleComplete()}
         onClick={e => e.stopPropagation()}
         className={cn('h-4 w-4 rounded-full transition-all', isComplete && 'bg-emerald-500 border-emerald-500')}
       />
+
+      {/* Star */}
+      <div onClick={e => e.stopPropagation()}>
+        <button
+          className={cn(
+            'transition-colors',
+            task.is_starred ? 'text-amber-500' : 'text-transparent group-hover:text-muted-foreground/40 hover:!text-amber-500'
+          )}
+          onClick={() => onToggleStar?.()}
+          title="Star task (s)"
+        >
+          <Star className={cn('h-3.5 w-3.5', task.is_starred && 'fill-amber-500')} />
+        </button>
+      </div>
 
       {/* Title - inline editable */}
       <div className="min-w-0" onClick={e => e.stopPropagation()}>

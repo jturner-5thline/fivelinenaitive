@@ -34,6 +34,9 @@ export interface Task {
   completed_at: string | null;
   completed_by: string | null;
   archived_at: string | null;
+  is_starred: boolean;
+  recurrence_rule: string | null;
+  recurrence_source_id: string | null;
   created_at: string;
   updated_at: string;
   // Joined
@@ -67,6 +70,31 @@ export interface TaskActivityEvent {
 }
 
 const TASKS_KEY = ['my-tasks'];
+
+function calculateNextDueDate(currentDueDate: string | null, rule: string): string | null {
+  if (!currentDueDate) return null;
+  const date = new Date(currentDueDate + 'T00:00:00');
+  switch (rule) {
+    case 'daily':
+      date.setDate(date.getDate() + 1);
+      break;
+    case 'weekdays':
+      do { date.setDate(date.getDate() + 1); } while (date.getDay() === 0 || date.getDay() === 6);
+      break;
+    case 'weekly':
+      date.setDate(date.getDate() + 7);
+      break;
+    case 'biweekly':
+      date.setDate(date.getDate() + 14);
+      break;
+    case 'monthly':
+      date.setMonth(date.getMonth() + 1);
+      break;
+    default:
+      return null;
+  }
+  return date.toISOString().split('T')[0];
+}
 
 export function useMyTasks() {
   const { user } = useAuth();
@@ -194,9 +222,36 @@ export function useMyTasks() {
       if (updates.section_id !== undefined) updateData.section_id = updates.section_id;
       if (updates.project_id !== undefined) updateData.project_id = updates.project_id;
       if (updates.task_type !== undefined) updateData.task_type = updates.task_type;
+      if (updates.is_starred !== undefined) updateData.is_starred = updates.is_starred;
+      if (updates.recurrence_rule !== undefined) updateData.recurrence_rule = updates.recurrence_rule;
 
       const { error } = await supabase.from('tasks').update(updateData).eq('id', id);
       if (error) throw error;
+
+      // Handle recurring task: if completing a recurring task, create the next instance
+      if (updates.status === 'complete' || updates.status === 'completed') {
+        const completedTask = tasks.find(t => t.id === id);
+        if (completedTask?.recurrence_rule) {
+          const { data: { user: u } } = await supabase.auth.getUser();
+          if (u) {
+            const nextDueDate = calculateNextDueDate(completedTask.due_date, completedTask.recurrence_rule);
+            await supabase.from('tasks').insert({
+              title: completedTask.title,
+              description: completedTask.description,
+              assigned_to: completedTask.assigned_to,
+              assigned_by: completedTask.assigned_by,
+              priority: completedTask.priority,
+              company_id: completedTask.company_id,
+              project_id: completedTask.project_id,
+              section_id: completedTask.section_id,
+              recurrence_rule: completedTask.recurrence_rule,
+              recurrence_source_id: completedTask.recurrence_source_id || id,
+              due_date: nextDueDate,
+              task_type: completedTask.task_type,
+            } as any);
+          }
+        }
+      }
 
       // Fire Zapier webhook when task is assigned/reassigned
       if (updates.assigned_to !== undefined && user) {

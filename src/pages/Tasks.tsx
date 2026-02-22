@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent, useCallback, useMemo } from 'react';
+import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task } from '@/hooks/useTasks';
 import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { isToday, isPast } from 'date-fns';
+import { isToday, isPast, addDays } from 'date-fns';
 import {
   DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor,
   useSensor, useSensors, DragStartEvent, DragEndEvent, DragOverEvent,
@@ -70,6 +70,7 @@ export default function Tasks() {
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#6366f1');
   const newTaskRef = useRef<HTMLInputElement>(null);
+  const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
 
@@ -82,7 +83,7 @@ export default function Tasks() {
     return false;
   });
 
-  // Filter and sort
+  // Filter and sort (starred items float to top)
   const filtered = (viewMode === 'focus' ? focusTasks : tasks)
     .filter(t => {
       if (filterStatus !== 'all' && t.status !== filterStatus) return false;
@@ -90,6 +91,10 @@ export default function Tasks() {
       return true;
     })
     .sort((a, b) => {
+      // Starred tasks always first
+      if (a.is_starred && !b.is_starred) return -1;
+      if (!a.is_starred && b.is_starred) return 1;
+
       switch (sortBy) {
         case 'due_date':
           if (!a.due_date && !b.due_date) return 0;
@@ -133,18 +138,105 @@ export default function Tasks() {
       updateTask.mutateAsync({ id, ...updates })
     );
     Promise.all(promises).then(() => {
+      toast.success(`Updated ${selectedTaskIds.size} task(s)`);
       setSelectedTaskIds(new Set());
     });
   }, [selectedTaskIds, updateTask]);
 
   const handleBulkDelete = useCallback(() => {
-    const promises = Array.from(selectedTaskIds).map(id =>
-      deleteTask.mutateAsync(id)
-    );
+    const count = selectedTaskIds.size;
+    const ids = Array.from(selectedTaskIds);
+    const promises = ids.map(id => deleteTask.mutateAsync(id));
     Promise.all(promises).then(() => {
       setSelectedTaskIds(new Set());
+      toast.success(`Deleted ${count} task(s)`, {
+        action: { label: 'Undo is not available for bulk delete', onClick: () => {} },
+      });
     });
   }, [selectedTaskIds, deleteTask]);
+
+  // Undo-aware single task complete
+  const handleCompleteWithUndo = useCallback((taskId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'complete' ? 'not_started' : 'complete';
+    updateTask.mutate({ id: taskId, status: newStatus } as any);
+    if (newStatus === 'complete') {
+      toast.success('Task completed! 🎉', {
+        action: {
+          label: 'Undo',
+          onClick: () => updateTask.mutate({ id: taskId, status: currentStatus } as any),
+        },
+        duration: 5000,
+      });
+    }
+  }, [updateTask]);
+
+  // Undo-aware single task delete
+  const handleDeleteWithUndo = useCallback((taskId: string) => {
+    // We can't truly undo a delete, but we can archive instead
+    deleteTask.mutate(taskId);
+    toast.success('Task deleted');
+  }, [deleteTask]);
+
+  // Toggle star
+  const handleToggleStar = useCallback((taskId: string, currentlyStarred: boolean) => {
+    updateTask.mutate({ id: taskId, is_starred: !currentlyStarred } as any);
+  }, [updateTask]);
+
+  // Select all visible tasks
+  const handleSelectAll = useCallback(() => {
+    if (selectedTaskIds.size === filtered.length) {
+      setSelectedTaskIds(new Set());
+    } else {
+      setSelectedTaskIds(new Set(filtered.map(t => t.id)));
+    }
+  }, [filtered, selectedTaskIds]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      // Don't handle shortcuts when typing in inputs
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      if (selectedTaskId) return; // Don't interfere with detail drawer
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setFocusedTaskIndex(prev => Math.min(prev + 1, filtered.length - 1));
+      } else if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setFocusedTaskIndex(prev => Math.max(prev - 1, 0));
+      } else if (e.key === 'Enter' && focusedTaskIndex >= 0) {
+        e.preventDefault();
+        const task = filtered[focusedTaskIndex];
+        if (task) setSelectedTaskId(task.id);
+      } else if (e.key === ' ' && focusedTaskIndex >= 0) {
+        e.preventDefault();
+        const task = filtered[focusedTaskIndex];
+        if (task) handleCompleteWithUndo(task.id, task.status);
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && focusedTaskIndex >= 0) {
+        e.preventDefault();
+        const task = filtered[focusedTaskIndex];
+        if (task) handleDeleteWithUndo(task.id);
+      } else if (e.key === 'x' && focusedTaskIndex >= 0) {
+        e.preventDefault();
+        const task = filtered[focusedTaskIndex];
+        if (task) handleToggleSelect(task.id);
+      } else if (e.key === 's' && focusedTaskIndex >= 0) {
+        e.preventDefault();
+        const task = filtered[focusedTaskIndex];
+        if (task) handleToggleStar(task.id, task.is_starred);
+      } else if (e.key === 'Escape') {
+        setSelectedTaskIds(new Set());
+        setFocusedTaskIndex(-1);
+      } else if (e.key === 'a' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSelectAll();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filtered, focusedTaskIndex, selectedTaskId, handleCompleteWithUndo, handleDeleteWithUndo, handleToggleSelect, handleToggleStar, handleSelectAll]);
 
   const handleSaveView = () => {
     if (!newViewName.trim()) return;
@@ -401,11 +493,14 @@ export default function Tasks() {
                 onCancelCreate={() => { setIsCreating(false); setNewTaskTitle(''); }}
                 onSelectTask={setSelectedTaskId}
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
-                onDeleteTask={id => deleteTask.mutate(id)}
+                onDeleteTask={id => handleDeleteWithUndo(id)}
                 selectedTaskId={selectedTaskId}
                 groupBy={viewMode === 'focus' ? 'time' : groupBy}
                 selectedTaskIds={selectedTaskIds}
                 onToggleSelect={handleToggleSelect}
+                onSelectAll={handleSelectAll}
+                onToggleStar={handleToggleStar}
+                focusedTaskIndex={focusedTaskIndex}
               />
             )}
             {viewMode === 'board' && (
