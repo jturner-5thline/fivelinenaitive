@@ -36,7 +36,7 @@ function MainContent({
       )}
       onClick={handleMainClick}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 rounded-t-xl z-0" style={{ background: 'linear-gradient(to bottom, hsl(282,40%,8%,0.6) 0%, hsl(282,40%,8%,0.3) 40%, transparent 100%)' }} />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 rounded-t-xl z-0" style={{ background: 'linear-gradient(to bottom, hsl(282,40%,6%,0.75) 0%, hsl(282,40%,6%,0.4) 40%, transparent 100%)' }} />
       <div className="relative z-10 flex-1 flex flex-col">
         {children}
       </div>
