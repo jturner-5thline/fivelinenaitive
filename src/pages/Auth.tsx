@@ -485,7 +485,8 @@ const Auth = () => {
                 <Button
                   type="submit"
                   disabled={loading || (mode === "mfa" && mfaCode.length !== 6)}
-                  className="w-full bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white/40 py-6 font-light tracking-wide"
+                  variant="liquid-glass"
+                  className="w-full py-6 font-light tracking-wide text-white"
                 >
                   {loading ? "Please wait..." : 
                     mode === "forgot" ? "Send Reset Link" :
@@ -498,7 +499,8 @@ const Auth = () => {
               {mode === "gate" && (
                 <Button
                   type="submit"
-                  className="w-full bg-transparent border border-white/20 text-white hover:bg-white/5 hover:border-white/40 py-6 font-light tracking-wide"
+                  variant="liquid-glass"
+                  className="w-full py-6 font-light tracking-wide text-white"
                 >
                   Continue to Login
                 </Button>
@@ -517,10 +519,10 @@ const Auth = () => {
 
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="liquid-glass"
                     onClick={handleGoogleSignIn}
                     disabled={googleLoading}
-                    className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/40 py-6 font-light tracking-wide"
+                    className="w-full py-6 font-light tracking-wide text-white"
                   >
                     {googleLoading ? (
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -595,7 +597,7 @@ const Auth = () => {
                       setLoading(false);
                     }
                   }}
-                  className="w-full text-white/60 hover:text-white hover:bg-white/5 py-6 font-light tracking-wide"
+                  className="w-full text-white/60 hover:text-white hover:bg-[hsl(270,50%,40%,0.15)] py-6 font-light tracking-wide"
                 >
                   Try Demo
                 </Button>
