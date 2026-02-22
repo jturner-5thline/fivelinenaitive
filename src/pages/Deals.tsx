@@ -432,6 +432,25 @@ export default function Dashboard() {
                   </SelectContent>
                 </Select>
 
+                {viewMode === 'grid' && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Switch
+                            id="group-by-status"
+                            checked={groupByStatus}
+                            onCheckedChange={setGroupByStatus}
+                          />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Group by Status</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+
                 <Button
                   size="sm"
                   className="gap-2 h-9 shrink-0"
@@ -458,21 +477,6 @@ export default function Dashboard() {
               </p>
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
 
-                {viewMode === 'grid' && (
-                  <>
-                    <div className="h-4 w-px bg-border" />
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="group-by-status"
-                        checked={groupByStatus}
-                        onCheckedChange={setGroupByStatus}
-                      />
-                      <Label htmlFor="group-by-status" className="text-sm text-muted-foreground cursor-pointer">
-                        Group by Status
-                      </Label>
-                    </div>
-                  </>
-                )}
               </div>
             </div>}
 
