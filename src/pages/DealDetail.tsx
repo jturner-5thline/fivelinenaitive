@@ -97,6 +97,7 @@ import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useDealSpaceFeatures } from '@/hooks/useDealSpaceFeatures';
 import {
   Select,
   SelectContent,
@@ -475,6 +476,7 @@ export default function DealDetail() {
   const { profile } = useProfile();
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();
+  const dealSpaceFeatures = useDealSpaceFeatures();
   const { linkedRecordings: claapLinkedRecordings } = useDealClaapRecordings(id || '');
   const lenderNames = useMemo(() => {
     // Use master lenders database as primary source
@@ -2162,23 +2164,27 @@ export default function DealDetail() {
           </div>
 
           {/* Proactive Alert Bar - replaces old stale lender notification */}
-          <ProactiveAlertBar 
-            deal={deal}
-            checklistTotal={allChecklistItems.length}
-            checklistComplete={0}
-            outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
-            infoRequestCount={infoRequestActionCount}
-            onNavigate={handleTabChange}
-          />
+          {dealSpaceFeatures.showProactiveAlerts && (
+            <ProactiveAlertBar 
+              deal={deal}
+              checklistTotal={allChecklistItems.length}
+              checklistComplete={0}
+              outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
+              infoRequestCount={infoRequestActionCount}
+              onNavigate={handleTabChange}
+            />
+          )}
 
           {/* Deal Pulse Dashboard */}
-          <DealPulseDashboard 
-            deal={deal}
-            attachmentCount={attachments.length}
-            checklistTotal={allChecklistItems.length}
-            checklistComplete={0}
-            outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
-          />
+          {dealSpaceFeatures.showPulseDashboard && (
+            <DealPulseDashboard 
+              deal={deal}
+              attachmentCount={attachments.length}
+              checklistTotal={allChecklistItems.length}
+              checklistComplete={0}
+              outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
+            />
+          )}
 
           {/* Header Card */}
           <Card className="mt-4 mb-6">
@@ -2626,6 +2632,7 @@ export default function DealDetail() {
                             </Collapsible>
                           );
                         case 'ai-assistant':
+                          if (!dealSpaceFeatures.showAIAssistant) return null;
                           return (
                             <Collapsible key={id} open={isAssistantPanelOpen} onOpenChange={setIsAssistantPanelOpen} className="h-full">
                               <Card className="h-full flex flex-col">
@@ -2664,6 +2671,7 @@ export default function DealDetail() {
                             </Collapsible>
                           );
                         case 'ai-activity-summary':
+                          if (!dealSpaceFeatures.showActivitySummary) return null;
                           return (
                             <Collapsible key={id} open={isActivitySummaryOpen} onOpenChange={setIsActivitySummaryOpen} className="h-full">
                               <Card className="h-full flex flex-col">
@@ -2713,6 +2721,7 @@ export default function DealDetail() {
                             </Collapsible>
                           );
                         case 'ai-suggestions':
+                          if (!dealSpaceFeatures.showSmartSuggestions) return null;
                           return (
                             <Collapsible key={id} open={isSuggestionsPanelOpen} onOpenChange={setIsSuggestionsPanelOpen} className="h-full">
                               <Card className="h-full flex flex-col">
@@ -3197,7 +3206,9 @@ export default function DealDetail() {
                   }, [])}
 
                   {/* Unified Timeline & Benchmarking */}
+                  {(dealSpaceFeatures.showUnifiedTimeline || dealSpaceFeatures.showBenchmarks) && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                    {dealSpaceFeatures.showUnifiedTimeline && (
                     <Card className="lg:col-span-2">
                       <CardHeader className="py-3">
                         <CardTitle className="text-base flex items-center gap-2">
@@ -3224,6 +3235,8 @@ export default function DealDetail() {
                         />
                       </CardContent>
                     </Card>
+                    )}
+                    {dealSpaceFeatures.showBenchmarks && (
                     <Card>
                       <CardHeader className="py-3">
                         <CardTitle className="text-base flex items-center gap-2">
@@ -3256,7 +3269,9 @@ export default function DealDetail() {
                         />
                       </CardContent>
                     </Card>
+                    )}
                   </div>
+                  )}
 
                 </TabsContent>
 
@@ -4877,7 +4892,7 @@ export default function DealDetail() {
       />
 
       {/* Deal Command Palette (⌘K) */}
-      {deal && (
+      {deal && dealSpaceFeatures.showCommandPalette && (
         <DealCommandPalette
           isOpen={isCommandPaletteOpen}
           onOpenChange={setIsCommandPaletteOpen}
