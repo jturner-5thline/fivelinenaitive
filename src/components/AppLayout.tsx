@@ -73,42 +73,42 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       {/* Liquid glass decorative background — behind all content */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
         {/* Ambient glow orbs */}
-        <div className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.15]" style={{ background: 'radial-gradient(circle, hsl(263,65%,40%) 0%, transparent 70%)' }} />
-        <div className="absolute top-[40%] -right-16 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, hsl(270,55%,32%) 0%, transparent 70%)' }} />
-        <div className="absolute -bottom-20 left-[20%] w-[600px] h-[400px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(ellipse, hsl(280,50%,35%) 0%, transparent 70%)' }} />
+        <div className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.15]" style={{ background: 'radial-gradient(circle, hsl(282,70%,35%) 0%, transparent 70%)' }} />
+        <div className="absolute top-[40%] -right-16 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, hsl(291,48%,60%) 0%, transparent 70%)' }} />
+        <div className="absolute -bottom-20 left-[20%] w-[600px] h-[400px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(ellipse, hsl(286,60%,45%) 0%, transparent 70%)' }} />
 
         {/* Flowing wave shapes */}
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="lwFill1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="hsl(263,40%,12%)" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="hsl(270,30%,8%)" stopOpacity="0.3" />
+              <stop offset="0%" stopColor="hsl(282,70%,18%)" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="hsl(282,50%,10%)" stopOpacity="0.3" />
             </linearGradient>
             <linearGradient id="lwFill2" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="hsl(270,35%,10%)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="hsl(280,30%,6%)" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="hsl(282,55%,14%)" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="hsl(291,40%,8%)" stopOpacity="0.2" />
             </linearGradient>
             <linearGradient id="lwFill3" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(280,40%,14%)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="hsl(263,30%,8%)" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="hsl(291,50%,18%)" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="hsl(282,40%,10%)" stopOpacity="0.2" />
             </linearGradient>
             <linearGradient id="lwEdge1" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(263,60%,50%)" stopOpacity="0.0" />
-              <stop offset="30%" stopColor="hsl(263,60%,50%)" stopOpacity="0.5" />
-              <stop offset="70%" stopColor="hsl(270,50%,45%)" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="hsl(280,50%,40%)" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="hsl(291,48%,60%)" stopOpacity="0.0" />
+              <stop offset="30%" stopColor="hsl(291,48%,60%)" stopOpacity="0.5" />
+              <stop offset="70%" stopColor="hsl(282,70%,35%)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="hsl(282,70%,35%)" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="lwEdge2" x1="100%" y1="0%" x2="0%" y2="0%">
-              <stop offset="0%" stopColor="hsl(270,55%,48%)" stopOpacity="0.0" />
-              <stop offset="25%" stopColor="hsl(270,55%,48%)" stopOpacity="0.4" />
-              <stop offset="75%" stopColor="hsl(263,50%,42%)" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="hsl(263,50%,42%)" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="hsl(291,48%,60%)" stopOpacity="0.0" />
+              <stop offset="25%" stopColor="hsl(291,48%,60%)" stopOpacity="0.4" />
+              <stop offset="75%" stopColor="hsl(282,70%,35%)" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="hsl(282,70%,35%)" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="lwEdge3" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(280,50%,45%)" stopOpacity="0.0" />
-              <stop offset="20%" stopColor="hsl(280,50%,45%)" stopOpacity="0.35" />
-              <stop offset="80%" stopColor="hsl(263,55%,50%)" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="hsl(263,55%,50%)" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="hsl(282,70%,35%)" stopOpacity="0.0" />
+              <stop offset="20%" stopColor="hsl(282,70%,35%)" stopOpacity="0.35" />
+              <stop offset="80%" stopColor="hsl(291,48%,60%)" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="hsl(291,48%,60%)" stopOpacity="0.0" />
             </linearGradient>
             <filter id="lwBlur"><feGaussianBlur stdDeviation="2" /></filter>
           </defs>
