@@ -5,14 +5,12 @@ import { DealSpaceAskAITab } from './DealSpaceAskAITab';
 import { DealSpaceFinancialsTab } from './DealSpaceFinancialsTab';
 import { DealSpaceDocumentsTab } from './DealSpaceDocumentsTab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
-import type { Deal } from '@/types/deal';
 
 interface DealSpaceTabProps {
   dealId: string;
-  deal?: Deal;
 }
 
-export function DealSpaceTab({ dealId, deal }: DealSpaceTabProps) {
+export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
   return (
     <Tabs defaultValue="ask-ai" className="w-full">
       <TabsList className="mb-2 rounded-sm">
@@ -35,7 +33,7 @@ export function DealSpaceTab({ dealId, deal }: DealSpaceTabProps) {
       </TabsList>
 
       <TabsContent value="ask-ai">
-        <DealSpaceAskAITab dealId={dealId} deal={deal} />
+        <DealSpaceAskAITab dealId={dealId} />
       </TabsContent>
 
       <TabsContent value="notes">
