@@ -31,7 +31,7 @@ function MainContent({
     <main
       className={cn(
         "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border shadow-sm overflow-auto border-border dark:border-[hsl(263,45%,45%,0.7)] dark:shadow-[0_0_20px_hsl(263,60%,50%,0.12)]",
-        "bg-card dark:bg-card",
+        "bg-transparent",
         className,
       )}
       onClick={handleMainClick}
