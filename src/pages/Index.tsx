@@ -69,9 +69,9 @@ const Index = () => {
           `}</style>
           
           <Button 
-            variant="outline" 
+            variant="liquid-glass" 
             size="lg"
-            className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white px-8 py-6 text-base font-light tracking-wide"
+            className="px-8 py-6 text-base font-light tracking-wide text-white"
             asChild
           >
             <Link to="/login">Login</Link>
@@ -81,9 +81,9 @@ const Index = () => {
         {/* Learn More Button - Bottom Left */}
         <div className="fixed bottom-8 left-8 z-50">
           <Button 
-            variant="outline" 
+            variant="liquid-glass" 
             size="sm"
-            className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40 hover:text-white font-light tracking-wide"
+            className="font-light tracking-wide text-white"
             asChild
           >
             <Link to="/homepage">Learn More</Link>
