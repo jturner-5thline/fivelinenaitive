@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2 } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
@@ -436,12 +436,7 @@ export default function Dashboard() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="7" height="7" />
-                          <rect x="14" y="3" width="7" height="7" />
-                          <rect x="3" y="14" width="7" height="7" />
-                          <rect x="14" y="14" width="7" height="7" />
-                        </svg>
+                        <Layers className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
