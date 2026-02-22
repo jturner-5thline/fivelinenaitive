@@ -323,7 +323,7 @@ export default function Dashboard() {
                         }}
                         variant="outline"
                         size="sm"
-                        className={`h-8 w-8 p-0 relative backdrop-blur-md border transition-all duration-200 ${filters.staleOnly ? 'bg-gradient-to-br from-amber-500/25 to-orange-600/20 border-amber-500/50 text-amber-400 shadow-[0_0_12px_hsl(38,90%,50%,0.2)] hover:from-amber-500/30 hover:to-orange-600/25' : 'bg-background/10 border-border/40 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-400'}`}
+                        className={`h-8 w-8 p-0 relative backdrop-blur-md border transition-all duration-200 ${filters.staleOnly ? 'bg-gradient-to-br from-amber-500/25 to-orange-600/20 border-amber-500/50 text-amber-400 shadow-[0_0_12px_hsl(38,90%,50%,0.2)] hover:from-amber-500/30 hover:to-orange-600/25' : 'bg-gradient-to-br from-amber-500/10 to-orange-600/5 border-amber-500/20 text-amber-400/60 hover:from-amber-500/15 hover:to-orange-600/10 hover:border-amber-500/35 hover:text-amber-400'}`}
                       >
                         <AlertTriangle className="h-4 w-4" />
                         {staleDealCount > 0 && (
@@ -356,7 +356,7 @@ export default function Dashboard() {
                         }}
                         variant="outline"
                         size="sm"
-                        className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.flaggedOnly ? 'bg-gradient-to-br from-red-500/25 to-red-900/20 border-red-500/50 text-red-400 shadow-[0_0_12px_hsl(0,70%,45%,0.2)] hover:from-red-500/30 hover:to-red-900/25' : 'bg-background/10 border-border/40 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'}`}
+                        className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.flaggedOnly ? 'bg-gradient-to-br from-red-500/25 to-red-900/20 border-red-500/50 text-red-400 shadow-[0_0_12px_hsl(0,70%,45%,0.2)] hover:from-red-500/30 hover:to-red-900/25' : 'bg-gradient-to-br from-red-500/10 to-red-900/5 border-red-500/20 text-red-400/60 hover:from-red-500/15 hover:to-red-900/10 hover:border-red-500/35 hover:text-red-400'}`}
                       >
                         <Flag className="h-4 w-4" />
                       </Toggle>
@@ -381,7 +381,7 @@ export default function Dashboard() {
                         }}
                         variant="outline"
                         size="sm"
-                        className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.hasNotificationsOnly ? 'bg-gradient-to-br from-cyan-500/25 to-teal-600/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_12px_hsl(185,70%,50%,0.2)] hover:from-cyan-500/30 hover:to-teal-600/25' : 'bg-background/10 border-border/40 hover:bg-cyan-500/10 hover:border-cyan-500/30 hover:text-cyan-400'}`}
+                        className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.hasNotificationsOnly ? 'bg-gradient-to-br from-cyan-500/25 to-teal-600/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_12px_hsl(185,70%,50%,0.2)] hover:from-cyan-500/30 hover:to-teal-600/25' : 'bg-gradient-to-br from-cyan-500/10 to-teal-600/5 border-cyan-500/20 text-cyan-400/60 hover:from-cyan-500/15 hover:to-teal-600/10 hover:border-cyan-500/35 hover:text-cyan-400'}`}
                       >
                         <Bell className="h-4 w-4" />
                       </Toggle>
