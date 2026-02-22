@@ -171,9 +171,9 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="absolute -top-1 -right-1 z-10">
-                    <div className="flex items-center justify-center h-6 min-w-6 px-1 rounded-full bg-destructive shadow-lg shadow-destructive/40 ring-2 ring-background animate-pulse">
-                     <Bell className="h-3 w-3 text-destructive-foreground" />
-                     <span className="text-[10px] font-bold text-destructive-foreground ml-0.5">{notificationCount}</span>
+                    <div className="flex items-center justify-center h-5 min-w-5 px-0.5 rounded-full bg-destructive shadow-lg shadow-destructive/40 ring-2 ring-background animate-pulse">
+                     <Bell className="h-2.5 w-2.5 text-destructive-foreground" />
+                     <span className="text-[8px] font-bold text-destructive-foreground ml-0.5">{notificationCount}</span>
                    </div>
                  </div>
               </TooltipTrigger>
