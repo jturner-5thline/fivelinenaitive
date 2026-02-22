@@ -425,12 +425,20 @@ export default function Tasks() {
           </div>
 
           {selectedTask && (
-            <TaskDetailDrawer
-              task={selectedTask}
-              onClose={() => setSelectedTaskId(null)}
-              onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
-              onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
-            />
+            <>
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setSelectedTaskId(null)}
+              />
+              <div className="relative z-40">
+                <TaskDetailDrawer
+                  task={selectedTask}
+                  onClose={() => setSelectedTaskId(null)}
+                  onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
+                  onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
+                />
+              </div>
+            </>
           )}
         </div>
 
