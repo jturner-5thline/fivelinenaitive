@@ -28,12 +28,12 @@ const metricIcons: Record<WidgetMetric, typeof TrendingUp> = {
   'average-deal-size': DollarSign,
 };
 
-const colorClasses: Record<Widget['color'], { text: string; bg: string }> = {
-  primary: { text: 'text-primary', bg: 'bg-primary/10' },
-  accent: { text: 'text-accent', bg: 'bg-accent/10' },
-  success: { text: 'text-success', bg: 'bg-success/10' },
-  warning: { text: 'text-warning', bg: 'bg-warning/10' },
-  destructive: { text: 'text-destructive', bg: 'bg-destructive/10' },
+const colorClasses: Record<Widget['color'], { text: string; bg: string; glow: string }> = {
+  primary: { text: 'text-primary', bg: 'bg-primary/15 border-primary/30 shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)]', glow: 'before:from-primary/20 before:to-transparent' },
+  accent: { text: 'text-accent', bg: 'bg-accent/15 border-accent/30 shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)]', glow: 'before:from-accent/20 before:to-transparent' },
+  success: { text: 'text-success', bg: 'bg-success/15 border-success/30 shadow-[0_0_12px_hsl(var(--success)/0.2),inset_0_1px_1px_hsl(var(--success)/0.15)]', glow: 'before:from-success/20 before:to-transparent' },
+  warning: { text: 'text-warning', bg: 'bg-warning/15 border-warning/30 shadow-[0_0_12px_hsl(var(--warning)/0.2),inset_0_1px_1px_hsl(var(--warning)/0.15)]', glow: 'before:from-warning/20 before:to-transparent' },
+  destructive: { text: 'text-destructive', bg: 'bg-destructive/15 border-destructive/30 shadow-[0_0_12px_hsl(var(--destructive)/0.2),inset_0_1px_1px_hsl(var(--destructive)/0.15)]', glow: 'before:from-destructive/20 before:to-transparent' },
 };
 
 export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onDelete, onClick }: WidgetCardProps) {
@@ -98,8 +98,8 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
         </div>
       )}
       <CardContent className="flex items-center gap-4 p-4">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${colors.bg} flex-shrink-0`}>
-          <Icon className={`h-6 w-6 ${colors.text}`} />
+        <div className={`relative flex h-12 w-12 items-center justify-center rounded-lg border backdrop-blur-sm flex-shrink-0 overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-b before:rounded-lg ${colors.bg} ${colors.glow}`}>
+          <Icon className={`relative z-10 h-6 w-6 ${colors.text}`} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm text-muted-foreground truncate">{widget.label}</p>
