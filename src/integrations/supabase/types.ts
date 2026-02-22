@@ -6604,6 +6604,35 @@ export type Database = {
           },
         ]
       }
+      task_watchers: {
+        Row: {
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_watchers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           archived_at: string | null
@@ -6618,12 +6647,14 @@ export type Database = {
           due_date: string | null
           id: string
           is_recurring: boolean
+          is_starred: boolean
           parent_task_id: string | null
           position: number
           priority: string
           project_id: string | null
           recurrence_parent_id: string | null
           recurrence_rule: string | null
+          recurrence_source_id: string | null
           section_id: string | null
           start_date: string | null
           status: string
@@ -6644,12 +6675,14 @@ export type Database = {
           due_date?: string | null
           id?: string
           is_recurring?: boolean
+          is_starred?: boolean
           parent_task_id?: string | null
           position?: number
           priority?: string
           project_id?: string | null
           recurrence_parent_id?: string | null
           recurrence_rule?: string | null
+          recurrence_source_id?: string | null
           section_id?: string | null
           start_date?: string | null
           status?: string
@@ -6670,12 +6703,14 @@ export type Database = {
           due_date?: string | null
           id?: string
           is_recurring?: boolean
+          is_starred?: boolean
           parent_task_id?: string | null
           position?: number
           priority?: string
           project_id?: string | null
           recurrence_parent_id?: string | null
           recurrence_rule?: string | null
+          recurrence_source_id?: string | null
           section_id?: string | null
           start_date?: string | null
           status?: string
@@ -6715,6 +6750,13 @@ export type Database = {
           {
             foreignKeyName: "tasks_recurrence_parent_id_fkey"
             columns: ["recurrence_parent_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_recurrence_source_id_fkey"
+            columns: ["recurrence_source_id"]
             isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]

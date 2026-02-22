@@ -4,6 +4,7 @@ import { useTaskLabels, useTaskLabelAssignments } from '@/hooks/useTaskLabels';
 import { useTaskDependencies } from '@/hooks/useTaskDependencies';
 import { useTaskTimeEntries } from '@/hooks/useTaskTimeEntries';
 import { useTaskAttachments } from '@/hooks/useTaskAttachments';
+import { useTaskWatchers } from '@/hooks/useTaskWatchers';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
 import { useCreateMentions } from '@/hooks/useTaskMentions';
@@ -33,6 +34,7 @@ import {
   X, Calendar, Flag, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Tag, Link2, Timer, Paperclip, Download, FileText, Users,
+  Star, Repeat, Eye, EyeOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
@@ -94,6 +96,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
   const { blockedBy, blocking, addDependency, removeDependency } = useTaskDependencies(task.id);
   const { entries: timeEntries, totalMinutes, logTime, deleteEntry } = useTaskTimeEntries(task.id);
   const { attachments, uploadAttachment, deleteAttachment, getDownloadUrl } = useTaskAttachments(task.id);
+  const { watchers, isWatching, toggleWatch } = useTaskWatchers(task.id);
   const members = useTeamMembers();
   const { tasks: allTasks } = useMyTasks();
   const createMentions = useCreateMentions();
@@ -365,7 +368,64 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete }: TaskDeta
               </div>
             </div>
 
-            {/* Time tracked */}
+            {/* Starred */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+                <Star className="h-3 w-3" /> Starred
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn('h-7 text-xs gap-1.5', task.is_starred && 'text-amber-500')}
+                onClick={() => onUpdate({ is_starred: !task.is_starred } as any)}
+              >
+                <Star className={cn('h-3.5 w-3.5', task.is_starred && 'fill-amber-500 text-amber-500')} />
+                {task.is_starred ? 'Starred' : 'Star this task'}
+              </Button>
+            </div>
+
+            {/* Recurrence */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+                <Repeat className="h-3 w-3" /> Repeat
+              </div>
+              <Select
+                value={task.recurrence_rule || 'none'}
+                onValueChange={v => onUpdate({ recurrence_rule: v === 'none' ? null : v } as any)}
+              >
+                <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-xs">No repeat</SelectItem>
+                  <SelectItem value="daily" className="text-xs">Daily</SelectItem>
+                  <SelectItem value="weekdays" className="text-xs">Weekdays</SelectItem>
+                  <SelectItem value="weekly" className="text-xs">Weekly</SelectItem>
+                  <SelectItem value="biweekly" className="text-xs">Biweekly</SelectItem>
+                  <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Watchers */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
+                <Eye className="h-3 w-3" /> Watchers
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn('h-7 text-xs gap-1.5', isWatching && 'text-primary')}
+                  onClick={() => toggleWatch.mutate()}
+                >
+                  {isWatching ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  {isWatching ? 'Unwatch' : 'Watch'}
+                </Button>
+                {watchers.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground">{watchers.length} watching</span>
+                )}
+              </div>
+            </div>
+
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-[90px] text-xs text-muted-foreground shrink-0">
                 <Timer className="h-3 w-3" /> Time
