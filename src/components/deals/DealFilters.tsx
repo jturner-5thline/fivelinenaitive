@@ -168,18 +168,6 @@ export function DealFilters({
           />
         </div>
 
-        {/* Quick Filters (Pinned) */}
-        {pinnedFilters.map((key) => (
-          <MultiSelectFilter
-            key={key}
-            label={FILTER_LABELS[key]}
-            options={filterConfigs[key]}
-            selected={filters[key] as string[]}
-            onChange={getFilterOnChange(key)}
-            className="w-[130px]"
-          />
-        ))}
-
         {/* Consolidated Filters Popover */}
         <HintTooltip
           hint="Use filters to quickly find deals by stage, status, manager, and more. Pin your favorites for quick access!"
@@ -197,6 +185,18 @@ export function DealFilters({
             onTogglePin={togglePin}
           />
         </HintTooltip>
+
+        {/* Quick Filters (Pinned) */}
+        {pinnedFilters.map((key) => (
+          <MultiSelectFilter
+            key={key}
+            label={FILTER_LABELS[key]}
+            options={filterConfigs[key]}
+            selected={filters[key] as string[]}
+            onChange={getFilterOnChange(key)}
+            className="w-[130px]"
+          />
+        ))}
 
         {activeFiltersCount > 0 && (
           <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-9">
