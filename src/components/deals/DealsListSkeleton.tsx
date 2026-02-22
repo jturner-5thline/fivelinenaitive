@@ -2,11 +2,11 @@ import { DealCardSkeleton } from './DealCardSkeleton';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DealsListSkeletonProps {
-  groupByStatus?: boolean;
+  groupBy?: string | null;
 }
 
-export function DealsListSkeleton({ groupByStatus = true }: DealsListSkeletonProps) {
-  if (!groupByStatus) {
+export function DealsListSkeleton({ groupBy = 'status' }: DealsListSkeletonProps) {
+  if (!groupBy) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => (

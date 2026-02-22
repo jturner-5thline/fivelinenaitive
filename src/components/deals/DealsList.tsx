@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Deal, DealStatus, STATUS_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { DealListRow } from './DealListRow';
@@ -33,7 +33,7 @@ interface DealsListProps {
   onStatusChange: (dealId: string, newStatus: DealStatus) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
-  groupByStatus?: boolean;
+  groupBy?: string | null;
   sortField?: SortField;
   sortDirection?: SortDirection;
   viewMode?: 'grid' | 'list';
@@ -68,9 +68,9 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupByStatus = true, sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<DealStatus>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const { columnOrder, activeColumns, visibleColumns, updateColumnOrder, toggleColumnVisibility } = useDealListColumnOrder();
   
   // Fetch FLEx engagement scores for all visible deals
@@ -111,16 +111,23 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
     updateColumnOrder(newOrder);
   };
 
-  const toggleGroup = (status: DealStatus) => {
+  const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev);
-      if (next.has(status)) {
-        next.delete(status);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.add(status);
+        next.add(key);
       }
       return next;
     });
+  };
+
+  const getGroupLabel = (key: string, value: string): string => {
+    if (key === 'status') return STATUS_CONFIG[value as DealStatus]?.label || value;
+    if (key === 'stage') return STAGE_CONFIG[value]?.label || value;
+    if (key === 'engagementType') return ENGAGEMENT_TYPE_CONFIG[value]?.label || value;
+    return value || 'Unassigned';
   };
 
   if (deals.length === 0) {
@@ -176,7 +183,7 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
   }
 
   // If not grouping, show flat grid
-  if (!groupByStatus) {
+  if (!groupBy) {
     return (
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 py-3 px-3">
         {sortedDeals.map((deal, index) => (
@@ -217,25 +224,47 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
     );
   }
 
-  // Group deals by status
-  const groupedDeals = STATUS_ORDER.reduce((acc, status) => {
-    const dealsForStatus = sortedDeals.filter((deal) => deal.status === status);
-    if (dealsForStatus.length > 0) {
-      acc.push({ status, deals: dealsForStatus });
+  // Group deals by the selected field
+  const getGroupValue = (deal: Deal): string => {
+    if (groupBy === 'status') return deal.status || 'Unknown';
+    if (groupBy === 'stage') return deal.stage || 'Unknown';
+    if (groupBy === 'engagementType') return deal.engagementType || 'Unknown';
+    if (groupBy === 'manager') return deal.manager || 'Unassigned';
+    if (groupBy === 'lender') return deal.lender || 'Unassigned';
+    if (groupBy === 'referredBy') return deal.referredBy?.name || 'None';
+    return 'Unknown';
+  };
+
+  // Build ordered groups
+  const groupOrder: string[] = [];
+  const groupMap = new Map<string, Deal[]>();
+  sortedDeals.forEach(deal => {
+    const val = getGroupValue(deal);
+    if (!groupMap.has(val)) {
+      groupOrder.push(val);
+      groupMap.set(val, []);
     }
-    return acc;
-  }, [] as { status: DealStatus; deals: Deal[] }[]);
+    groupMap.get(val)!.push(deal);
+  });
+
+  // For status, use predefined order
+  const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
+  const orderedKeys = groupBy === 'status' 
+    ? STATUS_ORDER.filter(s => groupMap.has(s))
+    : groupOrder;
 
   return (
     <div className="space-y-6">
-      {groupedDeals.map(({ status, deals: statusDeals }) => {
-        const isCollapsed = collapsedGroups.has(status);
+      {orderedKeys.map((groupValue, groupIdx) => {
+        const groupDeals = groupMap.get(groupValue) || [];
+        const isCollapsed = collapsedGroups.has(groupValue);
+        const dotColor = groupBy === 'status' ? STATUS_CONFIG[groupValue as DealStatus]?.dotColor : undefined;
         
         return (
           <Collapsible
-            key={status}
+            key={groupValue}
             open={!isCollapsed}
-            onOpenChange={() => toggleGroup(status)}
+            onOpenChange={() => toggleGroup(groupValue)}
           >
             <CollapsibleTrigger asChild>
               <Button
@@ -247,17 +276,17 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                 ) : (
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 )}
-                <span className={`h-2.5 w-2.5 rounded-full ${STATUS_CONFIG[status].dotColor}`} />
+                {dotColor && <span className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />}
                 <h2 className="text-lg font-semibold text-foreground">
-                  {STATUS_CONFIG[status].label}
+                  {getGroupLabel(groupBy, groupValue)}
                 </h2>
-                <span className="text-sm text-muted-foreground">({statusDeals.length})</span>
+                <span className="text-sm text-muted-foreground">({groupDeals.length})</span>
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 py-3 px-3">
-                {statusDeals.map((deal, index) => {
-                  const isFirstDealOverall = groupedDeals[0].status === status && index === 0;
+                {groupDeals.map((deal, index) => {
+                  const isFirstDealOverall = groupIdx === 0 && index === 0;
                   
                   if (isFirstDealOverall) {
                     return (
