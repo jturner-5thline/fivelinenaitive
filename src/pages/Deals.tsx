@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { MilestoneManagerFilter } from '@/components/deals/MilestoneManagerFilter';
@@ -460,33 +461,37 @@ export default function Dashboard() {
 
                 <div className="h-4 w-px bg-border" />
 
-                {/* View Mode Toggle */}
-                <div className="flex items-center border rounded-md">
-                  <Button
-                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-8 px-2.5 rounded-r-none"
-                    onClick={() => setViewMode('grid')}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-8 px-2.5 rounded-none border-x"
-                    onClick={() => setViewMode('list')}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'pipeline' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    className="h-8 px-2.5 rounded-l-none"
-                    onClick={() => setViewMode('pipeline')}
-                  >
-                    <Kanban className="h-4 w-4" />
-                  </Button>
-                </div>
+                {/* View Mode Dropdown */}
+                <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline') => setViewMode(val)}>
+                  <SelectTrigger className="h-8 w-[130px] text-sm">
+                    <div className="flex items-center gap-2">
+                      {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
+                      {viewMode === 'list' && <List className="h-4 w-4" />}
+                      {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
+                      <SelectValue />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="grid">
+                      <div className="flex items-center gap-2">
+                        <LayoutGrid className="h-4 w-4" />
+                        Grid
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="list">
+                      <div className="flex items-center gap-2">
+                        <List className="h-4 w-4" />
+                        List
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pipeline">
+                      <div className="flex items-center gap-2">
+                        <Kanban className="h-4 w-4" />
+                        Pipeline
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
 
                 {viewMode === 'grid' && (
                   <>
