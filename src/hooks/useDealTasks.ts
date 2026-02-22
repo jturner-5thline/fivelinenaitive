@@ -72,14 +72,24 @@ export function useDealTasks(dealId: string | undefined) {
       if (error) throw error;
       setTasks(prev => [data as DealTask, ...prev]);
 
-      // Fire Zapier webhooks
+      // Fire Zapier webhooks with assignee profile info for Asana matching
       if (data) {
         const taskUrl = `${window.location.origin}/tasks?task=${(data as any).id}`;
+
+        // Fetch assignee profile to include email/name for Asana user matching
+        const { data: assigneeProfile } = await supabase
+          .from('profiles')
+          .select('display_name, email')
+          .eq('user_id', task.assigned_to)
+          .single();
+
         const webhookPayload = {
           task_id: (data as any).id,
           title: task.title,
           description: task.description || null,
           assigned_to: task.assigned_to,
+          assigned_to_email: assigneeProfile?.email || null,
+          assigned_to_name: assigneeProfile?.display_name || null,
           assigned_by: user.id,
           due_date: task.due_date || null,
           deal_id: dealId,
