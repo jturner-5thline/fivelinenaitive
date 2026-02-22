@@ -243,54 +243,56 @@ export function TaskListView({
                 </button>
 
                 {!isCollapsed && (
-                  <>
-                    {group.tasks.map(task => (
-                      <SortableTaskRow
-                        key={task.id}
-                        task={task}
-                        isSelected={selectedTaskId === task.id}
-                        isMultiSelected={selectedTaskIds?.has(task.id) || false}
-                        onSelect={() => onSelectTask(task.id)}
-                        onUpdate={(updates) => onUpdateTask(task.id, updates)}
-                        onDelete={() => onDeleteTask(task.id)}
-                        onToggleComplete={() => handleCompleteWithCelebration(task.id, task.status)}
-                        onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
-                      />
-                    ))}
+                  <div className="mx-3 mb-3 mt-1 rounded-lg border border-[hsl(263,40%,25%,0.6)] bg-[linear-gradient(325deg,hsl(260,20%,8%,0.85)_0%,hsl(263,18%,6%,0.9)_40%,hsl(240,15%,5%,0.95)_100%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(263,40%,35%,0.08),0_4px_24px_hsl(0,0%,0%,0.4)] relative overflow-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,hsl(263,40%,30%,0.08)_0%,transparent_50%,hsl(263,30%,20%,0.04)_100%)]">
+                    <div className="relative z-10">
+                      {group.tasks.map(task => (
+                        <SortableTaskRow
+                          key={task.id}
+                          task={task}
+                          isSelected={selectedTaskId === task.id}
+                          isMultiSelected={selectedTaskIds?.has(task.id) || false}
+                          onSelect={() => onSelectTask(task.id)}
+                          onUpdate={(updates) => onUpdateTask(task.id, updates)}
+                          onDelete={() => onDeleteTask(task.id)}
+                          onToggleComplete={() => handleCompleteWithCelebration(task.id, task.status)}
+                          onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
+                        />
+                      ))}
 
-                    {/* Inline add for first section */}
-                    {group === groups[0] && (
-                      <>
-                        {isCreating ? (
-                          <div className="grid grid-cols-[20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
-                            <div />
-                            <div className="w-5" />
-                            <Input
-                              ref={newTaskRef as any}
-                              value={newTaskTitle}
-                              onChange={e => onNewTaskChange(e.target.value)}
-                              onKeyDown={onNewTaskKeyDown}
-                              placeholder="Task name... (Enter to create, Esc to cancel)"
-                              className="h-7 text-sm border-primary"
-                              autoFocus
-                            />
-                            <div />
-                            <div />
-                            <div />
-                            <div />
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => onNewTaskChange('')}
-                            className="w-full flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add task
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </>
+                      {/* Inline add for first section */}
+                      {group === groups[0] && (
+                        <>
+                          {isCreating ? (
+                            <div className="grid grid-cols-[20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                              <div />
+                              <div className="w-5" />
+                              <Input
+                                ref={newTaskRef as any}
+                                value={newTaskTitle}
+                                onChange={e => onNewTaskChange(e.target.value)}
+                                onKeyDown={onNewTaskKeyDown}
+                                placeholder="Task name... (Enter to create, Esc to cancel)"
+                                className="h-7 text-sm border-primary"
+                                autoFocus
+                              />
+                              <div />
+                              <div />
+                              <div />
+                              <div />
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => onNewTaskChange('')}
+                              className="w-full flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Add task
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             );
