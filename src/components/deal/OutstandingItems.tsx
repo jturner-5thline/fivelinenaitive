@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square } from 'lucide-react';
-import { format } from 'date-fns';
+import { useState, useMemo } from 'react';
+import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus } from 'lucide-react';
+import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Collapsible,
   CollapsibleContent,
@@ -22,8 +24,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { OutstandingItem } from '@/hooks/useOutstandingItems';
+import { OutstandingItem, ItemPriority } from '@/hooks/useOutstandingItems';
 import { OutstandingItemDialog } from './OutstandingItemDialog';
 
 export type { OutstandingItem };
@@ -31,7 +40,6 @@ export type { OutstandingItem };
 // Helper to check if item is delivered to all requesters
 export const isFullyDelivered = (item: OutstandingItem): boolean => {
   const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
-  // If no requesters assigned, item is NOT considered fully delivered
   if (!item.requestedBy || requesters.length === 0 || (requesters.length === 1 && !requesters[0])) {
     return false;
   }
@@ -39,12 +47,19 @@ export const isFullyDelivered = (item: OutstandingItem): boolean => {
 };
 
 type KanbanStage = 'requested' | 'received' | 'approved';
+type GroupBy = 'none' | 'requester' | 'status' | 'priority';
 
 const KANBAN_STAGES: { key: KanbanStage; label: string; color: string }[] = [
   { key: 'requested', label: 'Requested', color: 'bg-amber-500' },
   { key: 'received', label: 'Received', color: 'bg-blue-500' },
   { key: 'approved', label: 'Submitted', color: 'bg-emerald-500' },
 ];
+
+const PRIORITY_CONFIG: Record<ItemPriority, { label: string; color: string; dotColor: string; icon: React.ComponentType<{ className?: string }> }> = {
+  urgent: { label: 'Urgent', color: 'text-destructive', dotColor: 'bg-destructive', icon: AlertTriangle },
+  high: { label: 'High', color: 'text-orange-500', dotColor: 'bg-orange-500', icon: ArrowUp },
+  normal: { label: 'Normal', color: 'text-muted-foreground', dotColor: 'bg-muted-foreground', icon: ArrowUpRight },
+};
 
 interface OutstandingItemsProps {
   items: OutstandingItem[];
@@ -53,6 +68,9 @@ interface OutstandingItemsProps {
   onAdd: (text: string, requestedBy: string[]) => void;
   onUpdate: (id: string, updates: Partial<OutstandingItem>) => void;
   onDelete: (id: string) => void;
+  onBulkAdd?: (texts: string[], requestedBy: string[]) => void;
+  onReorder?: (items: OutstandingItem[]) => void;
+  teamMembers?: { id: string; display_name: string }[];
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
@@ -73,6 +91,47 @@ const moveToStage = (stage: KanbanStage, item: OutstandingItem): Partial<Outstan
       return {};
   }
 };
+
+// ETA display helper
+function EtaBadge({ eta }: { eta?: string }) {
+  if (!eta) return null;
+  const date = new Date(eta);
+  const overdue = isPast(date) && !isToday(date);
+  const today = isToday(date);
+  const tomorrow = isTomorrow(date);
+  const daysUntil = differenceInDays(date, new Date());
+
+  let label = format(date, 'M/d');
+  if (today) label = 'Today';
+  else if (tomorrow) label = 'Tomorrow';
+  else if (overdue) label = `${Math.abs(daysUntil)}d overdue`;
+
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md font-medium",
+      overdue && "bg-destructive/10 text-destructive",
+      today && "bg-orange-500/10 text-orange-600",
+      tomorrow && "bg-amber-500/10 text-amber-600",
+      !overdue && !today && !tomorrow && "bg-muted text-muted-foreground"
+    )}>
+      <Calendar className="h-3 w-3" />
+      {label}
+    </span>
+  );
+}
+
+// Priority dot
+function PriorityDot({ priority, size = 'sm' }: { priority: ItemPriority; size?: 'sm' | 'md' }) {
+  const config = PRIORITY_CONFIG[priority];
+  if (priority === 'normal') return null;
+  return (
+    <span className={cn(
+      "rounded-full shrink-0",
+      config.dotColor,
+      size === 'sm' ? "w-2 h-2" : "w-2.5 h-2.5"
+    )} title={config.label} />
+  );
+}
 
 // Draggable Kanban Item
 function DraggableKanbanItem({ item }: { item: OutstandingItem }) {
@@ -99,14 +158,18 @@ function DraggableKanbanItem({ item }: { item: OutstandingItem }) {
       <div className="flex items-start gap-2">
         <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium mb-2">{item.text}</p>
-          <div className="text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 mb-1">
+            <PriorityDot priority={item.priority} />
+            <p className="text-sm font-medium">{item.text}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
               <User className="h-3 w-3" />
               {(!item.requestedBy || item.requestedBy.length === 0)
                 ? 'No requester'
                 : Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}
             </span>
+            <EtaBadge eta={item.eta} />
           </div>
         </div>
       </div>
@@ -235,9 +298,10 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete }: OutstandingItemsProps) {
+export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete, onBulkAdd, onReorder, teamMembers }: OutstandingItemsProps) {
   const [newItemText, setNewItemText] = useState('');
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
+  const [newPriority, setNewPriority] = useState<ItemPriority>('normal');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [editingRequestedBy, setEditingRequestedBy] = useState<string[]>([]);
@@ -249,9 +313,13 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [showAllItems, setShowAllItems] = useState(true);
   const [requesterPopoverOpen, setRequesterPopoverOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [groupBy, setGroupBy] = useState<GroupBy>('none');
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState('');
 
   const handleItemClick = (item: OutstandingItem) => {
-    if (editingId) return; // Don't open dialog while editing
+    if (editingId) return;
     setSelectedItem(item);
     setIsItemDialogOpen(true);
   };
@@ -259,29 +327,19 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  const selectAllActive = () => {
-    setSelectedIds(new Set(activeItems.map(item => item.id)));
-  };
-
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-  };
+  const selectAllActive = () => setSelectedIds(new Set(activeItems.map(item => item.id)));
+  const clearSelection = () => setSelectedIds(new Set());
 
   const handleBulkMarkReceived = () => {
     selectedIds.forEach(id => {
       const item = items.find(i => i.id === id);
-      if (item && !item.received) {
-        onUpdate(id, { received: true });
-      }
+      if (item && !item.received) onUpdate(id, { received: true });
     });
     clearSelection();
   };
@@ -289,21 +347,16 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
   const handleBulkMarkApproved = () => {
     selectedIds.forEach(id => {
       const item = items.find(i => i.id === id);
-      if (item && !item.approved) {
-        onUpdate(id, { approved: true });
-      }
+      if (item && !item.approved) onUpdate(id, { approved: true });
     });
     clearSelection();
   };
 
   const handleBulkMarkBoth = () => {
-    selectedIds.forEach(id => {
-      onUpdate(id, { received: true, approved: true });
-    });
+    selectedIds.forEach(id => onUpdate(id, { received: true, approved: true }));
     clearSelection();
   };
 
-  // Build requester options: company name (if available) + lenders on the deal
   const requestedByOptions = [
     ...(companyName ? [companyName] : []),
     ...lenderNames,
@@ -311,41 +364,82 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
 
   const toggleFilterLender = (option: string) => {
     setFilterByLender(prev => 
-      prev.includes(option) 
-        ? prev.filter(o => o !== option)
-        : [...prev, option]
+      prev.includes(option) ? prev.filter(o => o !== option) : [...prev, option]
     );
   };
 
-  const filteredItems = filterByLender.length === 0 
-    ? items 
-    : items.filter(item => {
+  // Filter items
+  const filteredItems = useMemo(() => {
+    let result = items;
+    
+    if (filterByLender.length > 0) {
+      result = result.filter(item => {
         const requesters = Array.isArray(item.requestedBy) ? item.requestedBy : [item.requestedBy];
         return filterByLender.some(lender => requesters.includes(lender));
       });
+    }
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(item => 
+        item.text.toLowerCase().includes(q) ||
+        (item.requestedBy && item.requestedBy.some(r => r.toLowerCase().includes(q))) ||
+        (item.assignedTo && item.assignedTo.toLowerCase().includes(q)) ||
+        (item.notes && item.notes.toLowerCase().includes(q))
+      );
+    }
+    
+    return result;
+  }, [items, filterByLender, searchQuery]);
 
-  // Sort items: active first, then completed at the bottom
   const isCompleted = (item: OutstandingItem) => item.received && item.approved;
   
-  // Apply showAllItems filter
-  const displayItems = showAllItems 
-    ? filteredItems 
-    : filteredItems.filter(item => !isCompleted(item));
+  const displayItems = showAllItems ? filteredItems : filteredItems.filter(item => !isCompleted(item));
   
   const sortedItems = [...displayItems].sort((a, b) => {
     const aCompleted = isCompleted(a);
     const bCompleted = isCompleted(b);
-    if (aCompleted === bCompleted) return 0;
-    return aCompleted ? 1 : -1; // Completed items go to the bottom
+    if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+    // Sort by priority within same completion status
+    const priorityOrder: Record<ItemPriority, number> = { urgent: 0, high: 1, normal: 2 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
   });
+  
   const activeItems = sortedItems.filter(item => !isCompleted(item));
   const completedItems = sortedItems.filter(item => isCompleted(item));
+
+  // Group items
+  const groupedActiveItems = useMemo(() => {
+    if (groupBy === 'none') return null;
+    
+    const groups: Record<string, OutstandingItem[]> = {};
+    activeItems.forEach(item => {
+      let key: string;
+      switch (groupBy) {
+        case 'requester':
+          key = (!item.requestedBy || item.requestedBy.length === 0) ? 'No Requester' : item.requestedBy.join(', ');
+          break;
+        case 'status':
+          key = item.approved ? 'Submitted' : item.received ? 'Received' : 'Requested';
+          break;
+        case 'priority':
+          key = PRIORITY_CONFIG[item.priority].label;
+          break;
+        default:
+          key = 'Other';
+      }
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+    });
+    return groups;
+  }, [activeItems, groupBy]);
 
   const handleAdd = () => {
     if (newItemText.trim()) {
       onAdd(newItemText.trim(), newRequestedBy);
       setNewItemText('');
       setNewRequestedBy([]);
+      setNewPriority('normal');
     }
   };
 
@@ -357,7 +451,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
     
     setNewRequestedBy(updatedRequestedBy);
 
-    // Auto-add: if user typed text and just selected a requester (not removing), submit automatically
     if (!isRemoving && newItemText.trim()) {
       onAdd(newItemText.trim(), updatedRequestedBy);
       setNewItemText('');
@@ -368,9 +461,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
 
   const toggleEditingRequestedBy = (option: string) => {
     setEditingRequestedBy(prev => 
-      prev.includes(option) 
-        ? prev.filter(o => o !== option)
-        : [...prev, option]
+      prev.includes(option) ? prev.filter(o => o !== option) : [...prev, option]
     );
   };
 
@@ -401,17 +492,278 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
     setEditingRequestedBy([]);
   };
 
-  const approvedCount = items.filter(i => i.approved).length;
+  const handleBulkImport = () => {
+    if (!onBulkAdd || !bulkImportText.trim()) return;
+    const lines = bulkImportText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+    onBulkAdd(lines, []);
+    setBulkImportText('');
+    setIsBulkImportOpen(false);
+  };
+
   const deliveredCount = items.filter(i => isFullyDelivered(i)).length;
+  const completedCount = items.filter(i => isCompleted(i)).length;
+  const progressPercent = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
+
+  // Count overdue items
+  const overdueCount = items.filter(i => {
+    if (!i.eta || isCompleted(i)) return false;
+    return isPast(new Date(i.eta)) && !isToday(new Date(i.eta));
+  }).length;
 
   const getItemsByStage = (stage: KanbanStage) => {
     return items.filter(item => getItemStage(item) === stage);
   };
 
+  // Render a single item row
+  const renderItemRow = (item: OutstandingItem, isCompletedRow: boolean = false) => {
+    const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
+    const isSelected = selectedIds.has(item.id);
+    
+    return (
+      <div
+        key={item.id}
+        className={cn(
+          "flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors cursor-pointer",
+          isCompletedRow && "opacity-60",
+          "border-border hover:border-primary/50",
+          isSelected && "border-primary/50 bg-primary/5"
+        )}
+        onClick={() => {
+          if (editingId !== item.id) handleItemClick(item);
+        }}
+      >
+        {/* Selection Checkbox */}
+        {!isCompletedRow && (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => toggleSelection(item.id)}
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "shrink-0",
+              isSelected && "border-primary bg-primary text-primary-foreground"
+            )}
+          />
+        )}
+        
+        {editingId === item.id ? (
+          <div className="flex-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <Input
+              value={editingText}
+              onChange={(e) => setEditingText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveEdit();
+                if (e.key === 'Escape') handleCancelEdit();
+              }}
+              autoFocus
+              className="flex-1"
+            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-40 justify-between gap-2 font-normal text-xs',
+                    editingRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 bg-destructive/5'
+                  )}
+                >
+                  <span className="truncate">{getDisplayText(editingRequestedBy)}</span>
+                  <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
+                <div className="max-h-[300px] overflow-auto p-1">
+                  {requestedByOptions.map((option) => {
+                    const isOptionSelected = editingRequestedBy.includes(option);
+                    return (
+                      <div
+                        key={option}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                          isOptionSelected && 'bg-accent/50'
+                        )}
+                        onClick={() => toggleEditingRequestedBy(option)}
+                      >
+                        <Checkbox
+                          checked={isOptionSelected}
+                          onCheckedChange={() => toggleEditingRequestedBy(option)}
+                          className="pointer-events-none"
+                        />
+                        <span className="flex-1">{option}</span>
+                        {isOptionSelected && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button size="sm" variant="gradient" onClick={handleSaveEdit}>Save</Button>
+            <Button size="sm" variant="ghost" onClick={handleCancelEdit}><X className="h-4 w-4" /></Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                onDelete(item.id);
+                handleCancelEdit();
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Priority dot */}
+            <PriorityDot priority={item.priority} />
+            
+            <div className="flex-1 min-w-0">
+              <span className={cn(
+                "text-sm block",
+                isCompletedRow && "line-through text-muted-foreground"
+              )}>
+                {item.text}
+              </span>
+              <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5 flex-wrap">
+                {isCompletedRow && item.completedAt && (
+                  <span className="flex items-center gap-1 text-emerald-600">
+                    <Check className="h-3 w-3" />
+                    Completed {format(new Date(item.completedAt), 'MMM d, yyyy')}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {format(new Date(item.createdAt), 'M/d/yy')}
+                </span>
+                <span className={cn(
+                  "flex items-center gap-1 whitespace-nowrap",
+                  hasNoRequester && "text-destructive"
+                )}>
+                  <User className="h-3 w-3 shrink-0" />
+                  <span className="truncate">
+                    {hasNoRequester
+                      ? 'No requester assigned'
+                      : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
+                  </span>
+                </span>
+                {item.assignedTo && (
+                  <span className="flex items-center gap-1 text-primary">
+                    <UserPlus className="h-3 w-3" />
+                    {item.assignedTo}
+                  </span>
+                )}
+                <EtaBadge eta={!isCompletedRow ? item.eta : undefined} />
+              </div>
+            </div>
+            
+            {!isCompletedRow && (
+              <>
+                <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                    item.received && "bg-emerald-500/10"
+                  )}>
+                    <Checkbox
+                      checked={item.received}
+                      onCheckedChange={(checked) =>
+                        onUpdate(item.id, { received: checked === true })
+                      }
+                      className={cn(
+                        item.received && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                      )}
+                    />
+                    <span className={cn(
+                      "text-xs",
+                      item.received ? "text-emerald-600 font-medium" : "text-muted-foreground"
+                    )}>Received</span>
+                  </div>
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
+                    item.approved && "bg-emerald-500/10"
+                  )}>
+                    <Checkbox
+                      checked={item.approved}
+                      onCheckedChange={(checked) =>
+                        onUpdate(item.id, { approved: checked === true })
+                      }
+                      className={cn(
+                        item.approved && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                      )}
+                    />
+                    <span className={cn(
+                      "text-xs",
+                      item.approved ? "text-emerald-600 font-medium" : "text-muted-foreground"
+                    )}>Submitted</span>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartEdit(item);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-emerald-600"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpdate(item.id, { received: true, approved: true });
+                  }}
+                  title="Mark as complete"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            
+            {isCompletedRow && (
+              <>
+                <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10">
+                    <Checkbox
+                      checked={item.received}
+                      onCheckedChange={(checked) => onUpdate(item.id, { received: checked === true })}
+                      className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                    />
+                    <span className="text-xs text-emerald-600 font-medium">Received</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10">
+                    <Checkbox
+                      checked={item.approved}
+                      onCheckedChange={(checked) => onUpdate(item.id, { approved: checked === true })}
+                      className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                    />
+                    <span className="text-xs text-emerald-600 font-medium">Submitted</span>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartEdit(item);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <Card className="h-full flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div className="flex items-center gap-2">
             <CardTitle className="text-lg">Outstanding Items</CardTitle>
             {items.length > 0 ? (
@@ -423,116 +775,164 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 No Outstanding Items
               </span>
             )}
+            {overdueCount > 0 && (
+              <span className="text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-md">
+                {overdueCount} overdue
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      'gap-1.5 text-xs',
-                      filterByLender.length > 0 && 'border-primary bg-primary/5'
-                    )}
-                  >
-                    <User className="h-3 w-3" />
-                    {filterByLender.length === 0 
-                      ? 'All Requesters' 
-                      : filterByLender.length === 1 
-                        ? filterByLender[0] 
-                        : `${filterByLender.length} selected`}
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="start">
-                  <div className="max-h-[300px] overflow-auto p-1">
-                    {requestedByOptions.map((option) => {
-                      const isSelected = filterByLender.includes(option);
-                      return (
-                        <div
-                          key={option}
-                          className={cn(
-                            'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                            isSelected && 'bg-accent/50'
-                          )}
-                          onClick={() => toggleFilterLender(option)}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleFilterLender(option)}
-                            className="pointer-events-none"
-                          />
-                          <span className="flex-1">{option}</span>
-                          {isSelected && <Check className="h-4 w-4 text-primary" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {filterByLender.length > 0 && (
-                    <div className="border-t border-border p-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-center text-xs"
-                        onClick={() => setFilterByLender([])}
-                      >
-                        Clear filter
-                      </Button>
-                    </div>
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 w-36 pl-7 text-xs"
+              />
+            </div>
+            
+            {/* Filter by requester */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    'gap-1.5 text-xs h-8',
+                    filterByLender.length > 0 && 'border-primary bg-primary/5'
                   )}
-                </PopoverContent>
-              </Popover>
+                >
+                  <User className="h-3 w-3" />
+                  {filterByLender.length === 0 
+                    ? 'All' 
+                    : filterByLender.length === 1 
+                      ? filterByLender[0] 
+                      : `${filterByLender.length}`}
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="start">
+                <div className="max-h-[300px] overflow-auto p-1">
+                  {requestedByOptions.map((option) => {
+                    const isOptionSelected = filterByLender.includes(option);
+                    return (
+                      <div
+                        key={option}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                          isOptionSelected && 'bg-accent/50'
+                        )}
+                        onClick={() => toggleFilterLender(option)}
+                      >
+                        <Checkbox
+                          checked={isOptionSelected}
+                          onCheckedChange={() => toggleFilterLender(option)}
+                          className="pointer-events-none"
+                        />
+                        <span className="flex-1">{option}</span>
+                        {isOptionSelected && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                    );
+                  })}
+                </div>
+                {filterByLender.length > 0 && (
+                  <div className="border-t border-border p-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-center text-xs"
+                      onClick={() => setFilterByLender([])}
+                    >
+                      Clear filter
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+            
+            {/* Group by */}
+            <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
+              <SelectTrigger className="h-8 w-28 text-xs">
+                <SelectValue placeholder="Group by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No grouping</SelectItem>
+                <SelectItem value="requester">By requester</SelectItem>
+                <SelectItem value="status">By status</SelectItem>
+                <SelectItem value="priority">By priority</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Bulk import */}
+            {onBulkAdd && (
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8"
-                onClick={() => setIsKanbanOpen(true)}
+                onClick={() => setIsBulkImportOpen(true)}
+                title="Bulk import items"
               >
-                <LayoutGrid className="h-4 w-4" />
+                <ClipboardPaste className="h-4 w-4" />
               </Button>
+            )}
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => setIsKanbanOpen(true)}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
           </div>
         </CardHeader>
+        
+        {/* Progress Bar */}
+        {items.length > 0 && (
+          <div className="px-6 pb-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">{progressPercent}% complete</span>
+              <span className="text-xs text-muted-foreground">{completedCount}/{items.length}</span>
+            </div>
+            <Progress value={progressPercent} className="h-1.5" />
+          </div>
+        )}
+        
         <CardContent className="space-y-3 h-full flex-1">
-              {/* Bulk Action Bar */}
-              {selectedIds.size > 0 && (
-                <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
-                  <div className="flex items-center gap-2">
-                    <CheckSquare className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={handleBulkMarkReceived}>
-                      Mark Received
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={handleBulkMarkApproved}>
-                      Mark Submitted
-                    </Button>
-                    <Button size="sm" variant="gradient" onClick={handleBulkMarkBoth}>
-                      Mark Both
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={clearSelection}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+          {/* Bulk Action Bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={handleBulkMarkReceived}>Mark Received</Button>
+                <Button size="sm" variant="outline" onClick={handleBulkMarkApproved}>Mark Submitted</Button>
+                <Button size="sm" variant="gradient" onClick={handleBulkMarkBoth}>Mark Both</Button>
+                <Button size="sm" variant="ghost" onClick={clearSelection}><X className="h-4 w-4" /></Button>
+              </div>
+            </div>
+          )}
 
-              {/* Select All for Active Items */}
-              {activeItems.length > 1 && selectedIds.size === 0 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
-                    onClick={selectAllActive}
-                  >
-                    <Square className="h-3.5 w-3.5" />
-                    Select all ({activeItems.length})
-                  </Button>
-                </div>
-              )}
+          {/* Select All for Active Items */}
+          {activeItems.length > 1 && selectedIds.size === 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                onClick={selectAllActive}
+              >
+                <Square className="h-3.5 w-3.5" />
+                Select all ({activeItems.length})
+              </Button>
+            </div>
+          )}
 
-          {/* Always-visible input for adding new items */}
+          {/* Add item input */}
           <div className={`${items.length > 0 ? 'pb-3 border-b border-border' : ''}`}>
             <div className="flex items-center gap-2">
               <Input
@@ -540,15 +940,30 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 value={newItemText}
                 onChange={(e) => setNewItemText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newItemText.trim()) {
-                    handleAdd();
-                  }
-                  if (e.key === 'Escape') {
-                    setNewItemText('');
-                  }
+                  if (e.key === 'Enter' && newItemText.trim()) handleAdd();
+                  if (e.key === 'Escape') setNewItemText('');
                 }}
                 className="flex-1"
               />
+              {/* Priority selector for new items */}
+              <Select value={newPriority} onValueChange={(v) => setNewPriority(v as ItemPriority)}>
+                <SelectTrigger className="w-24 h-9">
+                  <div className="flex items-center gap-1.5">
+                    <PriorityDot priority={newPriority} />
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {(['normal', 'high', 'urgent'] as ItemPriority[]).map(p => (
+                    <SelectItem key={p} value={p}>
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn("w-2 h-2 rounded-full", PRIORITY_CONFIG[p].dotColor)} />
+                        {PRIORITY_CONFIG[p].label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Popover open={requesterPopoverOpen} onOpenChange={setRequesterPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -565,23 +980,23 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
                   <div className="max-h-[300px] overflow-auto p-1">
                     {requestedByOptions.map((option) => {
-                      const isSelected = newRequestedBy.includes(option);
+                      const isOptionSelected = newRequestedBy.includes(option);
                       return (
                         <div
                           key={option}
                           className={cn(
                             'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                            isSelected && 'bg-accent/50'
+                            isOptionSelected && 'bg-accent/50'
                           )}
                           onClick={() => toggleRequestedBy(option)}
                         >
                           <Checkbox
-                            checked={isSelected}
+                            checked={isOptionSelected}
                             onCheckedChange={() => toggleRequestedBy(option)}
                             className="pointer-events-none"
                           />
                           <span className="flex-1">{option}</span>
-                          {isSelected && <Check className="h-4 w-4 text-primary" />}
+                          {isOptionSelected && <Check className="h-4 w-4 text-primary" />}
                         </div>
                       );
                     })}
@@ -591,375 +1006,53 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             </div>
           </div>
 
-              {filteredItems.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  {filterByLender.length > 0 ? 'No items match the filter' : 'No outstanding items'}
-                </p>
-              )}
+          {filteredItems.length === 0 && (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-2">📋</div>
+              <p className="text-sm text-muted-foreground">
+                {searchQuery ? 'No items match your search' : filterByLender.length > 0 ? 'No items match the filter' : 'No outstanding items yet'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {!searchQuery && filterByLender.length === 0 && 'Add items above to track what\'s needed from lenders'}
+              </p>
+            </div>
+          )}
 
-              {/* Active Items */}
-              {activeItems.map((item) => {
-                const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
-                const isSelected = selectedIds.has(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors cursor-pointer",
-                      isFullyDelivered(item) && "opacity-60",
-                      "border-border hover:border-primary/50",
-                      isSelected && "border-primary/50 bg-primary/5"
-                    )}
-                    onClick={() => {
-                      if (editingId !== item.id) {
-                        handleItemClick(item);
-                      }
-                    }}
-                  >
-                    {/* Selection Checkbox */}
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleSelection(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className={cn(
-                        "shrink-0",
-                        isSelected && "border-primary bg-primary text-primary-foreground"
-                      )}
-                    />
-                    {editingId === item.id ? (
-                      <div className="flex-1 flex items-center gap-2">
-                        <Input
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSaveEdit();
-                            if (e.key === 'Escape') handleCancelEdit();
-                          }}
-                          autoFocus
-                          className="flex-1"
-                        />
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                'w-40 justify-between gap-2 font-normal text-xs',
-                                editingRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 bg-destructive/5'
-                              )}
-                            >
-                              <span className="truncate">{getDisplayText(editingRequestedBy)}</span>
-                              <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
-                            <div className="max-h-[300px] overflow-auto p-1">
-                              {requestedByOptions.map((option) => {
-                                const isSelected = editingRequestedBy.includes(option);
-                                return (
-                                  <div
-                                    key={option}
-                                    className={cn(
-                                      'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                                      isSelected && 'bg-accent/50'
-                                    )}
-                                    onClick={() => toggleEditingRequestedBy(option)}
-                                  >
-                                    <Checkbox
-                                      checked={isSelected}
-                                      onCheckedChange={() => toggleEditingRequestedBy(option)}
-                                      className="pointer-events-none"
-                                    />
-                                    <span className="flex-1">{option}</span>
-                                    {isSelected && <Check className="h-4 w-4 text-primary" />}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                        <Button size="sm" variant="gradient" onClick={handleSaveEdit}>
-                          Save
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            onDelete(item.id);
-                            handleCancelEdit();
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex-1 min-w-0">
-                          <span
-                            className={cn(
-                              "text-sm block",
-                              isFullyDelivered(item) && "line-through text-muted-foreground"
-                            )}
-                          >
-                            {item.text}
-                          </span>
-                          <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(item.createdAt), 'M/d/yy')}
-                            </span>
-                            <span className={cn(
-                              "flex items-center gap-1 whitespace-nowrap",
-                              (!item.requestedBy || item.requestedBy.length === 0) && "text-destructive"
-                            )}>
-                              <User className="h-3 w-3 shrink-0" />
-                              <span className="truncate">
-                                {!item.requestedBy || item.requestedBy.length === 0
-                                  ? 'No requester assigned'
-                                  : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
-                          <div className={cn(
-                            "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
-                            item.received && "bg-emerald-500/10"
-                          )}>
-                            <Checkbox
-                              checked={item.received}
-                              onCheckedChange={(checked) =>
-                                onUpdate(item.id, { received: checked === true })
-                              }
-                              className={cn(
-                                item.received && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                              )}
-                            />
-                            <span className={cn(
-                              "text-xs",
-                              item.received ? "text-emerald-600 font-medium" : "text-muted-foreground"
-                            )}>Received</span>
-                          </div>
-                          <div className={cn(
-                            "flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors",
-                            item.approved && "bg-emerald-500/10"
-                          )}>
-                            <Checkbox
-                              checked={item.approved}
-                              onCheckedChange={(checked) =>
-                                onUpdate(item.id, { approved: checked === true })
-                              }
-                              className={cn(
-                                item.approved && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                              )}
-                            />
-                            <span className={cn(
-                              "text-xs",
-                              item.approved ? "text-emerald-600 font-medium" : "text-muted-foreground"
-                            )}>Submitted</span>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartEdit(item);
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-emerald-600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUpdate(item.id, { received: true, approved: true });
-                          }}
-                          title="Mark as complete"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+          {/* Grouped or flat active items */}
+          {groupBy !== 'none' && groupedActiveItems ? (
+            Object.entries(groupedActiveItems).map(([group, groupItems]) => (
+              <div key={group} className="space-y-2">
+                <div className="flex items-center gap-2 pt-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group}</span>
+                  <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">{groupItems.length}</span>
+                  <div className="flex-1 border-t border-border" />
+                </div>
+                {groupItems.map((item) => renderItemRow(item))}
+              </div>
+            ))
+          ) : (
+            activeItems.map((item) => renderItemRow(item))
+          )}
 
-              {/* Completed Items Section */}
-              {completedItems.length > 0 && (
-                <Collapsible open={isCompletedExpanded} onOpenChange={setIsCompletedExpanded}>
-                  <CollapsibleTrigger asChild>
-                    <button className="flex items-center gap-2 w-full pt-3 border-t border-border hover:text-primary transition-colors">
-                      {isCompletedExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="text-sm font-medium text-emerald-600">
-                        Completed Items
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        ({completedItems.length})
-                      </span>
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3 pt-3">
-                    {completedItems.map((item) => {
-                      const hasNoRequester = !item.requestedBy || item.requestedBy.length === 0;
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card opacity-60 transition-colors hover:border-primary/50 cursor-pointer"
-                          onClick={() => {
-                            if (editingId !== item.id) {
-                              handleItemClick(item);
-                            }
-                          }}
-                        >
-                          {editingId === item.id ? (
-                            <div className="flex-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                              <Input
-                                value={editingText}
-                                onChange={(e) => setEditingText(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleSaveEdit();
-                                  if (e.key === 'Escape') handleCancelEdit();
-                                }}
-                                autoFocus
-                                className="flex-1"
-                              />
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      'w-40 justify-between gap-2 font-normal text-xs',
-                                      editingRequestedBy.length > 0 ? 'border-primary/50 bg-primary/5' : 'border-destructive/50 bg-destructive/5'
-                                    )}
-                                  >
-                                    <span className="truncate">{getDisplayText(editingRequestedBy)}</span>
-                                    <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[200px] p-0 bg-popover z-50" align="end">
-                                  <div className="max-h-[300px] overflow-auto p-1">
-                                    {requestedByOptions.map((option) => {
-                                      const isSelected = editingRequestedBy.includes(option);
-                                      return (
-                                        <div
-                                          key={option}
-                                          className={cn(
-                                            'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
-                                            isSelected && 'bg-accent/50'
-                                          )}
-                                          onClick={() => toggleEditingRequestedBy(option)}
-                                        >
-                                          <Checkbox
-                                            checked={isSelected}
-                                            onCheckedChange={() => toggleEditingRequestedBy(option)}
-                                            className="pointer-events-none"
-                                          />
-                                          <span className="flex-1">{option}</span>
-                                          {isSelected && <Check className="h-4 w-4 text-primary" />}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                              <Button size="sm" variant="gradient" onClick={handleSaveEdit}>
-                                Save
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => {
-                                  onDelete(item.id);
-                                  handleCancelEdit();
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-sm block line-through text-muted-foreground">
-                                  {item.text}
-                                </span>
-                                <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
-                                  <span className="flex items-center gap-1 text-emerald-600">
-                                    <Check className="h-3 w-3" />
-                                    Completed {item.completedAt ? format(new Date(item.completedAt), 'MMM d, yyyy') : ''}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {format(new Date(item.createdAt), 'M/d/yy')}
-                                  </span>
-                                  <span className={cn(
-                                    "flex items-center gap-1 whitespace-nowrap",
-                                    (!item.requestedBy || item.requestedBy.length === 0) && "text-destructive"
-                                  )}>
-                                    <User className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">
-                                      {!item.requestedBy || item.requestedBy.length === 0
-                                        ? 'No requester assigned'
-                                        : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
-                                    </span>
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10">
-                                  <Checkbox
-                                    checked={item.received}
-                                    onCheckedChange={(checked) =>
-                                      onUpdate(item.id, { received: checked === true })
-                                    }
-                                    className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                                  />
-                                  <span className="text-xs text-emerald-600 font-medium">Received</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10">
-                                  <Checkbox
-                                    checked={item.approved}
-                                    onCheckedChange={(checked) =>
-                                      onUpdate(item.id, { approved: checked === true })
-                                    }
-                                    className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
-                                  />
-                                  <span className="text-xs text-emerald-600 font-medium">Submitted</span>
-                                </div>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStartEdit(item);
-                                }}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
+          {/* Completed Items Section */}
+          {completedItems.length > 0 && (
+            <Collapsible open={isCompletedExpanded} onOpenChange={setIsCompletedExpanded}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 w-full pt-3 border-t border-border hover:text-primary transition-colors">
+                  {isCompletedExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="text-sm font-medium text-emerald-600">Completed Items</span>
+                  <span className="text-xs text-muted-foreground">({completedItems.length})</span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-3">
+                {completedItems.map((item) => renderItemRow(item, true))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
         </CardContent>
       </Card>
@@ -981,6 +1074,41 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Import Dialog */}
+      <Dialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardPaste className="h-5 w-5" />
+              Bulk Import Items
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Paste a list of items, one per line. Each line will be added as a separate outstanding item.
+            </p>
+            <Textarea
+              value={bulkImportText}
+              onChange={(e) => setBulkImportText(e.target.value)}
+              placeholder={`Financial Statements\nTax Returns\nBank Statements\nCorporate Documents`}
+              className="min-h-[200px] font-mono text-sm"
+              autoFocus
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {bulkImportText.split('\n').filter(l => l.trim()).length} items to import
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsBulkImportOpen(false)}>Cancel</Button>
+                <Button onClick={handleBulkImport} disabled={!bulkImportText.trim()}>
+                  Import Items
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Outstanding Item Detail Dialog */}
       <OutstandingItemDialog
         item={selectedItem}
@@ -991,6 +1119,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
         onSelectItem={(item) => setSelectedItem(item)}
         lenderNames={lenderNames}
         companyName={companyName}
+        teamMembers={teamMembers}
       />
     </>
   );

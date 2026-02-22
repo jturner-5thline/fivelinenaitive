@@ -757,7 +757,7 @@ export default function DealDetail() {
   const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
   
   // Outstanding items persistence
-  const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb } = useOutstandingItems(id);
+  const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb } = useOutstandingItems(id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -3173,6 +3173,9 @@ export default function DealDetail() {
                                 onAdd={addOutstandingItem}
                                 onUpdate={updateOutstandingItem}
                                 onDelete={deleteOutstandingItem}
+                                onBulkAdd={bulkAddOutstandingItemsDb}
+                                onReorder={reorderOutstandingItemsDb}
+                                teamMembers={teamMembers}
                               />
                             </div>
                           );
