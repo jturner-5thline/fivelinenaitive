@@ -4,6 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 
+async function fireZapierWebhook(eventType: string, userId: string, payload: Record<string, any>) {
+  try {
+    await supabase.functions.invoke('fire-zapier-webhook', {
+      body: { event_type: eventType, user_id: userId, payload },
+    });
+  } catch (e) {
+    console.error('Zapier webhook fire failed:', e);
+  }
+}
+
 export interface Task {
   id: string;
   project_id: string | null;
@@ -133,8 +143,18 @@ export function useMyTasks() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      if (user && data) {
+        fireZapierWebhook('task_created', user.id, {
+          task_id: (data as any).id,
+          title: (data as any).title,
+          priority: (data as any).priority,
+          status: (data as any).status,
+          assigned_to: (data as any).assigned_to,
+          due_date: (data as any).due_date,
+        });
+      }
     },
     onError: () => toast.error('Failed to create task'),
   });
@@ -166,6 +186,15 @@ export function useMyTasks() {
 
       const { error } = await supabase.from('tasks').update(updateData).eq('id', id);
       if (error) throw error;
+
+      // Fire Zapier webhook when task is assigned/reassigned
+      if (updates.assigned_to !== undefined && user) {
+        fireZapierWebhook('task_assigned', user.id, {
+          task_id: id,
+          assigned_to: updates.assigned_to,
+          title: updates.title,
+        });
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
     onError: () => toast.error('Failed to update task'),

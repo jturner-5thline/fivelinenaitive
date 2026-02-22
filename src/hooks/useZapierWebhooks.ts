@@ -12,6 +12,8 @@ export const ZAPIER_EVENT_TYPES = [
   { value: 'lender_stage_change', label: 'Lender Stage Changed' },
   { value: 'milestone_completed', label: 'Milestone Completed' },
   { value: 'milestone_added', label: 'Milestone Added' },
+  { value: 'task_created', label: 'Task Created' },
+  { value: 'task_assigned', label: 'Task Assigned' },
 ] as const;
 
 export type ZapierEventType = typeof ZAPIER_EVENT_TYPES[number]['value'];
