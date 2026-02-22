@@ -152,7 +152,7 @@ const Waitlist = () => {
           </div>
 
           {isSubmitted ? (
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-md text-center">
+            <div className="relative overflow-hidden border border-[hsl(270,70%,55%,0.3)] bg-[hsl(270,50%,40%,0.12)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(270,80%,80%,0.15),0_4px_24px_hsl(270,70%,35%,0.2)] rounded-2xl p-6 w-full max-w-md text-center before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(270,80%,80%,0.1)_0%,transparent_50%,hsl(270,70%,55%,0.05)_100%)]">
               <div className="flex justify-center mb-4">
                 <div className="p-3 rounded-full bg-green-500/20">
                   <CheckCircle2 className="h-8 w-8 text-green-400" />
@@ -163,8 +163,8 @@ const Waitlist = () => {
                 We'll reach out when nAItive is ready for you.
               </p>
               <Button
-                variant="outline"
-                className="bg-transparent border-white/20 text-white hover:bg-white/5 hover:border-white/40"
+                variant="liquid-glass"
+                className="text-white"
                 onClick={() => navigate('/auth')}
               >
                 <LogIn className="h-4 w-4 mr-2" />
@@ -172,7 +172,7 @@ const Waitlist = () => {
               </Button>
             </div>
           ) : (
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+            <div className="relative overflow-hidden border border-[hsl(270,70%,55%,0.3)] bg-[hsl(270,50%,40%,0.12)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(270,80%,80%,0.15),0_4px_24px_hsl(270,70%,35%,0.2)] rounded-2xl p-6 w-full max-w-sm before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(270,80%,80%,0.1)_0%,transparent_50%,hsl(270,70%,55%,0.05)_100%)]">
               <h2 className="text-lg font-semibold text-white mb-4 text-center">Join the Waitlist</h2>
               
               <form onSubmit={handleSubmit} className="space-y-3">
@@ -225,7 +225,8 @@ const Waitlist = () => {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full bg-[linear-gradient(135deg,hsl(280,60%,45%),hsl(263,50%,35%),hsl(240,30%,15%))] hover:bg-[linear-gradient(135deg,hsl(280,60%,50%),hsl(263,50%,40%),hsl(240,30%,20%))] text-white border-0 dark:hover:shadow-[0_0_20px_hsl(280,60%,45%,0.3)]"
+                  variant="liquid-glass"
+                  className="w-full text-white"
                 >
                   {isSubmitting ? (
                     <>
@@ -260,7 +261,7 @@ const Waitlist = () => {
           </Button>
 
           <Dialog open={showGateDialog} onOpenChange={setShowGateDialog}>
-            <DialogContent className="bg-[#0a0a1a] border-white/10 text-white max-w-sm">
+            <DialogContent className="bg-[hsl(270,30%,8%)] border-[hsl(270,70%,55%,0.3)] text-white max-w-sm">
               <DialogHeader>
                 <DialogTitle className="text-white">Access Required</DialogTitle>
               </DialogHeader>
@@ -291,7 +292,8 @@ const Waitlist = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white border-0"
+                  variant="liquid-glass"
+                  className="w-full text-white"
                 >
                   Continue
                 </Button>
