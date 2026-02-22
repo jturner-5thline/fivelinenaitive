@@ -2,6 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+async function fireZapierWebhook(eventType: string, userId: string, payload: Record<string, any>) {
+  try {
+    await supabase.functions.invoke('fire-zapier-webhook', {
+      body: { event_type: eventType, user_id: userId, payload },
+    });
+  } catch (e) {
+    console.error('Zapier webhook fire failed:', e);
+  }
+}
+
 export interface DealTask {
   id: string;
   deal_id: string | null;
@@ -61,6 +71,26 @@ export function useDealTasks(dealId: string | undefined) {
         .single();
       if (error) throw error;
       setTasks(prev => [data as DealTask, ...prev]);
+
+      // Fire Zapier webhooks
+      if (data) {
+        const taskUrl = `${window.location.origin}/tasks?task=${(data as any).id}`;
+        const webhookPayload = {
+          task_id: (data as any).id,
+          title: task.title,
+          description: task.description || null,
+          assigned_to: task.assigned_to,
+          assigned_by: user.id,
+          due_date: task.due_date || null,
+          deal_id: dealId,
+          task_url: taskUrl,
+        };
+        fireZapierWebhook('task_created', user.id, webhookPayload);
+        if (task.assigned_to !== user.id) {
+          fireZapierWebhook('task_assigned', user.id, webhookPayload);
+        }
+      }
+
       return data;
     } catch (error) {
       console.error('Error creating task:', error);
