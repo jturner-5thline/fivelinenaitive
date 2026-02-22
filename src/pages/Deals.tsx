@@ -58,7 +58,7 @@ import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 
 export default function Dashboard() {
-  const [groupByStatus, setGroupByStatus] = useState(true);
+  const [groupBy, setGroupBy] = useState<string | null>('status');
   const [showMilestones, setShowMilestones] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline'>(() => {
     const stored = localStorage.getItem('deals-view-mode');
@@ -433,22 +433,41 @@ export default function Dashboard() {
                 </Select>
 
                 {viewMode === 'grid' && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <Switch
-                            id="group-by-status"
-                            checked={groupByStatus}
-                            onCheckedChange={setGroupByStatus}
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Group by Status</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-8 w-8">
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="7" height="7" />
+                          <rect x="14" y="3" width="7" height="7" />
+                          <rect x="3" y="14" width="7" height="7" />
+                          <rect x="14" y="14" width="7" height="7" />
+                        </svg>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setGroupBy(null)} className={!groupBy ? 'bg-accent' : ''}>
+                        None
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setGroupBy('status')} className={groupBy === 'status' ? 'bg-accent' : ''}>
+                        Status
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setGroupBy('stage')} className={groupBy === 'stage' ? 'bg-accent' : ''}>
+                        Stage
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setGroupBy('engagementType')} className={groupBy === 'engagementType' ? 'bg-accent' : ''}>
+                        Engagement Type
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setGroupBy('manager')} className={groupBy === 'manager' ? 'bg-accent' : ''}>
+                        Manager
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setGroupBy('lender')} className={groupBy === 'lender' ? 'bg-accent' : ''}>
+                        Lender
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setGroupBy('referredBy')} className={groupBy === 'referredBy' ? 'bg-accent' : ''}>
+                        Referred By
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
 
                 <Button
@@ -488,7 +507,7 @@ export default function Dashboard() {
               {showMilestones ? (
                 <DealMilestonesView onBack={() => setShowMilestones(false)} managerFilter={filters.manager} />
               ) : isLoading ? (
-                <DealsListSkeleton groupByStatus={groupByStatus} />
+                <DealsListSkeleton groupBy={groupBy} />
               ) : viewMode === 'pipeline' ? (
                 <DealsPipelineView
                   deals={deals}
@@ -503,7 +522,7 @@ export default function Dashboard() {
                   onStatusChange={updateDealStatus} 
                   onMarkReviewed={handleMarkReviewed} 
                   onToggleFlag={handleToggleFlag} 
-                  groupByStatus={groupByStatus}
+                  groupBy={groupBy}
                   sortField={sortField}
                   sortDirection={sortDirection}
                   viewMode={viewMode}
