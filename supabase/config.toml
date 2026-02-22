@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.refine-text]
 verify_jwt = false
+
+[functions.fire-zapier-webhook]
+verify_jwt = false
