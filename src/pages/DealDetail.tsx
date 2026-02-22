@@ -4285,7 +4285,7 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="deal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-space-${tabDirection}`}>
-                  <DealSpaceTab dealId={id!} />
+                  <DealSpaceTab dealId={id!} deal={deal} />
                 </TabsContent>
 
                 <TabsContent value="emails" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`emails-${tabDirection}`}>
