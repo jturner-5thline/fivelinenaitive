@@ -165,7 +165,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   return (
     <>
     <Link to={`/deal/${deal.id}`} className="block h-full min-w-0 w-full">
-      <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative border border-blue-500/25 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+      <Card className={`group cursor-pointer ${compact ? 'h-auto' : 'h-[280px]'} flex flex-col relative overflow-hidden border border-[hsl(270,70%,55%,0.3)] bg-[hsl(270,50%,40%,0.12)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(270,80%,80%,0.15),0_4px_24px_hsl(270,70%,35%,0.2)] transition-all duration-200 hover:border-[hsl(292,46%,72%)]/60 hover:bg-[hsl(270,55%,40%,0.2)] hover:shadow-[inset_0_1px_1px_hsl(270,80%,85%,0.25),0_6px_32px_hsl(270,70%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(270,80%,80%,0.1)_0%,transparent_50%,hsl(270,70%,55%,0.05)_100%)] min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
         {notificationCount > 0 && (
           <TooltipProvider>
             <Tooltip>
