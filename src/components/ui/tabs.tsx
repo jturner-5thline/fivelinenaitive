@@ -50,7 +50,7 @@ const TabsList = React.forwardRef<
     >
       {indicator && (
         <span
-          className="absolute top-0 bottom-0 rounded-[inherit] bg-gradient-to-r from-primary/90 to-primary/60 shadow-sm z-0 pointer-events-none"
+          className="absolute top-0 bottom-0 rounded-[inherit] bg-[linear-gradient(145deg,hsl(199,60%,20%,0.7)_0%,hsl(210,50%,15%,0.8)_50%,hsl(220,40%,10%,0.9)_100%)] border border-[hsl(199,70%,45%,0.4)] shadow-[inset_0_1px_1px_hsl(199,80%,60%,0.2),0_4px_16px_hsl(199,70%,30%,0.25)] z-0 pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(199,80%,70%,0.12)_0%,transparent_50%)] before:pointer-events-none"
           style={{
             left: indicator.left,
             width: indicator.width,
