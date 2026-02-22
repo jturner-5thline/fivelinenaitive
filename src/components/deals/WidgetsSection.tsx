@@ -352,7 +352,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   return (
-    <div className="relative border border-border rounded-lg py-0.5 px-4">
+    <div className="relative border border-border rounded-lg py-1.5 px-4">
       {/* Settings button - top right corner */}
       <HintTooltip
         hint="Click the gear icon to customize these widgets. Add, remove, or rearrange metrics to match your workflow."
@@ -378,7 +378,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 place-items-center">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {widgets.map((widget) => (
               <WidgetCard
                 key={widget.id}

@@ -185,7 +185,7 @@ export default function Dashboard() {
       <div className="bg-transparent">
         <DealsHeader />
 
-        <main className="container mx-auto max-w-7xl px-4 pt-2 pb-3 sm:px-6 lg:px-8">
+        <main className="container mx-auto max-w-7xl px-4 pt-4 pb-3 sm:px-6 lg:px-8">
           <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
           <DemoTour />
           <EmailVerificationBanner />
@@ -193,7 +193,7 @@ export default function Dashboard() {
           <CreateCompanyBanner />
           <div className="space-y-6">
             {/* Page Header & Widgets */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <div 
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
