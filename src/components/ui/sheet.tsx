@@ -29,16 +29,16 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-card p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  "fixed z-50 gap-4 p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500 bg-[linear-gradient(325deg,hsl(260,20%,8%,0.95)_0%,hsl(263,18%,6%,0.97)_40%,hsl(240,15%,5%,0.98)_100%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(263,40%,35%,0.08),0_4px_24px_hsl(0,0%,0%,0.4)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,hsl(263,40%,30%,0.08)_0%,transparent_50%,hsl(263,30%,20%,0.04)_100%)] overflow-hidden",
   {
     variants: {
       side: {
-        top: "inset-x-2 top-2 rounded-xl border border-border data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        top: "inset-x-2 top-2 rounded-xl border border-[hsl(263,40%,25%,0.6)] data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
         bottom:
-          "inset-x-2 bottom-2 rounded-xl border border-border data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-2 left-2 h-[calc(100%-1rem)] w-3/4 rounded-xl border border-border data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+          "inset-x-2 bottom-2 rounded-xl border border-[hsl(263,40%,25%,0.6)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+        left: "inset-y-2 left-2 h-[calc(100%-1rem)] w-3/4 rounded-xl border border-[hsl(263,40%,25%,0.6)] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
         right:
-          "inset-y-2 right-2 h-[calc(100%-1rem)] w-3/4 rounded-xl border border-border data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+          "inset-y-2 right-2 h-[calc(100%-1rem)] w-3/4 rounded-xl border border-[hsl(263,40%,25%,0.6)] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
       },
     },
     defaultVariants: {
