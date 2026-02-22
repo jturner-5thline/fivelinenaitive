@@ -44,7 +44,7 @@ const Index = () => {
         
         {/* Content */}
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
-          <div className="flex flex-col items-center animate-fade-in">
+          <div className="flex flex-col items-center animate-fade-in mt-8">
             <Logo className="h-[18vw] max-h-48" />
             <p 
               className="text-white text-[1.65vw] font-light tracking-[0.72em] mt-4 uppercase whitespace-nowrap ml-[0.35em] opacity-0"
