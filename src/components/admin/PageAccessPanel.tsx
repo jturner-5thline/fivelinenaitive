@@ -123,6 +123,63 @@ const pageConfigs: PageConfig[] = [
   },
 ];
 
+const dealSpaceConfigs: PageConfig[] = [
+  {
+    featureKey: "deal_pulse_dashboard",
+    label: "Deal Pulse Dashboard",
+    description: "Health score and completeness metrics for each deal",
+    icon: <BarChart3 className="h-5 w-5" />
+  },
+  {
+    featureKey: "deal_proactive_alerts",
+    label: "Proactive Alert Bar",
+    description: "Smart alert pills for stale lenders, overdue milestones, and missing docs",
+    icon: <Lightbulb className="h-5 w-5" />
+  },
+  {
+    featureKey: "deal_command_palette",
+    label: "Command Palette (⌘K)",
+    description: "Global keyboard shortcut for quick deal navigation and actions",
+    icon: <Cog className="h-5 w-5" />
+  },
+  {
+    featureKey: "deal_contextual_prompts",
+    label: "Contextual AI Prompts",
+    description: "Adaptive prompt chips in the AI assistant based on deal state",
+    icon: <Bot className="h-5 w-5" />
+  },
+  {
+    featureKey: "deal_unified_timeline",
+    label: "Unified Activity Timeline",
+    description: "Chronological feed of all deal events in the Activity tab",
+    icon: <Workflow className="h-5 w-5" />
+  },
+  {
+    featureKey: "deal_benchmarks",
+    label: "Deal Benchmarks",
+    description: "Performance metrics compared against portfolio averages",
+    icon: <BarChart3 className="h-5 w-5" />
+  },
+  {
+    featureKey: "deal_ai_assistant",
+    label: "AI Deal Assistant",
+    description: "AI-powered deal analysis panel in the overview grid",
+    icon: <Sparkles className="h-5 w-5" />
+  },
+  {
+    featureKey: "deal_activity_summary",
+    label: "AI Activity Summary",
+    description: "AI-generated summary of recent deal activity",
+    icon: <Sparkles className="h-5 w-5" />
+  },
+  {
+    featureKey: "deal_smart_suggestions",
+    label: "AI Smart Suggestions",
+    description: "Context-aware action recommendations based on deal state",
+    icon: <Sparkles className="h-5 w-5" />
+  },
+];
+
 const statusConfig: Record<
   FeatureStatus,
   { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }
@@ -228,70 +285,84 @@ export function PageAccessPanel() {
         </div>
       </div>
 
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Pages</h3>
       <div className="grid gap-4">
-        {pageConfigs.map((config) => {
-          const flag = getPageFlag(config.featureKey);
-          const status = (flag?.status || 'deployed') as FeatureStatus;
-          const statusInfo = statusConfig[status];
+        {pageConfigs.map((config) => renderFeatureCard(config, getPageFlag, statusConfig, handleStatusChange, updateFlag.isPending || createFlag.isPending))}
+      </div>
 
-          return (
-            <Card key={config.featureKey}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                    {config.icon}
-                  </div>
-                  <div>
-                    <h4 className="font-medium">{config.label}</h4>
-                    <p className="text-sm text-muted-foreground">{config.description}</p>
-                  </div>
-                </div>
-                
-                <Select
-                  value={status}
-                  onValueChange={(value: FeatureStatus) => handleStatusChange(config.featureKey, value)}
-                  disabled={updateFlag.isPending || createFlag.isPending}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={statusInfo.variant} className="gap-1">
-                        {statusInfo.icon}
-                        {statusInfo.label}
-                      </Badge>
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="deployed">
-                      <div className="flex items-center gap-2">
-                        <Rocket className="h-3 w-3" />
-                        All Users
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="staging">
-                      <div className="flex items-center gap-2">
-                        <FlaskConical className="h-3 w-3" />
-                        5thLine Only (Staging)
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="james_only">
-                      <div className="flex items-center gap-2">
-                        <User className="h-3 w-3" />
-                        James Only
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="disabled">
-                      <div className="flex items-center gap-2">
-                        <Ban className="h-3 w-3" />
-                        Disabled
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-          );
-        })}
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mt-8">Deal Space Features</h3>
+      <div className="grid gap-4">
+        {dealSpaceConfigs.map((config) => renderFeatureCard(config, getPageFlag, statusConfig, handleStatusChange, updateFlag.isPending || createFlag.isPending))}
       </div>
     </div>
+  );
+}
+
+function renderFeatureCard(
+  config: PageConfig,
+  getPageFlag: (key: string) => any,
+  statusConfig: Record<FeatureStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }>,
+  handleStatusChange: (key: string, status: FeatureStatus) => void,
+  isPending: boolean,
+) {
+  const flag = getPageFlag(config.featureKey);
+  const status = (flag?.status || 'deployed') as FeatureStatus;
+  const statusInfo = statusConfig[status];
+
+  return (
+    <Card key={config.featureKey}>
+      <CardContent className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-4">
+          <div className="p-2 rounded-lg bg-primary/10 text-primary">
+            {config.icon}
+          </div>
+          <div>
+            <h4 className="font-medium">{config.label}</h4>
+            <p className="text-sm text-muted-foreground">{config.description}</p>
+          </div>
+        </div>
+        
+        <Select
+          value={status}
+          onValueChange={(value: FeatureStatus) => handleStatusChange(config.featureKey, value)}
+          disabled={isPending}
+        >
+          <SelectTrigger className="w-[180px]">
+            <div className="flex items-center gap-2">
+              <Badge variant={statusInfo.variant} className="gap-1">
+                {statusInfo.icon}
+                {statusInfo.label}
+              </Badge>
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="deployed">
+              <div className="flex items-center gap-2">
+                <Rocket className="h-3 w-3" />
+                All Users
+              </div>
+            </SelectItem>
+            <SelectItem value="staging">
+              <div className="flex items-center gap-2">
+                <FlaskConical className="h-3 w-3" />
+                5thLine Only (Staging)
+              </div>
+            </SelectItem>
+            <SelectItem value="james_only">
+              <div className="flex items-center gap-2">
+                <User className="h-3 w-3" />
+                James Only
+              </div>
+            </SelectItem>
+            <SelectItem value="disabled">
+              <div className="flex items-center gap-2">
+                <Ban className="h-3 w-3" />
+                Disabled
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </CardContent>
+    </Card>
   );
 }

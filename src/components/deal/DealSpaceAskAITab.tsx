@@ -11,6 +11,7 @@ import { useDealSpaceConversations } from '@/hooks/useDealSpaceConversations';
 import { useDealSpaceDocuments } from '@/hooks/useDealSpaceDocuments';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
 import { useContextualAIPrompts } from '@/hooks/useContextualAIPrompts';
+import { useFeatureAccess } from '@/hooks/useFeatureFlags';
 import { DealSpaceConversationHistory } from './DealSpaceConversationHistory';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -101,7 +102,9 @@ export function DealSpaceAskAITab({ dealId, deal }: DealSpaceAskAITabProps) {
     setIsHistoryOpen(false);
   }, [clearMessages]);
 
-  const contextualPrompts = useContextualAIPrompts(deal);
+  const { hasAccess: showContextualPrompts } = useFeatureAccess('deal_contextual_prompts');
+  const allContextualPrompts = useContextualAIPrompts(deal);
+  const contextualPrompts = showContextualPrompts !== false ? allContextualPrompts : [];
 
   const categoryIcons = {
     risk: AlertTriangle,
