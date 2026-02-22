@@ -146,6 +146,7 @@ export function useMyTasks() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       if (user && data) {
+        const taskUrl = `${window.location.origin}/tasks?task=${(data as any).id}`;
         fireZapierWebhook('task_created', user.id, {
           task_id: (data as any).id,
           title: (data as any).title,
@@ -153,6 +154,7 @@ export function useMyTasks() {
           status: (data as any).status,
           assigned_to: (data as any).assigned_to,
           due_date: (data as any).due_date,
+          task_url: taskUrl,
         });
       }
     },
@@ -189,10 +191,12 @@ export function useMyTasks() {
 
       // Fire Zapier webhook when task is assigned/reassigned
       if (updates.assigned_to !== undefined && user) {
+        const taskUrl = `${window.location.origin}/tasks?task=${id}`;
         fireZapierWebhook('task_assigned', user.id, {
           task_id: id,
           assigned_to: updates.assigned_to,
           title: updates.title,
+          task_url: taskUrl,
         });
       }
     },
