@@ -352,7 +352,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   return (
-    <div className="relative border border-border rounded-lg py-1.5 px-4">
+    <div className="relative border border-border rounded-lg py-0.5 px-4">
       {/* Settings button - top right corner */}
       <HintTooltip
         hint="Click the gear icon to customize these widgets. Add, remove, or rearrange metrics to match your workflow."
