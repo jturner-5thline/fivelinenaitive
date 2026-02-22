@@ -284,19 +284,12 @@ export default function Dashboard() {
                   </div>
                 )}
                 <Button
-                  variant={showMilestones ? 'secondary' : 'outline'}
+                  variant="liquid-glass"
                   size="sm"
-                  className="gap-2 h-9 shrink-0 border-transparent bg-gradient-to-r from-[#2563EB]/20 to-[#38BDF8]/20 hover:from-[#2563EB]/30 hover:to-[#38BDF8]/30 transition-all"
-                  style={{ border: '1px solid transparent', backgroundClip: 'padding-box', boxShadow: '0 0 0 1px #2563EB66, inset 0 0 0 0 transparent' }}
+                  className="gap-2 h-9 shrink-0"
                   onClick={() => setShowMilestones(!showMilestones)}
                 >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="url(#milestones-icon-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <defs>
-                      <linearGradient id="milestones-icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#2563EB" />
-                        <stop offset="100%" stopColor="#38BDF8" />
-                      </linearGradient>
-                    </defs>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <circle cx="12" cy="12" r="6" />
                     <circle cx="12" cy="12" r="2" />
