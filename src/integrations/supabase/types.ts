@@ -7725,6 +7725,94 @@ export type Database = {
           },
         ]
       }
+      zapier_webhook_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          payload: Json | null
+          response_body: string | null
+          status_code: number | null
+          success: boolean
+          webhook_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          payload?: Json | null
+          response_body?: string | null
+          status_code?: number | null
+          success?: boolean
+          webhook_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          response_body?: string | null
+          status_code?: number | null
+          success?: boolean
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_webhook_logs_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "zapier_webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapier_webhooks: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          event_types: string[]
+          id: string
+          is_active: boolean
+          label: string
+          updated_at: string
+          user_id: string
+          webhook_url: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          event_types?: string[]
+          id?: string
+          is_active?: boolean
+          label?: string
+          updated_at?: string
+          user_id: string
+          webhook_url: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          event_types?: string[]
+          id?: string
+          is_active?: boolean
+          label?: string
+          updated_at?: string
+          user_id?: string
+          webhook_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapier_webhooks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       agent_suggestion_stats: {
