@@ -381,8 +381,19 @@ export default function Dashboard() {
                   </svg>
                   Milestones
                 </Button>
+              </div>
+            </div>
 
-                <div className="h-4 w-px bg-border" />
+            {/* Results Count & Group Toggle */}
+            {!showMilestones && <div 
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
+              style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
+            >
+              <p className="text-sm text-muted-foreground">
+                Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
+                {deals.length === 1 ? 'deal' : 'deals'}
+              </p>
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
 
                 {/* Sort Dropdown */}
                 <DropdownMenu>
@@ -493,17 +504,6 @@ export default function Dashboard() {
                   </>
                 )}
               </div>
-            </div>
-
-            {/* Results Count */}
-            {!showMilestones && <div 
-              className="opacity-0"
-              style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
-            >
-              <p className="text-sm text-muted-foreground">
-                Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
-                {deals.length === 1 ? 'deal' : 'deals'}
-              </p>
             </div>}
 
             {/* Deals Grid/List/Pipeline or Milestones */}
