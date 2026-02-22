@@ -270,14 +270,14 @@ export default function Dashboard() {
               className="opacity-0"
               style={{ animation: 'fadeInUp 0.4s ease-out 0.2s forwards' }}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {showMilestones ? (
                   <MilestoneManagerFilter
                     selected={filters.manager}
                     onChange={(manager) => updateFilters({ manager })}
                   />
                 ) : (
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-[200px]">
                     <DealFilters
                       filters={filters}
                       onFilterChange={updateFilters}
@@ -372,9 +372,9 @@ export default function Dashboard() {
                 {/* Sort Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-8">
+                    <Button variant="outline" size="sm" className="gap-2 h-8 shrink-0">
                       <ArrowUpDown className="h-3.5 w-3.5" />
-                      Sort
+                      <span className="hidden sm:inline">Sort</span>
                       {sortField === 'flexEngagement' && (
                         <Flame className="h-3 w-3 text-orange-500" />
                       )}
@@ -405,7 +405,7 @@ export default function Dashboard() {
 
                 {/* View Mode Dropdown */}
                 <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline') => setViewMode(val)}>
-                  <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden">
+                  <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden shrink-0">
                     {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
                     {viewMode === 'list' && <List className="h-4 w-4" />}
                     {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
@@ -435,7 +435,7 @@ export default function Dashboard() {
                 {viewMode === 'grid' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8">
+                      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
                         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="3" width="7" height="7" />
                           <rect x="14" y="3" width="7" height="7" />
@@ -480,7 +480,7 @@ export default function Dashboard() {
                     <circle cx="12" cy="12" r="6" />
                     <circle cx="12" cy="12" r="2" />
                   </svg>
-                  Milestones
+                  <span className="hidden sm:inline">Milestones</span>
                 </Button>
               </div>
             </div>
