@@ -74,7 +74,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
               size="sm"
               className={cn("relative rounded-full h-12 min-w-12 shadow-lg animate-fade-in transition-all duration-300 overflow-visible flex items-center justify-center border-0", isOpen ? "px-4" : "px-0 group-hover:px-4")}
               style={{
-                background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 72%))',
+                background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
               }}
             >
               <span 
