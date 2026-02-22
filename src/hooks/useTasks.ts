@@ -146,7 +146,7 @@ export function useMyTasks() {
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       if (user && data) {
-        const taskUrl = `${window.location.origin}/tasks?task=${(data as any).id}`;
+        const taskUrl = `https://naitive.co/tasks?task=${(data as any).id}`;
         const { data: assigneeProfile } = await supabase
           .from('profiles')
           .select('display_name, email')
@@ -200,7 +200,7 @@ export function useMyTasks() {
 
       // Fire Zapier webhook when task is assigned/reassigned
       if (updates.assigned_to !== undefined && user) {
-        const taskUrl = `${window.location.origin}/tasks?task=${id}`;
+        const taskUrl = `https://naitive.co/tasks?task=${id}`;
         const { data: assigneeProfile } = await supabase
           .from('profiles')
           .select('display_name, email')

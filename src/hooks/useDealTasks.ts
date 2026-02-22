@@ -74,7 +74,7 @@ export function useDealTasks(dealId: string | undefined) {
 
       // Fire Zapier webhooks with assignee profile info for Asana matching
       if (data) {
-        const taskUrl = `${window.location.origin}/tasks?task=${(data as any).id}`;
+        const taskUrl = `https://naitive.co/tasks?task=${(data as any).id}`;
 
         // Fetch assignee profile to include email/name for Asana user matching
         const { data: assigneeProfile } = await supabase
