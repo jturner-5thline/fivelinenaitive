@@ -37,7 +37,7 @@ const menuItems = [
   { title: "Tasks", url: "/tasks", icon: CheckSquare, featureKey: null }, // Always visible
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
   { title: "News Feed", url: "/news-feed", icon: Newspaper, featureKey: "newsfeed" },
-  { title: "AI Research", url: "/research", icon: Sparkles, featureKey: "ai_research" },
+  { title: "AI Research", url: "/research", icon: Sparkles, featureKey: "ai_research", iconClassName: "h-[18px] w-[18px]" },
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
   { title: "Metrics", url: "/metrics", icon: BarChart3, featureKey: "metrics" },
   { title: "Insights", url: "/insights", icon: Lightbulb, featureKey: "insights" },
@@ -122,7 +122,7 @@ export function AppSidebar() {
                       className="hover:bg-sidebar-accent/50"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className={item.iconClassName || "h-4 w-4"} />
                       {showExpanded && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -166,7 +166,7 @@ export function AppSidebar() {
                   className="hover:bg-sidebar-accent/50"
                   activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className={'iconClassName' in item ? (item as any).iconClassName : "h-4 w-4"} />
                   {showExpanded && <span>{item.title}</span>}
                 </NavLink>
               </SidebarMenuButton>
