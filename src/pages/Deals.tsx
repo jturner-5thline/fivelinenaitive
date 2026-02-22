@@ -369,33 +369,6 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
-                <Button
-                  variant="liquid-glass"
-                  size="sm"
-                  className="gap-2 h-9 shrink-0"
-                  onClick={() => setShowMilestones(!showMilestones)}
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" />
-                  </svg>
-                  Milestones
-                </Button>
-              </div>
-            </div>
-
-            {/* Results Count & Group Toggle */}
-            {!showMilestones && <div 
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
-              style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
-            >
-              <p className="text-sm text-muted-foreground">
-                Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
-                {deals.length === 1 ? 'deal' : 'deals'}
-              </p>
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-
                 {/* Sort Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -430,37 +403,6 @@ export default function Dashboard() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Columns Config */}
-                {viewMode === 'list' && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8">
-                        <Settings2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-52 p-3">
-                      <p className="text-sm font-medium text-foreground mb-2">Toggle columns</p>
-                      <div className="space-y-2">
-                        {ALL_COLUMNS.map(colId => (
-                          <div key={colId} className="flex items-center gap-2">
-                            <Checkbox
-                              id={`col-${colId}`}
-                              checked={visibleColumns.has(colId)}
-                              disabled={colId === 'company'}
-                              onCheckedChange={() => toggleColumnVisibility(colId)}
-                            />
-                            <Label htmlFor={`col-${colId}`} className="text-sm font-normal cursor-pointer">
-                              {COLUMN_LABELS[colId]}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
-
-                <div className="h-4 w-px bg-border" />
-
                 {/* View Mode Dropdown */}
                 <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline') => setViewMode(val)}>
                   <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden">
@@ -489,6 +431,32 @@ export default function Dashboard() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Button
+                  size="sm"
+                  className="gap-2 h-9 shrink-0"
+                  onClick={() => setShowMilestones(!showMilestones)}
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
+                  Milestones
+                </Button>
+              </div>
+            </div>
+
+            {/* Results Count & Group Toggle */}
+            {!showMilestones && <div 
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
+              style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
+            >
+              <p className="text-sm text-muted-foreground">
+                Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
+                {deals.length === 1 ? 'deal' : 'deals'}
+              </p>
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
 
                 {viewMode === 'grid' && (
                   <>
