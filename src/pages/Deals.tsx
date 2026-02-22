@@ -403,35 +403,6 @@ export default function Dashboard() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* View Mode Dropdown */}
-                <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline') => setViewMode(val)}>
-                  <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden shrink-0">
-                    {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
-                    {viewMode === 'list' && <List className="h-4 w-4" />}
-                    {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grid">
-                      <div className="flex items-center gap-2">
-                        <LayoutGrid className="h-4 w-4" />
-                        Grid
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="list">
-                      <div className="flex items-center gap-2">
-                        <List className="h-4 w-4" />
-                        List
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="pipeline">
-                      <div className="flex items-center gap-2">
-                        <Kanban className="h-4 w-4" />
-                        Pipeline
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
                 {viewMode === 'grid' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -465,6 +436,34 @@ export default function Dashboard() {
                   </DropdownMenu>
                 )}
 
+                {/* View Mode Dropdown */}
+                <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline') => setViewMode(val)}>
+                  <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden shrink-0">
+                    {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
+                    {viewMode === 'list' && <List className="h-4 w-4" />}
+                    {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="grid">
+                      <div className="flex items-center gap-2">
+                        <LayoutGrid className="h-4 w-4" />
+                        Grid
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="list">
+                      <div className="flex items-center gap-2">
+                        <List className="h-4 w-4" />
+                        List
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pipeline">
+                      <div className="flex items-center gap-2">
+                        <Kanban className="h-4 w-4" />
+                        Pipeline
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   size="sm"
                   className="gap-2 h-9 shrink-0"
