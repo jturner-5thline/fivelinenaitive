@@ -93,7 +93,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar side="left" collapsible="icon" className="h-[calc(100vh-1rem)]">
-      <SidebarHeader className="border-b border-sidebar-border px-2 py-3">
+      <SidebarHeader className="border-b border-sidebar-border px-2 py-3 rounded-b-xl">
         <div className="flex items-center gap-2">
           <button 
             onClick={toggleSidebar} 
