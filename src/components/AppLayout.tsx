@@ -81,16 +81,16 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="lwFill1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="hsl(282,70%,18%)" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="hsl(282,50%,10%)" stopOpacity="0.3" />
+              <stop offset="0%" stopColor="hsl(282,70%,10%)" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="hsl(282,50%,5%)" stopOpacity="0.5" />
             </linearGradient>
             <linearGradient id="lwFill2" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="hsl(282,55%,14%)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="hsl(291,40%,8%)" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="hsl(282,55%,8%)" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="hsl(291,40%,4%)" stopOpacity="0.4" />
             </linearGradient>
             <linearGradient id="lwFill3" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(291,50%,18%)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="hsl(282,40%,10%)" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="hsl(291,50%,10%)" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="hsl(282,40%,5%)" stopOpacity="0.4" />
             </linearGradient>
             <linearGradient id="lwEdge1" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="hsl(291,48%,60%)" stopOpacity="0.0" />
