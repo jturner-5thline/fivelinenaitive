@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Loader2, Bot, User, History, X } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, AlertTriangle, Target, Lightbulb, TrendingUp, Search } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,15 +10,18 @@ import { useDealSpaceAI } from '@/hooks/useDealSpaceAI';
 import { useDealSpaceConversations } from '@/hooks/useDealSpaceConversations';
 import { useDealSpaceDocuments } from '@/hooks/useDealSpaceDocuments';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
+import { useContextualAIPrompts } from '@/hooks/useContextualAIPrompts';
 import { DealSpaceConversationHistory } from './DealSpaceConversationHistory';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import type { Deal } from '@/types/deal';
 
 interface DealSpaceAskAITabProps {
   dealId: string;
+  deal?: Deal;
 }
 
-export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
+export function DealSpaceAskAITab({ dealId, deal }: DealSpaceAskAITabProps) {
   const { documents } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
   const { messages, sendMessage, clearMessages, isLoading: isAILoading, setMessages } = useDealSpaceAI(dealId);
@@ -98,12 +101,23 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     setIsHistoryOpen(false);
   }, [clearMessages]);
 
-  const suggestedQuestions = [
-    "Generate a full lender-ready memo for this deal",
-    "What are the key risks & hurdles for this deal?",
-    "Summarize the current lender process & status",
-    "What are the key credit strengths?",
-  ];
+  const contextualPrompts = useContextualAIPrompts(deal);
+
+  const categoryIcons = {
+    risk: AlertTriangle,
+    lender: Target,
+    progress: TrendingUp,
+    action: Lightbulb,
+    research: Search,
+  };
+
+  const categoryColors = {
+    risk: 'text-amber-500',
+    lender: 'text-blue-500',
+    progress: 'text-green-500',
+    action: 'text-primary',
+    research: 'text-purple-500',
+  };
 
   return (
     <Card className="flex flex-col h-[600px]">
@@ -169,17 +183,21 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
                     : "Ask questions about your documents"
                   }
                 </p>
-                {totalDocuments > 0 && (
-                  <div className="space-y-2 w-full max-w-sm">
-                    {suggestedQuestions.map((q, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setQuestion(q)}
-                        className="w-full text-left text-sm p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                      >
-                        {q}
-                      </button>
-                    ))}
+                {totalDocuments > 0 && contextualPrompts.length > 0 && (
+                  <div className="flex flex-wrap justify-center gap-2 w-full max-w-lg">
+                    {contextualPrompts.slice(0, 6).map((cp, i) => {
+                      const Icon = categoryIcons[cp.category];
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setQuestion(cp.prompt)}
+                          className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-full border border-border bg-background hover:bg-muted transition-colors text-left"
+                        >
+                          <Icon className={cn('h-3 w-3 flex-shrink-0', categoryColors[cp.category])} />
+                          <span className="truncate">{cp.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -235,6 +253,25 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
               </div>
             )}
           </ScrollArea>
+
+          {/* Contextual prompt chips when conversation is active */}
+          {messages.length > 0 && !isAILoading && contextualPrompts.length > 0 && !question && (
+            <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+              {contextualPrompts.slice(0, 4).map((cp, i) => {
+                const Icon = categoryIcons[cp.category];
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setQuestion(cp.prompt)}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full border border-border bg-background hover:bg-muted transition-colors whitespace-nowrap flex-shrink-0"
+                  >
+                    <Icon className={cn('h-3 w-3', categoryColors[cp.category])} />
+                    {cp.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex gap-2">
             <Input
