@@ -463,13 +463,10 @@ export default function Dashboard() {
 
                 {/* View Mode Dropdown */}
                 <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline') => setViewMode(val)}>
-                  <SelectTrigger className="h-8 w-[130px] text-sm">
-                    <div className="flex items-center gap-2">
-                      {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
-                      {viewMode === 'list' && <List className="h-4 w-4" />}
-                      {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
-                      <SelectValue />
-                    </div>
+                  <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden">
+                    {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
+                    {viewMode === 'list' && <List className="h-4 w-4" />}
+                    {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="grid">
