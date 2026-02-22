@@ -5,8 +5,10 @@ import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
 import { TaskReportingView } from '@/components/tasks/TaskReportingView';
+import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { useTaskSavedViews, type TaskSavedView } from '@/hooks/useTaskSavedViews';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useTaskTemplates } from '@/hooks/useTaskTemplates';
 import { useTaskLabels } from '@/hooks/useTaskLabels';
 import { Button } from '@/components/ui/button';
@@ -26,7 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
-  SlidersHorizontal, Group, Trash2, CheckSquare, BarChart3, Bell,
+  SlidersHorizontal, Group, Trash2, BarChart3, Bell,
   Bookmark, BookmarkPlus, Download, FileDown, Star, MoreVertical,
   Zap, Tag, ClipboardList, GripVertical,
 } from 'lucide-react';
@@ -52,6 +54,7 @@ export default function Tasks() {
   const { overdueCount, dueTodayCount } = useTaskNotifications();
   const { savedViews, saveView, deleteView } = useTaskSavedViews();
   const { templates, applyTemplate } = useTaskTemplates();
+  const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -125,13 +128,23 @@ export default function Tasks() {
     });
   }, []);
 
-  const handleBulkAction = (action: 'complete' | 'delete') => {
-    selectedTaskIds.forEach(id => {
-      if (action === 'complete') updateTask.mutate({ id, status: 'complete' });
-      if (action === 'delete') deleteTask.mutate(id);
+  const handleBulkUpdate = useCallback((updates: Record<string, any>) => {
+    const promises = Array.from(selectedTaskIds).map(id =>
+      updateTask.mutateAsync({ id, ...updates })
+    );
+    Promise.all(promises).then(() => {
+      setSelectedTaskIds(new Set());
     });
-    setSelectedTaskIds(new Set());
-  };
+  }, [selectedTaskIds, updateTask]);
+
+  const handleBulkDelete = useCallback(() => {
+    const promises = Array.from(selectedTaskIds).map(id =>
+      deleteTask.mutateAsync(id)
+    );
+    Promise.all(promises).then(() => {
+      setSelectedTaskIds(new Set());
+    });
+  }, [selectedTaskIds, deleteTask]);
 
   const handleSaveView = () => {
     if (!newViewName.trim()) return;
@@ -317,16 +330,13 @@ export default function Tasks() {
 
           {/* Bulk actions */}
           {selectedTaskIds.size > 0 && (
-            <div className="flex items-center gap-1.5 mr-2">
-              <span className="text-xs text-muted-foreground">{selectedTaskIds.size} selected</span>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => handleBulkAction('complete')}>
-                <CheckSquare className="h-3 w-3" /> Complete
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => handleBulkAction('delete')}>
-                <Trash2 className="h-3 w-3" /> Delete
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedTaskIds(new Set())}>Clear</Button>
-            </div>
+            <TaskBulkActionBar
+              count={selectedTaskIds.size}
+              teamMembers={teamMembers}
+              onBulkUpdate={handleBulkUpdate}
+              onBulkDelete={handleBulkDelete}
+              onClear={() => setSelectedTaskIds(new Set())}
+            />
           )}
 
           {/* More menu: Save view, Export, Templates, Labels */}

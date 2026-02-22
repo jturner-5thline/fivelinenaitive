@@ -209,7 +209,8 @@ export function TaskListView({
     >
       <div className="divide-y">
         {/* Column header */}
-        <div className="grid grid-cols-[20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
+        <div className="grid grid-cols-[20px_20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
+          <div />
           <div />
           <div className="w-5" />
           <div>Task name</div>
@@ -256,6 +257,7 @@ export function TaskListView({
                           onDelete={() => onDeleteTask(task.id)}
                           onToggleComplete={() => handleCompleteWithCelebration(task.id, task.status)}
                           onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
+                          showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
                         />
                       ))}
 
@@ -263,7 +265,8 @@ export function TaskListView({
                       {group === groups[0] && (
                         <>
                           {isCreating ? (
-                            <div className="grid grid-cols-[20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                            <div className="grid grid-cols-[20px_20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                              <div />
                               <div />
                               <div className="w-5" />
                               <Input
@@ -407,7 +410,7 @@ function InlinePriorityPicker({ value, onChange }: { value: string; onChange: (v
 }
 
 // Sortable task row with drag handle and inline editing
-function SortableTaskRow({ task, isSelected, isMultiSelected, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect }: {
+function SortableTaskRow({ task, isSelected, isMultiSelected, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, showSelectCheckbox }: {
   task: Task;
   isSelected: boolean;
   isMultiSelected: boolean;
@@ -416,6 +419,7 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, onSelect, onUpdate
   onDelete: () => void;
   onToggleComplete: () => void;
   onToggleSelect?: () => void;
+  showSelectCheckbox?: boolean;
 }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
@@ -444,7 +448,7 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, onSelect, onUpdate
       ref={setNodeRef}
       style={style}
       className={cn(
-        'grid grid-cols-[20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
+        'grid grid-cols-[20px_20px_auto_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
         isSelected && 'bg-primary/5 border-r-2 border-r-primary',
         isMultiSelected && 'bg-primary/10',
         isDragging && 'z-50',
@@ -459,6 +463,18 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, onSelect, onUpdate
         onClick={e => e.stopPropagation()}
       >
         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+
+      {/* Multi-select checkbox */}
+      <div
+        className={cn('transition-opacity', showSelectCheckbox ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
+        onClick={e => e.stopPropagation()}
+      >
+        <Checkbox
+          checked={isMultiSelected}
+          onCheckedChange={() => onToggleSelect?.()}
+          className="h-4 w-4"
+        />
       </div>
 
       {/* Checkbox */}
