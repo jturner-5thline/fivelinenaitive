@@ -131,8 +131,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setCalendarOpen(true)}>
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <CalendarIcon className="h-6 w-6 text-primary" />
+                <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-primary/20 before:to-transparent before:rounded-xl">
+                  <CalendarIcon className="relative z-10 h-6 w-6 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Calendar</span>
               </div>
@@ -140,8 +140,8 @@ export default function Dashboard() {
             <FullCalendarView open={calendarOpen} onOpenChange={setCalendarOpen} />
             <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setEmailOpen(true)}>
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="h-12 w-12 rounded-xl bg-accent/50 flex items-center justify-center">
-                  <Mail className="h-6 w-6 text-accent-foreground" />
+                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-accent/20 before:to-transparent before:rounded-xl">
+                  <Mail className="relative z-10 h-6 w-6 text-accent-foreground" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Email</span>
               </div>
@@ -155,8 +155,8 @@ export default function Dashboard() {
               trigger={
                 <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
                   <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center">
-                      <Zap className="h-6 w-6 text-success" />
+                    <div className="relative h-12 w-12 rounded-xl border border-success/30 bg-success/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--success)/0.2),inset_0_1px_1px_hsl(var(--success)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-success/20 before:to-transparent before:rounded-xl">
+                      <Zap className="relative z-10 h-6 w-6 text-success" />
                     </div>
                     <span className="text-sm font-medium text-foreground">Quick Prompts</span>
                   </div>
@@ -167,8 +167,8 @@ export default function Dashboard() {
               trigger={
                 <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
                   <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                      <Briefcase className="h-6 w-6 text-primary-foreground" />
+                    <div className="relative h-12 w-12 rounded-xl border border-primary/30 bg-primary/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--primary)/0.2),inset_0_1px_1px_hsl(var(--primary)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-primary/20 before:to-transparent before:rounded-xl">
+                      <Briefcase className="relative z-10 h-6 w-6 text-primary" />
                     </div>
                     <span className="text-sm font-medium text-foreground">Create New Deal</span>
                   </div>
