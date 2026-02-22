@@ -683,7 +683,7 @@ function NeuralNetwork() {
   const pulseShaderMaterial = useMemo(() => {
     return new THREE.ShaderMaterial({
       uniforms: {
-        uColor: { value: new THREE.Color('#0ea5e9') },
+        uColor: { value: new THREE.Color('#9333ea') },
         uOpacity: { value: 0.35 },
         uPhase: { value: 0.0 }
       },
@@ -1076,13 +1076,13 @@ function NeuralNetwork() {
       {/* Outer nuclear envelope - double membrane appearance */}
       <mesh ref={outerEnvelopeRef} position={[0, 0, 0]}>
         <sphereGeometry args={[0.48, 48, 48]} />
-        <meshBasicMaterial color="#0891b2" transparent opacity={0.12} />
+        <meshBasicMaterial color="#7c3aed" transparent opacity={0.12} />
       </mesh>
       
       {/* Inner nuclear envelope */}
       <mesh ref={nuclearEnvelopeRef} position={[0, 0, 0]}>
         <sphereGeometry args={[0.42, 40, 40]} />
-        <meshBasicMaterial color="#06b6d4" transparent opacity={0.18} />
+        <meshBasicMaterial color="#8b5cf6" transparent opacity={0.18} />
       </mesh>
       
       {/* Nuclear pores - small dots on envelope */}
@@ -1097,7 +1097,7 @@ function NeuralNetwork() {
             r * Math.cos(phi)
           ]}>
             <sphereGeometry args={[0.012, 8, 8]} />
-            <meshBasicMaterial color="#67e8f9" transparent opacity={0.6} />
+            <meshBasicMaterial color="#c4b5fd" transparent opacity={0.6} />
           </mesh>
         );
       })}
@@ -1105,13 +1105,13 @@ function NeuralNetwork() {
       {/* Nucleoplasm - the internal matrix */}
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[0.35, 32, 32]} />
-        <meshBasicMaterial color="#0e7490" transparent opacity={0.15} />
+        <meshBasicMaterial color="#6d28d9" transparent opacity={0.15} />
       </mesh>
       
       {/* Nucleus main body - slightly irregular */}
       <mesh ref={nucleusRef} position={[0, 0, 0]}>
         <sphereGeometry args={[0.28, 24, 24]} />
-        <meshBasicMaterial color="#22d3ee" transparent opacity={0.35} />
+        <meshBasicMaterial color="#a78bfa" transparent opacity={0.35} />
       </mesh>
       
       {/* Chromatin network - tangled strand-like structures */}
@@ -1122,7 +1122,7 @@ function NeuralNetwork() {
           return (
             <mesh key={`chromatin-${i}`} position={[0, 0, 0]} rotation={[tilt, baseAngle, tilt * 0.5]}>
               <torusGeometry args={[0.12 + (i % 3) * 0.04, 0.008, 8, 32]} />
-              <meshBasicMaterial color="#67e8f9" transparent opacity={0.4 + (i % 3) * 0.1} />
+              <meshBasicMaterial color="#c4b5fd" transparent opacity={0.4 + (i % 3) * 0.1} />
             </mesh>
           );
         })}
@@ -1136,7 +1136,7 @@ function NeuralNetwork() {
               Math.sin(angle + 0.5) * 0.1
             ]} rotation={[angle, angle * 0.5, 0]}>
               <torusKnotGeometry args={[0.05, 0.006, 32, 8, 2, 3]} />
-              <meshBasicMaterial color="#a5f3fc" transparent opacity={0.3} />
+              <meshBasicMaterial color="#ddd6fe" transparent opacity={0.3} />
             </mesh>
           );
         })}
@@ -1145,19 +1145,19 @@ function NeuralNetwork() {
       {/* Nucleolus - dense central body */}
       <mesh ref={nucleolusRef} position={[0.02, 0.01, 0]}>
         <sphereGeometry args={[0.1, 20, 20]} />
-        <meshBasicMaterial color="#0e7490" transparent opacity={0.7} />
+        <meshBasicMaterial color="#5b21b6" transparent opacity={0.7} />
       </mesh>
       
       {/* Nucleolus inner core */}
       <mesh position={[0.02, 0.01, 0]}>
         <sphereGeometry args={[0.055, 16, 16]} />
-        <meshBasicMaterial color="#164e63" transparent opacity={0.85} />
+        <meshBasicMaterial color="#4c1d95" transparent opacity={0.85} />
       </mesh>
       
       {/* Nucleolus bright center */}
       <mesh position={[0.02, 0.01, 0]}>
         <sphereGeometry args={[0.025, 12, 12]} />
-        <meshBasicMaterial color="#06b6d4" transparent opacity={0.9} />
+        <meshBasicMaterial color="#8b5cf6" transparent opacity={0.9} />
       </mesh>
       
       {/* === NEURAL FIRING NETWORK === */}
@@ -1197,13 +1197,13 @@ function NeuralNetwork() {
         {/* Glow ring around neuron cluster */}
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[0.5, 0.008, 16, 64]} />
-          <meshBasicMaterial color="#22d3ee" transparent opacity={0.6} />
+          <meshBasicMaterial color="#a78bfa" transparent opacity={0.6} />
         </mesh>
         
         {/* Second glow ring tilted */}
         <mesh rotation={[Math.PI / 3, Math.PI / 4, 0]}>
           <torusGeometry args={[0.45, 0.006, 16, 64]} />
-          <meshBasicMaterial color="#67e8f9" transparent opacity={0.4} />
+          <meshBasicMaterial color="#c4b5fd" transparent opacity={0.4} />
         </mesh>
       </group>
       
@@ -1220,7 +1220,7 @@ function NeuralNetwork() {
               r * Math.cos(phi)
             ]}>
               <sphereGeometry args={[0.015, 8, 8]} />
-              <meshBasicMaterial color="#22d3ee" transparent opacity={0.7} />
+              <meshBasicMaterial color="#a78bfa" transparent opacity={0.7} />
             </mesh>
           );
         })}
@@ -1231,19 +1231,19 @@ function NeuralNetwork() {
       {/* Ring 1 - equatorial */}
       <mesh ref={haloRing1Ref} position={[0, 0, 0]} rotation={[0, 0, 0]}>
         <torusGeometry args={[0.58, 0.006, 16, 100]} />
-        <meshBasicMaterial color="#22d3ee" transparent opacity={0.5} />
+        <meshBasicMaterial color="#a78bfa" transparent opacity={0.5} />
       </mesh>
       
       {/* Ring 2 - tilted */}
       <mesh ref={haloRing2Ref} position={[0, 0, 0]} rotation={[Math.PI / 3, 0, 0]}>
         <torusGeometry args={[0.62, 0.005, 16, 100]} />
-        <meshBasicMaterial color="#06b6d4" transparent opacity={0.4} />
+        <meshBasicMaterial color="#8b5cf6" transparent opacity={0.4} />
       </mesh>
       
       {/* Ring 3 - perpendicular */}
       <mesh ref={haloRing3Ref} position={[0, 0, 0]} rotation={[Math.PI / 2, Math.PI / 4, 0]}>
         <torusGeometry args={[0.66, 0.004, 16, 100]} />
-        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.3} />
+        <meshBasicMaterial color="#7c3aed" transparent opacity={0.3} />
       </mesh>
       
       {/* === ORBITING VESICLES === */}
@@ -1260,7 +1260,7 @@ function NeuralNetwork() {
               Math.sin(angle) * radius
             ]}>
               <sphereGeometry args={[0.02, 12, 12]} />
-              <meshBasicMaterial color="#67e8f9" transparent opacity={0.8} />
+              <meshBasicMaterial color="#c4b5fd" transparent opacity={0.8} />
             </mesh>
           );
         })}
@@ -1296,7 +1296,7 @@ function NeuralNetwork() {
               Math.sin(angle) * radius
             ]}>
               <sphereGeometry args={[0.015, 8, 8]} />
-              <meshBasicMaterial color="#a5f3fc" transparent opacity={0.8} />
+              <meshBasicMaterial color="#ddd6fe" transparent opacity={0.8} />
             </mesh>
           );
         })}
