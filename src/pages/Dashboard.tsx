@@ -118,85 +118,8 @@ export default function Dashboard() {
         <meta name="description" content="Your personal dashboard for managing deals and workflows." />
       </Helmet>
 
-      <div className="relative min-h-screen bg-transparent flex flex-col items-center px-3 sm:px-4 py-6 sm:py-8">
-        {/* Decorative background elements */}
-        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-          {/* Ambient glow orbs behind waves */}
-          <div
-            className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.15]"
-            style={{ background: 'radial-gradient(circle, hsl(263,65%,40%) 0%, transparent 70%)' }}
-          />
-          <div
-            className="absolute top-[40%] -right-16 w-[500px] h-[500px] rounded-full opacity-[0.12]"
-            style={{ background: 'radial-gradient(circle, hsl(270,55%,32%) 0%, transparent 70%)' }}
-          />
-          <div
-            className="absolute -bottom-20 left-[20%] w-[600px] h-[400px] rounded-full opacity-[0.12]"
-            style={{ background: 'radial-gradient(ellipse, hsl(280,50%,35%) 0%, transparent 70%)' }}
-          />
-
-          {/* Flowing wave shapes with glowing purple edge strokes */}
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              {/* Gradient for wave fills - very dark, subtle */}
-              <linearGradient id="waveFill1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="hsl(263,40%,12%)" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="hsl(270,30%,8%)" stopOpacity="0.3" />
-              </linearGradient>
-              <linearGradient id="waveFill2" x1="100%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="hsl(270,35%,10%)" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="hsl(280,30%,6%)" stopOpacity="0.2" />
-              </linearGradient>
-              <linearGradient id="waveFill3" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="hsl(280,40%,14%)" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="hsl(263,30%,8%)" stopOpacity="0.2" />
-              </linearGradient>
-              {/* Glowing edge gradients */}
-              <linearGradient id="edgeGlow1" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="hsl(263,60%,50%)" stopOpacity="0.0" />
-                <stop offset="30%" stopColor="hsl(263,60%,50%)" stopOpacity="0.5" />
-                <stop offset="70%" stopColor="hsl(270,50%,45%)" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="hsl(280,50%,40%)" stopOpacity="0.0" />
-              </linearGradient>
-              <linearGradient id="edgeGlow2" x1="100%" y1="0%" x2="0%" y2="0%">
-                <stop offset="0%" stopColor="hsl(270,55%,48%)" stopOpacity="0.0" />
-                <stop offset="25%" stopColor="hsl(270,55%,48%)" stopOpacity="0.4" />
-                <stop offset="75%" stopColor="hsl(263,50%,42%)" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="hsl(263,50%,42%)" stopOpacity="0.0" />
-              </linearGradient>
-              <linearGradient id="edgeGlow3" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="hsl(280,50%,45%)" stopOpacity="0.0" />
-                <stop offset="20%" stopColor="hsl(280,50%,45%)" stopOpacity="0.35" />
-                <stop offset="80%" stopColor="hsl(263,55%,50%)" stopOpacity="0.45" />
-                <stop offset="100%" stopColor="hsl(263,55%,50%)" stopOpacity="0.0" />
-              </linearGradient>
-              {/* Glow filter for edge lines */}
-              <filter id="edgeBlur">
-                <feGaussianBlur stdDeviation="2" />
-              </filter>
-            </defs>
-
-            {/* Wave 1 - top flowing from left, sweeping down right */}
-            <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200 L1540,0 L-100,0 Z" fill="url(#waveFill1)" />
-            <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200" fill="none" stroke="url(#edgeGlow1)" strokeWidth="1.5" filter="url(#edgeBlur)" />
-            <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200" fill="none" stroke="url(#edgeGlow1)" strokeWidth="0.8" opacity="0.8" />
-
-            {/* Wave 2 - mid section, crossing from right */}
-            <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440 L-100,900 L1540,900 Z" fill="url(#waveFill2)" />
-            <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440" fill="none" stroke="url(#edgeGlow2)" strokeWidth="1.5" filter="url(#edgeBlur)" />
-            <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440" fill="none" stroke="url(#edgeGlow2)" strokeWidth="0.8" opacity="0.8" />
-
-            {/* Wave 3 - bottom flowing wave */}
-            <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740 L1540,900 L-100,900 Z" fill="url(#waveFill3)" />
-            <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740" fill="none" stroke="url(#edgeGlow3)" strokeWidth="1.5" filter="url(#edgeBlur)" />
-            <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740" fill="none" stroke="url(#edgeGlow3)" strokeWidth="0.8" opacity="0.8" />
-
-            {/* Extra subtle wave - upper right accent */}
-            <path d="M800,50 C1000,100 1150,30 1440,80" fill="none" stroke="url(#edgeGlow1)" strokeWidth="1" opacity="0.3" filter="url(#edgeBlur)" />
-          </svg>
-        </div>
-
-        <div className="relative z-10 w-full max-w-6xl space-y-4 sm:space-y-6">
+      <div className="bg-transparent flex flex-col items-center px-3 sm:px-4 py-6 sm:py-8">
+        <div className="w-full max-w-6xl space-y-4 sm:space-y-6">
           {/* Hero: Greeting + AI Input + Quick Actions */}
           <div className="text-center space-y-2 pt-2">
             <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, {firstName}</p>
