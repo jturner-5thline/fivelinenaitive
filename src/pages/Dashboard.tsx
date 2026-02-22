@@ -118,8 +118,48 @@ export default function Dashboard() {
         <meta name="description" content="Your personal dashboard for managing deals and workflows." />
       </Helmet>
 
-      <div className="bg-transparent flex flex-col items-center px-3 sm:px-4 py-6 sm:py-8">
-        <div className="w-full max-w-6xl space-y-4 sm:space-y-6">
+      <div className="relative min-h-screen bg-transparent flex flex-col items-center px-3 sm:px-4 py-6 sm:py-8">
+        {/* Decorative background elements */}
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+          {/* Subtle grid pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `linear-gradient(hsl(263,50%,50%) 1px, transparent 1px), linear-gradient(90deg, hsl(263,50%,50%) 1px, transparent 1px)`,
+              backgroundSize: '60px 60px',
+            }}
+          />
+          {/* Top-left purple orb */}
+          <div
+            className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.08]"
+            style={{
+              background: 'radial-gradient(circle, hsl(263,60%,45%) 0%, transparent 70%)',
+            }}
+          />
+          {/* Center-right dark purple orb */}
+          <div
+            className="absolute top-1/3 -right-20 w-[400px] h-[400px] rounded-full opacity-[0.06]"
+            style={{
+              background: 'radial-gradient(circle, hsl(270,50%,35%) 0%, transparent 70%)',
+            }}
+          />
+          {/* Bottom-center blue-purple orb */}
+          <div
+            className="absolute -bottom-24 left-1/3 w-[600px] h-[350px] rounded-full opacity-[0.07]"
+            style={{
+              background: 'radial-gradient(ellipse, hsl(245,45%,40%) 0%, transparent 70%)',
+            }}
+          />
+          {/* Small accent dot */}
+          <div
+            className="absolute top-[15%] left-[60%] w-[200px] h-[200px] rounded-full opacity-[0.05]"
+            style={{
+              background: 'radial-gradient(circle, hsl(220,60%,50%) 0%, transparent 70%)',
+            }}
+          />
+        </div>
+
+        <div className="relative z-10 w-full max-w-6xl space-y-4 sm:space-y-6">
           {/* Hero: Greeting + AI Input + Quick Actions */}
           <div className="text-center space-y-2 pt-2">
             <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, {firstName}</p>
