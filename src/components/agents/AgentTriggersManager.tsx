@@ -50,6 +50,7 @@ const ACTION_OPTIONS: { value: ActionType; label: string; icon: React.ElementTyp
   { value: 'create_activity', label: 'Log Activity', icon: Activity, description: 'Add to deal activity timeline' },
   { value: 'update_deal', label: 'Update Deal', icon: FileText, description: 'Update deal fields automatically' },
   { value: 'send_notification', label: 'Send Notification', icon: Bell, description: 'Send in-app notification' },
+  { value: 'webhook', label: 'Send to Zapier / Webhook', icon: Zap, description: 'Fire a Zapier webhook or external URL' },
 ];
 
 export function AgentTriggersManager({ agentId, agentName }: AgentTriggersManagerProps) {

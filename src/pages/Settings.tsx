@@ -101,6 +101,10 @@ const SETTINGS_SECTIONS = [
     keywords: ['sla', 'rules', 'stale', 'alert', 'monitoring', 'deal', 'activity', 'timeout'],
   },
   {
+    id: 'zapier',
+    keywords: ['zapier', 'webhook', 'integration', 'automation', 'connect', 'zap'],
+  },
+  {
     id: 'email-snippets',
     keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'],
   },
@@ -115,7 +119,7 @@ const TABS = [
   { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'waitlist', 'database'] },
   { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
-  { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules'] },
+  { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels'] },
 ];
 
@@ -279,6 +283,9 @@ export default function Settings() {
                   {isVisible('suggestions') && <SuggestionSettings />}
                   {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
                   {isVisible('sla-rules') && <SLARulesSettings />}
+                  {isVisible('zapier') && (
+                    <LinkCard to="/integrations?tab=zapier" title="Zapier" description="Manage Zapier webhooks and event triggers" />
+                  )}
                 </TabsContent>
 
                 {/* Email Tab */}

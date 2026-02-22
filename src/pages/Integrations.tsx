@@ -27,6 +27,7 @@ import { GoogleCalendarIntegration } from "@/components/integrations/GoogleCalen
 import { QuickBooksIntegration } from "@/components/integrations/QuickBooksIntegration";
 import { HubSpotIntegration } from "@/components/integrations/HubSpotIntegration";
 import { ClaapIntegration } from "@/components/integrations/ClaapIntegration";
+import { ZapierIntegration } from "@/components/integrations/ZapierIntegration";
 import { 
   Plug, 
   Plus, 
@@ -416,6 +417,7 @@ export default function Integrations() {
           <TabsTrigger value="gmail">Gmail</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="claap">Claap</TabsTrigger>
+          <TabsTrigger value="zapier">Zapier</TabsTrigger>
           <TabsTrigger value="active">Active Integrations ({integrations.length})</TabsTrigger>
           <TabsTrigger value="available">Available Integrations</TabsTrigger>
         </TabsList>
@@ -438,6 +440,10 @@ export default function Integrations() {
 
         <TabsContent value="claap">
           <ClaapIntegration />
+        </TabsContent>
+
+        <TabsContent value="zapier">
+          <ZapierIntegration />
         </TabsContent>
 
         <TabsContent value="active" className="space-y-4">
