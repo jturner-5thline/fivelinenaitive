@@ -93,22 +93,22 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
               <stop offset="100%" stopColor="hsl(282,40%,5%)" stopOpacity="0.4" />
             </linearGradient>
             <linearGradient id="lwEdge1" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(291,48%,60%)" stopOpacity="0.0" />
-              <stop offset="30%" stopColor="hsl(291,48%,60%)" stopOpacity="0.5" />
-              <stop offset="70%" stopColor="hsl(282,70%,35%)" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="hsl(282,70%,35%)" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="hsl(291,60%,70%)" stopOpacity="0.0" />
+              <stop offset="30%" stopColor="hsl(291,60%,70%)" stopOpacity="0.7" />
+              <stop offset="70%" stopColor="hsl(282,80%,55%)" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="hsl(282,80%,55%)" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="lwEdge2" x1="100%" y1="0%" x2="0%" y2="0%">
-              <stop offset="0%" stopColor="hsl(291,48%,60%)" stopOpacity="0.0" />
-              <stop offset="25%" stopColor="hsl(291,48%,60%)" stopOpacity="0.4" />
-              <stop offset="75%" stopColor="hsl(282,70%,35%)" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="hsl(282,70%,35%)" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="hsl(291,60%,70%)" stopOpacity="0.0" />
+              <stop offset="25%" stopColor="hsl(291,60%,70%)" stopOpacity="0.6" />
+              <stop offset="75%" stopColor="hsl(282,80%,55%)" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="hsl(282,80%,55%)" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="lwEdge3" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(282,70%,35%)" stopOpacity="0.0" />
-              <stop offset="20%" stopColor="hsl(282,70%,35%)" stopOpacity="0.35" />
-              <stop offset="80%" stopColor="hsl(291,48%,60%)" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="hsl(291,48%,60%)" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="hsl(282,80%,55%)" stopOpacity="0.0" />
+              <stop offset="20%" stopColor="hsl(282,80%,55%)" stopOpacity="0.55" />
+              <stop offset="80%" stopColor="hsl(291,60%,70%)" stopOpacity="0.65" />
+              <stop offset="100%" stopColor="hsl(291,60%,70%)" stopOpacity="0.0" />
             </linearGradient>
             <filter id="lwBlur"><feGaussianBlur stdDeviation="2" /></filter>
           </defs>
