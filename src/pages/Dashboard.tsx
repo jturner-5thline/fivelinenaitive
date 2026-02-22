@@ -121,9 +121,9 @@ export default function Dashboard() {
       <div className="relative min-h-screen bg-transparent flex flex-col items-center px-3 sm:px-4 py-6 sm:py-8">
         {/* Decorative background elements */}
         <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-          {/* Subtle grid pattern */}
+          {/* Grid pattern */}
           <div
-            className="absolute inset-0 opacity-[0.03]"
+            className="absolute inset-0 opacity-[0.06]"
             style={{
               backgroundImage: `linear-gradient(hsl(263,50%,50%) 1px, transparent 1px), linear-gradient(90deg, hsl(263,50%,50%) 1px, transparent 1px)`,
               backgroundSize: '60px 60px',
@@ -131,30 +131,37 @@ export default function Dashboard() {
           />
           {/* Top-left purple orb */}
           <div
-            className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.08]"
+            className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.18]"
             style={{
-              background: 'radial-gradient(circle, hsl(263,60%,45%) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, hsl(263,65%,40%) 0%, hsl(263,50%,25%) 40%, transparent 70%)',
             }}
           />
           {/* Center-right dark purple orb */}
           <div
-            className="absolute top-1/3 -right-20 w-[400px] h-[400px] rounded-full opacity-[0.06]"
+            className="absolute top-[30%] -right-10 w-[500px] h-[500px] rounded-full opacity-[0.14]"
             style={{
-              background: 'radial-gradient(circle, hsl(270,50%,35%) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, hsl(270,55%,35%) 0%, hsl(270,40%,20%) 45%, transparent 70%)',
             }}
           />
           {/* Bottom-center blue-purple orb */}
           <div
-            className="absolute -bottom-24 left-1/3 w-[600px] h-[350px] rounded-full opacity-[0.07]"
+            className="absolute -bottom-16 left-[25%] w-[700px] h-[400px] rounded-full opacity-[0.15]"
             style={{
-              background: 'radial-gradient(ellipse, hsl(245,45%,40%) 0%, transparent 70%)',
+              background: 'radial-gradient(ellipse, hsl(245,50%,38%) 0%, hsl(250,40%,22%) 40%, transparent 70%)',
             }}
           />
-          {/* Small accent dot */}
+          {/* Mid-left accent */}
           <div
-            className="absolute top-[15%] left-[60%] w-[200px] h-[200px] rounded-full opacity-[0.05]"
+            className="absolute top-[55%] -left-10 w-[350px] h-[350px] rounded-full opacity-[0.1]"
             style={{
-              background: 'radial-gradient(circle, hsl(220,60%,50%) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, hsl(280,50%,35%) 0%, transparent 70%)',
+            }}
+          />
+          {/* Small blue accent */}
+          <div
+            className="absolute top-[12%] left-[55%] w-[300px] h-[300px] rounded-full opacity-[0.1]"
+            style={{
+              background: 'radial-gradient(circle, hsl(220,60%,45%) 0%, transparent 70%)',
             }}
           />
         </div>
