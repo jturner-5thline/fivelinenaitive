@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { Calendar, User, Send, Trash2, Clock, Pencil, Check, X, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, isPast, isToday } from 'date-fns';
+import { Calendar, User, Send, Trash2, Clock, Pencil, Check, X, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, ArrowUp, ArrowUpRight, UserPlus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,11 +20,24 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { OutstandingItem } from '@/hooks/useOutstandingItems';
+import { OutstandingItem, ItemPriority } from '@/hooks/useOutstandingItems';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useOutstandingItemComments } from '@/hooks/useOutstandingItemComments';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { parseDateFromText, formatDateForInput } from '@/lib/parseDateFromText';
+
+const PRIORITY_CONFIG: Record<ItemPriority, { label: string; dotColor: string }> = {
+  urgent: { label: 'Urgent', dotColor: 'bg-destructive' },
+  high: { label: 'High', dotColor: 'bg-orange-500' },
+  normal: { label: 'Normal', dotColor: 'bg-muted-foreground' },
+};
 
 interface OutstandingItemDialogProps {
   item: OutstandingItem | null;
@@ -35,6 +48,7 @@ interface OutstandingItemDialogProps {
   onSelectItem: (item: OutstandingItem) => void;
   lenderNames?: string[];
   companyName?: string;
+  teamMembers?: { id: string; display_name: string }[];
 }
 
 export function OutstandingItemDialog({
@@ -46,6 +60,7 @@ export function OutstandingItemDialog({
   onSelectItem,
   lenderNames = [],
   companyName,
+  teamMembers = [],
 }: OutstandingItemDialogProps) {
   const [newComment, setNewComment] = useState('');
   const [editingNotes, setEditingNotes] = useState(false);
@@ -353,7 +368,64 @@ export function OutstandingItemDialog({
             )}
           </div>
 
-          {/* Notes Section */}
+          {/* Priority & Assignment */}
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Priority:</span>
+              <Select 
+                value={item.priority || 'normal'} 
+                onValueChange={(v) => onUpdate(item.id, { priority: v as ItemPriority })}
+              >
+                <SelectTrigger className="w-28 h-8 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn("w-2 h-2 rounded-full", PRIORITY_CONFIG[(item.priority || 'normal') as ItemPriority].dotColor)} />
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {(['normal', 'high', 'urgent'] as ItemPriority[]).map(p => (
+                    <SelectItem key={p} value={p}>
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn("w-2 h-2 rounded-full", PRIORITY_CONFIG[p].dotColor)} />
+                        {PRIORITY_CONFIG[p].label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Assigned:</span>
+              <Select 
+                value={item.assignedTo || '_none'} 
+                onValueChange={(v) => onUpdate(item.id, { assignedTo: v === '_none' ? undefined : v })}
+              >
+                <SelectTrigger className="w-36 h-8 text-sm">
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Unassigned</SelectItem>
+                  {teamMembers.map(member => (
+                    <SelectItem key={member.id} value={member.display_name}>
+                      {member.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* ETA overdue warning */}
+          {etaValue && isPast(new Date(etaValue)) && !isToday(new Date(etaValue)) && !(item.received && item.approved) && (
+            <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-sm">
+              <AlertTriangle className="h-4 w-4" />
+              This item is overdue
+            </div>
+          )}
+
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Notes</span>
