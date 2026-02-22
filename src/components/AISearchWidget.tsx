@@ -26,19 +26,6 @@ export function AISearchWidget() {
   const { hasAccess: canAccessChatWidget, isLoading: isLoadingAccess } = useFeatureAccess('chat_widget');
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [scrollOffset, setScrollOffset] = useState(0);
-
-  // Track scroll to create a floating movement effect
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      // Sine-based oscillation mapped to scroll position for a gentle bob
-      const offset = Math.sin(scrollY * 0.01) * 12;
-      setScrollOffset(offset);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
   // Focus input when opened
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -138,7 +125,7 @@ export function AISearchWidget() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 transition-transform duration-300 ease-out" style={{ transform: `translateY(${scrollOffset}px)` }}>
+    <div className="fixed bottom-4 left-4 z-50">
       {/* Morphing Blob Button */}
       <MorphingBlob 
         isActive={isOpen} 
