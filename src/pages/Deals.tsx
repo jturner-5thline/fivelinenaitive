@@ -283,32 +283,8 @@ export default function Dashboard() {
                     />
                   </div>
                 )}
-                <Button
-                  variant="liquid-glass"
-                  size="sm"
-                  className="gap-2 h-9 shrink-0"
-                  onClick={() => setShowMilestones(!showMilestones)}
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" />
-                  </svg>
-                  Milestones
-                </Button>
-              </div>
-            </div>
 
-            {/* Results Count & Group Toggle */}
-            {!showMilestones && <div 
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
-              style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
-            >
-              <p className="text-sm text-muted-foreground">
-                Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
-                {deals.length === 1 ? 'deal' : 'deals'}
-              </p>
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                {/* Stale / Flag / Notification toggles */}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -392,7 +368,32 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
-                <div className="h-4 w-px bg-border" />
+                <Button
+                  variant="liquid-glass"
+                  size="sm"
+                  className="gap-2 h-9 shrink-0"
+                  onClick={() => setShowMilestones(!showMilestones)}
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
+                  Milestones
+                </Button>
+              </div>
+            </div>
+
+            {/* Results Count & Group Toggle */}
+            {!showMilestones && <div 
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 opacity-0"
+              style={{ animation: 'fadeInUp 0.4s ease-out 0.25s forwards' }}
+            >
+              <p className="text-sm text-muted-foreground">
+                Showing <span className="font-medium text-foreground">{deals.length}</span>{' '}
+                {deals.length === 1 ? 'deal' : 'deals'}
+              </p>
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
 
                 {/* Sort Dropdown */}
                 <DropdownMenu>
