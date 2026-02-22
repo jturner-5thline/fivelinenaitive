@@ -143,19 +143,28 @@ export function useMyTasks() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: TASKS_KEY });
       if (user && data) {
         const taskUrl = `${window.location.origin}/tasks?task=${(data as any).id}`;
-        fireZapierWebhook('task_created', user.id, {
+        const { data: assigneeProfile } = await supabase
+          .from('profiles')
+          .select('display_name, email')
+          .eq('user_id', (data as any).assigned_to)
+          .single();
+        const payload = {
           task_id: (data as any).id,
           title: (data as any).title,
           priority: (data as any).priority,
           status: (data as any).status,
           assigned_to: (data as any).assigned_to,
+          assigned_to_email: assigneeProfile?.email || null,
+          assigned_to_name: assigneeProfile?.display_name || null,
           due_date: (data as any).due_date,
           task_url: taskUrl,
-        });
+        };
+        fireZapierWebhook('task_created', user.id, payload);
+        fireZapierWebhook('task_assigned', user.id, payload);
       }
     },
     onError: () => toast.error('Failed to create task'),
@@ -192,9 +201,16 @@ export function useMyTasks() {
       // Fire Zapier webhook when task is assigned/reassigned
       if (updates.assigned_to !== undefined && user) {
         const taskUrl = `${window.location.origin}/tasks?task=${id}`;
+        const { data: assigneeProfile } = await supabase
+          .from('profiles')
+          .select('display_name, email')
+          .eq('user_id', updates.assigned_to)
+          .single();
         fireZapierWebhook('task_assigned', user.id, {
           task_id: id,
           assigned_to: updates.assigned_to,
+          assigned_to_email: assigneeProfile?.email || null,
+          assigned_to_name: assigneeProfile?.display_name || null,
           title: updates.title,
           task_url: taskUrl,
         });
