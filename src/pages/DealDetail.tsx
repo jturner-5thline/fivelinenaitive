@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
@@ -69,6 +69,11 @@ import { DataRoomBulkActions } from '@/components/deal/DataRoomBulkActions';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
 import { DealResearchPanel } from '@/components/deal/DealResearchPanel';
+import { DealPulseDashboard } from '@/components/deal/DealPulseDashboard';
+import { ProactiveAlertBar } from '@/components/deal/ProactiveAlertBar';
+import { DealCommandPalette } from '@/components/deal/DealCommandPalette';
+import { UnifiedTimeline } from '@/components/deal/UnifiedTimeline';
+import { DealBenchmarkPanel } from '@/components/deal/DealBenchmarkPanel';
 import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
@@ -625,6 +630,7 @@ export default function DealDetail() {
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
   const [contactPopoverOpen, setContactPopoverOpen] = useState(false);
   const [historyDrawerLender, setHistoryDrawerLender] = useState<string | null>(null);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Lender history warnings - build deal context for matching
   const lenderHistoryDealContext = useMemo(() => {
@@ -2155,30 +2161,27 @@ export default function DealDetail() {
             </div>
           </div>
 
-          {/* Stale Lenders Notification */}
-          {staleLendersInfo && !isDealNotificationDismissed && (
-            <div className="flex items-center gap-3 px-4 py-3 mb-4 rounded-lg bg-destructive/10 border border-destructive/20">
-              <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
-              <div className="flex flex-col flex-1">
-                <span className="text-sm font-medium text-destructive">
-                  Lenders need update
-                </span>
-                <span className="text-xs text-destructive/70">
-                  {staleLendersInfo.count} lender{staleLendersInfo.count !== 1 ? 's' : ''} haven't been updated in {staleLendersInfo.maxDays}+ days
-                </span>
-              </div>
-              <button
-                onClick={handleDismissNotification}
-                className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-destructive/20 transition-colors"
-                title="Dismiss for 24 hours"
-              >
-                <X className="h-4 w-4 text-destructive" />
-              </button>
-            </div>
-          )}
+          {/* Proactive Alert Bar - replaces old stale lender notification */}
+          <ProactiveAlertBar 
+            deal={deal}
+            checklistTotal={allChecklistItems.length}
+            checklistComplete={0}
+            outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
+            infoRequestCount={infoRequestActionCount}
+            onNavigate={handleTabChange}
+          />
+
+          {/* Deal Pulse Dashboard */}
+          <DealPulseDashboard 
+            deal={deal}
+            attachmentCount={attachments.length}
+            checklistTotal={allChecklistItems.length}
+            checklistComplete={0}
+            outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
+          />
 
           {/* Header Card */}
-          <Card className="mb-6">
+          <Card className="mt-4 mb-6">
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
@@ -3192,6 +3195,68 @@ export default function DealDetail() {
                       </div>
                     ];
                   }, [])}
+
+                  {/* Unified Timeline & Benchmarking */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                    <Card className="lg:col-span-2">
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Activity Timeline
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <UnifiedTimeline 
+                          events={(activityLogs || []).map(log => ({
+                            id: log.id,
+                            type: log.activity_type?.includes('lender') ? 'lender_update' as const 
+                              : log.activity_type?.includes('stage') ? 'stage_change' as const
+                              : log.activity_type?.includes('milestone') ? 'milestone' as const
+                              : log.activity_type?.includes('attachment') || log.activity_type?.includes('upload') ? 'document' as const
+                              : log.activity_type?.includes('note') ? 'note' as const
+                              : log.activity_type?.includes('email') ? 'email' as const
+                              : 'general' as const,
+                            description: log.description,
+                            timestamp: log.created_at,
+                            actor: log.user_display_name || undefined,
+                          }))}
+                          maxHeight="400px"
+                        />
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4" />
+                          Benchmarks
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <DealBenchmarkPanel
+                          currentDeal={{
+                            id: deal.id,
+                            stage: deal.stage,
+                            status: deal.status,
+                            value: deal.value,
+                            createdAt: deal.createdAt,
+                            updatedAt: deal.updatedAt,
+                            lenderCount: deal.lenders?.length || 0,
+                            milestoneProgress: dbMilestones.length === 0 ? 0 : Math.round((dbMilestones.filter(m => m.completed).length / dbMilestones.length) * 100),
+                          }}
+                          portfolioDeals={deals.map(d => ({
+                            id: d.id,
+                            stage: d.stage,
+                            status: d.status,
+                            value: d.value,
+                            createdAt: d.createdAt,
+                            updatedAt: d.updatedAt,
+                            lenderCount: d.lenders?.length || 0,
+                            milestoneProgress: 0,
+                          }))}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
 
                 </TabsContent>
 
@@ -4810,6 +4875,42 @@ export default function DealDetail() {
         dealName={deal?.company}
         noteContext={mentionNoteContext}
       />
+
+      {/* Deal Command Palette (⌘K) */}
+      {deal && (
+        <DealCommandPalette
+          isOpen={isCommandPaletteOpen}
+          onOpenChange={setIsCommandPaletteOpen}
+          onNavigateTab={handleTabChange}
+          onAction={(action) => {
+            switch (action) {
+              case 'open-memo':
+                // Trigger memo dialog - handled by existing button
+                break;
+              case 'ask-ai':
+                handleTabChange('deal-space');
+                break;
+              case 'export-report':
+                setShowStatusReportPreview(true);
+                break;
+              case 'add-lender':
+                handleTabChange('lenders');
+                break;
+              case 'add-milestone':
+                handleTabChange('deal-info');
+                break;
+              case 'ai-summarize':
+              case 'ai-next-steps':
+              case 'ai-risks':
+                handleTabChange('deal-space');
+                break;
+            }
+          }}
+          dealName={deal.company}
+          lenderCount={deal.lenders?.length || 0}
+          milestoneCount={dbMilestones?.length || 0}
+        />
+      )}
     </>
   );
 }
