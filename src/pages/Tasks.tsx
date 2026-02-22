@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent, useCallback } from 'react';
+import { useState, useRef, KeyboardEvent, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task } from '@/hooks/useTasks';
 import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
@@ -28,11 +28,20 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, CheckSquare, BarChart3, Bell,
   Bookmark, BookmarkPlus, Download, FileDown, Star, MoreVertical,
-  Zap, Tag, ClipboardList,
+  Zap, Tag, ClipboardList, GripVertical,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { isToday, isPast } from 'date-fns';
+import {
+  DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor,
+  useSensor, useSensors, DragStartEvent, DragEndEvent, DragOverEvent,
+  useDroppable,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type ViewMode = 'list' | 'board' | 'calendar' | 'reporting' | 'focus';
 type FilterStatus = 'all' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
@@ -455,7 +464,7 @@ export default function Tasks() {
   );
 }
 
-// Board view component (inline)
+// Board view component with drag-and-drop
 function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCreateTask, selectedTaskId, onAddSection, onRemoveSection, customSectionKeys }: {
   tasks: Task[];
   statusGroups: { key: string; label: string }[];
@@ -470,12 +479,97 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
   const [isAddingSection, setIsAddingSection] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
   const sectionInputRef = useRef<HTMLInputElement>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const priorityColors: Record<string, string> = {
     urgent: 'border-l-destructive',
     high: 'border-l-orange-500',
     medium: 'border-l-primary',
     low: 'border-l-muted-foreground/30',
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  );
+
+  // Group tasks by status, sorted by position
+  const tasksByStatus = useMemo(() => {
+    const map: Record<string, Task[]> = {};
+    for (const group of statusGroups) {
+      map[group.key] = tasks
+        .filter(t => t.status === group.key)
+        .sort((a, b) => a.position - b.position);
+    }
+    return map;
+  }, [tasks, statusGroups]);
+
+  const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    // Handled in dragEnd
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    if (!over || !active) return;
+
+    const activeTaskId = active.id as string;
+    const task = tasks.find(t => t.id === activeTaskId);
+    if (!task) return;
+
+    const overId = over.id as string;
+
+    // Determine target column: if dropped on a column droppable or on another task
+    let targetStatus: string;
+    let overTask: Task | undefined;
+
+    // Check if over is a column ID
+    const isColumn = statusGroups.some(g => g.key === overId);
+    if (isColumn) {
+      targetStatus = overId;
+    } else {
+      overTask = tasks.find(t => t.id === overId);
+      targetStatus = overTask?.status || task.status;
+    }
+
+    const sourceStatus = task.status;
+    const targetTasks = tasksByStatus[targetStatus] || [];
+
+    if (sourceStatus === targetStatus) {
+      // Reorder within the same column
+      if (!overTask || activeTaskId === overId) return;
+      const oldIndex = targetTasks.findIndex(t => t.id === activeTaskId);
+      const newIndex = targetTasks.findIndex(t => t.id === overId);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reordered = arrayMove(targetTasks, oldIndex, newIndex);
+      reordered.forEach((t, i) => {
+        if (t.position !== i) {
+          onUpdateTask(t.id, { position: i });
+        }
+      });
+    } else {
+      // Move to different column
+      let newPosition = 0;
+      if (overTask) {
+        const overIndex = targetTasks.findIndex(t => t.id === overId);
+        newPosition = overIndex >= 0 ? overIndex : targetTasks.length;
+      } else {
+        newPosition = targetTasks.length;
+      }
+      // Shift positions of tasks below in target column
+      targetTasks.forEach((t, i) => {
+        if (i >= newPosition) {
+          onUpdateTask(t.id, { position: i + 1 });
+        }
+      });
+      onUpdateTask(activeTaskId, { status: targetStatus, position: newPosition });
+    }
   };
 
   const handleAddSection = () => {
@@ -486,49 +580,118 @@ function TaskBoardView({ tasks, statusGroups, onSelectTask, onUpdateTask, onCrea
   };
 
   return (
-    <div className="flex gap-4 p-4 overflow-x-auto h-full">
-      {statusGroups.map(group => (
-        <BoardColumn
-          key={group.key}
-          groupKey={group.key}
-          label={group.label}
-          tasks={tasks.filter(t => t.status === group.key)}
-          priorityColors={priorityColors}
-          selectedTaskId={selectedTaskId}
-          onSelectTask={onSelectTask}
-          onCreateTask={onCreateTask}
-          isCustom={customSectionKeys.includes(group.key)}
-          onRemove={() => onRemoveSection(group.key)}
-        />
-      ))}
-      {/* Add Section column */}
-      {isAddingSection ? (
-        <div className="flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg">
-          <div className="px-3 py-2.5 border-b">
-            <Input
-              ref={sectionInputRef}
-              value={newSectionName}
-              onChange={e => setNewSectionName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { e.preventDefault(); handleAddSection(); }
-                if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); }
-              }}
-              onBlur={handleAddSection}
-              placeholder="Section name..."
-              className="h-8 text-sm"
-              autoFocus
-            />
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex gap-4 p-4 overflow-x-auto h-full">
+        {statusGroups.map(group => (
+          <BoardColumn
+            key={group.key}
+            groupKey={group.key}
+            label={group.label}
+            tasks={tasksByStatus[group.key] || []}
+            priorityColors={priorityColors}
+            selectedTaskId={selectedTaskId}
+            onSelectTask={onSelectTask}
+            onCreateTask={onCreateTask}
+            isCustom={customSectionKeys.includes(group.key)}
+            onRemove={() => onRemoveSection(group.key)}
+          />
+        ))}
+        {/* Add Section column */}
+        {isAddingSection ? (
+          <div className="flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg">
+            <div className="px-3 py-2.5 border-b">
+              <Input
+                ref={sectionInputRef}
+                value={newSectionName}
+                onChange={e => setNewSectionName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleAddSection(); }
+                  if (e.key === 'Escape') { setIsAddingSection(false); setNewSectionName(''); }
+                }}
+                onBlur={handleAddSection}
+                placeholder="Section name..."
+                className="h-8 text-sm"
+                autoFocus
+              />
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => { setIsAddingSection(true); setNewSectionName(''); }}
+            className="flex flex-col items-center justify-center min-w-[280px] w-[280px] rounded-lg border border-dashed border-border/50 hover:border-border hover:bg-muted/20 transition-colors gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <Plus className="h-5 w-5" />
+            <span className="text-sm">Add Section</span>
+          </button>
+        )}
+      </div>
+      <DragOverlay>
+        {activeTask ? (
+          <div className={`rounded-md border bg-card p-3 shadow-lg border-l-[3px] opacity-90 w-[260px] ${priorityColors[activeTask.priority] || ''}`}>
+            <p className="text-sm font-medium">{activeTask.title}</p>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+function SortableTaskCard({ task, priorityColors, selectedTaskId, onSelectTask }: {
+  task: Task;
+  priorityColors: Record<string, string>;
+  selectedTaskId: string | null;
+  onSelectTask: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-md border bg-card p-3 cursor-pointer hover:shadow-sm transition-all border-l-[3px] ${priorityColors[task.priority] || ''} ${
+        selectedTaskId === task.id ? 'ring-1 ring-primary' : ''
+      }`}
+      onClick={() => onSelectTask(task.id)}
+    >
+      <div className="flex items-start gap-1.5">
+        <div
+          {...attributes}
+          {...listeners}
+          className="mt-0.5 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground shrink-0"
+          onClick={e => e.stopPropagation()}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium ${task.status === 'complete' ? 'line-through text-muted-foreground' : ''}`}>
+            {task.title}
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            {task.due_date && (
+              <span className="text-[10px] text-muted-foreground">
+                {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
+            {task.assignee_profile && (
+              <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[100px]">
+                {task.assignee_profile.display_name}
+              </span>
+            )}
           </div>
         </div>
-      ) : (
-        <button
-          onClick={() => { setIsAddingSection(true); setNewSectionName(''); }}
-          className="flex flex-col items-center justify-center min-w-[280px] w-[280px] rounded-lg border border-dashed border-border/50 hover:border-border hover:bg-muted/20 transition-colors gap-2 text-muted-foreground hover:text-foreground"
-        >
-          <Plus className="h-5 w-5" />
-          <span className="text-sm">Add Section</span>
-        </button>
-      )}
+      </div>
     </div>
   );
 }
@@ -547,6 +710,10 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selec
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { setNodeRef, isOver } = useDroppable({ id: groupKey });
+
+  const taskIds = useMemo(() => groupTasks.map(t => t.id), [groupTasks]);
 
   const startAdding = () => {
     setIsAdding(true);
@@ -567,7 +734,7 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selec
   };
 
   return (
-    <div className="flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg">
+    <div className={`flex flex-col min-w-[280px] w-[280px] bg-muted/30 rounded-lg transition-colors ${isOver ? 'bg-primary/5 ring-1 ring-primary/20' : ''}`}>
       <div className="flex items-center justify-between px-3 py-2.5 border-b">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{label}</span>
@@ -586,7 +753,7 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selec
           </Button>
         </div>
       </div>
-      <div className="flex-1 overflow-auto p-2 space-y-2">
+      <div ref={setNodeRef} className="flex-1 overflow-auto p-2 space-y-2 min-h-[60px]">
         {isAdding && (
           <div className="rounded-md border bg-card p-2">
             <Input
@@ -600,31 +767,17 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, priorityColors, selec
             />
           </div>
         )}
-        {groupTasks.map(task => (
-          <div
-            key={task.id}
-            className={`rounded-md border bg-card p-3 cursor-pointer hover:shadow-sm transition-all border-l-[3px] ${priorityColors[task.priority] || ''} ${
-              selectedTaskId === task.id ? 'ring-1 ring-primary' : ''
-            }`}
-            onClick={() => onSelectTask(task.id)}
-          >
-            <p className={`text-sm font-medium ${task.status === 'complete' ? 'line-through text-muted-foreground' : ''}`}>
-              {task.title}
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              {task.due_date && (
-                <span className="text-[10px] text-muted-foreground">
-                  {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-              )}
-              {task.assignee_profile && (
-                <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[100px]">
-                  {task.assignee_profile.display_name}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          {groupTasks.map(task => (
+            <SortableTaskCard
+              key={task.id}
+              task={task}
+              priorityColors={priorityColors}
+              selectedTaskId={selectedTaskId}
+              onSelectTask={onSelectTask}
+            />
+          ))}
+        </SortableContext>
         {!isAdding && (
           <button
             onClick={startAdding}
