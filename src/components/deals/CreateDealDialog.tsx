@@ -216,7 +216,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange }
   };
 
   const defaultTrigger = (
-    <Button variant="gradient" size="sm" className="gap-2">
+    <Button variant="liquid-glass" size="sm" className="gap-2">
       <Plus className="h-4 w-4" />
       New Deal
     </Button>
