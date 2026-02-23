@@ -311,6 +311,7 @@ export function useDealsDatabase() {
       lenders: dealLenders,
       migratedFromPersonal: dbDeal.migrated_from_personal || false,
       pipelineId: (dbDeal as any).pipeline_id || undefined,
+      closingDate: (dbDeal as any).closing_date || null,
     };
   }, []);
 
@@ -604,6 +605,7 @@ export function useDealsDatabase() {
       if (updates.contactInfo !== undefined) dbUpdates.contact_info = updates.contactInfo;
       if (updates.companyUrl !== undefined) dbUpdates.company_url = updates.companyUrl;
       if (updates.businessModel !== undefined) dbUpdates.business_model = updates.businessModel;
+      if (updates.closingDate !== undefined) dbUpdates.closing_date = updates.closingDate;
 
       const { error } = await supabase
         .from('deals')
