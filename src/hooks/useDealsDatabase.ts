@@ -475,6 +475,7 @@ export function useDealsDatabase() {
           notes_updated_at: dealData.notes ? new Date().toISOString() : null,
           contact: dealData.contact || null,
           contact_info: dealData.contactInfo || null,
+          deal_type: dealData.dealTypes && dealData.dealTypes.length > 0 ? JSON.stringify(dealData.dealTypes) : null,
           user_id: userId,
           company_id: memberData?.company_id || null,
           pipeline_id: dealData.pipelineId || null,
@@ -518,6 +519,7 @@ export function useDealsDatabase() {
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         lenders: [],
+        dealTypes: dealData.dealTypes || undefined,
         pipelineId: (data as any).pipeline_id || undefined,
       };
 
