@@ -24,6 +24,53 @@ naitive is a commercial lending deal management platform by 5th Line Capital. It
 - **Company** (/company): Company profile, team members, invitations.
 `;
 
+// ─── Multi-agent personas ───────────────────────────────────────────
+const agentPersonas: Record<string, { name: string; icon: string; systemAddendum: string }> = {
+  research: {
+    name: "Research Analyst",
+    icon: "🔍",
+    systemAddendum: `You are now operating as the **Research Analyst** specialist. You excel at deep-dive company research, market analysis, competitive intelligence, and rate environment tracking. Always use the \`run_research\` tool proactively. Provide citations and data-driven insights. Structure findings with clear headers and actionable takeaways.`,
+  },
+  email: {
+    name: "Email Drafter",
+    icon: "📧",
+    systemAddendum: `You are now operating as the **Email Drafter** specialist. You craft polished, professional lender outreach emails, follow-ups, and deal communications. Always use \`draft_email\` first, then offer to send. Match the user's communication style from memory. Suggest subject lines, key points, and appropriate tone.`,
+  },
+  analyst: {
+    name: "Deal Analyst",
+    icon: "📊",
+    systemAddendum: `You are now operating as the **Deal Analyst** specialist. You provide deep pipeline analytics, deal comparisons, risk assessments, and revenue forecasting. Use \`pipeline_analytics\`, \`compare_deals\`, and \`generate_memo\` tools. Present data in markdown tables. Highlight anomalies, trends, and recommended actions.`,
+  },
+  executor: {
+    name: "Action Executor",
+    icon: "⚡",
+    systemAddendum: `You are now operating as the **Action Executor** specialist. You efficiently execute platform actions: updating deal stages, managing lenders, completing milestones, creating tasks. Confirm actions before executing, report results with ✅, and suggest follow-up actions.`,
+  },
+};
+
+// Intent detection patterns for multi-agent routing
+function detectIntent(message: string): string | null {
+  const lower = message.toLowerCase();
+  // Research intent
+  if (/\b(research|look up|find out about|what (is|are|does)|market|industry|competitor|rate environment|tell me about)\b/.test(lower) &&
+      !/\b(draft|email|send|write|compose)\b/.test(lower)) {
+    return "research";
+  }
+  // Email intent
+  if (/\b(draft|email|send|write|compose|outreach|follow[- ]?up email|reach out)\b/.test(lower)) {
+    return "email";
+  }
+  // Analytics/analyst intent
+  if (/\b(analyz|analytics|forecast|compare|conversion|velocity|win.?loss|pipeline.?report|revenue|performance|benchmark|trend)\b/.test(lower)) {
+    return "analyst";
+  }
+  // Action intent
+  if (/\b(update stage|move.*(deal|stage)|complete milestone|create task|assign|mark.*complete|add lender|change.*stage)\b/.test(lower)) {
+    return "executor";
+  }
+  return null; // General copilot
+}
+
 // ─── Tool definitions ───────────────────────────────────────────────
 const tools = [
   {
@@ -254,6 +301,40 @@ const tools = [
       },
     },
   },
+  // ─── Memory tools ─────────────────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "save_memory",
+      description: "Save a user preference, communication style, or important fact to long-term memory. Use this to remember things the user tells you about their preferences, writing style, preferred lenders, deal criteria, or decisions.",
+      parameters: {
+        type: "object",
+        properties: {
+          key: { type: "string", description: "Short descriptive key (e.g., 'email_tone', 'preferred_lenders', 'deal_criteria')" },
+          value: { type: "string", description: "The value or information to remember" },
+          memory_type: { type: "string", enum: ["preference", "style", "criteria", "decision", "fact"], description: "Type of memory" },
+          importance: { type: "number", description: "Importance score 1-10 (10 = critical)" },
+        },
+        required: ["key", "value", "memory_type"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "recall_memory",
+      description: "Retrieve stored memories and preferences. Use at start of conversations or when you need to recall user preferences.",
+      parameters: {
+        type: "object",
+        properties: {
+          memory_type: { type: "string", enum: ["preference", "style", "criteria", "decision", "fact", "all"], description: "Type of memory to recall" },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 // ─── Tool execution ─────────────────────────────────────────────────
@@ -366,7 +447,6 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
     }
 
     case "draft_email": {
-      // Use deal context if available
       let dealContext = "";
       if (args.deal_id) {
         const deal = ctx.deals.find((d: any) => d.id === args.deal_id);
@@ -379,7 +459,10 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
         }
       }
 
-      // Use AI to draft the email
+      // Include user's email style from memory
+      const styleMemory = (ctx.memories || []).find((m: any) => m.key === 'email_tone' || m.key === 'communication_style');
+      const styleHint = styleMemory ? `\nUser's preferred style: ${styleMemory.value}` : '';
+
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       if (!LOVABLE_API_KEY) return { success: false, error: "AI not configured for drafting" };
 
@@ -389,7 +472,7 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: [
-            { role: "system", content: `You are a professional commercial lending email writer. Write concise, professional emails. Tone: ${args.tone || 'professional'}. Return ONLY the email body (no subject line, no greeting instructions). Use proper HTML formatting with <p> tags.` },
+            { role: "system", content: `You are a professional commercial lending email writer. Write concise, professional emails. Tone: ${args.tone || 'professional'}. Return ONLY the email body (no subject line, no greeting instructions). Use proper HTML formatting with <p> tags.${styleHint}` },
             { role: "user", content: `Draft an email to ${args.to_name} (${args.to_email || ''}).\nSubject: ${args.subject}\nPurpose: ${args.purpose}\nKey points: ${args.key_points}${dealContext}` },
           ],
         }),
@@ -410,7 +493,6 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
       const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
       if (!NYLAS_API_KEY) return { success: false, error: "Email integration not connected. Connect your email in Settings first." };
 
-      // Get user's grant_id
       const { data: token } = await supabase.from("gmail_tokens").select("grant_id").eq("user_id", userId).maybeSingle();
       if (!token?.grant_id) return { success: false, error: "No email account connected. Please connect your Gmail first." };
 
@@ -442,7 +524,6 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
       const lenders = ctx.lenders || [];
       const now = new Date();
 
-      // Filter by time period
       const periodMs: Record<string, number> = { "30d": 30 * 864e5, "90d": 90 * 864e5, "6m": 182 * 864e5, "1y": 365 * 864e5, "all": Infinity };
       const cutoff = now.getTime() - (periodMs[args.time_period || "all"] || Infinity);
       const filteredDeals = deals.filter((d: any) => new Date(d.created_at).getTime() >= cutoff);
@@ -455,118 +536,38 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
           const won = filteredDeals.filter((d: any) => d.status === 'won' || d.stage?.toLowerCase().includes('fund')).length;
           const lost = filteredDeals.filter((d: any) => d.status === 'lost' || d.stage?.toLowerCase().includes('lost')).length;
           return {
-            success: true,
-            message: "Conversion analysis",
-            data: {
-              total_deals: total,
-              won, lost,
-              active: total - won - lost,
-              win_rate: total > 0 ? `${((won / total) * 100).toFixed(1)}%` : "N/A",
-              loss_rate: total > 0 ? `${((lost / total) * 100).toFixed(1)}%` : "N/A",
-              stage_distribution: stages,
-            },
+            success: true, message: "Conversion analysis",
+            data: { total_deals: total, won, lost, active: total - won - lost, win_rate: total > 0 ? `${((won / total) * 100).toFixed(1)}%` : "N/A", loss_rate: total > 0 ? `${((lost / total) * 100).toFixed(1)}%` : "N/A", stage_distribution: stages },
           };
         }
-
         case "deal_velocity": {
           const closedDeals = filteredDeals.filter((d: any) => d.status === 'won' || d.stage?.toLowerCase().includes('fund'));
-          const velocities = closedDeals.map((d: any) => {
-            const days = Math.floor((now.getTime() - new Date(d.created_at).getTime()) / 864e5);
-            return { company: d.company, days, value: d.value };
-          });
+          const velocities = closedDeals.map((d: any) => ({ company: d.company, days: Math.floor((now.getTime() - new Date(d.created_at).getTime()) / 864e5), value: d.value }));
           const avgDays = velocities.length > 0 ? Math.round(velocities.reduce((s: number, v: any) => s + v.days, 0) / velocities.length) : 0;
-          return {
-            success: true,
-            message: "Deal velocity analysis",
-            data: {
-              average_days_to_close: avgDays,
-              closed_deal_count: closedDeals.length,
-              fastest: velocities.sort((a: any, b: any) => a.days - b.days)[0] || null,
-              slowest: velocities.sort((a: any, b: any) => b.days - a.days)[0] || null,
-              details: velocities.slice(0, 10),
-            },
-          };
+          return { success: true, message: "Deal velocity analysis", data: { average_days_to_close: avgDays, closed_deal_count: closedDeals.length, fastest: velocities.sort((a: any, b: any) => a.days - b.days)[0] || null, slowest: velocities.sort((a: any, b: any) => b.days - a.days)[0] || null, details: velocities.slice(0, 10) } };
         }
-
         case "revenue_forecast": {
           const active = filteredDeals.filter((d: any) => d.status === 'active');
           const totalValue = active.reduce((s: number, d: any) => s + (d.value || 0), 0);
           const totalFees = active.reduce((s: number, d: any) => s + (d.closing_fee || 0), 0);
-          // Probability-weighted by stage
-          const stageProb: Record<string, number> = {
-            "New": 0.1, "Screening": 0.15, "Initial Review": 0.2, "Due Diligence": 0.35, "Diligence": 0.35,
-            "Committee": 0.5, "IC": 0.5, "Term Sheet": 0.65, "Legal": 0.75, "Closing": 0.85, "Funded": 1.0,
-          };
-          const weightedValue = active.reduce((s: number, d: any) => {
-            const prob = stageProb[d.stage] || 0.25;
-            return s + (d.value || 0) * prob;
-          }, 0);
-          const weightedFees = active.reduce((s: number, d: any) => {
-            const prob = stageProb[d.stage] || 0.25;
-            return s + (d.closing_fee || 0) * prob;
-          }, 0);
-          return {
-            success: true,
-            message: "Revenue forecast",
-            data: {
-              active_deals: active.length,
-              total_pipeline_value: `$${(totalValue / 1e6).toFixed(1)}M`,
-              total_pipeline_fees: `$${(totalFees / 1e3).toFixed(0)}K`,
-              weighted_forecast_value: `$${(weightedValue / 1e6).toFixed(1)}M`,
-              weighted_forecast_fees: `$${(weightedFees / 1e3).toFixed(0)}K`,
-              by_stage: Object.entries(
-                active.reduce((acc: Record<string, any>, d: any) => {
-                  const stage = d.stage || 'Unknown';
-                  if (!acc[stage]) acc[stage] = { count: 0, value: 0, fees: 0 };
-                  acc[stage].count++;
-                  acc[stage].value += d.value || 0;
-                  acc[stage].fees += d.closing_fee || 0;
-                  return acc;
-                }, {})
-              ).map(([stage, data]: [string, any]) => ({
-                stage, ...data,
-                value: `$${(data.value / 1e6).toFixed(1)}M`,
-                fees: `$${(data.fees / 1e3).toFixed(0)}K`,
-              })),
-            },
-          };
+          const stageProb: Record<string, number> = { "New": 0.1, "Screening": 0.15, "Initial Review": 0.2, "Due Diligence": 0.35, "Diligence": 0.35, "Committee": 0.5, "IC": 0.5, "Term Sheet": 0.65, "Legal": 0.75, "Closing": 0.85, "Funded": 1.0 };
+          const weightedValue = active.reduce((s: number, d: any) => s + (d.value || 0) * (stageProb[d.stage] || 0.25), 0);
+          const weightedFees = active.reduce((s: number, d: any) => s + (d.closing_fee || 0) * (stageProb[d.stage] || 0.25), 0);
+          return { success: true, message: "Revenue forecast", data: { active_deals: active.length, total_pipeline_value: `$${(totalValue / 1e6).toFixed(1)}M`, total_pipeline_fees: `$${(totalFees / 1e3).toFixed(0)}K`, weighted_forecast_value: `$${(weightedValue / 1e6).toFixed(1)}M`, weighted_forecast_fees: `$${(weightedFees / 1e3).toFixed(0)}K`, by_stage: Object.entries(active.reduce((acc: Record<string, any>, d: any) => { const stage = d.stage || 'Unknown'; if (!acc[stage]) acc[stage] = { count: 0, value: 0, fees: 0 }; acc[stage].count++; acc[stage].value += d.value || 0; acc[stage].fees += d.closing_fee || 0; return acc; }, {})).map(([stage, data]: [string, any]) => ({ stage, ...data, value: `$${(data.value / 1e6).toFixed(1)}M`, fees: `$${(data.fees / 1e3).toFixed(0)}K` })) } };
         }
-
         case "stage_distribution": {
           const dist: Record<string, { count: number; value: number }> = {};
-          filteredDeals.forEach((d: any) => {
-            const s = d.stage || 'Unknown';
-            if (!dist[s]) dist[s] = { count: 0, value: 0 };
-            dist[s].count++;
-            dist[s].value += d.value || 0;
-          });
-          return {
-            success: true,
-            message: "Stage distribution",
-            data: Object.entries(dist).map(([stage, d]) => ({
-              stage, count: d.count, value: `$${(d.value / 1e6).toFixed(1)}M`,
-            })),
-          };
+          filteredDeals.forEach((d: any) => { const s = d.stage || 'Unknown'; if (!dist[s]) dist[s] = { count: 0, value: 0 }; dist[s].count++; dist[s].value += d.value || 0; });
+          return { success: true, message: "Stage distribution", data: Object.entries(dist).map(([stage, d]) => ({ stage, count: d.count, value: `$${(d.value / 1e6).toFixed(1)}M` })) };
         }
-
         case "win_loss_analysis": {
           const won = filteredDeals.filter((d: any) => d.status === 'won' || d.stage?.toLowerCase().includes('fund'));
           const lost = filteredDeals.filter((d: any) => d.status === 'lost' || d.stage?.toLowerCase().includes('lost'));
           const passedLenders = lenders.filter((l: any) => l.stage === 'Passed' && l.pass_reason);
           const passReasons: Record<string, number> = {};
           passedLenders.forEach((l: any) => { passReasons[l.pass_reason] = (passReasons[l.pass_reason] || 0) + 1; });
-          return {
-            success: true,
-            message: "Win/Loss analysis",
-            data: {
-              won: { count: won.length, value: `$${(won.reduce((s: number, d: any) => s + (d.value || 0), 0) / 1e6).toFixed(1)}M`, deals: won.map((d: any) => d.company) },
-              lost: { count: lost.length, value: `$${(lost.reduce((s: number, d: any) => s + (d.value || 0), 0) / 1e6).toFixed(1)}M`, deals: lost.map((d: any) => d.company) },
-              top_pass_reasons: Object.entries(passReasons).sort(([, a], [, b]) => (b as number) - (a as number)).slice(0, 5),
-              lender_pass_count: passedLenders.length,
-            },
-          };
+          return { success: true, message: "Win/Loss analysis", data: { won: { count: won.length, value: `$${(won.reduce((s: number, d: any) => s + (d.value || 0), 0) / 1e6).toFixed(1)}M`, deals: won.map((d: any) => d.company) }, lost: { count: lost.length, value: `$${(lost.reduce((s: number, d: any) => s + (d.value || 0), 0) / 1e6).toFixed(1)}M`, deals: lost.map((d: any) => d.company) }, top_pass_reasons: Object.entries(passReasons).sort(([, a], [, b]) => (b as number) - (a as number)).slice(0, 5), lender_pass_count: passedLenders.length } };
         }
-
         case "lender_performance": {
           const lenderMap: Record<string, any> = {};
           lenders.forEach((l: any) => {
@@ -577,45 +578,15 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
             else lenderMap[l.name].active++;
             if (l.quote_amount) { lenderMap[l.name].totalQuote += l.quote_amount; lenderMap[l.name].quoteCount++; }
           });
-          return {
-            success: true,
-            message: "Lender performance",
-            data: Object.entries(lenderMap)
-              .sort(([, a], [, b]) => (b as any).deals - (a as any).deals)
-              .slice(0, 15)
-              .map(([name, d]: [string, any]) => ({
-                name, deals: d.deals, active: d.active, passed: d.passed, funded: d.funded,
-                avg_quote: d.quoteCount > 0 ? `$${((d.totalQuote / d.quoteCount) / 1e6).toFixed(1)}M` : null,
-                conversion: d.deals > 0 ? `${((d.funded / d.deals) * 100).toFixed(0)}%` : "0%",
-              })),
-          };
+          return { success: true, message: "Lender performance", data: Object.entries(lenderMap).sort(([, a], [, b]) => (b as any).deals - (a as any).deals).slice(0, 15).map(([name, d]: [string, any]) => ({ name, deals: d.deals, active: d.active, passed: d.passed, funded: d.funded, avg_quote: d.quoteCount > 0 ? `$${((d.totalQuote / d.quoteCount) / 1e6).toFixed(1)}M` : null, conversion: d.deals > 0 ? `${((d.funded / d.deals) * 100).toFixed(0)}%` : "0%" })) };
         }
-
         case "full_briefing": {
-          // Combine all analytics into a single briefing
           const active = filteredDeals.filter((d: any) => d.status === 'active');
           const totalVal = active.reduce((s: number, d: any) => s + (d.value || 0), 0);
           const overdueMilestones = (ctx.milestones || []).filter((m: any) => !m.completed && m.due_date && new Date(m.due_date) < now);
-          const staleLenders = lenders.filter((l: any) => {
-            if (l.stage === 'Passed' || l.stage === 'Funded') return false;
-            const daysSince = Math.floor((now.getTime() - new Date(l.updated_at || l.created_at).getTime()) / 864e5);
-            return daysSince > 14;
-          });
-
-          return {
-            success: true,
-            message: "Full pipeline briefing",
-            data: {
-              active_deals: active.length,
-              total_pipeline: `$${(totalVal / 1e6).toFixed(1)}M`,
-              overdue_milestones: overdueMilestones.length,
-              stale_lenders: staleLenders.length,
-              recent_activity_count: (ctx.activities || []).length,
-              anomaly_count: (ctx.anomalies || []).length,
-            },
-          };
+          const staleLenders = lenders.filter((l: any) => { if (l.stage === 'Passed' || l.stage === 'Funded') return false; return Math.floor((now.getTime() - new Date(l.updated_at || l.created_at).getTime()) / 864e5) > 14; });
+          return { success: true, message: "Full pipeline briefing", data: { active_deals: active.length, total_pipeline: `$${(totalVal / 1e6).toFixed(1)}M`, overdue_milestones: overdueMilestones.length, stale_lenders: staleLenders.length, recent_activity_count: (ctx.activities || []).length, anomaly_count: (ctx.anomalies || []).length } };
         }
-
         default:
           return { success: false, error: `Unknown metric: ${args.metric}` };
       }
@@ -624,12 +595,10 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
     case "generate_memo": {
       const deal = ctx.deals.find((d: any) => d.id === args.deal_id);
       if (!deal) return { success: false, error: "Deal not found" };
-
       const dealLenders = ctx.lenders.filter((l: any) => l.deal_id === args.deal_id);
       const dealMilestones = (ctx.milestones || []).filter((m: any) => m.deal_id === args.deal_id);
       const dealMemo = ctx.memos.find((m: any) => m.deal_id === args.deal_id);
       const dealOwnership = (ctx.ownership || []).filter((o: any) => o.deal_id === args.deal_id);
-
       const memoContext = [
         `Deal: ${deal.company} | $${(deal.value / 1e6).toFixed(1)}M | ${deal.stage} | ${deal.industry || 'N/A'} | ${deal.deal_type || 'N/A'} | ${deal.geography || 'N/A'}`,
         dealLenders.length > 0 ? `Lenders (${dealLenders.length}):\n${dealLenders.map((l: any) => `- ${l.name}: ${l.stage}${l.quote_amount ? ` $${(l.quote_amount / 1e6).toFixed(1)}M` : ''}${l.quote_rate ? ` @${l.quote_rate}%` : ''}${l.notes ? ` | ${l.notes.slice(0, 100)}` : ''}`).join('\n')}` : '',
@@ -638,7 +607,6 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
         dealOwnership.length > 0 ? `Ownership:\n${dealOwnership.map((o: any) => `- ${o.owner_name}: ${o.ownership_percentage}%`).join('\n')}` : '',
         args.additional_context || '',
       ].filter(Boolean).join('\n\n');
-
       const typePrompts: Record<string, string> = {
         deal_memo: "Write a comprehensive lender-ready deal memo with sections: Overview, Facility Request, Business Description, Key Risks & Hurdles, Lender Status, and Recommendation.",
         meeting_prep: "Create a meeting prep brief covering: Deal Status, Key Discussion Points, Open Items, Recent Activity, and Suggested Talking Points.",
@@ -646,56 +614,26 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
         lender_update: "Write a professional lender update email covering: Deal Progress, Recent Milestones, Current Lender Status, and Upcoming Actions.",
         risk_assessment: "Provide a detailed risk assessment covering: Financial Risks, Market Risks, Operational Risks, Timeline Risks, and Lender Concentration Risk. Rate each as Low/Medium/High.",
       };
-
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       if (!LOVABLE_API_KEY) return { success: false, error: "AI not configured" };
-
       const memoResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: "You are a senior commercial lending analyst. Write professional, data-driven documents. Use specific numbers and facts from the context provided." },
-            { role: "user", content: `${typePrompts[args.memo_type]}\n\nContext:\n${memoContext}` },
-          ],
-        }),
+        body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: [{ role: "system", content: "You are a senior commercial lending analyst. Write professional, data-driven documents. Use specific numbers and facts from the context provided." }, { role: "user", content: `${typePrompts[args.memo_type]}\n\nContext:\n${memoContext}` }] }),
       });
-
       if (!memoResp.ok) return { success: false, error: "Failed to generate memo" };
       const memoData = await memoResp.json();
-      return {
-        success: true,
-        message: `${args.memo_type.replace(/_/g, ' ')} generated for ${deal.company}`,
-        content: memoData.choices?.[0]?.message?.content || "",
-      };
+      return { success: true, message: `${args.memo_type.replace(/_/g, ' ')} generated for ${deal.company}`, content: memoData.choices?.[0]?.message?.content || "" };
     }
 
     case "compare_deals": {
       const compDeals = args.deal_ids.map((id: string) => ctx.deals.find((d: any) => d.id === id)).filter(Boolean);
       if (compDeals.length < 2) return { success: false, error: "Need at least 2 valid deal IDs" };
-
       const comparison = compDeals.map((d: any) => {
         const dl = ctx.lenders.filter((l: any) => l.deal_id === d.id);
         const ms = (ctx.milestones || []).filter((m: any) => m.deal_id === d.id);
-        const daysInPipeline = Math.floor((Date.now() - new Date(d.created_at).getTime()) / 864e5);
-        return {
-          company: d.company,
-          value: `$${(d.value / 1e6).toFixed(1)}M`,
-          stage: d.stage,
-          status: d.status,
-          industry: d.industry || 'N/A',
-          deal_type: d.deal_type || 'N/A',
-          lender_count: dl.length,
-          active_lenders: dl.filter((l: any) => l.stage !== 'Passed').length,
-          best_quote: dl.filter((l: any) => l.quote_rate).sort((a: any, b: any) => a.quote_rate - b.quote_rate)[0]?.quote_rate || null,
-          milestones_completed: ms.filter((m: any) => m.completed).length,
-          milestones_total: ms.length,
-          days_in_pipeline: daysInPipeline,
-          closing_fee: d.closing_fee ? `$${(d.closing_fee / 1e3).toFixed(0)}K` : null,
-        };
+        return { company: d.company, value: `$${(d.value / 1e6).toFixed(1)}M`, stage: d.stage, status: d.status, industry: d.industry || 'N/A', deal_type: d.deal_type || 'N/A', lender_count: dl.length, active_lenders: dl.filter((l: any) => l.stage !== 'Passed').length, best_quote: dl.filter((l: any) => l.quote_rate).sort((a: any, b: any) => a.quote_rate - b.quote_rate)[0]?.quote_rate || null, milestones_completed: ms.filter((m: any) => m.completed).length, milestones_total: ms.length, days_in_pipeline: Math.floor((Date.now() - new Date(d.created_at).getTime()) / 864e5), closing_fee: d.closing_fee ? `$${(d.closing_fee / 1e3).toFixed(0)}K` : null };
       });
-
       return { success: true, message: `Comparing ${comparison.length} deals`, data: comparison };
     }
 
@@ -703,15 +641,10 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       const SLACK_API_KEY = Deno.env.get("SLACK_API_KEY");
       if (!LOVABLE_API_KEY || !SLACK_API_KEY) return { success: false, error: "Slack not connected" };
-
       try {
         const resp = await fetch("https://connector-gateway.lovable.dev/slack/api/chat.postMessage", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "X-Connection-Api-Key": SLACK_API_KEY,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": SLACK_API_KEY, "Content-Type": "application/json" },
           body: JSON.stringify({ channel: args.channel, text: args.message }),
         });
         const data = await resp.json();
@@ -720,6 +653,46 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
       } catch (e) {
         return { success: false, error: e instanceof Error ? e.message : "Slack send failed" };
       }
+    }
+
+    // ─── Memory tools ─────────────────────────────────────────────
+    case "save_memory": {
+      // Use a fixed "copilot" agent ID for the dashboard copilot
+      const COPILOT_AGENT_ID = "00000000-0000-0000-0000-000000000001";
+      const { error } = await supabase.from("agent_memory").upsert({
+        agent_id: COPILOT_AGENT_ID,
+        user_id: userId,
+        key: args.key,
+        value: args.value,
+        memory_type: args.memory_type || "preference",
+        importance: args.importance || 5,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "agent_id,key,user_id" });
+      if (error) {
+        // If unique constraint doesn't exist, try insert
+        const { error: insertErr } = await supabase.from("agent_memory").insert({
+          agent_id: COPILOT_AGENT_ID,
+          user_id: userId,
+          key: args.key,
+          value: args.value,
+          memory_type: args.memory_type || "preference",
+          importance: args.importance || 5,
+        });
+        if (insertErr) return { success: false, error: insertErr.message };
+      }
+      return { success: true, message: `✅ Remembered: "${args.key}" — I'll use this in future conversations.` };
+    }
+
+    case "recall_memory": {
+      const COPILOT_AGENT_ID = "00000000-0000-0000-0000-000000000001";
+      let query = supabase.from("agent_memory").select("key, value, memory_type, importance, updated_at").eq("agent_id", COPILOT_AGENT_ID).eq("user_id", userId);
+      if (args.memory_type && args.memory_type !== "all") {
+        query = query.eq("memory_type", args.memory_type);
+      }
+      const { data, error } = await query.order("importance", { ascending: false }).limit(20);
+      if (error) return { success: false, error: error.message };
+      if (!data || data.length === 0) return { success: true, message: "No stored memories found.", memories: [] };
+      return { success: true, message: `Found ${data.length} stored memories.`, memories: data };
     }
 
     default:
@@ -760,7 +733,6 @@ function detectAnomalies(deals: any[], milestones: any[], lenders: any[]) {
     if (count < 3) alerts.push(`📋 "${d.company}" ($${(d.value / 1e6).toFixed(0)}M) has only ${count} lender(s)`);
   }
 
-  // Concentration risk
   const lenderDealCount: Record<string, string[]> = {};
   for (const l of lenders) {
     if (l.stage === 'Passed') continue;
@@ -774,12 +746,72 @@ function detectAnomalies(deals: any[], milestones: any[], lenders: any[]) {
   return alerts.slice(0, 10);
 }
 
+// ─── Proactive alerts generation ────────────────────────────────────
+function generateProactiveAlerts(ctx: any) {
+  const alerts: Array<{ type: string; severity: 'info' | 'warning' | 'critical'; title: string; description: string; dealId?: string; actionLabel?: string; actionPrompt?: string }> = [];
+  const now = new Date();
+
+  // Stale deals
+  for (const d of (ctx.deals || [])) {
+    if (d.status !== 'active') continue;
+    const days = Math.floor((now.getTime() - new Date(d.created_at).getTime()) / 864e5);
+    if (days > 90) {
+      alerts.push({ type: 'stale_deal', severity: 'critical', title: `${d.company} stalled`, description: `${days} days in pipeline with no movement`, dealId: d.id, actionLabel: 'Get recommendations', actionPrompt: `What should I do about ${d.company}? It's been stalled for ${days} days.` });
+    } else if (days > 60) {
+      alerts.push({ type: 'stale_deal', severity: 'warning', title: `${d.company} aging`, description: `${days} days in pipeline`, dealId: d.id, actionLabel: 'Review deal', actionPrompt: `Give me a status update on ${d.company} and suggest next steps.` });
+    }
+  }
+
+  // Overdue milestones
+  for (const m of (ctx.milestones || [])) {
+    if (m.completed || !m.due_date) continue;
+    const dueDate = new Date(m.due_date);
+    if (dueDate < now) {
+      const days = Math.floor((now.getTime() - dueDate.getTime()) / 864e5);
+      if (days > 7) {
+        alerts.push({ type: 'overdue_milestone', severity: 'critical', title: `Overdue: ${m.title}`, description: `${days}d overdue on ${m.deals?.company || 'Unknown'}`, dealId: m.deal_id, actionLabel: 'Complete or reschedule', actionPrompt: `Milestone "${m.title}" on ${m.deals?.company} is ${days} days overdue. Should I mark it complete or help reschedule?` });
+      } else {
+        alerts.push({ type: 'overdue_milestone', severity: 'warning', title: `Due: ${m.title}`, description: `${days}d overdue on ${m.deals?.company || 'Unknown'}`, dealId: m.deal_id, actionLabel: 'Take action', actionPrompt: `What should I do about the overdue milestone "${m.title}" on ${m.deals?.company}?` });
+      }
+    }
+  }
+
+  // Stale lenders needing follow-up
+  const staleLenders: Array<{ name: string; dealCompany: string; days: number; dealId: string }> = [];
+  for (const l of (ctx.lenders || [])) {
+    if (l.stage === 'Passed' || l.stage === 'Funded') continue;
+    const days = Math.floor((now.getTime() - new Date(l.updated_at || l.created_at).getTime()) / 864e5);
+    if (days > 14) staleLenders.push({ name: l.name, dealCompany: l.deals?.company || 'Unknown', days, dealId: l.deal_id });
+  }
+  if (staleLenders.length > 0) {
+    const top = staleLenders.sort((a, b) => b.days - a.days).slice(0, 3);
+    alerts.push({ type: 'stale_lenders', severity: staleLenders.length > 5 ? 'critical' : 'warning', title: `${staleLenders.length} lenders need follow-up`, description: top.map(l => `${l.name} (${l.days}d)`).join(', '), actionLabel: 'Draft follow-ups', actionPrompt: `I have ${staleLenders.length} stale lenders. Draft follow-up emails for the most critical ones.` });
+  }
+
+  // Low lender coverage on high-value deals
+  const dealLenderCounts: Record<string, number> = {};
+  for (const l of (ctx.lenders || [])) { dealLenderCounts[l.deal_id] = (dealLenderCounts[l.deal_id] || 0) + 1; }
+  for (const d of (ctx.deals || [])) {
+    if (d.status !== 'active' || d.value < 5e6) continue;
+    const count = dealLenderCounts[d.id] || 0;
+    if (count < 3) {
+      alerts.push({ type: 'low_coverage', severity: 'warning', title: `${d.company} needs lenders`, description: `Only ${count} lender(s) on $${(d.value / 1e6).toFixed(0)}M deal`, dealId: d.id, actionLabel: 'Find lenders', actionPrompt: `Find matching lenders for ${d.company} ($${(d.value / 1e6).toFixed(0)}M, ${d.industry || 'unknown industry'})` });
+    }
+  }
+
+  // Sort by severity
+  const severityOrder = { critical: 0, warning: 1, info: 2 };
+  return alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]).slice(0, 6);
+}
+
 // ─── Context fetching ───────────────────────────────────────────────
 async function fetchUserContext(supabase: any, userId: string, companyId: string) {
   const memberRes = await supabase.from("company_members").select("user_id").eq("company_id", companyId);
   const memberIds = memberRes.data?.map((m: any) => m.user_id) || [];
 
-  const [dealsRes, tasksRes, teamRes, insightsRes] = await Promise.all([
+  const COPILOT_AGENT_ID = "00000000-0000-0000-0000-000000000001";
+
+  const [dealsRes, tasksRes, teamRes, insightsRes, memoriesRes] = await Promise.all([
     supabase.from("deals")
       .select("id, company, value, stage, status, deal_type, industry, geography, created_at, user_id, closing_fee, interest_rate")
       .eq("company_id", companyId).order("created_at", { ascending: false }).limit(30),
@@ -792,16 +824,21 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
     supabase.from("insights_history")
       .select("pipeline_health_score, pipeline_health_summary, total_value, active_deals, created_at")
       .eq("user_id", userId).order("created_at", { ascending: false }).limit(1),
+    supabase.from("agent_memory")
+      .select("key, value, memory_type, importance")
+      .eq("agent_id", COPILOT_AGENT_ID).eq("user_id", userId)
+      .order("importance", { ascending: false }).limit(20),
   ]);
 
   const deals = dealsRes.data || [];
   const tasks = tasksRes.data || [];
   const team = teamRes.data || [];
   const latestInsight = insightsRes.data?.[0];
+  const memories = memoriesRes.data || [];
   const dealIds = deals.map((d: any) => d.id);
 
   if (dealIds.length === 0) {
-    return { deals, tasks, team, latestInsight, lenderStats: [], activities: [], milestones: [], memos: [], attachments: [], lenders: [], ownership: [], research: [], emails: [], anomalies: [] };
+    return { deals, tasks, team, latestInsight, memories, lenderStats: [], activities: [], milestones: [], memos: [], attachments: [], lenders: [], ownership: [], research: [], emails: [], anomalies: [] };
   }
 
   const [lenderStatsRes, activitiesRes, milestonesRes, memosRes, attachmentsRes, lendersRes, ownershipRes, researchRes, emailsRes] = await Promise.all([
@@ -837,7 +874,7 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
   const anomalies = detectAnomalies(deals, milestones, lenders);
 
   return {
-    deals, tasks, team, latestInsight,
+    deals, tasks, team, latestInsight, memories,
     lenderStats: lenderStatsRes.data || [],
     activities: (activitiesRes as any).data || [],
     milestones,
@@ -852,10 +889,15 @@ async function fetchUserContext(supabase: any, userId: string, companyId: string
 }
 
 function buildContextString(ctx: any, companyName: string, role: string) {
-  const { deals, tasks, team, latestInsight, lenderStats, activities, milestones, memos, attachments, lenders, ownership, research, emails, anomalies } = ctx;
+  const { deals, tasks, team, latestInsight, lenderStats, activities, milestones, memos, attachments, lenders, ownership, research, emails, anomalies, memories } = ctx;
   const s: string[] = [];
 
   s.push(`## User Context\nCompany: ${companyName} | Role: ${role} | Date: ${new Date().toISOString().slice(0, 10)}`);
+
+  // Include user memories/preferences
+  if (memories && memories.length > 0) {
+    s.push(`## 🧠 User Preferences & Memory\n${memories.map((m: any) => `- **${m.key}** [${m.memory_type}]: ${m.value}`).join('\n')}\n\n*Use these preferences to personalize your responses. Match communication style, reference preferred lenders, and apply deal criteria.*`);
+  }
 
   if (anomalies.length > 0) s.push(`## ⚠️ Alerts & Anomalies\n${anomalies.join('\n')}`);
 
@@ -926,7 +968,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { messages } = await req.json();
+    const { messages, includeAlerts } = await req.json();
+
+    // Handle alerts-only request
+    if (includeAlerts) {
+      const { data: membership } = await supabase.from('company_members').select('company_id, role, companies(name)').eq('user_id', user.id).maybeSingle();
+      const companyId = membership?.company_id;
+      const ctx = await fetchUserContext(supabase, user.id, companyId);
+      const alerts = generateProactiveAlerts(ctx);
+      return new Response(JSON.stringify({ alerts }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: 'Messages required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -942,15 +994,28 @@ Deno.serve(async (req) => {
     const { data: profile } = await supabase.from("profiles").select("display_name, first_name").eq("user_id", user.id).maybeSingle();
     const userName = profile?.first_name || profile?.display_name || 'there';
 
+    // ─── Multi-agent routing ────────────────────────────────────
+    const lastUserMsg = messages.filter((m: any) => m.role === 'user').pop()?.content || '';
+    const detectedIntent = detectIntent(lastUserMsg);
+    const activePersona = detectedIntent ? agentPersonas[detectedIntent] : null;
+    const personaAddendum = activePersona ? `\n\n## 🎯 Active Specialist: ${activePersona.icon} ${activePersona.name}\n${activePersona.systemAddendum}` : '';
+
     const systemPrompt = `You are nAItive Copilot — the AI-powered deal intelligence copilot for commercial lending professionals. You are proactive, data-driven, and action-oriented. You don't just answer questions — you anticipate needs, surface insights, and execute tasks.
 
 The user's name is ${userName}.
+${activePersona ? `\nYou are currently operating as the **${activePersona.icon} ${activePersona.name}** specialist.` : ''}
 
 ${platformKnowledge}
 
 ${userContext}
 
 ## Your Copilot Capabilities
+
+### 🧠 Memory & Personalization
+- You can **remember** user preferences, communication styles, deal criteria, and decisions using the \`save_memory\` tool.
+- You can **recall** stored memories to personalize responses using the \`recall_memory\` tool.
+- Proactively save preferences when users express them (e.g., "I prefer formal emails", "I always work with X lenders").
+- Use remembered preferences to tailor emails, recommendations, and analysis.
 
 ### 🔍 Research & Intelligence
 - **Web Research**: Run real-time research on companies, industries, markets, lenders, and rate environments using Perplexity (use \`run_research\` tool).
@@ -994,6 +1059,7 @@ Use the \`generate_memo\` tool.
 - For research results, include citations with numbered references [1], [2].
 - For email drafts, present in a formatted block for review before sending.
 - For analytics, use tables and highlight key takeaways.
+${activePersona ? `- Indicate your specialist role with "${activePersona.icon}" at the start of your first response.` : ''}
 
 ## Proactive Behavior
 - After completing any action, suggest relevant next steps.
@@ -1002,13 +1068,15 @@ Use the \`generate_memo\` tool.
 - For briefings, structure as: Alerts → Key Metrics → Deals Needing Attention → Suggested Actions.
 - After sending an email, suggest creating a follow-up task.
 - After research, suggest how findings impact current deals.
+- **Proactively save user preferences** when they express communication styles, lender preferences, or deal criteria.
 
 ## Action Rules
 - Execute tools immediately when the request is clear.
 - For destructive actions (stage changes, sending emails), briefly confirm what you're about to do.
 - After executing, confirm with ✅ what was done.
 - For email sending: ALWAYS draft first and show the draft. Only send when explicitly confirmed.
-- When multiple tools are needed, execute them in sequence and report results.`;
+- When multiple tools are needed, execute them in sequence and report results.
+${personaAddendum}`;
 
     const apiCall = async (msgs: any[], stream: boolean, includeTools = false) => {
       const body: any = {
@@ -1061,7 +1129,6 @@ Use the \`generate_memo\` tool.
         currentMessages = [...currentMessages, ...toolResults];
         toolCallRound++;
 
-        // Check if more tool calls are needed
         const nextResp = await apiCall(currentMessages, false, true);
         if (!nextResp.ok) break;
         const nextResult = await nextResp.json();

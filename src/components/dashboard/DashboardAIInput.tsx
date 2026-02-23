@@ -13,6 +13,7 @@ import { useChatPersistence, ChatMessage } from '@/hooks/useChatPersistence';
 import { ChatMessageList } from './chat/ChatMessageList';
 import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
 import { ChatInputBar } from './chat/ChatInputBar';
+import { ProactiveAlerts } from './chat/ProactiveAlerts';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-chat`;
 
@@ -259,6 +260,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
 
             {messages.length === 0 && !showHistory && (
               <div className="mb-3">
+                <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
               <div className="flex flex-wrap gap-2">
                   {suggestions.map((s, i) => (
                     <Badge
