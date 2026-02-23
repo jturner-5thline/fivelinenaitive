@@ -36,6 +36,7 @@ import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
 import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
+import { FeedbackWidgetToggle } from "@/components/admin/FeedbackWidgetToggle";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -189,11 +190,16 @@ const Admin = () => {
         return (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                User Feedback
-              </CardTitle>
-              <CardDescription>View feedback submitted by users</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    User Feedback
+                  </CardTitle>
+                  <CardDescription>View feedback submitted by users</CardDescription>
+                </div>
+                <FeedbackWidgetToggle />
+              </div>
             </CardHeader>
             <CardContent><FeedbackTable /></CardContent>
           </Card>
