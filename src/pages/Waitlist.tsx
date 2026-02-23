@@ -226,7 +226,7 @@ const Waitlist = () => {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full relative overflow-hidden border border-[hsl(199,80%,50%,0.5)] bg-[linear-gradient(145deg,hsl(199,70%,35%,0.7)_0%,hsl(210,60%,28%,0.75)_50%,hsl(220,50%,22%,0.8)_100%)] text-white font-medium backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(199,80%,70%,0.25),0_4px_20px_hsl(199,70%,30%,0.25)] hover:border-[hsl(199,80%,55%,0.7)] hover:bg-[linear-gradient(145deg,hsl(199,75%,40%,0.8)_0%,hsl(210,65%,32%,0.85)_50%,hsl(220,55%,26%,0.9)_100%)] hover:shadow-[inset_0_1px_1px_hsl(199,80%,75%,0.3),0_6px_28px_hsl(199,70%,35%,0.35)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(199,80%,75%,0.15)_0%,transparent_50%,hsl(199,60%,40%,0.05)_100%)] h-11"
+                  className="w-full relative overflow-hidden border border-[hsl(199,80%,50%,0.5)] bg-[linear-gradient(145deg,hsl(199,70%,35%,0.7)_0%,hsl(210,60%,28%,0.75)_50%,hsl(220,50%,22%,0.8)_100%)] !text-white font-medium backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(199,80%,70%,0.25),0_4px_20px_hsl(199,70%,30%,0.25)] hover:border-[hsl(199,80%,55%,0.7)] hover:bg-[linear-gradient(145deg,hsl(199,75%,40%,0.8)_0%,hsl(210,65%,32%,0.85)_50%,hsl(220,55%,26%,0.9)_100%)] hover:shadow-[inset_0_1px_1px_hsl(199,80%,75%,0.3),0_6px_28px_hsl(199,70%,35%,0.35)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(199,80%,75%,0.15)_0%,transparent_50%,hsl(199,60%,40%,0.05)_100%)] h-11"
                 >
                   {isSubmitting ? (
                     <>
