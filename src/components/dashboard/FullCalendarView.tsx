@@ -79,13 +79,13 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60;
 
 const EVENT_PALETTE = [
-  { bg: 'bg-primary/15 border-primary/30', text: 'text-primary-foreground', dot: 'bg-primary', label: 'Default', glow: 'shadow-[0_0_12px_hsl(var(--primary)/0.15)]' },
-  { bg: 'bg-emerald-600/15 border-emerald-500/30', text: 'text-primary-foreground', dot: 'bg-emerald-600', label: 'Green', glow: 'shadow-[0_0_12px_rgba(16,185,129,0.15)]' },
-  { bg: 'bg-amber-600/15 border-amber-500/30', text: 'text-primary-foreground', dot: 'bg-amber-600', label: 'Amber', glow: 'shadow-[0_0_12px_rgba(217,119,6,0.15)]' },
-  { bg: 'bg-rose-600/15 border-rose-500/30', text: 'text-primary-foreground', dot: 'bg-rose-600', label: 'Rose', glow: 'shadow-[0_0_12px_rgba(225,29,72,0.15)]' },
-  { bg: 'bg-violet-600/15 border-violet-500/30', text: 'text-primary-foreground', dot: 'bg-violet-600', label: 'Violet', glow: 'shadow-[0_0_12px_rgba(124,58,237,0.15)]' },
-  { bg: 'bg-cyan-600/15 border-cyan-500/30', text: 'text-primary-foreground', dot: 'bg-cyan-600', label: 'Cyan', glow: 'shadow-[0_0_12px_rgba(8,145,178,0.15)]' },
-  { bg: 'bg-indigo-600/15 border-indigo-500/30', text: 'text-primary-foreground', dot: 'bg-indigo-600', label: 'Indigo', glow: 'shadow-[0_0_12px_rgba(79,70,229,0.15)]' },
+  { bg: 'bg-primary/80 border-primary/50', text: 'text-primary-foreground', dot: 'bg-primary', label: 'Default', glow: 'shadow-[0_0_12px_hsl(var(--primary)/0.15)]' },
+  { bg: 'bg-emerald-600/80 border-emerald-500/50', text: 'text-primary-foreground', dot: 'bg-emerald-600', label: 'Green', glow: 'shadow-[0_0_12px_rgba(16,185,129,0.15)]' },
+  { bg: 'bg-amber-600/80 border-amber-500/50', text: 'text-primary-foreground', dot: 'bg-amber-600', label: 'Amber', glow: 'shadow-[0_0_12px_rgba(217,119,6,0.15)]' },
+  { bg: 'bg-rose-600/80 border-rose-500/50', text: 'text-primary-foreground', dot: 'bg-rose-600', label: 'Rose', glow: 'shadow-[0_0_12px_rgba(225,29,72,0.15)]' },
+  { bg: 'bg-violet-600/80 border-violet-500/50', text: 'text-primary-foreground', dot: 'bg-violet-600', label: 'Violet', glow: 'shadow-[0_0_12px_rgba(124,58,237,0.15)]' },
+  { bg: 'bg-cyan-600/80 border-cyan-500/50', text: 'text-primary-foreground', dot: 'bg-cyan-600', label: 'Cyan', glow: 'shadow-[0_0_12px_rgba(8,145,178,0.15)]' },
+  { bg: 'bg-indigo-600/80 border-indigo-500/50', text: 'text-primary-foreground', dot: 'bg-indigo-600', label: 'Indigo', glow: 'shadow-[0_0_12px_rgba(79,70,229,0.15)]' },
 ];
 
 function getColorIndex(event: CalendarEvent, idx: number): number {
