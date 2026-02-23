@@ -2341,25 +2341,14 @@ export default function DealDetail() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <InlineEditField
-                    value={formatValue(deal.value)}
-                    onSave={(value) => updateDeal('value', parseValue(value))}
-                    displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
-                  />
-                  <div className="flex items-center gap-1.5">
-                    <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Close:</span>
-                    <input
-                      type="date"
-                      value={deal.closingDate || ''}
-                      onChange={(e) => updateDeal('closingDate', e.target.value || null)}
-                      className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0 h-auto"
-                    />
-                  </div>
-                </div>
+                <InlineEditField
+                  value={formatValue(deal.value)}
+                  onSave={(value) => updateDeal('value', parseValue(value))}
+                  displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                />
               </div>
-              <div className="flex items-center gap-2 mt-4 flex-wrap">
+              <div className="flex items-center justify-between gap-2 mt-4 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                 <Select
                   value={deal.status}
                   onValueChange={(value: DealStatus) => updateDeal('status', value)}
@@ -2412,6 +2401,17 @@ export default function DealDetail() {
                     ))}
                   </SelectContent>
                 </Select>
+                </div>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Close:</span>
+                  <input
+                    type="date"
+                    value={deal.closingDate || ''}
+                    onChange={(e) => updateDeal('closingDate', e.target.value || null)}
+                    className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0 h-auto"
+                  />
+                </div>
               </div>
               
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-t border-border mt-4 pt-4">
