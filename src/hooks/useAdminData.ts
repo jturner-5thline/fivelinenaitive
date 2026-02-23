@@ -98,6 +98,8 @@ interface WaitlistEntry {
   name: string | null;
   company: string | null;
   created_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
 }
 
 export const useSystemStats = () => {
@@ -305,6 +307,51 @@ export const useDeleteWaitlistEntry = () => {
     },
     onError: (error) => {
       toast.error("Failed to delete entry: " + error.message);
+    },
+  });
+};
+
+export const useApproveWaitlistEntry = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { error } = await supabase
+        .from("waitlist")
+        .update({ approved_at: new Date().toISOString(), approved_by: session?.user?.id })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-waitlist"] });
+      toast.success("Waitlist member approved");
+    },
+    onError: (error) => {
+      toast.error("Failed to approve: " + error.message);
+    },
+  });
+};
+
+export const useBulkApproveWaitlist = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { error } = await supabase
+        .from("waitlist")
+        .update({ approved_at: new Date().toISOString(), approved_by: session?.user?.id })
+        .in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-waitlist"] });
+      toast.success(`${count} waitlist member${count !== 1 ? "s" : ""} approved`);
+    },
+    onError: (error) => {
+      toast.error("Failed to approve: " + error.message);
     },
   });
 };

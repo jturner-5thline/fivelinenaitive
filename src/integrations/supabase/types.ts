@@ -7522,6 +7522,8 @@ export type Database = {
       }
       waitlist: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           company: string | null
           created_at: string
           email: string
@@ -7529,6 +7531,8 @@ export type Database = {
           name: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           company?: string | null
           created_at?: string
           email: string
@@ -7536,6 +7540,8 @@ export type Database = {
           name?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           company?: string | null
           created_at?: string
           email?: string
