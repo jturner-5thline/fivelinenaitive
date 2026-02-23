@@ -43,6 +43,7 @@ import {
   Loader2,
   Search,
   Timer,
+  Briefcase,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -78,13 +79,13 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60;
 
 const EVENT_PALETTE = [
-  { bg: 'bg-primary/80', text: 'text-primary-foreground', dot: 'bg-primary', label: 'Default' },
-  { bg: 'bg-emerald-600/80', text: 'text-primary-foreground', dot: 'bg-emerald-600', label: 'Green' },
-  { bg: 'bg-amber-600/80', text: 'text-primary-foreground', dot: 'bg-amber-600', label: 'Amber' },
-  { bg: 'bg-rose-600/80', text: 'text-primary-foreground', dot: 'bg-rose-600', label: 'Rose' },
-  { bg: 'bg-violet-600/80', text: 'text-primary-foreground', dot: 'bg-violet-600', label: 'Violet' },
-  { bg: 'bg-cyan-600/80', text: 'text-primary-foreground', dot: 'bg-cyan-600', label: 'Cyan' },
-  { bg: 'bg-indigo-600/80', text: 'text-primary-foreground', dot: 'bg-indigo-600', label: 'Indigo' },
+  { bg: 'bg-primary/15 border-primary/30', text: 'text-primary-foreground', dot: 'bg-primary', label: 'Default', glow: 'shadow-[0_0_12px_hsl(var(--primary)/0.15)]' },
+  { bg: 'bg-emerald-600/15 border-emerald-500/30', text: 'text-primary-foreground', dot: 'bg-emerald-600', label: 'Green', glow: 'shadow-[0_0_12px_rgba(16,185,129,0.15)]' },
+  { bg: 'bg-amber-600/15 border-amber-500/30', text: 'text-primary-foreground', dot: 'bg-amber-600', label: 'Amber', glow: 'shadow-[0_0_12px_rgba(217,119,6,0.15)]' },
+  { bg: 'bg-rose-600/15 border-rose-500/30', text: 'text-primary-foreground', dot: 'bg-rose-600', label: 'Rose', glow: 'shadow-[0_0_12px_rgba(225,29,72,0.15)]' },
+  { bg: 'bg-violet-600/15 border-violet-500/30', text: 'text-primary-foreground', dot: 'bg-violet-600', label: 'Violet', glow: 'shadow-[0_0_12px_rgba(124,58,237,0.15)]' },
+  { bg: 'bg-cyan-600/15 border-cyan-500/30', text: 'text-primary-foreground', dot: 'bg-cyan-600', label: 'Cyan', glow: 'shadow-[0_0_12px_rgba(8,145,178,0.15)]' },
+  { bg: 'bg-indigo-600/15 border-indigo-500/30', text: 'text-primary-foreground', dot: 'bg-indigo-600', label: 'Indigo', glow: 'shadow-[0_0_12px_rgba(79,70,229,0.15)]' },
 ];
 
 function getColorIndex(event: CalendarEvent, idx: number): number {
@@ -94,7 +95,48 @@ function getColorIndex(event: CalendarEvent, idx: number): number {
 
 function getEventColorClass(event: CalendarEvent, idx: number): string {
   const c = EVENT_PALETTE[getColorIndex(event, idx)];
-  return `${c.bg} ${c.text}`;
+  return `${c.bg} ${c.text} ${c.glow}`;
+}
+
+// ─── Deal matching for event tagging ─────────────────────────
+interface DealMatch {
+  id: string;
+  name: string;
+  stage: string;
+}
+
+function useDealMatches(events: CalendarEvent[]) {
+  const [deals, setDeals] = useState<{ id: string; name: string; stage: string; contacts: string[] }[]>([]);
+
+  useEffect(() => {
+    const fetchDeals = async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('id, company, stage')
+        .limit(200);
+      if (data) {
+        setDeals(data.map(d => ({ id: d.id, name: d.company, stage: d.stage, contacts: [] as string[] })));
+      }
+    };
+    fetchDeals();
+  }, []);
+
+  const matchEventToDeal = useCallback((event: CalendarEvent): DealMatch | null => {
+    if (!deals.length) return null;
+    const summaryLower = event.summary.toLowerCase();
+    const descLower = (event.description || '').toLowerCase();
+
+    for (const deal of deals) {
+      const dealNameLower = deal.name.toLowerCase();
+      // Match deal name in event summary or description
+      if (dealNameLower.length > 3 && (summaryLower.includes(dealNameLower) || descLower.includes(dealNameLower))) {
+        return { id: deal.id, name: deal.name, stage: deal.stage };
+      }
+    }
+    return null;
+  }, [deals]);
+
+  return { matchEventToDeal };
 }
 
 // ─── Mock events ─────────────────────────────────────────────
@@ -310,10 +352,12 @@ function EventDetailPopover({
   event,
   colorClass,
   onClose,
+  dealMatch,
 }: {
   event: CalendarEvent;
   colorClass: string;
   onClose: () => void;
+  dealMatch?: DealMatch | null;
 }) {
   const start = parseISO(event.start);
   const end = parseISO(event.end);
@@ -379,6 +423,12 @@ function EventDetailPopover({
                 <X className="h-4 w-4" />
               </Button>
             </div>
+            {dealMatch && (
+              <Badge variant="secondary" className="gap-1.5 text-[10px] h-5 w-fit bg-primary/10 text-primary border-primary/20">
+                <Briefcase className="h-3 w-3" />
+                {dealMatch.name} · {dealMatch.stage}
+              </Badge>
+            )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-3.5 w-3.5 shrink-0" />
               {event.all_day ? (
@@ -523,10 +573,15 @@ function TimeGridEvent({
           <button
             onClick={onClick}
             className={cn(
-              'absolute left-1 right-1 rounded-md px-2 py-1 text-left overflow-hidden cursor-pointer transition-all hover:brightness-110 hover:shadow-lg z-[2]',
+              'absolute left-1 right-1 rounded-md px-2 py-1 text-left overflow-hidden cursor-pointer transition-all z-[2]',
+              'backdrop-blur-md border shadow-lg',
+              'hover:shadow-xl hover:scale-[1.02] hover:brightness-110',
               colorClass,
             )}
-            style={style}
+            style={{
+              ...style,
+              background: undefined,
+            }}
           >
             <p className="text-[11px] font-semibold leading-tight truncate">{event.summary}</p>
             {durationMin >= 45 && (
@@ -594,7 +649,15 @@ function MiniCalendar({
   const weeks: Date[][] = [];
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
 
-  const hasEventOnDay = (day: Date) => events.some(e => isSameDay(parseISO(e.start), day));
+  const getEventCountForDay = (day: Date) => events.filter(e => isSameDay(parseISO(e.start), day)).length;
+
+  const getDensityClass = (count: number) => {
+    if (count === 0) return '';
+    if (count === 1) return 'bg-primary/20';
+    if (count === 2) return 'bg-primary/35';
+    if (count <= 4) return 'bg-primary/50';
+    return 'bg-primary/70';
+  };
 
   return (
     <div className="space-y-3">
@@ -625,23 +688,29 @@ function MiniCalendar({
             const inMonth = isSameMonth(day, miniMonth);
             const selected = isSameDay(day, currentDate);
             const today = isToday(day);
-            const hasEvents = hasEventOnDay(day);
+            const eventCount = getEventCountForDay(day);
+            const densityClass = getDensityClass(eventCount);
 
             return (
               <button
                 key={day.toISOString()}
                 onClick={() => onDateSelect(day)}
                 className={cn(
-                  'h-7 w-7 mx-auto flex flex-col items-center justify-center rounded-full text-[11px] transition-colors relative',
+                  'h-7 w-7 mx-auto flex flex-col items-center justify-center rounded-full text-[11px] transition-all relative',
                   !inMonth && 'opacity-30',
-                  selected && 'bg-primary text-primary-foreground',
+                  selected && 'bg-primary text-primary-foreground shadow-[0_0_8px_hsl(var(--primary)/0.4)]',
                   !selected && today && 'text-primary font-bold',
+                  !selected && !today && eventCount > 0 && densityClass,
                   !selected && !today && 'text-foreground hover:bg-muted',
                 )}
               >
                 {format(day, 'd')}
-                {hasEvents && !selected && (
-                  <div className="absolute bottom-0.5 h-1 w-1 rounded-full bg-primary" />
+                {eventCount > 0 && !selected && (
+                  <div className="absolute -bottom-0.5 flex items-center gap-px">
+                    {Array.from({ length: Math.min(eventCount, 3) }).map((_, i) => (
+                      <div key={i} className={cn('h-[3px] w-[3px] rounded-full', eventCount >= 4 ? 'bg-primary' : 'bg-primary/70')} />
+                    ))}
+                  </div>
                 )}
               </button>
             );
@@ -1029,6 +1098,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   const [showSearch, setShowSearch] = useState(false);
 
   const allEvents = calendarStatus?.connected && liveEvents.length > 0 ? liveEvents : mockEvents;
+  const { matchEventToDeal } = useDealMatches(allEvents);
 
   // Search results
   const searchResults = useMemo(() => {
@@ -1289,7 +1359,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
         </div>
 
         {selectedEvent && (
-          <EventDetailPopover event={selectedEvent} colorClass={getEventColorClass(selectedEvent, 0)} onClose={() => setSelectedEvent(null)} />
+          <EventDetailPopover event={selectedEvent} colorClass={getEventColorClass(selectedEvent, 0)} onClose={() => setSelectedEvent(null)} dealMatch={matchEventToDeal(selectedEvent)} />
         )}
       </DialogContent>
     </Dialog>
