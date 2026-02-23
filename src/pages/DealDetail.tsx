@@ -3197,6 +3197,7 @@ export default function DealDetail() {
                   }, [])}
 
                   {/* Unified Timeline & Benchmarking */}
+                  {isPanelVisible('activity-timeline') && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                     <Card className="lg:col-span-2">
                       <CardHeader className="py-3">
@@ -3257,6 +3258,7 @@ export default function DealDetail() {
                       </CardContent>
                     </Card>
                   </div>
+                  )}
 
                 </TabsContent>
 
