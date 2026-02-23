@@ -769,8 +769,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
     <>
       <Card className="h-full flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-lg">Outstanding Items</CardTitle>
+          <div className="flex items-center gap-2 min-w-0 shrink-0">
+            <CardTitle className="text-lg whitespace-nowrap">Outstanding Items</CardTitle>
             {items.length > 0 ? (
               <span className="text-sm font-normal text-muted-foreground">
                 ({deliveredCount}/{items.length} delivered)
