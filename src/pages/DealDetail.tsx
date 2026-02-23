@@ -2341,24 +2341,25 @@ export default function DealDetail() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <InlineEditField
-                  value={formatValue(deal.value)}
-                  onSave={(value) => updateDeal('value', parseValue(value))}
-                  displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
-                />
+                <div className="flex flex-col items-end gap-1">
+                  <InlineEditField
+                    value={formatValue(deal.value)}
+                    onSave={(value) => updateDeal('value', parseValue(value))}
+                    displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <CalendarIcon className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Close:</span>
+                    <input
+                      type="date"
+                      value={deal.closingDate || ''}
+                      onChange={(e) => updateDeal('closingDate', e.target.value || null)}
+                      className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0 h-auto"
+                    />
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-2 mt-4 flex-wrap">
-                {/* Closing Date */}
-                <div className="flex items-center gap-1.5">
-                  <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Close:</span>
-                  <input
-                    type="date"
-                    value={deal.closingDate || ''}
-                    onChange={(e) => updateDeal('closingDate', e.target.value || null)}
-                    className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0 h-auto"
-                  />
-                </div>
                 <Select
                   value={deal.status}
                   onValueChange={(value: DealStatus) => updateDeal('status', value)}
