@@ -2346,8 +2346,10 @@ export default function DealDetail() {
                   onSave={(value) => updateDeal('value', parseValue(value))}
                   displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                 />
+              </div>
+              <div className="flex items-center gap-2 mt-4 flex-wrap">
                 {/* Closing Date */}
-                <div className="flex items-center gap-1.5 mt-1">
+                <div className="flex items-center gap-1.5">
                   <CalendarIcon className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Close:</span>
                   <input
@@ -2357,8 +2359,6 @@ export default function DealDetail() {
                     className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0 h-auto"
                   />
                 </div>
-              </div>
-              <div className="flex items-center gap-2 mt-4 flex-wrap">
                 <Select
                   value={deal.status}
                   onValueChange={(value: DealStatus) => updateDeal('status', value)}
