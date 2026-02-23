@@ -51,7 +51,8 @@ const Waitlist = () => {
         // Store token for auth page
         sessionStorage.setItem('naitive_gate_verified', 'true');
         sessionStorage.setItem('naitive_gate_token', data.token);
-        navigate('/auth');
+        // Pass waitlist email to auth page if available
+        navigate('/auth', { state: { waitlistEmail: email || undefined, waitlistName: name || undefined, waitlistCompany: company || undefined } });
       } else {
         toast({
           title: 'Incorrect password',

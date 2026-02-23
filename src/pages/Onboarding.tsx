@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -118,6 +118,63 @@ export default function Onboarding() {
     },
     mode: 'onChange',
   });
+
+  // Pre-fill from waitlist data (sessionStorage or database lookup)
+  useEffect(() => {
+    const prefillFromWaitlist = async () => {
+      // First check sessionStorage (set during auth flow from waitlist page)
+      const waitlistName = sessionStorage.getItem('waitlist_name');
+      const waitlistCompany = sessionStorage.getItem('waitlist_company');
+
+      if (waitlistName || waitlistCompany) {
+        if (waitlistName && !form.getValues('display_name')) {
+          form.setValue('display_name', waitlistName, { shouldValidate: true });
+        }
+        if (waitlistCompany && !form.getValues('company_name')) {
+          form.setValue('company_name', waitlistCompany, { shouldValidate: true });
+        }
+        // Clean up
+        sessionStorage.removeItem('waitlist_name');
+        sessionStorage.removeItem('waitlist_company');
+        return;
+      }
+
+      // Fallback: look up waitlist entry by user email
+      if (!user?.email) return;
+      
+      try {
+        const { data } = await supabase
+          .from('waitlist')
+          .select('name, company')
+          .eq('email', user.email)
+          .maybeSingle();
+
+        if (data) {
+          if (data.name && !form.getValues('display_name')) {
+            form.setValue('display_name', data.name, { shouldValidate: true });
+          }
+          if (data.company && !form.getValues('company_name')) {
+            form.setValue('company_name', data.company, { shouldValidate: true });
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching waitlist data for pre-fill:', err);
+      }
+    };
+
+    prefillFromWaitlist();
+  }, [user?.email, form]);
+
+  // Also pre-fill display_name from auth metadata (Google SSO, etc.)
+  useEffect(() => {
+    if (user && !form.getValues('display_name')) {
+      const meta = user.user_metadata;
+      const name = meta?.full_name || meta?.name || meta?.display_name;
+      if (name) {
+        form.setValue('display_name', name, { shouldValidate: true });
+      }
+    }
+  }, [user, form]);
 
   const watchedValues = form.watch();
 
