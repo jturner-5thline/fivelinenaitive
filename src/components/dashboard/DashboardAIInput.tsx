@@ -254,9 +254,14 @@ export function DashboardAIInput() {
 
             {messages.length === 0 && !showHistory && (
               <div className="mb-3">
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                   {suggestions.map((s, i) => (
-                    <Badge key={i} variant="outline" className="cursor-pointer hover:bg-accent text-xs" onClick={() => { setInputValue(s); handleSend(s); }}>
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="cursor-pointer text-xs px-3 py-1.5 border-[hsl(263,40%,30%,0.5)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.6)_0%,hsl(263,18%,8%,0.7)_100%)] backdrop-blur-md shadow-[inset_0_1px_1px_hsl(263,40%,40%,0.1),0_2px_8px_hsl(0,0%,0%,0.3)] hover:border-[hsl(263,50%,40%,0.6)] hover:bg-[linear-gradient(135deg,hsl(260,25%,14%,0.7)_0%,hsl(263,22%,11%,0.8)_100%)] hover:shadow-[inset_0_1px_1px_hsl(263,50%,50%,0.15),0_4px_16px_hsl(263,40%,20%,0.3)] transition-all duration-300"
+                      onClick={() => { setInputValue(s); handleSend(s); }}
+                    >
                       {s}
                     </Badge>
                   ))}
