@@ -7619,6 +7619,94 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_hours_tasks: {
+        Row: {
+          company_id: string | null
+          completed_at: string | null
+          created_at: string
+          deals_submitted: number
+          id: string
+          status: string
+          total_deals: number
+          updated_at: string
+          user_id: string
+          week_start_date: string
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          deals_submitted?: number
+          id?: string
+          status?: string
+          total_deals?: number
+          updated_at?: string
+          user_id: string
+          week_start_date: string
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          deals_submitted?: number
+          id?: string
+          status?: string
+          total_deals?: number
+          updated_at?: string
+          user_id?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_hours_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_time_entries: {
+        Row: {
+          created_at: string
+          deal_id: string
+          hours: number
+          id: string
+          source: string
+          updated_at: string
+          user_id: string
+          week_start_date: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          hours?: number
+          id?: string
+          source?: string
+          updated_at?: string
+          user_id: string
+          week_start_date: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          hours?: number
+          id?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_time_entries_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_runs: {
         Row: {
           completed_at: string | null

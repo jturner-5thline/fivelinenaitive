@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, ListTodo, Bell, Calendar, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare } from 'lucide-react';
+import { Briefcase, ListTodo, Bell, Calendar, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { lazyRetry } from '@/lib/lazyRetry';
 
@@ -27,6 +27,7 @@ const DashboardAIInput = React.lazy(lazyRetry(() => import('./DashboardAIInput')
 const NewsFeedWidget = React.lazy(lazyRetry(() => import('../deals/NewsFeedWidget').then(m => ({ default: m.NewsFeedWidget }))));
 const RecentActivityWidget = React.lazy(lazyRetry(() => import('./RecentActivityWidget')));
 const CustomFilterWidget = React.lazy(lazyRetry(() => import('./CustomFilterWidget')));
+const WeeklyHoursWidget = React.lazy(lazyRetry(() => import('./WeeklyHoursWidget').then(m => ({ default: m.WeeklyHoursWidget }))));
 
 export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   'my-deals': {
@@ -148,6 +149,16 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     defaultSize: { w: 6, h: 5 },
     minSize: { w: 3, h: 3 },
     component: CustomFilterWidget,
+  },
+  'weekly-hours': {
+    type: 'weekly-hours',
+    label: 'Weekly Hours',
+    description: 'Log time spent on each active deal this week',
+    icon: Clock,
+    category: 'core',
+    defaultSize: { w: 4, h: 5 },
+    minSize: { w: 3, h: 3 },
+    component: WeeklyHoursWidget,
   },
 };
 

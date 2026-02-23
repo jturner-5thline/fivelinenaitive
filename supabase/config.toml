@@ -161,3 +161,9 @@ verify_jwt = false
 
 [functions.dashboard-chat]
 verify_jwt = false
+
+[functions.weekly-hours-api]
+verify_jwt = false
+
+[functions.weekly-hours-reminder]
+verify_jwt = false
