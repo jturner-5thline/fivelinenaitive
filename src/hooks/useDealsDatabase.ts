@@ -209,6 +209,11 @@ export function useDealsDatabase() {
   // Track when optimistic updates are in progress to skip realtime refetches
   const pendingOptimisticUpdatesRef = useRef<Set<string>>(new Set());
   const realtimeRefetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track whether we've successfully loaded deals at least once
+  const hasLoadedOnceRef = useRef(false);
+  // Track consecutive empty fetches to distinguish real empty from transient failures
+  const consecutiveEmptyFetchesRef = useRef(0);
 
   // Get current user
   useEffect(() => {
@@ -216,8 +221,15 @@ export function useDealsDatabase() {
       setUserId(session?.user?.id ?? null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUserId(session?.user?.id ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Don't clear userId during token refresh - only on explicit sign out or initial
+      if (event === 'SIGNED_OUT') {
+        setUserId(null);
+        hasLoadedOnceRef.current = false;
+        consecutiveEmptyFetchesRef.current = 0;
+      } else if (session?.user?.id) {
+        setUserId(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -305,13 +317,26 @@ export function useDealsDatabase() {
   // Fetch all deals from database - OPTIMIZED with parallel queries
   const fetchDeals = useCallback(async () => {
     if (!userId) {
-      setDeals([]);
-      setIsLoading(false);
+      // Only clear deals on explicit sign-out (hasLoadedOnce resets on sign-out)
+      if (!hasLoadedOnceRef.current) {
+        setDeals([]);
+        setIsLoading(false);
+      }
       return;
     }
 
     try {
-      setIsLoading(true);
+      // Only show loading spinner on the very first load
+      if (!hasLoadedOnceRef.current) {
+        setIsLoading(true);
+      }
+      
+      // Verify we have a valid session before fetching
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.warn('[fetchDeals] No valid session, skipping fetch to preserve existing data');
+        return;
+      }
       
       // Fetch deals and lenders in parallel for faster loading
       const [dealsResult, lendersResult] = await Promise.all([
@@ -331,10 +356,31 @@ export function useDealsDatabase() {
       const dbLenders = lendersResult.data || [];
 
       if (!dbDeals || dbDeals.length === 0) {
+        // If we previously had deals and now get empty, it's likely a transient auth issue
+        // Require multiple consecutive empty fetches before actually clearing
+        if (hasLoadedOnceRef.current && deals.length > 0) {
+          consecutiveEmptyFetchesRef.current += 1;
+          console.warn(`[fetchDeals] Got 0 deals but previously had ${deals.length}. Consecutive empty: ${consecutiveEmptyFetchesRef.current}`);
+          
+          if (consecutiveEmptyFetchesRef.current < 3) {
+            // Retry after a short delay instead of clearing
+            setTimeout(() => fetchDeals(), 2000);
+            return;
+          }
+          // After 3 consecutive empty fetches, accept it as real
+          console.warn('[fetchDeals] Accepting empty result after 3 consecutive empty fetches');
+        }
+        
         setDeals([]);
         setIsLoading(false);
+        hasLoadedOnceRef.current = true;
+        consecutiveEmptyFetchesRef.current = 0;
         return;
       }
+
+      // Reset empty counter on successful non-empty fetch
+      consecutiveEmptyFetchesRef.current = 0;
+      hasLoadedOnceRef.current = true;
 
       // Fetch notes history in parallel (non-blocking for initial render)
       const lenderIds = dbLenders.map((l: DbDealLender) => l.id);
@@ -386,11 +432,14 @@ export function useDealsDatabase() {
     } catch (err) {
       console.error('Error fetching deals:', err);
       setError(err as Error);
-      setDeals([]);
+      // Don't wipe existing deals on error - preserve stale data
+      if (!hasLoadedOnceRef.current) {
+        setDeals([]);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [userId, mapDbDealToDeal]);
+  }, [userId, mapDbDealToDeal, deals.length]);
 
   // Create a new deal
   const createDeal = useCallback(async (dealData: Partial<Deal>): Promise<Deal | null> => {
