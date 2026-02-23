@@ -281,6 +281,27 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                   {getGroupLabel(groupBy, groupValue)}
                 </h2>
                 <span className="text-sm text-muted-foreground">({groupDeals.length})</span>
+                {isCollapsed && (
+                  <div className="flex items-center gap-3 ml-2">
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {groupDeals.length} {groupDeals.length === 1 ? 'deal' : 'deals'}
+                    </span>
+                    {(() => {
+                      const totalVolume = groupDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+                      if (totalVolume <= 0) return null;
+                      const formatted = totalVolume >= 1_000_000
+                        ? `$${(totalVolume / 1_000_000).toFixed(1)}MM`
+                        : totalVolume >= 1_000
+                        ? `$${(totalVolume / 1_000).toFixed(0)}K`
+                        : `$${totalVolume.toLocaleString()}`;
+                      return (
+                        <span className="text-xs text-muted-foreground font-medium border-l border-border pl-3">
+                          {formatted}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
