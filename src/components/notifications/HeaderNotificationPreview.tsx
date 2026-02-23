@@ -62,6 +62,13 @@ export function HeaderNotificationPreview() {
         },
         (payload) => {
           const n = payload.new as any;
+          if (n.alert_type === 'weekly_hours_reminder') {
+            const week = (n.metadata as any)?.week_start_date;
+            showPreview(n.title || 'Submit your weekly hours', n.id, undefined);
+            // Store metadata for weekly hours click handler
+            (window as any).__weeklyHoursWeek = week;
+            return;
+          }
           showPreview(n.title || n.message || 'New notification', n.id, n.deal_id ? `/deal/${n.deal_id}?tab=deal-management` : '/deals');
         }
       )
