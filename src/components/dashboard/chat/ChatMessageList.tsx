@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, ClipboardCopy, Check, Share2 } from 'lucide-react';
+import { Loader2, ClipboardCopy, Check, Share2, ListPlus, Pin, User } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { ChatMessage } from '@/hooks/useChatPersistence';
@@ -40,10 +41,30 @@ function generateFollowUps(content: string): string[] {
   return followUps.slice(0, 3);
 }
 
+function TypingIndicator() {
+  return (
+    <div className="flex gap-2.5 items-start">
+      <Avatar className="h-6 w-6 shrink-0 border border-primary/30 bg-primary/10">
+        <AvatarFallback className="bg-transparent">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+        </AvatarFallback>
+      </Avatar>
+      <div className="rounded-xl px-4 py-3 border border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.5)_0%,hsl(263,18%,8%,0.6)_100%)] backdrop-blur-md shadow-[inset_0_1px_1px_hsl(263,40%,40%,0.08),0_2px_8px_hsl(0,0%,0%,0.2)]">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp, onShareMessage }: Props) {
   const navigate = useNavigate();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [pinnedIdx, setPinnedIdx] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,7 +73,17 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
   const handleCopy = (content: string, idx: number) => {
     navigator.clipboard.writeText(content);
     setCopiedIdx(idx);
+    toast.success('Copied to clipboard');
     setTimeout(() => setCopiedIdx(null), 2000);
+  };
+
+  const handlePin = (idx: number) => {
+    setPinnedIdx(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) { next.delete(idx); toast('Unpinned'); }
+      else { next.add(idx); toast.success('Pinned'); }
+      return next;
+    });
   };
 
   const handleLinkClick = (href: string) => {
@@ -67,15 +98,30 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
       <div className="space-y-3 px-1">
         {messages.map((msg, i) => {
           const tasks = msg.role === 'assistant' ? parseTaskSuggestions(msg.content) : [];
+          const isUser = msg.role === 'user';
+          const isPinned = pinnedIdx.has(i);
+
           return (
-            <div key={i} className={cn('flex gap-2.5 group', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-              {msg.role === 'assistant' && <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />}
+            <div key={i} className={cn('flex gap-2.5 group', isUser ? 'justify-end' : 'justify-start')}>
+              {/* AI Avatar */}
+              {!isUser && (
+                <Avatar className="h-6 w-6 shrink-0 mt-0.5 border border-primary/30 bg-primary/10">
+                  <AvatarFallback className="bg-transparent">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
+
               <div className="flex flex-col gap-1 max-w-[85%]">
+                {/* Message bubble */}
                 <div className={cn(
-                  'rounded-lg px-3 py-2 text-sm relative',
-                  msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                  'rounded-xl px-3.5 py-2.5 text-sm relative transition-all duration-200',
+                  isUser
+                    ? 'bg-[linear-gradient(135deg,hsl(var(--primary))_0%,hsl(var(--primary)/0.85)_100%)] text-primary-foreground shadow-[0_2px_8px_hsl(var(--primary)/0.3)]'
+                    : 'border border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.5)_0%,hsl(263,18%,8%,0.6)_100%)] backdrop-blur-md shadow-[inset_0_1px_1px_hsl(263,40%,40%,0.08),0_2px_8px_hsl(0,0%,0%,0.2)]',
+                  isPinned && 'ring-1 ring-primary/40'
                 )}>
-                  {msg.role === 'assistant' ? (
+                  {!isUser ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                       <ReactMarkdown
                         components={{
@@ -90,40 +136,58 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                           li: ({ children }) => <li className="text-sm">{children}</li>,
                           p: ({ children }) => <p className="my-1">{children}</p>,
                           strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                          // Inline data tables
+                          code: ({ children, className }) => {
+                            const isBlock = className?.includes('language-');
+                            return isBlock
+                              ? <code className="block bg-background/30 rounded p-2 text-xs font-mono overflow-x-auto my-1">{children}</code>
+                              : <code className="bg-background/30 rounded px-1 py-0.5 text-xs font-mono">{children}</code>;
+                          },
                           table: ({ children }) => (
-                            <div className="overflow-x-auto my-2 rounded border">
+                            <div className="overflow-x-auto my-2 rounded border border-border/40">
                               <table className="w-full text-xs border-collapse">{children}</table>
                             </div>
                           ),
-                          thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
+                          thead: ({ children }) => <thead className="bg-muted/30">{children}</thead>,
                           tbody: ({ children }) => <tbody>{children}</tbody>,
-                          tr: ({ children }) => <tr className="border-b last:border-0">{children}</tr>,
+                          tr: ({ children }) => <tr className="border-b border-border/30 last:border-0">{children}</tr>,
                           th: ({ children }) => <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{children}</th>,
                           td: ({ children }) => <td className="px-2 py-1.5">{children}</td>,
                         }}
                       >{msg.content}</ReactMarkdown>
                     </div>
                   ) : msg.content}
-                  {/* Action buttons on hover */}
-                  {msg.role === 'assistant' && (
-                    <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy(msg.content, i)} title="Copy">
-                        {copiedIdx === i ? <Check className="h-3 w-3" /> : <ClipboardCopy className="h-3 w-3" />}
-                      </Button>
-                      {onShareMessage && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onShareMessage(msg.content)} title="Share">
-                          <Share2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  )}
                 </div>
+
+                {/* Quick action toolbar for AI messages */}
+                {!isUser && (
+                  <div className="flex items-center gap-0.5 pl-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleCopy(msg.content, i)} title="Copy">
+                      {copiedIdx === i ? <Check className="h-3 w-3 text-success" /> : <ClipboardCopy className="h-3 w-3" />}
+                    </Button>
+                    {onShareMessage && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => onShareMessage(msg.content)} title="Share">
+                        <Share2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                    {onCreateTask && (
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => onCreateTask(msg.content.slice(0, 60), 'medium')} title="Create task">
+                        <ListPlus className="h-3 w-3" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className={cn("h-6 w-6", isPinned ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={() => handlePin(i)} title="Pin">
+                      <Pin className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Timestamp */}
                 {msg.created_at && (
                   <span className="text-[10px] text-muted-foreground px-1">
                     {format(new Date(msg.created_at), 'h:mm a')}
                   </span>
                 )}
+
+                {/* Task suggestions */}
                 {tasks.length > 0 && onCreateTask && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {tasks.map((t, ti) => (
@@ -134,27 +198,39 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                   </div>
                 )}
               </div>
+
+              {/* User Avatar */}
+              {isUser && (
+                <Avatar className="h-6 w-6 shrink-0 mt-0.5 border border-border bg-muted">
+                  <AvatarFallback className="bg-transparent text-[10px] font-medium">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
             </div>
           );
         })}
-        {isLoading && messages[messages.length - 1]?.role === 'user' && (
-          <div className="flex gap-2.5 items-start">
-            <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <div className="bg-muted rounded-lg px-3 py-2 text-sm flex items-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span className="text-muted-foreground">Thinking...</span>
-            </div>
-          </div>
-        )}
+
+        {/* Typing indicator */}
+        {isLoading && messages[messages.length - 1]?.role === 'user' && <TypingIndicator />}
+
+        {/* Follow-up suggestions */}
         {showFollowUps && onFollowUp && (
-          <div className="flex flex-wrap gap-1.5 pl-7">
+          <div className="flex flex-wrap gap-1.5 pl-9">
             {generateFollowUps(lastMsg.content).map((fu, i) => (
-              <Button key={i} variant="outline" size="sm" className="h-7 text-xs" onClick={() => onFollowUp(fu)}>
+              <Button
+                key={i}
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.4)_0%,hsl(263,18%,8%,0.5)_100%)] backdrop-blur-sm hover:border-[hsl(263,50%,40%,0.5)] hover:bg-[linear-gradient(135deg,hsl(260,25%,14%,0.5)_0%,hsl(263,22%,11%,0.6)_100%)] transition-all duration-200"
+                onClick={() => onFollowUp(fu)}
+              >
                 {fu}
               </Button>
             ))}
           </div>
         )}
+
         <div ref={chatEndRef} />
       </div>
     </ScrollArea>

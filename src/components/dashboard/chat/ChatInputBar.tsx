@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Mic, MicOff } from 'lucide-react';
+import { Send, Loader2, Mic, MicOff, Slash } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface TeamMember {
   user_id: string;
@@ -19,12 +20,26 @@ interface Props {
   teamMembers?: TeamMember[];
 }
 
+const slashCommands = [
+  { cmd: '/briefing', desc: 'Daily morning briefing', icon: '☀️' },
+  { cmd: '/research', desc: 'Research a company or market', icon: '🔍' },
+  { cmd: '/email', desc: 'Draft a lender outreach email', icon: '✉️' },
+  { cmd: '/memo', desc: 'Generate a deal memo', icon: '📄' },
+  { cmd: '/compare', desc: 'Compare deals side-by-side', icon: '⚖️' },
+  { cmd: '/pipeline', desc: 'Pipeline analytics & conversion', icon: '📊' },
+  { cmd: '/match', desc: 'Find lenders for a deal', icon: '🎯' },
+  { cmd: '/tasks', desc: 'Show my tasks & milestones', icon: '✅' },
+  { cmd: '/alerts', desc: 'Show anomalies & risks', icon: '⚠️' },
+  { cmd: '/catchup', desc: 'What happened while I was away?', icon: '🔄' },
+];
+
 export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, teamMembers = [] }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
+  const [selectedCmdIdx, setSelectedCmdIdx] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => textareaRef.current?.focus(), 100);
@@ -63,7 +78,27 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
     m.display_name.toLowerCase().includes(mentionFilter) || m.email.toLowerCase().includes(mentionFilter)
   ).slice(0, 5);
 
+  const showSlashHint = inputValue.startsWith('/') && inputValue.length < 15 && !showMentions;
+  const filteredCommands = slashCommands.filter(c => c.cmd.startsWith(inputValue.toLowerCase()));
+
+  // Reset selected index when filtered commands change
+  useEffect(() => {
+    setSelectedCmdIdx(0);
+  }, [inputValue]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Navigate slash commands
+    if (showSlashHint && filteredCommands.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedCmdIdx(i => Math.min(i + 1, filteredCommands.length - 1)); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedCmdIdx(i => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        e.preventDefault();
+        const selected = filteredCommands[selectedCmdIdx];
+        if (selected) { setInputValue(''); onSend(selected.desc); }
+        return;
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (inputValue.trim() && !isLoading) onSend(inputValue.trim());
@@ -83,26 +118,13 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
     r.start(); setIsListening(true);
   }, [isListening, setInputValue]);
 
-  const showSlashHint = inputValue.startsWith('/') && inputValue.length < 12;
-  const slashCommands = [
-    { cmd: '/briefing', desc: 'Daily morning briefing' },
-    { cmd: '/deals', desc: 'Summarize my deals' },
-    { cmd: '/tasks', desc: 'Show my tasks' },
-    { cmd: '/lenders', desc: 'Top lender activity' },
-    { cmd: '/milestones', desc: 'Upcoming milestones' },
-    { cmd: '/alerts', desc: 'Show anomalies & risks' },
-    { cmd: '/match', desc: 'Find lenders for a deal' },
-    { cmd: '/catchup', desc: 'What happened while I was away?' },
-  ];
-  const filteredCommands = slashCommands.filter(c => c.cmd.startsWith(inputValue.toLowerCase()));
-
   return (
     <div className="relative">
       {/* @mention popup */}
       {showMentions && filteredMembers.length > 0 && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border rounded-md shadow-md p-1 z-10">
+        <div className="absolute bottom-full left-0 right-0 mb-1 border border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.9)_0%,hsl(263,18%,8%,0.95)_100%)] backdrop-blur-xl rounded-lg shadow-lg p-1 z-10">
           {filteredMembers.map(m => (
-            <button key={m.user_id} className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-accent flex items-center gap-2" onClick={() => insertMention(m)}>
+            <button key={m.user_id} className="w-full text-left px-2.5 py-2 text-xs rounded-md hover:bg-primary/10 flex items-center gap-2 transition-colors" onClick={() => insertMention(m)}>
               <span className="font-medium">{m.display_name}</span>
               <span className="text-muted-foreground">{m.email}</span>
             </button>
@@ -110,24 +132,37 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
         </div>
       )}
 
-      {/* Slash commands */}
-      {showSlashHint && !showMentions && filteredCommands.length > 0 && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border rounded-md shadow-md p-1 z-10">
-          {filteredCommands.map(c => (
-            <button key={c.cmd} className="w-full text-left px-2 py-1 text-xs rounded hover:bg-accent flex items-center gap-2" onClick={() => { setInputValue(''); onSend(c.desc); }}>
-              <span className="font-mono text-primary">{c.cmd}</span>
-              <span className="text-muted-foreground">{c.desc}</span>
+      {/* Slash command palette */}
+      {showSlashHint && filteredCommands.length > 0 && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 border border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.9)_0%,hsl(263,18%,8%,0.95)_100%)] backdrop-blur-xl rounded-lg shadow-lg p-1.5 z-10">
+          <div className="text-[10px] text-muted-foreground px-2 pb-1 font-medium uppercase tracking-wider">Commands</div>
+          {filteredCommands.map((c, idx) => (
+            <button
+              key={c.cmd}
+              className={cn(
+                "w-full text-left px-2.5 py-2 text-xs rounded-md flex items-center gap-2.5 transition-colors",
+                idx === selectedCmdIdx ? "bg-primary/15 text-foreground" : "hover:bg-primary/10"
+              )}
+              onClick={() => { setInputValue(''); onSend(c.desc); }}
+              onMouseEnter={() => setSelectedCmdIdx(idx)}
+            >
+              <span className="text-sm">{c.icon}</span>
+              <span className="font-mono text-primary font-medium">{c.cmd}</span>
+              <span className="text-muted-foreground flex-1">{c.desc}</span>
             </button>
           ))}
+          <div className="text-[10px] text-muted-foreground px-2 pt-1.5 border-t border-border/30 mt-1">
+            ↑↓ navigate · ↵ select · esc close
+          </div>
         </div>
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-2 border border-[hsl(263,40%,30%,0.3)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.3)_0%,hsl(263,18%,8%,0.4)_100%)] backdrop-blur-sm rounded-xl px-1 transition-all duration-200 focus-within:border-[hsl(263,50%,40%,0.5)] focus-within:shadow-[0_0_12px_hsl(263,40%,30%,0.15)]">
         <div className="relative flex-1">
           <Sparkles className="absolute left-3 top-3 h-4 w-4 text-primary" />
           <Textarea
             ref={textareaRef}
-            placeholder="Ask anything... (/ for shortcuts, @ to mention)"
+            placeholder="Ask anything... (/ for commands, @ to mention)"
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -136,11 +171,24 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
             disabled={isLoading}
           />
         </div>
-        <div className="flex items-center gap-1 pb-1">
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={toggleVoice} title={isListening ? 'Stop' : 'Voice'}>
-            {isListening ? <MicOff className="h-3.5 w-3.5 text-destructive" /> : <Mic className="h-3.5 w-3.5" />}
+        <div className="flex items-center gap-1 pb-1.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn("h-8 w-8 rounded-lg", isListening && "bg-destructive/15 text-destructive")}
+            onClick={toggleVoice}
+            title={isListening ? 'Stop listening' : 'Voice input'}
+          >
+            {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5 text-muted-foreground" />}
           </Button>
-          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-full bg-muted hover:bg-muted/80" onClick={() => { if (inputValue.trim() && !isLoading) onSend(inputValue.trim()); }} disabled={!inputValue.trim() || isLoading}>
+          <Button
+            type="button"
+            size="icon"
+            className="h-8 w-8 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
+            onClick={() => { if (inputValue.trim() && !isLoading) onSend(inputValue.trim()); }}
+            disabled={!inputValue.trim() || isLoading}
+          >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
