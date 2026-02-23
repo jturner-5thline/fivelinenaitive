@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { SaveIndicator } from '@/components/ui/save-indicator';
+import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 
 
 interface LenderMetrics {
@@ -30,6 +31,7 @@ interface LenderMetrics {
 
 interface LendersKanbanProps {
   lenders: DealLender[];
+  dealId?: string;
   configuredStages: { id: string; label: string; group: StageGroup }[];
   passReasons: PassReasonOption[];
   onUpdateLenderGroup: (lenderId: string, newGroup: StageGroup, passReason?: string) => void;
@@ -61,6 +63,7 @@ const getRelativeTime = (updatedAt?: string) => {
 // Enriched Draggable Lender Tile
 function DraggableLenderTile({
   lender,
+  dealId,
   configuredStages,
   isSaving,
   hasFailed,
@@ -70,6 +73,7 @@ function DraggableLenderTile({
   onClick,
 }: {
   lender: DealLender;
+  dealId?: string;
   configuredStages: { id: string; label: string; group: StageGroup }[];
   isSaving?: boolean;
   hasFailed?: boolean;
@@ -116,8 +120,15 @@ function DraggableLenderTile({
       {...listeners}
       {...attributes}
     >
-      {/* Save status indicator */}
+      {/* Save status indicator + task button */}
       <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
+        {dealId && (
+          <CreateLenderTaskButton
+            dealId={dealId}
+            lenderId={lender.id}
+            lenderName={lender.name}
+          />
+        )}
         {isSaving && <SaveIndicator isSaving={true} size="sm" />}
         {hasFailed && !isSaving && onRetry && (
           <button
@@ -236,6 +247,7 @@ function DraggableLenderTile({
 // Droppable Kanban Column with larger drop target
 function DroppableColumn({
   group,
+  dealId,
   lenders,
   configuredStages,
   isSaving,
@@ -245,6 +257,7 @@ function DroppableColumn({
   lenderMetrics,
   onCardClick,
 }: {
+  dealId?: string;
   group: { id: StageGroup; label: string; color: string };
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
@@ -290,6 +303,7 @@ function DroppableColumn({
             <DraggableLenderTile
               key={lender.id}
               lender={lender}
+              dealId={dealId}
               configuredStages={configuredStages}
               isSaving={isSaving?.(`lender-stage-${lender.id}`)}
               hasFailed={failedSaves?.has(lender.id)}
@@ -307,6 +321,7 @@ function DroppableColumn({
 
 export function LendersKanban({
   lenders,
+  dealId,
   configuredStages,
   passReasons,
   onUpdateLenderGroup,
@@ -420,6 +435,7 @@ export function LendersKanban({
             <DroppableColumn
               key={group.id}
               group={group}
+              dealId={dealId}
               lenders={getLendersByGroup(group.id)}
               configuredStages={configuredStages}
               isSaving={isSaving}

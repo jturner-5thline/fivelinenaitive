@@ -4751,6 +4751,7 @@ export default function DealDetail() {
           {deal && deal.lenders && (
             <LendersKanban
               lenders={deal.lenders}
+              dealId={deal.id}
               configuredStages={configuredStages}
               passReasons={passReasons}
               onUpdateLenderGroup={updateLenderGroup}
