@@ -1,6 +1,12 @@
 import { useState, useMemo } from 'react';
 import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
+
+// Parse YYYY-MM-DD as local date to avoid timezone shift
+function parseLocalDate(dateStr: string): Date {
+  const parts = dateStr.split('-');
+  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+}
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,7 +101,9 @@ const moveToStage = (stage: KanbanStage, item: OutstandingItem): Partial<Outstan
 // ETA display helper
 function EtaBadge({ eta }: { eta?: string }) {
   if (!eta) return null;
-  const date = new Date(eta);
+  // Parse as local date to avoid timezone shift (eta is YYYY-MM-DD)
+  const parts = eta.split('-');
+  const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   const overdue = isPast(date) && !isToday(date);
   const today = isToday(date);
   const tomorrow = isTomorrow(date);
