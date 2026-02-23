@@ -2636,6 +2636,7 @@ export type Database = {
         Row: {
           analyst: string | null
           business_model: string | null
+          closing_date: string | null
           company: string
           company_id: string | null
           company_url: string | null
@@ -2671,6 +2672,7 @@ export type Database = {
         Insert: {
           analyst?: string | null
           business_model?: string | null
+          closing_date?: string | null
           company: string
           company_id?: string | null
           company_url?: string | null
@@ -2706,6 +2708,7 @@ export type Database = {
         Update: {
           analyst?: string | null
           business_model?: string | null
+          closing_date?: string | null
           company?: string
           company_id?: string | null
           company_url?: string | null
