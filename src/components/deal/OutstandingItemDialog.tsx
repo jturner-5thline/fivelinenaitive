@@ -374,53 +374,18 @@ export function OutstandingItemDialog({
             )}
           </div>
 
-          {/* Priority & Assignment */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Priority:</span>
-              <Select 
-                value={item.priority || 'normal'} 
-                onValueChange={(v) => onUpdate(item.id, { priority: v as ItemPriority })}
-              >
-                <SelectTrigger className="w-28 h-8 text-sm">
-                  <div className="flex items-center gap-1.5">
-                    <span className={cn("w-2 h-2 rounded-full", PRIORITY_CONFIG[(item.priority || 'normal') as ItemPriority].dotColor)} />
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {(['normal', 'high', 'urgent'] as ItemPriority[]).map(p => (
-                    <SelectItem key={p} value={p}>
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn("w-2 h-2 rounded-full", PRIORITY_CONFIG[p].dotColor)} />
-                        {PRIORITY_CONFIG[p].label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Assigned:</span>
-              <Select 
-                value={item.assignedTo || '_none'} 
-                onValueChange={(v) => onUpdate(item.id, { assignedTo: v === '_none' ? undefined : v })}
-              >
-                <SelectTrigger className="w-36 h-8 text-sm">
-                  <SelectValue placeholder="Unassigned" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">Unassigned</SelectItem>
-                  {teamMembers.map(member => (
-                    <SelectItem key={member.id} value={member.display_name}>
-                      {member.display_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Priority */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Priority:</span>
+            <Button
+              variant={item.priority === 'urgent' ? 'destructive' : 'outline'}
+              size="sm"
+              className="h-8 text-sm gap-1.5"
+              onClick={() => onUpdate(item.id, { priority: item.priority === 'urgent' ? 'normal' : 'urgent' })}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {item.priority === 'urgent' ? 'Priority' : 'Mark as Priority'}
+            </Button>
           </div>
 
           {/* ETA overdue warning */}

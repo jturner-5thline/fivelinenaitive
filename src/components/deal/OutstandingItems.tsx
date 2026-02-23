@@ -62,8 +62,8 @@ const KANBAN_STAGES: { key: KanbanStage; label: string; color: string }[] = [
 ];
 
 const PRIORITY_CONFIG: Record<ItemPriority, { label: string; color: string; dotColor: string; icon: React.ComponentType<{ className?: string }> }> = {
-  urgent: { label: 'Urgent', color: 'text-destructive', dotColor: 'bg-destructive', icon: AlertTriangle },
-  high: { label: 'High', color: 'text-orange-500', dotColor: 'bg-orange-500', icon: ArrowUp },
+  urgent: { label: 'Priority', color: 'text-destructive', dotColor: 'bg-destructive', icon: AlertTriangle },
+  high: { label: 'Priority', color: 'text-destructive', dotColor: 'bg-destructive', icon: AlertTriangle },
   normal: { label: 'Normal', color: 'text-muted-foreground', dotColor: 'bg-muted-foreground', icon: ArrowUpRight },
 };
 
@@ -131,7 +131,7 @@ function EtaBadge({ eta }: { eta?: string }) {
 // Priority dot
 function PriorityDot({ priority, size = 'sm' }: { priority: ItemPriority; size?: 'sm' | 'md' }) {
   const config = PRIORITY_CONFIG[priority];
-  if (priority === 'normal') return null;
+  if (priority === 'normal' || priority === 'high') return null;
   return (
     <span className={cn(
       "rounded-full shrink-0",
@@ -657,12 +657,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       : `by ${Array.isArray(item.requestedBy) ? item.requestedBy.join(', ') : item.requestedBy}`}
                   </span>
                 </span>
-                {item.assignedTo && (
-                  <span className="flex items-center gap-1 text-primary">
-                    <UserPlus className="h-3 w-3" />
-                    {item.assignedTo}
-                  </span>
-                )}
               </div>
             </div>
             
@@ -956,25 +950,15 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 }}
                 className="flex-1"
               />
-              {/* Priority selector for new items */}
-              <Select value={newPriority} onValueChange={(v) => setNewPriority(v as ItemPriority)}>
-                <SelectTrigger className="w-24 h-9">
-                  <div className="flex items-center gap-1.5">
-                    <PriorityDot priority={newPriority} />
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {(['normal', 'high', 'urgent'] as ItemPriority[]).map(p => (
-                    <SelectItem key={p} value={p}>
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn("w-2 h-2 rounded-full", PRIORITY_CONFIG[p].dotColor)} />
-                        {PRIORITY_CONFIG[p].label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Button
+                variant={newPriority === 'urgent' ? 'destructive' : 'outline'}
+                size="sm"
+                className="h-9 text-sm gap-1.5"
+                onClick={() => setNewPriority(newPriority === 'urgent' ? 'normal' : 'urgent')}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Priority
+              </Button>
               <Popover open={requesterPopoverOpen} onOpenChange={setRequesterPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
