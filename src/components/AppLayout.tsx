@@ -29,8 +29,8 @@ function MainContent({
   return (
     <main
       className={cn(
-        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border shadow-sm overflow-auto border-border dark:border-[hsl(263,45%,45%,0.7)] dark:shadow-[0_0_20px_hsl(263,60%,50%,0.12)]",
-        "bg-transparent backdrop-blur-sm",
+        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border overflow-auto border-[hsl(263,40%,25%,0.6)] shadow-[inset_0_1px_1px_hsl(263,40%,35%,0.08),0_4px_24px_hsl(0,0%,0%,0.4)]",
+        "bg-transparent backdrop-blur-sm before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,hsl(263,40%,30%,0.08)_0%,transparent_50%,hsl(263,30%,20%,0.04)_100%)]",
         className,
       )}
       onClick={handleMainClick}
