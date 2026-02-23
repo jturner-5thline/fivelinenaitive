@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import naitiveLogoFull from "@/assets/naitive-logo-dark-mode-no-circle.png";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,8 +36,10 @@ const GATE_TOKEN_KEY = "naitive_gate_token";
 const Auth = () => {
   // Check if user has already passed the gate this session
   const hasPassedGate = sessionStorage.getItem(GATE_SESSION_KEY) === "true";
+  const location = useLocation();
+  const locationState = location.state as { waitlistEmail?: string; waitlistName?: string; waitlistCompany?: string } | null;
   const [mode, setMode] = useState<AuthMode>("signup");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(locationState?.waitlistEmail || "");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [gatePassword, setGatePassword] = useState("");
@@ -51,6 +53,16 @@ const Auth = () => {
   const [mfaCode, setMfaCode] = useState("");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  // Store waitlist info for onboarding pre-fill
+  useEffect(() => {
+    if (locationState?.waitlistName) {
+      sessionStorage.setItem('waitlist_name', locationState.waitlistName);
+    }
+    if (locationState?.waitlistCompany) {
+      sessionStorage.setItem('waitlist_company', locationState.waitlistCompany);
+    }
+  }, [locationState]);
   
   // Get redirect URL from query params (for invite links, etc.)
   const redirectUrl = searchParams.get('redirect') || '/deals';
