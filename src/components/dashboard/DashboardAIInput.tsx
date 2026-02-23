@@ -14,6 +14,7 @@ import { ChatMessageList } from './chat/ChatMessageList';
 import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
 import { ChatInputBar } from './chat/ChatInputBar';
 import { ProactiveAlerts } from './chat/ProactiveAlerts';
+import { QuickActionCards } from './chat/QuickActionCards';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-chat`;
 
@@ -254,6 +255,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
                   onCreateTask={handleCreateTask}
                   onFollowUp={(text) => { setInputValue(text); handleSend(text); }}
                   onShareMessage={handleShare}
+                  onSendAction={(prompt) => handleSend(prompt)}
                 />
               </div>
             )}
@@ -261,6 +263,11 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
             {messages.length === 0 && !showHistory && (
               <div className="mb-3">
                 <ProactiveAlerts onAction={(prompt) => { setInputValue(prompt); handleSend(prompt); }} />
+                <QuickActionCards onAction={(prompt) => {
+                  setInputValue(prompt);
+                  // If prompt doesn't need prefill (ends without space), send immediately
+                  if (!prompt.endsWith(' ')) handleSend(prompt);
+                }} />
               <div className="flex flex-wrap gap-2">
                   {suggestions.map((s, i) => (
                     <Badge
