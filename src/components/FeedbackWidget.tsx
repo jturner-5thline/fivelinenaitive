@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatureAccess } from '@/hooks/useFeatureFlags';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
@@ -18,6 +19,7 @@ type FeedbackType = 'bug' | 'feature';
 
 export function FeedbackWidget() {
   const { user } = useAuth();
+  const { hasAccess: feedbackEnabled, isLoading: isLoadingAccess } = useFeatureAccess('feedback_widget');
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -27,10 +29,10 @@ export function FeedbackWidget() {
   const [screenshot, setScreenshot] = useState<Blob | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
 
-  // Only show for @5thline.co users
+  // Only show for @5thline.co users who have the feature enabled
   const is5thlineUser = user?.email?.endsWith('@5thline.co');
 
-  if (!is5thlineUser) {
+  if (!is5thlineUser || isLoadingAccess || !feedbackEnabled) {
     return null;
   }
 
