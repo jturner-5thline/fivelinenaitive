@@ -950,15 +950,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 }}
                 className="flex-1"
               />
-              <Button
-                variant={newPriority === 'urgent' ? 'destructive' : 'outline'}
-                size="sm"
-                className="h-9 text-sm gap-1.5"
-                onClick={() => setNewPriority(newPriority === 'urgent' ? 'normal' : 'urgent')}
-              >
-                <AlertTriangle className="h-3.5 w-3.5" />
-                Priority
-              </Button>
               <Popover open={requesterPopoverOpen} onOpenChange={setRequesterPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
