@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { History, Maximize2, Minimize2, RotateCcw, Download } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { History, Maximize2, Minimize2, RotateCcw, Download, Share2 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { useChatPersistence, ChatMessage } from '@/hooks/useChatPersistence';
 import { ChatMessageList } from './chat/ChatMessageList';
 import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
@@ -16,16 +17,17 @@ import { ChatInputBar } from './chat/ChatInputBar';
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-chat`;
 
 const suggestions = [
-  "What deals need attention this week?",
-  "Suggest tasks for my pipeline",
-  "Which lenders are most active?",
+  "Give me my morning briefing",
+  "What deals need attention?",
   "Show me overdue milestones",
-  "How do I create a new deal?",
-  "Summarize recent activity",
+  "Which lenders are most active?",
+  "Find lenders for my biggest deal",
+  "What happened while I was away?",
 ];
 
 export function DashboardAIInput() {
   const { user } = useAuth();
+  const { company } = useCompany();
   const {
     conversations, activeConversationId, messages, setMessages,
     loadingHistory, loadConversation, createConversation,
@@ -36,6 +38,26 @@ export function DashboardAIInput() {
   const [isLoading, setIsLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<{ user_id: string; display_name: string; email: string }[]>([]);
+  const autoBriefedRef = useRef(false);
+
+  // Load team members for @mentions
+  useEffect(() => {
+    if (!user) return;
+    supabase.rpc('get_team_members_for_mention', { _user_id: user.id }).then(({ data }) => {
+      if (data) setTeamMembers(data.map((d: any) => ({ user_id: d.user_id, display_name: d.display_name || d.email, email: d.email })));
+    });
+  }, [user]);
+
+  // Auto-briefing on first load (only once per session)
+  useEffect(() => {
+    if (autoBriefedRef.current || messages.length > 0 || !user) return;
+    const lastBriefing = sessionStorage.getItem('lastBriefing');
+    const today = new Date().toISOString().slice(0, 10);
+    if (lastBriefing === today) return;
+    // Don't auto-send, just pre-fill the suggestion
+    autoBriefedRef.current = true;
+  }, [user, messages.length]);
 
   const handleSend = useCallback(async (text?: string) => {
     const trimmed = (text || inputValue).trim();
@@ -47,19 +69,18 @@ export function DashboardAIInput() {
     setInputValue('');
     setIsLoading(true);
 
-    // Ensure we have a conversation ID
     let convId = activeConversationId;
     if (!convId) {
       convId = await createConversation(trimmed);
-      if (!convId) {
-        toast.error('Failed to create conversation');
-        setIsLoading(false);
-        return;
-      }
+      if (!convId) { toast.error('Failed to create conversation'); setIsLoading(false); return; }
     }
 
-    // Save user message
     await saveMessage(convId, 'user', trimmed);
+
+    // Track briefings
+    if (/briefing|morning|catchup|catch up/i.test(trimmed)) {
+      sessionStorage.setItem('lastBriefing', new Date().toISOString().slice(0, 10));
+    }
 
     let assistantContent = '';
     const upsertAssistant = (chunk: string) => {
@@ -79,18 +100,14 @@ export function DashboardAIInput() {
 
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
         body: JSON.stringify({ messages: updatedMessages }),
       });
 
-      if (resp.status === 429) { toast.error('Rate limit reached. Please wait a moment.'); setIsLoading(false); return; }
+      if (resp.status === 429) { toast.error('Rate limit reached.'); setIsLoading(false); return; }
       if (resp.status === 402) { toast.error('AI credits exhausted.'); setIsLoading(false); return; }
       if (!resp.ok || !resp.body) throw new Error('Failed to start stream');
 
-      // Handle non-streaming JSON response (tool call fallback)
       const contentType = resp.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const json = await resp.json();
@@ -110,11 +127,10 @@ export function DashboardAIInput() {
         const { done, value } = await reader.read();
         if (done) break;
         textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
+        let idx: number;
+        while ((idx = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, idx);
+          textBuffer = textBuffer.slice(idx + 1);
           if (line.endsWith('\r')) line = line.slice(0, -1);
           if (line.startsWith(':') || line.trim() === '') continue;
           if (!line.startsWith('data: ')) continue;
@@ -124,14 +140,10 @@ export function DashboardAIInput() {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) upsertAssistant(content);
-          } catch {
-            textBuffer = line + '\n' + textBuffer;
-            break;
-          }
+          } catch { textBuffer = line + '\n' + textBuffer; break; }
         }
       }
 
-      // Final flush
       if (textBuffer.trim()) {
         for (let raw of textBuffer.split('\n')) {
           if (!raw) continue;
@@ -140,21 +152,14 @@ export function DashboardAIInput() {
           if (!raw.startsWith('data: ')) continue;
           const jsonStr = raw.slice(6).trim();
           if (jsonStr === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) upsertAssistant(content);
-          } catch { /* ignore */ }
+          try { const p = JSON.parse(jsonStr); const c = p.choices?.[0]?.delta?.content; if (c) upsertAssistant(c); } catch {}
         }
       }
 
-      // Save assistant response
-      if (assistantContent && convId) {
-        await saveMessage(convId, 'assistant', assistantContent);
-      }
+      if (assistantContent && convId) await saveMessage(convId, 'assistant', assistantContent);
     } catch (err) {
-      console.error('Dashboard chat error:', err);
-      toast.error('Failed to get response. Please try again.');
+      console.error('Chat error:', err);
+      toast.error('Failed to get response.');
       upsertAssistant('Sorry, I encountered an error. Please try again.');
     } finally {
       setIsLoading(false);
@@ -164,37 +169,32 @@ export function DashboardAIInput() {
   const handleCreateTask = useCallback(async (title: string, priority: string) => {
     if (!user) return;
     const { error } = await supabase.from('tasks').insert({
-      title,
-      priority,
-      status: 'todo',
-      user_id: user.id,
-      assigned_to: user.id,
-      assigned_by: user.id,
+      title, priority, status: 'todo', user_id: user.id, assigned_to: user.id, assigned_by: user.id,
     } as any);
-    if (error) {
-      toast.error('Failed to create task');
-    } else {
-      toast.success(`Task created: ${title}`);
-    }
+    if (error) toast.error('Failed to create task');
+    else toast.success(`Task created: ${title}`);
   }, [user]);
 
   const handleExport = useCallback(() => {
     if (messages.length === 0) return;
-    const text = messages.map(m => `[${m.role.toUpperCase()}] ${m.content}`).join('\n\n---\n\n');
+    const text = messages.map(m => `[${m.role.toUpperCase()}]${m.created_at ? ` ${new Date(m.created_at).toLocaleString()}` : ''}\n${m.content}`).join('\n\n---\n\n');
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `chat-export-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
+    const a = document.createElement('a'); a.href = url; a.download = `naitive-chat-${new Date().toISOString().slice(0, 10)}.txt`; a.click();
     URL.revokeObjectURL(url);
     toast.success('Chat exported');
   }, [messages]);
 
-  const handleClear = useCallback(() => {
-    startNewChat();
-    setInputValue('');
-  }, [startNewChat]);
+  const handleShare = useCallback((content: string) => {
+    if (navigator.share) {
+      navigator.share({ title: 'nAItive Assistant', text: content }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(content);
+      toast.success('Copied to clipboard — paste to share');
+    }
+  }, []);
+
+  const handleClear = useCallback(() => { startNewChat(); setInputValue(''); }, [startNewChat]);
 
   return (
     <div className="relative">
@@ -202,20 +202,20 @@ export function DashboardAIInput() {
         'shadow-lg overflow-hidden transition-all duration-300',
         expanded ? 'fixed inset-4 z-50 flex flex-col' : 'p-4'
       )}>
-        {/* Header with controls */}
         {(messages.length > 0 || expanded) && (
           <div className={cn('flex items-center justify-between gap-2', expanded ? 'p-3 border-b' : 'mb-3')}>
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">nAItive Assistant</span>
+              {isLoading && <span className="text-[10px] text-muted-foreground animate-pulse">processing...</span>}
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(!showHistory)} title="Chat history">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(!showHistory)} title="History">
                 <History className="h-3.5 w-3.5" />
               </Button>
               {messages.length > 0 && (
                 <>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleExport} title="Export chat">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleExport} title="Export">
                     <Download className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClear} title="New chat">
@@ -231,22 +231,13 @@ export function DashboardAIInput() {
         )}
 
         <div className={cn('flex', expanded ? 'flex-1 min-h-0' : '')}>
-          {/* History sidebar */}
           {showHistory && (
             <div className={cn('shrink-0', expanded ? 'w-56 h-full' : 'w-48 max-h-[350px]')}>
-              <ChatHistorySidebar
-                conversations={conversations}
-                activeId={activeConversationId}
-                onSelect={loadConversation}
-                onNew={handleClear}
-                onDelete={deleteConversation}
-              />
+              <ChatHistorySidebar conversations={conversations} activeId={activeConversationId} onSelect={loadConversation} onNew={handleClear} onDelete={deleteConversation} />
             </div>
           )}
 
-          {/* Main chat area */}
           <div className={cn('flex-1 flex flex-col min-w-0', expanded ? 'p-4' : '')}>
-            {/* Messages */}
             {messages.length > 0 && (
               <div className={expanded ? 'flex-1 min-h-0' : ''}>
                 <ChatMessageList
@@ -254,21 +245,16 @@ export function DashboardAIInput() {
                   isLoading={isLoading}
                   onCreateTask={handleCreateTask}
                   onFollowUp={(text) => { setInputValue(text); handleSend(text); }}
+                  onShareMessage={handleShare}
                 />
               </div>
             )}
 
-            {/* Suggestions when empty */}
             {messages.length === 0 && !showHistory && (
               <div className="mb-3">
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((s, i) => (
-                    <Badge
-                      key={i}
-                      variant="outline"
-                      className="cursor-pointer hover:bg-accent text-xs"
-                      onClick={() => { setInputValue(s); handleSend(s); }}
-                    >
+                    <Badge key={i} variant="outline" className="cursor-pointer hover:bg-accent text-xs" onClick={() => { setInputValue(s); handleSend(s); }}>
                       {s}
                     </Badge>
                   ))}
@@ -276,18 +262,17 @@ export function DashboardAIInput() {
               </div>
             )}
 
-            {/* Input */}
             <ChatInputBar
               onSend={handleSend}
               isLoading={isLoading}
               inputValue={inputValue}
               setInputValue={setInputValue}
+              teamMembers={teamMembers}
             />
           </div>
         </div>
       </Card>
 
-      {/* Backdrop for expanded mode */}
       {expanded && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40" onClick={() => setExpanded(false)} />}
     </div>
   );
