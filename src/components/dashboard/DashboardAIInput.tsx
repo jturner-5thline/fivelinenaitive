@@ -18,11 +18,13 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-ch
 
 const suggestions = [
   "Give me my morning briefing",
-  "What deals need attention?",
-  "Show me overdue milestones",
-  "Which lenders are most active?",
+  "What's my pipeline conversion rate?",
+  "Research [company name] for me",
+  "Draft a lender outreach email",
+  "Compare my top 3 deals",
+  "What's my revenue forecast this quarter?",
   "Find lenders for my biggest deal",
-  "What happened while I was away?",
+  "Generate a deal memo for [deal]",
 ];
 
 export function DashboardAIInput() {
