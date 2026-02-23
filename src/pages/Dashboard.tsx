@@ -140,8 +140,8 @@ export default function Dashboard() {
             <FullCalendarView open={calendarOpen} onOpenChange={setCalendarOpen} />
             <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setEmailOpen(true)}>
               <div className="flex flex-col items-center text-center space-y-3">
-                <div className="relative h-12 w-12 rounded-xl border border-accent/30 bg-accent/15 backdrop-blur-sm flex items-center justify-center overflow-hidden shadow-[0_0_12px_hsl(var(--accent)/0.2),inset_0_1px_1px_hsl(var(--accent)/0.15)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-accent/20 before:to-transparent before:rounded-xl">
-                  <Mail className="relative z-10 h-6 w-6 text-accent-foreground" />
+                <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[inset_0_1px_1px_hsl(280,85%,75%,0.35),0_4px_24px_hsl(275,80%,45%,0.4)] before:absolute before:inset-0 before:bg-[linear-gradient(135deg,hsl(280,85%,75%,0.3)_0%,transparent_50%,hsl(275,80%,40%,0.15)_100%)] before:rounded-xl">
+                  <Mail className="relative z-10 h-6 w-6 text-foreground" />
                 </div>
                 <span className="text-sm font-medium text-foreground">Email</span>
               </div>
