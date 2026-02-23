@@ -54,7 +54,7 @@ import Company from "./pages/Company";
 import AcceptInvite from "./pages/AcceptInvite";
 import Notifications from "./pages/Notifications";
 import Help from "./pages/Help";
-import WaitlistAdmin from "./pages/WaitlistAdmin";
+
 import MigrationTool from "./pages/MigrationTool";
 import Admin from "./pages/Admin";
 import Integrations from "./pages/Integrations";
@@ -179,9 +179,6 @@ const App = () => (
                           } />
                           <Route path="/help" element={
                             <ProtectedRoute><AppLayout><Help /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/waitlist-admin" element={
-                            <ProtectedRoute><AppLayout><WaitlistAdmin /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/accept-invite" element={<AcceptInvite />} />
                           <Route path="/migrate" element={<MigrationTool />} />

@@ -33,10 +33,6 @@ const SETTINGS_SECTIONS = [
     keywords: ['company', 'team', 'organization', 'members', 'admin', 'logo', 'industry', 'employees'],
   },
   {
-    id: 'waitlist',
-    keywords: ['waitlist', 'signups', 'subscribers', 'leads', 'admin'],
-  },
-  {
     id: 'database',
     keywords: ['database', 'lenders', 'directory', 'data', 'directories'],
   },
@@ -116,7 +112,7 @@ const SETTINGS_SECTIONS = [
 
 // Tab definitions with which section IDs belong to each
 const TABS = [
-  { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'waitlist', 'database'] },
+  { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'database'] },
   { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'zapier'] },
@@ -248,9 +244,6 @@ export default function Settings() {
                   )}
                   {isVisible('preferences') && (
                     <LinkCard to="/preferences" title="Preferences" description="Theme, notifications, and regional settings" />
-                  )}
-                  {isVisible('waitlist') && (
-                    <LinkCard to="/waitlist-admin" title="Waitlist" description="View signups and export to CSV" />
                   )}
                   {isVisible('database') && (
                     <LinkCard to="/database" title="Database" description="View and manage your directories and data" />
