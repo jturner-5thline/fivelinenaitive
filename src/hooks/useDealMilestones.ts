@@ -55,6 +55,7 @@ export function useDealMilestones(dealId: string | undefined) {
   const { user } = useAuth();
   const [milestones, setMilestones] = useState<DealMilestone[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingClosingDateSync, setPendingClosingDateSync] = useState<string | null>(null);
 
   // Fetch milestones for the deal
   const fetchMilestones = useCallback(async () => {
@@ -137,6 +138,14 @@ export function useDealMilestones(dealId: string | undefined) {
         m.id === id ? { ...m, ...updates } : m
       ));
       
+      // Check if "Closed & Funded" due date was changed
+      if (updates.dueDate !== undefined) {
+        const updatedMilestone = milestones.find(m => m.id === id);
+        if (updatedMilestone?.title?.toLowerCase().trim() === 'closed & funded' && updates.dueDate) {
+          setPendingClosingDateSync(updates.dueDate.split('T')[0]);
+        }
+      }
+      
       // Auto-create follow-up milestones when specific milestones are completed
       if (updates.completed === true && dealId) {
         const completedMilestone = milestones.find(m => m.id === id);
@@ -160,13 +169,16 @@ export function useDealMilestones(dealId: string | undefined) {
           const exists = milestones.some(m => m.title.toLowerCase().trim() === 'closed & funded');
           if (!exists) {
             const dueDate = addWeeksBusinessDay(new Date(), 8); // 8 weeks later, landing on a business day
+            const dueDateStr = dueDate.toISOString().split('T')[0];
             await addMilestone({
               title: 'Closed & Funded',
-              dueDate: dueDate.toISOString().split('T')[0],
+              dueDate: dueDateStr,
               completed: false,
               position: (milestones.length > 0 ? Math.max(...milestones.map(m => m.position ?? 0)) + 2 : 0),
             });
             toast({ title: "Milestone auto-created", description: `"Closed & Funded" due ${dueDate.toLocaleDateString()}` });
+            // Prompt user to sync closing date
+            setPendingClosingDateSync(dueDateStr);
           }
         }
       }
@@ -273,5 +285,7 @@ export function useDealMilestones(dealId: string | undefined) {
     deleteMilestone,
     reorderMilestones,
     refetch: fetchMilestones,
+    pendingClosingDateSync,
+    dismissClosingDateSync: () => setPendingClosingDateSync(null),
   };
 }
