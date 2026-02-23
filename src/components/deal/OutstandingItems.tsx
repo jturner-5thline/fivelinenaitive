@@ -776,7 +776,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 ({deliveredCount}/{items.length} delivered)
               </span>
             ) : (
-              <span className="text-sm font-normal text-muted-foreground italic whitespace-nowrap">
+              <span className="text-xs font-normal text-muted-foreground italic whitespace-nowrap">
                 No Outstanding Items
               </span>
             )}
