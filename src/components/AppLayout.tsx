@@ -30,7 +30,7 @@ function MainContent({
     <main
       className={cn(
         "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border overflow-auto border-[hsl(263,40%,25%,0.6)] shadow-[inset_0_1px_1px_hsl(263,40%,35%,0.08),0_4px_24px_hsl(0,0%,0%,0.4)]",
-        "bg-transparent backdrop-blur-sm before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,hsl(263,40%,30%,0.08)_0%,transparent_50%,hsl(263,30%,20%,0.04)_100%)]",
+        "bg-[hsl(260,20%,8%,0.82)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,hsl(263,30%,18%,0.12)_0%,hsl(268,20%,12%,0.06)_50%,hsl(263,25%,14%,0.08)_100%)]",
         className,
       )}
       onClick={handleMainClick}
