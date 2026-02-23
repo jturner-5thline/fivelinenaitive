@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
@@ -124,8 +125,8 @@ export function AISearchWidget() {
     return Sparkles;
   };
 
-  return (
-    <div className="fixed bottom-4 right-4 z-50">
+  return createPortal(
+    <div className="fixed bottom-4 right-4 z-[9999]">
       {/* Morphing Blob Button */}
       <MorphingBlob 
         isActive={isOpen} 
@@ -252,6 +253,7 @@ export function AISearchWidget() {
           </ScrollArea>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
