@@ -7,10 +7,10 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     ref={ref} 
     className={cn(
       "relative overflow-hidden rounded-lg border text-card-foreground transition-all duration-300 ease-out",
-      "border-[hsl(263,40%,25%,0.6)] bg-[linear-gradient(325deg,hsl(260,20%,8%,0.85)_0%,hsl(263,18%,6%,0.9)_40%,hsl(240,15%,5%,0.95)_100%)] backdrop-blur-xl",
-      "shadow-[inset_0_1px_1px_hsl(263,40%,35%,0.08),0_4px_24px_hsl(0,0%,0%,0.4)]",
-      "hover:border-[hsl(263,45%,30%,0.7)] hover:bg-[linear-gradient(325deg,hsl(260,22%,10%,0.9)_0%,hsl(263,20%,7%,0.92)_40%,hsl(240,16%,6%,0.95)_100%)] hover:shadow-[inset_0_1px_1px_hsl(263,50%,45%,0.12),0_6px_32px_hsl(0,0%,0%,0.5)]",
-      "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,hsl(263,40%,30%,0.08)_0%,transparent_50%,hsl(263,30%,20%,0.04)_100%)]",
+      "border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] backdrop-blur-xl",
+      "shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)]",
+      "hover:border-[hsl(272,100%,80%,0.55)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)]",
+      "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)]",
       className
     )} 
     {...props} 
