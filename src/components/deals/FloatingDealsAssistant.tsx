@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Send, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,7 +82,7 @@ export function FloatingDealsAssistant() {
     "Recent activity summary",
   ];
 
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes slide-up-fade {
@@ -93,7 +94,7 @@ export function FloatingDealsAssistant() {
           to { opacity: 0; transform: translateY(20px) scale(0.97); }
         }
       `}</style>
-      <div className="fixed bottom-6 right-16 z-50 group transition-all duration-300">
+      <div className="fixed bottom-6 right-16 z-[9999] group transition-all duration-300">
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <div className="relative">
@@ -304,6 +305,7 @@ export function FloatingDealsAssistant() {
           </PopoverContent>
         </Popover>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
