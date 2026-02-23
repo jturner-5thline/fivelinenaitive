@@ -8,6 +8,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
+import { useCompany } from "@/hooks/useCompany";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import {
@@ -56,6 +57,7 @@ const footerItems = [
 
 export function AppSidebar() {
   const { state, isHovering, toggleSidebar } = useSidebar();
+  const { company } = useCompany();
   const { resolvedTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -101,7 +103,7 @@ export function AppSidebar() {
           >
             <Menu className="h-5 w-5 text-sidebar-foreground" />
           </button>
-          {showExpanded && <span className="font-semibold text-foreground">5thLine</span>}
+          {showExpanded && <span className="font-semibold text-foreground">{company?.name || ''}</span>}
         </div>
       </SidebarHeader>
 
