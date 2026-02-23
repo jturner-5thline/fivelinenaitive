@@ -134,7 +134,7 @@ serve(async (req) => {
           key_items,
           publish_as_anonymous,
           status,
-          deals!inner(manager)
+          deals!inner(manager, companies:company_id(name))
         `)
         .eq("status", "published");
       
@@ -173,6 +173,7 @@ serve(async (req) => {
         key_items: d.key_items || undefined,
         is_published: !d.publish_as_anonymous,
         deal_manager_name: (d as any).deals?.manager || undefined,
+        managing_company: (d as any).deals?.companies?.name || undefined,
       }));
       
       const bulkPayload = {
@@ -258,7 +259,7 @@ serve(async (req) => {
     // Verify user has access to this deal
     const { data: deal, error: dealError } = await supabase
       .from("deals")
-      .select("id, company, user_id, company_id, manager")
+      .select("id, company, user_id, company_id, manager, companies:company_id(name)")
       .eq("id", dealId)
       .single();
 
@@ -382,6 +383,7 @@ serve(async (req) => {
         team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
         visible_metrics: writeUpData!.visibleMetrics || undefined,
         deal_manager_name: deal.manager || undefined,
+        managing_company: (deal as any).companies?.name || undefined,
       };
 
       flexPayload = {
