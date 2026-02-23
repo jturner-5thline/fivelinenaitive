@@ -1,20 +1,17 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Send, Loader2, RotateCcw } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { History, Maximize2, Minimize2, RotateCcw, Download } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
-import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useChatPersistence, ChatMessage } from '@/hooks/useChatPersistence';
+import { ChatMessageList } from './chat/ChatMessageList';
+import { ChatHistorySidebar } from './chat/ChatHistorySidebar';
+import { ChatInputBar } from './chat/ChatInputBar';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dashboard-chat`;
 
@@ -28,43 +25,43 @@ const suggestions = [
 ];
 
 export function DashboardAIInput() {
-  const navigate = useNavigate();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { user } = useAuth();
+  const {
+    conversations, activeConversationId, messages, setMessages,
+    loadingHistory, loadConversation, createConversation,
+    saveMessage, deleteConversation, startNewChat,
+  } = useChatPersistence();
+
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => textareaRef.current?.focus(), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (el) {
-      el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-    }
-  }, [inputValue]);
-
-  const handleSend = useCallback(async () => {
-    const trimmed = inputValue.trim();
+  const handleSend = useCallback(async (text?: string) => {
+    const trimmed = (text || inputValue).trim();
     if (!trimmed || isLoading) return;
 
-    const userMsg: Message = { role: 'user', content: trimmed };
+    const userMsg: ChatMessage = { role: 'user', content: trimmed, created_at: new Date().toISOString() };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInputValue('');
     setIsLoading(true);
 
-    let assistantContent = '';
+    // Ensure we have a conversation ID
+    let convId = activeConversationId;
+    if (!convId) {
+      convId = await createConversation(trimmed);
+      if (!convId) {
+        toast.error('Failed to create conversation');
+        setIsLoading(false);
+        return;
+      }
+    }
 
+    // Save user message
+    await saveMessage(convId, 'user', trimmed);
+
+    let assistantContent = '';
     const upsertAssistant = (chunk: string) => {
       assistantContent += chunk;
       setMessages(prev => {
@@ -72,30 +69,25 @@ export function DashboardAIInput() {
         if (last?.role === 'assistant') {
           return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantContent } : m);
         }
-        return [...prev, { role: 'assistant', content: assistantContent }];
+        return [...prev, { role: 'assistant', content: assistantContent, created_at: new Date().toISOString() }];
       });
     };
 
     try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ messages: updatedMessages }),
       });
 
-      if (resp.status === 429) {
-        toast.error('Rate limit reached. Please wait a moment.');
-        setIsLoading(false);
-        return;
-      }
-      if (resp.status === 402) {
-        toast.error('AI credits exhausted. Please contact your administrator.');
-        setIsLoading(false);
-        return;
-      }
+      if (resp.status === 429) { toast.error('Rate limit reached. Please wait a moment.'); setIsLoading(false); return; }
+      if (resp.status === 402) { toast.error('AI credits exhausted.'); setIsLoading(false); return; }
       if (!resp.ok || !resp.body) throw new Error('Failed to start stream');
 
       const reader = resp.body.getReader();
@@ -112,14 +104,11 @@ export function DashboardAIInput() {
         while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
           let line = textBuffer.slice(0, newlineIndex);
           textBuffer = textBuffer.slice(newlineIndex + 1);
-
           if (line.endsWith('\r')) line = line.slice(0, -1);
           if (line.startsWith(':') || line.trim() === '') continue;
           if (!line.startsWith('data: ')) continue;
-
           const jsonStr = line.slice(6).trim();
           if (jsonStr === '[DONE]') { streamDone = true; break; }
-
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
@@ -147,6 +136,11 @@ export function DashboardAIInput() {
           } catch { /* ignore */ }
         }
       }
+
+      // Save assistant response
+      if (assistantContent && convId) {
+        await saveMessage(convId, 'assistant', assistantContent);
+      }
     } catch (err) {
       console.error('Dashboard chat error:', err);
       toast.error('Failed to get response. Please try again.');
@@ -154,161 +148,136 @@ export function DashboardAIInput() {
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, messages]);
+  }, [inputValue, isLoading, messages, activeConversationId, createConversation, saveMessage, setMessages]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const handleCreateTask = useCallback(async (title: string, priority: string) => {
+    if (!user) return;
+    const { error } = await supabase.from('tasks').insert({
+      title,
+      priority,
+      status: 'todo',
+      user_id: user.id,
+      assigned_to: user.id,
+      assigned_by: user.id,
+    } as any);
+    if (error) {
+      toast.error('Failed to create task');
+    } else {
+      toast.success(`Task created: ${title}`);
     }
-  };
+  }, [user]);
 
-  const handleClear = () => {
-    setMessages([]);
+  const handleExport = useCallback(() => {
+    if (messages.length === 0) return;
+    const text = messages.map(m => `[${m.role.toUpperCase()}] ${m.content}`).join('\n\n---\n\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-export-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Chat exported');
+  }, [messages]);
+
+  const handleClear = useCallback(() => {
+    startNewChat();
     setInputValue('');
-  };
-
-  const handleLinkClick = (href: string) => {
-    if (href.startsWith('/')) {
-      navigate(href);
-    }
-  };
+  }, [startNewChat]);
 
   return (
     <div className="relative">
-      <Card className="p-4 shadow-lg overflow-hidden">
-        {/* Chat messages area */}
-        {messages.length > 0 && (
-          <ScrollArea className="max-h-[400px] mb-4">
-            <div className="space-y-3">
-              {messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'flex gap-2.5',
-                    msg.role === 'user' ? 'justify-end' : 'justify-start'
-                  )}
-                >
-                  {msg.role === 'assistant' && (
-                    <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  )}
-                  <div
-                    className={cn(
-                      'rounded-lg px-3 py-2 text-sm max-w-[85%]',
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    )}
-                  >
-                    {msg.role === 'assistant' ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                        <ReactMarkdown
-                          components={{
-                            a: ({ href, children }) => (
-                              <button
-                                type="button"
-                                className="text-primary underline hover:text-primary/80 cursor-pointer"
-                                onClick={() => href && handleLinkClick(href)}
-                              >
-                                {children}
-                              </button>
-                            ),
-                            h1: ({ children }) => <h3 className="font-semibold text-sm mt-3 mb-1">{children}</h3>,
-                            h2: ({ children }) => <h3 className="font-semibold text-sm mt-3 mb-1">{children}</h3>,
-                            h3: ({ children }) => <h4 className="font-medium text-sm mt-2 mb-1">{children}</h4>,
-                            ul: ({ children }) => <ul className="list-disc pl-4 my-1 space-y-0.5">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal pl-4 my-1 space-y-0.5">{children}</ol>,
-                            li: ({ children }) => <li className="text-sm">{children}</li>,
-                            p: ({ children }) => <p className="my-1">{children}</p>,
-                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
-                      </div>
-                    ) : (
-                      msg.content
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                <div className="flex gap-2.5 items-start">
-                  <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  <div className="bg-muted rounded-lg px-3 py-2 text-sm flex items-center gap-2">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span className="text-muted-foreground">Thinking...</span>
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
+      <Card className={cn(
+        'shadow-lg overflow-hidden transition-all duration-300',
+        expanded ? 'fixed inset-4 z-50 flex flex-col' : 'p-4'
+      )}>
+        {/* Header with controls */}
+        {(messages.length > 0 || expanded) && (
+          <div className={cn('flex items-center justify-between gap-2', expanded ? 'p-3 border-b' : 'mb-3')}>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">nAItive Assistant</span>
             </div>
-          </ScrollArea>
-        )}
-
-        {/* Suggestions when no messages */}
-        {messages.length === 0 && (
-          <div className="mb-3">
-            <div className="flex flex-wrap gap-2">
-              {suggestions.map((s, i) => (
-                <Badge
-                  key={i}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-accent text-xs"
-                  onClick={() => setInputValue(s)}
-                >
-                  {s}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Input area */}
-        <div className="flex items-end gap-2">
-          <div className="relative flex-1">
-            <Sparkles className="absolute left-3 top-3 h-4 w-4 text-primary" />
-            <Textarea
-              ref={textareaRef}
-              placeholder="Ask me anything about your deals, tasks, lenders..."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              className="pl-10 pr-3 min-h-[40px] max-h-[120px] resize-none border-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-              disabled={isLoading}
-            />
-          </div>
-          <div className="flex items-center gap-1 pb-1">
-            {messages.length > 0 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleClear}
-                title="Clear conversation"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowHistory(!showHistory)} title="Chat history">
+                <History className="h-3.5 w-3.5" />
               </Button>
-            )}
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-full bg-muted hover:bg-muted/80"
-              onClick={handleSend}
-              disabled={!inputValue.trim() || isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
+              {messages.length > 0 && (
+                <>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleExport} title="Export chat">
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleClear} title="New chat">
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                </>
               )}
-            </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setExpanded(!expanded)} title={expanded ? 'Minimize' : 'Expand'}>
+                {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className={cn('flex', expanded ? 'flex-1 min-h-0' : '')}>
+          {/* History sidebar */}
+          {showHistory && (
+            <div className={cn('shrink-0', expanded ? 'w-56 h-full' : 'w-48 max-h-[350px]')}>
+              <ChatHistorySidebar
+                conversations={conversations}
+                activeId={activeConversationId}
+                onSelect={loadConversation}
+                onNew={handleClear}
+                onDelete={deleteConversation}
+              />
+            </div>
+          )}
+
+          {/* Main chat area */}
+          <div className={cn('flex-1 flex flex-col min-w-0', expanded ? 'p-4' : '')}>
+            {/* Messages */}
+            {messages.length > 0 && (
+              <div className={expanded ? 'flex-1 min-h-0' : ''}>
+                <ChatMessageList
+                  messages={messages}
+                  isLoading={isLoading}
+                  onCreateTask={handleCreateTask}
+                  onFollowUp={(text) => { setInputValue(text); handleSend(text); }}
+                />
+              </div>
+            )}
+
+            {/* Suggestions when empty */}
+            {messages.length === 0 && !showHistory && (
+              <div className="mb-3">
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((s, i) => (
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-accent text-xs"
+                      onClick={() => { setInputValue(s); handleSend(s); }}
+                    >
+                      {s}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Input */}
+            <ChatInputBar
+              onSend={handleSend}
+              isLoading={isLoading}
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+            />
           </div>
         </div>
       </Card>
+
+      {/* Backdrop for expanded mode */}
+      {expanded && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40" onClick={() => setExpanded(false)} />}
     </div>
   );
 }
