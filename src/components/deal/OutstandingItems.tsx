@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus } from 'lucide-react';
+import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
 
 // Parse YYYY-MM-DD as local date to avoid timezone shift
@@ -859,8 +859,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             
             {/* Group by */}
             <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupBy)}>
-              <SelectTrigger className="h-8 w-28 text-xs">
-                <SelectValue placeholder="Group by" />
+              <SelectTrigger className="h-8 w-8 p-0 flex items-center justify-center text-xs [&>svg:last-child]:hidden" title="Group by">
+                <Group className="h-4 w-4" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No grouping</SelectItem>
