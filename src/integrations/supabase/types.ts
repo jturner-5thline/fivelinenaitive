@@ -4043,6 +4043,7 @@ export type Database = {
       lender_attachments: {
         Row: {
           category: string
+          company_id: string | null
           content_type: string | null
           created_at: string
           file_path: string
@@ -4054,6 +4055,7 @@ export type Database = {
         }
         Insert: {
           category?: string
+          company_id?: string | null
           content_type?: string | null
           created_at?: string
           file_path: string
@@ -4065,6 +4067,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          company_id?: string | null
           content_type?: string | null
           created_at?: string
           file_path?: string
@@ -4074,7 +4077,15 @@ export type Database = {
           size_bytes?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lender_attachments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lender_audit_logs: {
         Row: {

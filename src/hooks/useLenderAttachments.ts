@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 
 export const LENDER_ATTACHMENT_CATEGORIES = [
@@ -30,11 +31,12 @@ export interface LenderAttachment {
 
 export function useLenderAttachments(lenderName: string | null) {
   const { user } = useAuth();
+  const { company } = useCompany();
   const [attachments, setAttachments] = useState<LenderAttachment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchAttachments = useCallback(async () => {
-    if (!user || !lenderName) {
+    if (!user || !lenderName || !company?.id) {
       setAttachments([]);
       return;
     }
@@ -44,7 +46,7 @@ export function useLenderAttachments(lenderName: string | null) {
       const { data, error } = await supabase
         .from('lender_attachments')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('company_id', company.id)
         .eq('lender_name', lenderName)
         .order('created_at', { ascending: false });
 
@@ -71,14 +73,14 @@ export function useLenderAttachments(lenderName: string | null) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, lenderName]);
+  }, [user, lenderName, company?.id]);
 
   useEffect(() => {
     fetchAttachments();
   }, [fetchAttachments]);
 
   const uploadAttachment = async (file: File, category: LenderAttachmentCategory = 'general') => {
-    if (!user || !lenderName) {
+    if (!user || !lenderName || !company?.id) {
       toast.error('Please log in to upload attachments');
       return null;
     }
@@ -100,6 +102,7 @@ export function useLenderAttachments(lenderName: string | null) {
         .from('lender_attachments')
         .insert({
           user_id: user.id,
+          company_id: company.id,
           lender_name: lenderName,
           name: file.name,
           file_path: filePath,
