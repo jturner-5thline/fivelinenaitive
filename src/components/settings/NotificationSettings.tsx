@@ -20,6 +20,7 @@ interface NotificationSettingsProps {
 
 export function NotificationSettings({ collapsible = false, open, onOpenChange }: NotificationSettingsProps) {
   const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const { profile, isLoading, updateProfile } = useProfile();
   const { permission, isSupported, isGranted, isDenied, requestPermission } = useBrowserNotifications();
   const [isSaving, setIsSaving] = useState(false);
@@ -242,6 +243,7 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
               />
             </div>
 
+            {is5thLine && (
             <div className="flex items-center justify-between">
               <Label htmlFor="notify_flex_alerts" className="flex flex-col gap-1">
                 <span className="flex items-center gap-2">
@@ -259,7 +261,9 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
                 disabled={isSaving || !preferences.email_notifications}
               />
             </div>
+            )}
 
+            {is5thLine && (
             <div className="flex items-center justify-between">
               <Label htmlFor="notify_info_request_emails" className="flex flex-col gap-1">
                 <span className="flex items-center gap-2">
@@ -277,6 +281,7 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
                 disabled={isSaving || !preferences.email_notifications}
               />
             </div>
+            )}
 
             <Separator className="my-2" />
 
