@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.fire-zapier-webhook]
 verify_jwt = false
+
+[functions.dashboard-chat]
+verify_jwt = false
