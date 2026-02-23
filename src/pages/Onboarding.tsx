@@ -126,12 +126,9 @@ export default function Onboarding() {
       const waitlistName = sessionStorage.getItem('waitlist_name');
       const waitlistCompany = sessionStorage.getItem('waitlist_company');
 
-      if (waitlistName || waitlistCompany) {
-        if (waitlistName && !form.getValues('display_name')) {
+      if (waitlistName) {
+        if (!form.getValues('display_name')) {
           form.setValue('display_name', waitlistName, { shouldValidate: true });
-        }
-        if (waitlistCompany && !form.getValues('company_name')) {
-          form.setValue('company_name', waitlistCompany, { shouldValidate: true });
         }
         // Clean up
         sessionStorage.removeItem('waitlist_name');
@@ -152,9 +149,6 @@ export default function Onboarding() {
         if (data) {
           if (data.name && !form.getValues('display_name')) {
             form.setValue('display_name', data.name, { shouldValidate: true });
-          }
-          if (data.company && !form.getValues('company_name')) {
-            form.setValue('company_name', data.company, { shouldValidate: true });
           }
         }
       } catch (err) {
