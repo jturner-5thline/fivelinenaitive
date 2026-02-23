@@ -464,7 +464,7 @@ export default function DealDetail() {
   const { actionRequiredCount: infoRequestActionCount, markAllAsRead: markInfoRequestsAsRead, pendingCount: infoRequestPendingCount } = useFlexInfoNotifications(id);
   const { statusNotes, addStatusNote, deleteStatusNote, isLoading: isLoadingStatusNotes } = useStatusNotes(id);
   const { flagNotes, addFlagNote, deleteFlagNote } = useFlagNotes(id || null);
-  const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones } = useDealMilestones(id);
+  const { milestones: dbMilestones, addMilestone: addMilestoneToDb, updateMilestone: updateMilestoneInDb, deleteMilestone: deleteMilestoneFromDb, reorderMilestones, pendingClosingDateSync, dismissClosingDateSync } = useDealMilestones(id);
   const { user } = useAuth();
   const { company, members } = useCompany();
   const teamMembers = useTeamMembers();
@@ -2119,6 +2119,29 @@ export default function DealDetail() {
                 )}
               </AlertDialogAction>
             )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Closing Date Sync Dialog */}
+      <AlertDialog open={!!pendingClosingDateSync} onOpenChange={(open) => { if (!open) dismissClosingDateSync(); }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Closing Date?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Would you like to update the deal's closing date to match the "Closed & Funded" milestone date ({pendingClosingDateSync ? format(new Date(pendingClosingDateSync + 'T00:00:00'), 'MMM d, yyyy') : ''})?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (pendingClosingDateSync) {
+                updateDeal('closingDate', pendingClosingDateSync);
+              }
+              dismissClosingDateSync();
+            }}>
+              Yes
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
