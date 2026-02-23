@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Send, Loader2, ChevronLeft, ChevronRight, Search, ArrowRight, ExternalLink, Shield, BookOpen, Briefcase, X } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
@@ -119,7 +120,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
 
   if (isLoadingAccess || !canAccessChatWidget) return null;
 
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes slide-up-fade {
@@ -131,7 +132,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           to { opacity: 0; transform: translateY(20px) scale(0.97); }
         }
       `}</style>
-      <div className="fixed bottom-6 right-16 z-50 group transition-all duration-300">
+      <div className="fixed bottom-6 right-16 z-[9999] group transition-all duration-300">
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <div className="relative">
@@ -400,6 +401,7 @@ export function FloatingDealAssistant({ dealId, dealName }: FloatingDealAssistan
           </PopoverContent>
         </Popover>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
