@@ -219,9 +219,11 @@ export default function Onboarding() {
 
       if (error) throw error;
 
+      // Refresh profile and notify all instances (including ProtectedRoute)
       await refreshProfile();
+      window.dispatchEvent(new Event('profile-updated'));
       
-      // Set flag so tour shows on dashboard
+      // Set flag so platform tour shows on deals page
       sessionStorage.setItem('just-completed-onboarding', 'true');
       
       // Fire confetti celebration
@@ -232,9 +234,9 @@ export default function Onboarding() {
         description: 'Your account has been set up successfully.',
       });
       
-      // Delay navigation slightly to let user see confetti
+      // Navigate to deals page where the platform tour will automatically start
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/deals', { replace: true });
       }, 1500);
     } catch (err) {
       console.error('Error completing onboarding:', err);

@@ -79,6 +79,13 @@ export function useProfile() {
     fetchProfile();
   }, [fetchProfile]);
 
+  // Listen for cross-instance profile refresh events
+  useEffect(() => {
+    const handler = () => fetchProfile();
+    window.addEventListener('profile-updated', handler);
+    return () => window.removeEventListener('profile-updated', handler);
+  }, [fetchProfile]);
+
   const updateProfile = async (updates: Partial<Omit<Profile, 'id' | 'user_id' | 'created_at' | 'updated_at'>>, showToast = true) => {
     if (!user) return;
 
