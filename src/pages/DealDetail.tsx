@@ -61,6 +61,7 @@ import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpDa
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
+import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
@@ -3693,7 +3694,12 @@ export default function DealDetail() {
                                     </SelectContent>
                                   </Select>
                                   {/* NDA & Marketing Materials Status Icons */}
-                                  <div className="flex items-center gap-1">
+                                   <div className="flex items-center gap-1">
+                                    <CreateLenderTaskButton
+                                      dealId={deal.id}
+                                      lenderId={lender.id}
+                                      lenderName={lender.name}
+                                    />
                                     {(() => {
                                       const summary = getLenderSummary(lender.name);
                                       return (
