@@ -18,6 +18,7 @@ import {
   Ban,
   Bot,
   DollarSign,
+  Activity,
 } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from "sonner";
@@ -120,6 +121,12 @@ const pageConfigs: PageConfig[] = [
     label: "AI Chat Widget", 
     description: "AI search and chat assistant widget",
     icon: <Bot className="h-5 w-5" />
+  },
+  { 
+    featureKey: "deal_pulse_widgets", 
+    label: "Deal Pulse Widgets", 
+    description: "Health score, days in stage, lender count, response rate, milestones & data room metrics row",
+    icon: <Activity className="h-5 w-5" />
   },
 ];
 

@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { differenceInDays, differenceInBusinessDays } from 'date-fns';
+import { useFeatureAccess } from '@/hooks/useFeatureFlags';
 
 interface DealPulseProps {
   deal: {
@@ -45,6 +46,8 @@ interface HealthMetric {
 }
 
 export function DealPulseDashboard({ deal, attachmentCount = 0, checklistTotal = 0, checklistComplete = 0, outstandingItemsCount = 0 }: DealPulseProps) {
+  const { hasAccess, isLoading: accessLoading } = useFeatureAccess('deal_pulse_widgets');
+
   const metrics = useMemo(() => {
     const healthMetrics: HealthMetric[] = [];
     const now = new Date();
@@ -153,6 +156,8 @@ export function DealPulseDashboard({ deal, attachmentCount = 0, checklistTotal =
     if (score >= 40) return 'Needs Attention';
     return 'At Risk';
   };
+
+  if (!hasAccess && !accessLoading) return null;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
