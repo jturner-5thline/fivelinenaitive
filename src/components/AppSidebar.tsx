@@ -61,19 +61,19 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminRole();
-  const { hasPageAccess } = usePageAccessFlags();
+  const { hasPageAccess, isLoading: isAccessLoading } = usePageAccessFlags();
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
   const iconSrc = resolvedTheme === "dark" ? naitiveIconDark : naitiveIconLight;
   
-  // Filter menu items based on feature access
+  // Filter menu items based on feature access — while loading, only show items with no feature gate
   const visibleMenuItems = menuItems.filter(item => 
-    item.featureKey === null || hasPageAccess(item.featureKey)
+    item.featureKey === null || (!isAccessLoading && hasPageAccess(item.featureKey))
   );
   
   const visibleFooterItems = footerItems.filter(item =>
-    item.featureKey === null || hasPageAccess(item.featureKey)
+    item.featureKey === null || (!isAccessLoading && hasPageAccess(item.featureKey))
   );
 
   const isActive = (url: string) => {
