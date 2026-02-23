@@ -79,7 +79,7 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="h-full">
         <CardHeader className="pb-3"><Skeleton className="h-5 w-32" /></CardHeader>
         <CardContent className="space-y-3">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -89,8 +89,8 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="h-full">
+      <Card className="h-full flex flex-col">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors">
             <CardTitle className="text-base font-medium flex items-center justify-between">
@@ -110,8 +110,8 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="pt-0 space-y-3">
+        <CollapsibleContent className="flex-1 overflow-hidden">
+          <CardContent className="pt-0 space-y-3 h-full">
             <div className="flex items-center justify-between gap-2">
               <ToggleGroup type="single" value={filter} onValueChange={(v) => v && setFilter(v as TaskFilter)} className="justify-start">
                 <ToggleGroupItem value="today" className="text-xs h-7 px-2.5">Today</ToggleGroupItem>
