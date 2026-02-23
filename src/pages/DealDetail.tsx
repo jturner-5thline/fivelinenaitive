@@ -3498,6 +3498,8 @@ export default function DealDetail() {
                                       shouldHighlight && staleStatus.isUrgent && 'border-destructive/30 bg-destructive/5 shadow-destructive/10',
                                       shouldHighlight && !staleStatus.isUrgent && 'border-warning/30 bg-warning/5 shadow-warning/10'
                                     )}>
+                                      <div className="flex gap-3">
+                                        <div className="flex-1 min-w-0">
                                       <div className="grid grid-cols-[160px_160px_140px_auto_1fr] items-center gap-3">
                                   <div className="flex items-center gap-1 group/lender -ml-1">
                                     <AlertDialog>
@@ -3695,11 +3697,6 @@ export default function DealDetail() {
                                   </Select>
                                   {/* NDA & Marketing Materials Status Icons */}
                                    <div className="flex items-center gap-1">
-                                    <CreateLenderTaskButton
-                                      dealId={deal.id}
-                                      lenderId={lender.id}
-                                      lenderName={lender.name}
-                                    />
                                     {(() => {
                                       const summary = getLenderSummary(lender.name);
                                       return (
@@ -3901,6 +3898,16 @@ export default function DealDetail() {
                                     </Collapsible>
                                   )}
                                 </div>
+                                        </div>
+                                        {/* Create Task Button - right side */}
+                                        <div className="flex items-end shrink-0">
+                                          <CreateLenderTaskButton
+                                            dealId={deal.id}
+                                            lenderId={lender.id}
+                                            lenderName={lender.name}
+                                          />
+                                        </div>
+                                      </div>
                                     </div>
                                   </SortableLenderItem>
                                 );
