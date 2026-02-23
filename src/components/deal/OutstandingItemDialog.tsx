@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { format, isPast, isToday } from 'date-fns';
 import { Calendar, User, Send, Trash2, Clock, Pencil, Check, X, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, ArrowUp, ArrowUpRight, UserPlus } from 'lucide-react';
+
+// Parse YYYY-MM-DD as local date to avoid timezone shift
+function parseLocalDate(dateStr: string): Date {
+  const parts = dateStr.split('-');
+  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+}
 import {
   Dialog,
   DialogContent,
@@ -363,7 +369,7 @@ export function OutstandingItemDialog({
             />
             {etaValue && (
               <span className="text-sm text-muted-foreground">
-                ({format(new Date(etaValue), 'MMM d, yyyy')})
+                ({format(parseLocalDate(etaValue), 'MMM d, yyyy')})
               </span>
             )}
           </div>
@@ -418,7 +424,7 @@ export function OutstandingItemDialog({
           </div>
 
           {/* ETA overdue warning */}
-          {etaValue && isPast(new Date(etaValue)) && !isToday(new Date(etaValue)) && !(item.received && item.approved) && (
+          {etaValue && isPast(parseLocalDate(etaValue)) && !isToday(parseLocalDate(etaValue)) && !(item.received && item.approved) && (
             <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-sm">
               <AlertTriangle className="h-4 w-4" />
               This item is overdue
