@@ -3899,8 +3899,8 @@ export default function DealDetail() {
                                   )}
                                 </div>
                                         </div>
-                                        {/* Create Task Button - right side */}
-                                        <div className="flex items-end shrink-0">
+                                        {/* Create Task Button - top right */}
+                                        <div className="flex items-start shrink-0">
                                           <CreateLenderTaskButton
                                             dealId={deal.id}
                                             lenderId={lender.id}
