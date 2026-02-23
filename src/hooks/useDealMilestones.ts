@@ -3,6 +3,29 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { DealMilestone, MilestoneStatus } from '@/types/deal';
 import { toast } from '@/hooks/use-toast';
+import { addDays, isWeekend } from 'date-fns';
+
+// Add business days to a date (skips weekends)
+function addBusinessDays(start: Date, days: number): Date {
+  let current = new Date(start);
+  let added = 0;
+  while (added < days) {
+    current = addDays(current, 1);
+    if (!isWeekend(current)) {
+      added++;
+    }
+  }
+  return current;
+}
+
+// Add calendar weeks, then snap to next business day if needed
+function addWeeksBusinessDay(start: Date, weeks: number): Date {
+  let target = addDays(start, weeks * 7);
+  while (isWeekend(target)) {
+    target = addDays(target, 1);
+  }
+  return target;
+}
 
 export interface DbDealMilestone {
   id: string;
@@ -113,6 +136,40 @@ export function useDealMilestones(dealId: string | undefined) {
       setMilestones(prev => prev.map(m => 
         m.id === id ? { ...m, ...updates } : m
       ));
+      
+      // Auto-create follow-up milestones when specific milestones are completed
+      if (updates.completed === true && dealId) {
+        const completedMilestone = milestones.find(m => m.id === id);
+        const title = completedMilestone?.title?.toLowerCase().trim() || '';
+        
+        if (title === 'terms received' || title === 'terms we receive') {
+          // Check if "Terms Signed" already exists
+          const exists = milestones.some(m => m.title.toLowerCase().trim() === 'terms signed');
+          if (!exists) {
+            const dueDate = addBusinessDays(new Date(), 15); // 3 weeks in business days = 15 business days
+            await addMilestone({
+              title: 'Terms Signed',
+              dueDate: dueDate.toISOString().split('T')[0],
+              completed: false,
+              position: (milestones.length > 0 ? Math.max(...milestones.map(m => m.position ?? 0)) + 1 : 0),
+            });
+            toast({ title: "Milestone auto-created", description: `"Terms Signed" due ${dueDate.toLocaleDateString()}` });
+          }
+        } else if (title === 'terms signed') {
+          // Check if "Closed & Funded" already exists
+          const exists = milestones.some(m => m.title.toLowerCase().trim() === 'closed & funded');
+          if (!exists) {
+            const dueDate = addWeeksBusinessDay(new Date(), 8); // 8 weeks later, landing on a business day
+            await addMilestone({
+              title: 'Closed & Funded',
+              dueDate: dueDate.toISOString().split('T')[0],
+              completed: false,
+              position: (milestones.length > 0 ? Math.max(...milestones.map(m => m.position ?? 0)) + 2 : 0),
+            });
+            toast({ title: "Milestone auto-created", description: `"Closed & Funded" due ${dueDate.toLocaleDateString()}` });
+          }
+        }
+      }
       
       // Show success toast
       toast({
