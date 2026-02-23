@@ -141,6 +141,7 @@ const getIconForType = (type: string) => {
 
 export default function Integrations() {
   const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const { 
     integrations, 
     isLoading, 
@@ -410,41 +411,53 @@ export default function Integrations() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="hubspot" className="space-y-4">
+      <Tabs defaultValue={is5thLine ? "hubspot" : "active"} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="hubspot">HubSpot</TabsTrigger>
-          <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>
-          <TabsTrigger value="gmail">Gmail</TabsTrigger>
-          <TabsTrigger value="calendar">Calendar</TabsTrigger>
-          <TabsTrigger value="claap">Claap</TabsTrigger>
-          <TabsTrigger value="zapier">Zapier</TabsTrigger>
+          {is5thLine && <TabsTrigger value="hubspot">HubSpot</TabsTrigger>}
+          {is5thLine && <TabsTrigger value="quickbooks">QuickBooks</TabsTrigger>}
+          {is5thLine && <TabsTrigger value="gmail">Gmail</TabsTrigger>}
+          {is5thLine && <TabsTrigger value="calendar">Calendar</TabsTrigger>}
+          {is5thLine && <TabsTrigger value="claap">Claap</TabsTrigger>}
+          {is5thLine && <TabsTrigger value="zapier">Zapier</TabsTrigger>}
           <TabsTrigger value="active">Active Integrations ({integrations.length})</TabsTrigger>
           <TabsTrigger value="available">Available Integrations</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="hubspot">
-          <HubSpotIntegration />
-        </TabsContent>
+        {is5thLine && (
+          <TabsContent value="hubspot">
+            <HubSpotIntegration />
+          </TabsContent>
+        )}
 
-        <TabsContent value="quickbooks">
-          <QuickBooksIntegration />
-        </TabsContent>
+        {is5thLine && (
+          <TabsContent value="quickbooks">
+            <QuickBooksIntegration />
+          </TabsContent>
+        )}
 
-        <TabsContent value="gmail">
-          <GmailIntegration />
-        </TabsContent>
+        {is5thLine && (
+          <TabsContent value="gmail">
+            <GmailIntegration />
+          </TabsContent>
+        )}
 
-        <TabsContent value="calendar">
-          <GoogleCalendarIntegration />
-        </TabsContent>
+        {is5thLine && (
+          <TabsContent value="calendar">
+            <GoogleCalendarIntegration />
+          </TabsContent>
+        )}
 
-        <TabsContent value="claap">
-          <ClaapIntegration />
-        </TabsContent>
+        {is5thLine && (
+          <TabsContent value="claap">
+            <ClaapIntegration />
+          </TabsContent>
+        )}
 
-        <TabsContent value="zapier">
-          <ZapierIntegration />
-        </TabsContent>
+        {is5thLine && (
+          <TabsContent value="zapier">
+            <ZapierIntegration />
+          </TabsContent>
+        )}
 
         <TabsContent value="active" className="space-y-4">
           {integrations.length === 0 ? (
