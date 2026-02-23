@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 
 export interface LenderAttachmentSummary {
   lenderName: string;
@@ -10,11 +11,12 @@ export interface LenderAttachmentSummary {
 
 export function useLenderAttachmentsSummary() {
   const { user } = useAuth();
+  const { company } = useCompany();
   const [summaries, setSummaries] = useState<Record<string, LenderAttachmentSummary>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSummaries = useCallback(async () => {
-    if (!user) {
+    if (!user || !company?.id) {
       setSummaries({});
       return;
     }
@@ -24,7 +26,7 @@ export function useLenderAttachmentsSummary() {
       const { data, error } = await supabase
         .from('lender_attachments')
         .select('lender_name, category')
-        .eq('user_id', user.id);
+        .eq('company_id', company.id);
 
       if (error) throw error;
 
@@ -53,7 +55,7 @@ export function useLenderAttachmentsSummary() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, company?.id]);
 
   useEffect(() => {
     fetchSummaries();

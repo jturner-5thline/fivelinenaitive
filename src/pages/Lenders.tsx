@@ -55,6 +55,7 @@ import { toast } from '@/hooks/use-toast';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
@@ -199,6 +200,7 @@ export default function Lenders() {
   const { deals } = useDealsContext();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
+  const { company } = useCompany();
   const quickUploadRef = useRef<HTMLInputElement>(null);
   const [quickUploadTarget, setQuickUploadTarget] = useState<{ lenderName: string; category: 'nda' | 'marketing_materials' } | null>(null);
   const [isQuickUploading, setIsQuickUploading] = useState(false);
@@ -775,6 +777,7 @@ export default function Lenders() {
         .from('lender_attachments')
         .insert({
           user_id: user.id,
+          company_id: company?.id,
           lender_name: quickUploadTarget.lenderName,
           name: file.name,
           file_path: filePath,
