@@ -6733,6 +6733,7 @@ export type Database = {
           id: string
           is_recurring: boolean
           is_starred: boolean
+          lender_id: string | null
           parent_task_id: string | null
           position: number
           priority: string
@@ -6761,6 +6762,7 @@ export type Database = {
           id?: string
           is_recurring?: boolean
           is_starred?: boolean
+          lender_id?: string | null
           parent_task_id?: string | null
           position?: number
           priority?: string
@@ -6789,6 +6791,7 @@ export type Database = {
           id?: string
           is_recurring?: boolean
           is_starred?: boolean
+          lender_id?: string | null
           parent_task_id?: string | null
           position?: number
           priority?: string
@@ -6816,6 +6819,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "deal_lenders"
             referencedColumns: ["id"]
           },
           {
