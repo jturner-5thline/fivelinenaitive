@@ -225,7 +225,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         )}
       <CardHeader className={`space-y-0 ${compact ? 'pb-2 p-3' : 'pb-3'} flex-shrink-0`}>
         <div className="flex flex-row items-center justify-between gap-1 min-w-0">
-          <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground leading-tight truncate flex-1 min-w-0`}>{deal.company}</h3>
+          <h3 className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-white leading-tight truncate flex-1 min-w-0`}>{deal.company}</h3>
           <div className="flex items-center gap-2 shrink min-w-0">
             {onToggleFlag && (
               <>
@@ -300,7 +300,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
               onClose={() => setIsEditDrawerOpen(false)}
               onStatusChange={onStatusChange}
             />
-            <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-foreground truncate`}>{formatCurrencyValue(deal.value)}</span>
+            <span className={`${compact ? 'text-sm' : 'text-xl'} font-semibold text-white truncate`}>{formatCurrencyValue(deal.value)}</span>
           </div>
         </div>
         <div className={`flex items-center gap-2 ${compact ? 'mt-2' : 'mt-4'} flex-wrap`}>
@@ -401,7 +401,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             <HoverCard openDelay={300}>
               <HoverCardTrigger asChild>
                 <div 
-                  className="text-sm line-clamp-2 text-foreground/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer pr-6 [&_.mention]:text-primary [&_.mention]:font-medium"
+                  className="text-sm line-clamp-2 text-white/70 prose prose-sm max-w-none [&>*]:m-0 [&_ul]:pl-4 [&_ol]:pl-4 cursor-pointer pr-6 [&_.mention]:text-primary [&_.mention]:font-medium"
                   dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
                 />
               </HoverCardTrigger>
@@ -421,7 +421,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           </div>
         ) : !compact ? (
           <div className="relative group/status mt-4 min-h-[2.5rem]">
-            <p className="text-sm line-clamp-2 text-muted-foreground/50 italic pr-6">
+            <p className="text-sm line-clamp-2 text-white/40 italic pr-6">
               No Status
             </p>
             <button
@@ -436,7 +436,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
       {!compact && (
         <CardContent className="space-y-4 mt-auto flex-shrink-0">
 
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-white/70">
             <div className="flex items-center gap-1.5">
               <User className="h-3.5 w-3.5" />
               <span className="truncate">{deal.manager || 'No manager'}</span>
@@ -457,7 +457,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                 {label}
               </Badge>
             ))}
-            <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ml-auto ${timeAgoData.highlightClass}`}>
+            <div className={`flex items-center gap-1.5 text-xs text-white/60 ml-auto ${timeAgoData.highlightClass}`}>
               <Clock className="h-3 w-3" />
               <span>{timeAgoData.text}</span>
             </div>
