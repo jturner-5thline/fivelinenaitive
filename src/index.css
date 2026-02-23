@@ -199,13 +199,7 @@
 
   /* Dark mode: atmospheric plasma accent on the body */
   .dark body {
-    background: linear-gradient(
-      170deg,
-      hsl(230 20% 10%) 0%,
-      hsl(232 18% 11%) 40%,
-      hsl(240 16% 11%) 70%,
-      hsl(255 14% 10%) 100%
-    );
+    background: hsl(235 20% 10%);
   }
 }
 
