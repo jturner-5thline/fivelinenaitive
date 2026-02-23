@@ -8,14 +8,17 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useLenderSyncRequests } from '@/hooks/useLenderSyncRequests';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function LenderSyncNotificationBell() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const { pendingCount } = useLenderSyncRequests();
 
-  // Only show if there are pending sync requests
-  if (pendingCount === 0) return null;
+  // Only show for 5th Line users with pending sync requests
+  if (!is5thLine || pendingCount === 0) return null;
 
   const handleClick = () => {
     // If already on lenders page, just ensure panel is visible (handled by parent)
