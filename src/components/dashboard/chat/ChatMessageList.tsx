@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { ChatMessage } from '@/hooks/useChatPersistence';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { ResearchCitations } from './ResearchCitations';
+import { EmailDraftCard, extractEmailDraft } from './EmailDraftCard';
 
 interface Props {
   messages: ChatMessage[];
@@ -18,6 +20,7 @@ interface Props {
   onCreateTask?: (title: string, priority: string) => void;
   onFollowUp?: (text: string) => void;
   onShareMessage?: (content: string) => void;
+  onSendAction?: (prompt: string) => void;
 }
 
 function parseTaskSuggestions(content: string) {
@@ -42,6 +45,24 @@ function generateFollowUps(content: string): string[] {
   return followUps.slice(0, 3);
 }
 
+/** Extract [n] citation references and match them to URLs in the content */
+function extractCitations(content: string): string[] {
+  // Look for citation URLs in the content — patterns like [1] https://... or **Sources:** blocks
+  const urlPattern = /\[(\d+)\]\s*(https?:\/\/[^\s)]+)/g;
+  const citations: string[] = [];
+  let m;
+  while ((m = urlPattern.exec(content)) !== null) {
+    citations.push(m[2]);
+  }
+  // Also check for a Sources/References section
+  const sourcesMatch = content.match(/(?:Sources|References|Citations):\s*\n((?:- .+\n?)+)/i);
+  if (sourcesMatch) {
+    const urls = sourcesMatch[1].match(/https?:\/\/[^\s)]+/g);
+    if (urls) citations.push(...urls);
+  }
+  return [...new Set(citations)];
+}
+
 function TypingIndicator() {
   return (
     <div className="flex gap-2.5 items-start">
@@ -61,7 +82,7 @@ function TypingIndicator() {
   );
 }
 
-export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp, onShareMessage }: Props) {
+export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp, onShareMessage, onSendAction }: Props) {
   const navigate = useNavigate();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
@@ -165,6 +186,18 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                       >{msg.content}</ReactMarkdown>
                     </div>
                   ) : msg.content}
+
+                  {/* Research citations */}
+                  {!isUser && (() => {
+                    const cites = extractCitations(msg.content);
+                    return cites.length > 0 ? <ResearchCitations citations={cites} /> : null;
+                  })()}
+
+                  {/* Email draft card */}
+                  {!isUser && (() => {
+                    const draft = extractEmailDraft(msg.content);
+                    return draft ? <EmailDraftCard draft={draft} onSend={onSendAction} /> : null;
+                  })()}
                 </div>
 
                 {/* Quick action toolbar for AI messages */}
