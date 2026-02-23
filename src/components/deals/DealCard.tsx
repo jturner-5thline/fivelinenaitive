@@ -313,7 +313,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           {!compact && (
             <Badge
               variant="outline"
-              className="text-xs rounded-lg"
+              className="text-xs rounded-lg text-white"
             >
               {stageConfig.label}
             </Badge>
@@ -444,7 +444,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           </div>
 
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
-            <Badge variant="secondary" className="text-xs rounded-lg">
+            <Badge variant="secondary" className="text-xs rounded-lg text-white">
               {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
             </Badge>
             {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
@@ -453,7 +453,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
               </Badge>
             )}
             {dealTypeLabels.map((label, index) => (
-              <Badge key={index} variant="outline" className="text-xs rounded-lg">
+              <Badge key={index} variant="outline" className="text-xs rounded-lg text-white">
                 {label}
               </Badge>
             ))}
