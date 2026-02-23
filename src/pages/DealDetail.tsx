@@ -2341,7 +2341,7 @@ export default function DealDetail() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-2">
                   <InlineEditField
                     value={formatValue(deal.value)}
                     onSave={(value) => updateDeal('value', parseValue(value))}
