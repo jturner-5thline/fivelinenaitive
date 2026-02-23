@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, ClipboardCopy, Check, Share2, ListPlus, Pin, User } from 'lucide-react';
+import { ClipboardCopy, Check, Share2, ListPlus, Pin, User } from 'lucide-react';
+import { addPinnedInsight, removePinnedInsight, getPinnedInsights } from './PinnedInsightsPanel';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,9 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
   const navigate = useNavigate();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
-  const [pinnedIdx, setPinnedIdx] = useState<Set<number>>(new Set());
+  const [pinnedContents, setPinnedContents] = useState<Set<string>>(() => {
+    return new Set(getPinnedInsights().map(i => i.content.slice(0, 100)));
+  });
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -77,13 +80,19 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
     setTimeout(() => setCopiedIdx(null), 2000);
   };
 
-  const handlePin = (idx: number) => {
-    setPinnedIdx(prev => {
-      const next = new Set(prev);
-      if (next.has(idx)) { next.delete(idx); toast('Unpinned'); }
-      else { next.add(idx); toast.success('Pinned'); }
-      return next;
-    });
+  const handlePin = (content: string) => {
+    const key = content.slice(0, 100);
+    if (pinnedContents.has(key)) {
+      const all = getPinnedInsights();
+      const match = all.find(i => i.content.slice(0, 100) === key);
+      if (match) removePinnedInsight(match.id);
+      setPinnedContents(prev => { const n = new Set(prev); n.delete(key); return n; });
+      toast('Unpinned');
+    } else {
+      addPinnedInsight(content);
+      setPinnedContents(prev => new Set(prev).add(key));
+      toast.success('Pinned to insights');
+    }
   };
 
   const handleLinkClick = (href: string) => {
@@ -99,7 +108,7 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
         {messages.map((msg, i) => {
           const tasks = msg.role === 'assistant' ? parseTaskSuggestions(msg.content) : [];
           const isUser = msg.role === 'user';
-          const isPinned = pinnedIdx.has(i);
+          const isPinned = pinnedContents.has(msg.content.slice(0, 100));
 
           return (
             <div key={i} className={cn('flex gap-2.5 group', isUser ? 'justify-end' : 'justify-start')}>
@@ -174,7 +183,7 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                         <ListPlus className="h-3 w-3" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className={cn("h-6 w-6", isPinned ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={() => handlePin(i)} title="Pin">
+                    <Button variant="ghost" size="icon" className={cn("h-6 w-6", isPinned ? "text-primary" : "text-muted-foreground hover:text-foreground")} onClick={() => handlePin(msg.content)} title={isPinned ? "Unpin" : "Pin to insights"}>
                       <Pin className="h-3 w-3" />
                     </Button>
                   </div>

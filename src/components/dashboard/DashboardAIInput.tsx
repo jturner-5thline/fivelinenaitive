@@ -27,7 +27,11 @@ const suggestions = [
   "Generate a deal memo for [deal]",
 ];
 
-export function DashboardAIInput() {
+interface DashboardAIInputProps {
+  isDrawerMode?: boolean;
+}
+
+export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps) {
   const { user } = useAuth();
   const { company } = useCompany();
   const {
@@ -202,7 +206,8 @@ export function DashboardAIInput() {
     <div className="relative">
       <Card className={cn(
         'shadow-lg overflow-hidden transition-all duration-300',
-        expanded ? 'fixed inset-4 z-50 flex flex-col' : 'p-4'
+        isDrawerMode ? 'border-0 shadow-none h-full flex flex-col' : '',
+        !isDrawerMode && expanded ? 'fixed inset-4 z-50 flex flex-col' : !isDrawerMode ? 'p-4' : ''
       )}>
         {(messages.length > 0 || expanded) && (
           <div className={cn('flex items-center justify-between gap-2', expanded ? 'p-3 border-b' : 'mb-3')}>
@@ -280,7 +285,7 @@ export function DashboardAIInput() {
         </div>
       </Card>
 
-      {expanded && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40" onClick={() => setExpanded(false)} />}
+      {expanded && !isDrawerMode && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40" onClick={() => setExpanded(false)} />}
     </div>
   );
 }

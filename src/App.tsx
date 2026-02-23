@@ -22,6 +22,7 @@ import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import { DealsProvider } from "@/contexts/DealsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { FloatingCopilotDrawer } from "@/components/FloatingCopilotDrawer";
 import { CookieConsent } from "@/components/CookieConsent";
 import { CopyProtection } from "@/components/CopyProtection";
 import { WelcomeScreenWrapper } from "@/components/WelcomeScreenWrapper";
@@ -97,6 +98,7 @@ const App = () => (
                       
                       <BrowserRouter>
                         <CookieConsent />
+                        <FloatingCopilotDrawer />
                         <Routes>
                         <Route path="/" element={<Homepage />} />
                           <Route path="/waitlist" element={<Waitlist />} />

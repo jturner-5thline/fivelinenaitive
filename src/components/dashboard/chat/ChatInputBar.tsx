@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Mic, MicOff, Slash } from 'lucide-react';
+import { Send, Loader2, Mic, MicOff } from 'lucide-react';
+import { FileAttachmentButton, AttachedFile } from './FileAttachmentButton';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +14,7 @@ interface TeamMember {
 }
 
 interface Props {
-  onSend: (text: string) => void;
+  onSend: (text: string, attachments?: AttachedFile[]) => void;
   isLoading: boolean;
   inputValue: string;
   setInputValue: (v: string) => void;
@@ -40,6 +41,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
   const [selectedCmdIdx, setSelectedCmdIdx] = useState(0);
+  const [attachments, setAttachments] = useState<AttachedFile[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => textareaRef.current?.focus(), 100);
@@ -101,7 +103,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (inputValue.trim() && !isLoading) onSend(inputValue.trim());
+      if (inputValue.trim() && !isLoading) { onSend(inputValue.trim(), attachments.length > 0 ? attachments : undefined); setAttachments([]); }
     }
   };
 
@@ -172,6 +174,12 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
           />
         </div>
         <div className="flex items-center gap-1 pb-1.5">
+          <FileAttachmentButton
+            attachments={attachments}
+            onAttach={(newFiles) => setAttachments(prev => [...prev, ...newFiles])}
+            onRemove={(id) => setAttachments(prev => prev.filter(a => a.id !== id))}
+            disabled={isLoading}
+          />
           <Button
             type="button"
             variant="ghost"
@@ -186,7 +194,7 @@ export function ChatInputBar({ onSend, isLoading, inputValue, setInputValue, tea
             type="button"
             size="icon"
             className="h-8 w-8 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
-            onClick={() => { if (inputValue.trim() && !isLoading) onSend(inputValue.trim()); }}
+            onClick={() => { if (inputValue.trim() && !isLoading) { onSend(inputValue.trim(), attachments.length > 0 ? attachments : undefined); setAttachments([]); } }}
             disabled={!inputValue.trim() || isLoading}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
