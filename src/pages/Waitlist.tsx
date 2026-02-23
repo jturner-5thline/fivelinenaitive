@@ -226,8 +226,7 @@ const Waitlist = () => {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  variant="liquid-glass"
-                  className="w-full text-white"
+                  className="w-full"
                 >
                   {isSubmitting ? (
                     <>
