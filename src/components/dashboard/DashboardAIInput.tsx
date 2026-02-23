@@ -90,6 +90,17 @@ export function DashboardAIInput() {
       if (resp.status === 402) { toast.error('AI credits exhausted.'); setIsLoading(false); return; }
       if (!resp.ok || !resp.body) throw new Error('Failed to start stream');
 
+      // Handle non-streaming JSON response (tool call fallback)
+      const contentType = resp.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json = await resp.json();
+        const content = json.choices?.[0]?.message?.content;
+        if (content) upsertAssistant(content);
+        if (content && convId) await saveMessage(convId, 'assistant', content);
+        setIsLoading(false);
+        return;
+      }
+
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let textBuffer = '';
