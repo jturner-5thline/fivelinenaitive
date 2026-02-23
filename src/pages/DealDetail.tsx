@@ -2403,7 +2403,6 @@ export default function DealDetail() {
                 </Select>
                 </div>
                 <div className="flex items-center gap-1.5 ml-auto">
-                  <CalendarIcon className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Close:</span>
                   <input
                     type="date"
