@@ -56,6 +56,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
+import { useCompany } from '@/hooks/useCompany';
 
 export default function Dashboard() {
   const [groupBy, setGroupBy] = useState<string | null>('status');
@@ -69,6 +70,7 @@ export default function Dashboard() {
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
   const { activePipelineId, pipelines } = usePipelineContext();
+  const { company } = useCompany();
   
   const { preferences } = usePreferences();
   const { visibleColumns, toggleColumnVisibility } = useDealListColumnOrder();
@@ -199,7 +201,7 @@ export default function Dashboard() {
                 style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
               >
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">5th Line</h1>
+                  <h1 className="text-2xl sm:text-3xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">{company?.name || ''}</h1>
                   <PipelineSelector />
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
