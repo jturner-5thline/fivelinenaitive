@@ -638,10 +638,14 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     Completed {format(new Date(item.completedAt), 'MMM d, yyyy')}
                   </span>
                 )}
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {format(new Date(item.createdAt), 'M/d/yy')}
-                </span>
+                {item.eta ? (
+                  <EtaBadge eta={!isCompletedRow ? item.eta : undefined} />
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {format(new Date(item.createdAt), 'M/d/yy')}
+                  </span>
+                )}
                 <span className={cn(
                   "flex items-center gap-1 whitespace-nowrap",
                   hasNoRequester && "text-destructive"
@@ -659,7 +663,6 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     {item.assignedTo}
                   </span>
                 )}
-                <EtaBadge eta={!isCompletedRow ? item.eta : undefined} />
               </div>
             </div>
             
