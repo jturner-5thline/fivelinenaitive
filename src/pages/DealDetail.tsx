@@ -95,6 +95,7 @@ import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
+import { useDealInfoFieldOrder, DealInfoFieldId, DEAL_INFO_FIELD_DEFINITIONS } from '@/hooks/useDealInfoFieldOrder';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import { useSidebar } from '@/components/ui/sidebar';
 import {
@@ -688,6 +689,7 @@ export default function DealDetail() {
   
   // Panel reorder functionality
   const { panelOrder, panelVisibility, visiblePanels, reorderPanels, togglePanelVisibility, isPanelVisible, resetToDefault } = useDealPanelOrder();
+  const { fieldOrder: dealInfoFieldOrder, isFieldVisible: isDealInfoFieldVisible } = useDealInfoFieldOrder();
   const [isPanelReorderDialogOpen, setIsPanelReorderDialogOpen] = useState(false);
   
   // Mark info requests as read when Deal Management tab is viewed
@@ -2761,410 +2763,404 @@ export default function DealDetail() {
                               </Card>
                             </Collapsible>
                           );
-                        case 'deal-information':
+                        case 'deal-information': {
+                          const renderDealInfoField = (fieldId: DealInfoFieldId) => {
+                            if (!isDealInfoFieldVisible(fieldId)) return null;
+                            switch (fieldId) {
+                              case 'narrative':
+                                return (
+                                  <div key={fieldId} className="space-y-1.5">
+                                    <label className="text-sm text-muted-foreground">Narrative</label>
+                                    <DebouncedTextarea
+                                      value={deal.narrative || ''}
+                                      onValueChange={(value) => updateDeal('narrative', value)}
+                                      placeholder="Enter deal narrative..."
+                                      className="w-full min-h-[80px] resize-none"
+                                      debounceMs={800}
+                                      showSaveIndicator
+                                    />
+                                  </div>
+                                );
+                              case 'dealManager':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Deal Manager</span>
+                                    <Select value={deal.manager} onValueChange={(value) => updateDeal('manager', value)}>
+                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select manager" /></SelectTrigger>
+                                      <SelectContent>
+                                        {memberOptions.map((option) => (
+                                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                );
+                              case 'dealOwner':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Deal Owner</span>
+                                    <Select value={deal.dealOwner || ''} onValueChange={(value) => updateDeal('dealOwner', value)}>
+                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select owner" /></SelectTrigger>
+                                      <SelectContent>
+                                        {memberOptions.map((option) => (
+                                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                );
+                              case 'type':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Type</span>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-between h-8 text-sm font-normal overflow-hidden">
+                                          {deal.dealTypes && deal.dealTypes.length > 0 ? (
+                                            <span className="flex gap-1 overflow-hidden min-w-0">
+                                              {deal.dealTypes.map(typeId => {
+                                                const typeConfig = availableDealTypes.find(t => t.id === typeId);
+                                                return typeConfig ? (
+                                                  <Badge key={typeId} variant="secondary" className="text-xs shrink-0">{typeConfig.label}</Badge>
+                                                ) : null;
+                                              })}
+                                            </span>
+                                          ) : (
+                                            <span className="text-muted-foreground">Select types</span>
+                                          )}
+                                          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-56 p-2" align="start">
+                                        <div className="space-y-1">
+                                          {availableDealTypes.map((type) => {
+                                            const isSelected = deal.dealTypes?.includes(type.id) || false;
+                                            return (
+                                              <button
+                                                key={type.id}
+                                                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
+                                                onClick={() => {
+                                                  const currentTypes = deal.dealTypes || [];
+                                                  const newTypes = isSelected
+                                                    ? currentTypes.filter(t => t !== type.id)
+                                                    : [...currentTypes, type.id];
+                                                  updateDeal('dealTypes', newTypes);
+                                                }}
+                                              >
+                                                <Checkbox checked={isSelected} className="pointer-events-none" />
+                                                {type.label}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
+                                );
+                              case 'engagement':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Engagement</span>
+                                    <Select value={deal.engagementType} onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}>
+                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue /></SelectTrigger>
+                                      <SelectContent>
+                                        {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
+                                          <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                );
+                              case 'exclusivity':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Exclusivity</span>
+                                    <Select value={deal.exclusivity || ''} onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}>
+                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                      <SelectContent>
+                                        {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
+                                          <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                );
+                              case 'companyUrl':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Company URL</span>
+                                    <DebouncedInput
+                                      value={deal.companyUrl || ''}
+                                      onChange={(value) => updateDeal('companyUrl', String(value))}
+                                      placeholder="https://example.com"
+                                      className="w-full h-8 text-sm"
+                                    />
+                                  </div>
+                                );
+                              case 'businessModel':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Business Model</span>
+                                    <Select value={deal.businessModel || ''} onValueChange={(value) => updateDeal('businessModel', value)}>
+                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select industry..." /></SelectTrigger>
+                                      <SelectContent>
+                                        {INDUSTRY_OPTIONS.map((industry) => (
+                                          <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                );
+                              case 'clientContact':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
+                                    <span className="text-muted-foreground text-sm">Client Contact</span>
+                                    <div className="min-w-0">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
+                                            <TooltipTrigger asChild>
+                                              <PopoverTrigger asChild>
+                                                <Button variant="outline" className="w-full justify-start h-8 px-3 font-normal text-sm overflow-hidden">
+                                                  <span className="truncate">
+                                                    {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
+                                                  </span>
+                                                </Button>
+                                              </PopoverTrigger>
+                                            </TooltipTrigger>
+                                            {deal.contact && deal.contactInfo && (
+                                              <TooltipContent side="left" className="max-w-[200px]">
+                                                <p className="font-medium">{deal.contact}</p>
+                                                <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
+                                              </TooltipContent>
+                                            )}
+                                            <PopoverContent className="w-72 p-4 bg-popover" align="start">
+                                              <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                  <label className="text-sm font-medium">Contact Name</label>
+                                                  <DebouncedInput
+                                                    value={deal.contact || ''}
+                                                    onChange={(value) => updateDeal('contact', String(value))}
+                                                    onSave={() => setContactPopoverOpen(false)}
+                                                    placeholder="Enter contact name"
+                                                  />
+                                                </div>
+                                                <div className="space-y-2">
+                                                  <label className="text-sm font-medium">Contact Info</label>
+                                                  <DebouncedInput
+                                                    value={deal.contactInfo || ''}
+                                                    onChange={(value) => updateDeal('contactInfo', String(value))}
+                                                    onSave={() => setContactPopoverOpen(false)}
+                                                    placeholder="Email or phone number"
+                                                  />
+                                                </div>
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                  </div>
+                                );
+                              case 'referralSource':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Referral Source</span>
+                                    <ReferralSourceInput
+                                      value={deal.referredBy || null}
+                                      onChange={(referrer) => updateDeal('referredBy', referrer)}
+                                      className="[&_input]:h-8 [&_input]:text-sm"
+                                    />
+                                  </div>
+                                );
+                              case 'analyst':
+                                return (
+                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                    <span className="text-muted-foreground text-sm">Analyst</span>
+                                    <Select value={deal.analyst || ''} onValueChange={(value: string) => updateDeal('analyst', value === '__none__' ? '' : value)}>
+                                      <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select analyst..." /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="__none__">None</SelectItem>
+                                        {members.map((member) => (
+                                          <SelectItem key={member.id} value={member.display_name || member.user_id}>
+                                            {member.display_name || 'Unknown'}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                );
+                              case 'hoursAndFees':
+                                return (
+                                  <div key={fieldId}>
+                                    <Separator className="my-4" />
+                                    <div className="space-y-3">
+                                      <h4 className="text-sm font-medium flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-muted-foreground" />
+                                        Hours & Fees
+                                      </h4>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Hours */}
+                                        <div className="space-y-3 min-w-0">
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Pre-Signing</span>
+                                            <DebouncedInput type="number" step="0.25" value={deal.preSigningHours ?? ''} onChange={(value) => updateDeal('preSigningHours', Number(value) || 0)} placeholder="0" className="w-full h-8 text-sm" min={0} />
+                                          </div>
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Post-Signing</span>
+                                            <DebouncedInput type="number" step="0.25" value={deal.postSigningHours ?? ''} onChange={(value) => updateDeal('postSigningHours', Number(value) || 0)} placeholder="0" className="w-full h-8 text-sm" min={0} />
+                                          </div>
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Total Hours</span>
+                                            <span className="text-sm font-medium h-8 flex items-center">
+                                              {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toLocaleString()}
+                                            </span>
+                                          </div>
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Revenue / Hour</span>
+                                            <span className="text-sm font-medium h-8 flex items-center">
+                                              {(() => {
+                                                const totalHours = (deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0);
+                                                if (totalHours === 0) return '-';
+                                                const revenuePerHour = (deal.totalFee ?? 0) / totalHours;
+                                                return `$${revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+                                              })()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        {/* Fees */}
+                                        <div className="space-y-3 min-w-0">
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Retainer Fee</span>
+                                            <div className="relative w-full">
+                                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                                              <Input
+                                                type="text"
+                                                value={deal.retainerFee ? Math.round(deal.retainerFee).toLocaleString() : ''}
+                                                onChange={(e) => {
+                                                  const raw = e.target.value.replace(/,/g, '');
+                                                  if (raw === '' || /^\d+$/.test(raw)) updateDeal('retainerFee', raw ? Number(raw) : 0);
+                                                }}
+                                                placeholder="0"
+                                                className="pl-5 h-8 text-sm w-full"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Milestone Fee</span>
+                                            <div className="relative w-full">
+                                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                                              <Input
+                                                type="text"
+                                                value={deal.milestoneFee ? Math.round(deal.milestoneFee).toLocaleString() : ''}
+                                                onChange={(e) => {
+                                                  const raw = e.target.value.replace(/,/g, '');
+                                                  if (raw === '' || /^\d+$/.test(raw)) updateDeal('milestoneFee', raw ? Number(raw) : 0);
+                                                }}
+                                                placeholder="0"
+                                                className="pl-5 h-8 text-sm w-full"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Success Fee %</span>
+                                            <div className="flex items-center gap-2">
+                                              <div className="relative w-16 shrink-0">
+                                                <Input
+                                                  type="number"
+                                                  value={deal.successFeePercent ?? ''}
+                                                  onChange={(e) => updateDeal('successFeePercent', e.target.value ? Number(e.target.value) : 0)}
+                                                  placeholder="0"
+                                                  className="pr-6 h-8 text-sm w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                  min={0}
+                                                  max={100}
+                                                  step={0.1}
+                                                />
+                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                                              </div>
+                                              <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                   <span className="text-sm text-muted-foreground whitespace-nowrap flex-1 text-right cursor-help">
+                                                    <span className="font-medium text-foreground">{(() => {
+                                                      const total = deal.totalFee ?? 0;
+                                                      const milestone = deal.milestoneFee ?? 0;
+                                                      const retainer = deal.retainerFee ?? 0;
+                                                      const closing = Math.max(0, total - milestone - retainer);
+                                                      if (closing >= 1_000_000) return `$${(closing / 1_000_000).toFixed(1)}M`;
+                                                      if (closing >= 1_000) return `$${(closing / 1_000).toFixed(1)}K`;
+                                                      return `$${Math.round(closing).toLocaleString()}`;
+                                                    })()}</span>
+                                                  </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="max-w-[200px] text-center">
+                                                  <p className="text-xs">Amount due at closing of the facility, less fees already paid</p>
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                            <span className="text-muted-foreground text-sm">Total Fee</span>
+                                            <div className="relative w-full">
+                                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                                              <Input
+                                                type="text"
+                                                value={deal.totalFee ? Math.round(deal.totalFee).toLocaleString() : ''}
+                                                onChange={(e) => {
+                                                  const raw = e.target.value.replace(/,/g, '');
+                                                  if (raw === '' || /^\d+$/.test(raw)) updateDeal('totalFee', raw ? Number(raw) : 0);
+                                                }}
+                                                placeholder="0"
+                                                className="pl-5 h-8 text-sm w-full"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              default:
+                                return null;
+                            }
+                          };
+
+                          // Separate fields into full-width, left-column, and right-column based on config order
+                          const orderedMainFields = dealInfoFieldOrder.filter(
+                            fId => fId !== 'narrative' && fId !== 'hoursAndFees' && isDealInfoFieldVisible(fId)
+                          );
+                          const leftFields = orderedMainFields.filter(fId => {
+                            const def = DEAL_INFO_FIELD_DEFINITIONS.find(d => d.id === fId);
+                            return def?.column === 'left';
+                          });
+                          const rightFields = orderedMainFields.filter(fId => {
+                            const def = DEAL_INFO_FIELD_DEFINITIONS.find(d => d.id === fId);
+                            return def?.column === 'right';
+                          });
+
                           return (
                             <Card key={id}>
                               <CardHeader className="flex flex-row items-center justify-between py-4">
                                 <CardTitle className="text-lg">Deal Information</CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-4">
-                                <div className="space-y-1.5">
-                                  <label className="text-sm text-muted-foreground">Narrative</label>
-                                  <DebouncedTextarea
-                                    value={deal.narrative || ''}
-                                    onValueChange={(value) => updateDeal('narrative', value)}
-                                    placeholder="Enter deal narrative..."
-                                    className="w-full min-h-[80px] resize-none"
-                                    debounceMs={800}
-                                    showSaveIndicator
-                                  />
-                                </div>
+                                {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
                                 
-                                {/* Two-column layout for deal details */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  {/* Left Column - Deal Management */}
-                                  <div className="space-y-3 min-w-0">
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Deal Manager</span>
-                                      <Select
-                                        value={deal.manager}
-                                        onValueChange={(value) => updateDeal('manager', value)}
-                                      >
-                                        <SelectTrigger className="w-full h-8 text-sm">
-                                          <SelectValue placeholder="Select manager" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {memberOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                              {option.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Deal Owner</span>
-                                      <Select
-                                        value={deal.dealOwner || ''}
-                                        onValueChange={(value) => updateDeal('dealOwner', value)}
-                                      >
-                                        <SelectTrigger className="w-full h-8 text-sm">
-                                          <SelectValue placeholder="Select owner" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {memberOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                              {option.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Type</span>
-                                      <Popover>
-                                        <PopoverTrigger asChild>
-                                          <Button variant="outline" className="w-full justify-between h-8 text-sm font-normal overflow-hidden">
-                                            {deal.dealTypes && deal.dealTypes.length > 0 ? (
-                                              <span className="flex gap-1 overflow-hidden min-w-0">
-                                                {deal.dealTypes.map(typeId => {
-                                                  const typeConfig = availableDealTypes.find(t => t.id === typeId);
-                                                  return typeConfig ? (
-                                                    <Badge key={typeId} variant="secondary" className="text-xs shrink-0">
-                                                      {typeConfig.label}
-                                                    </Badge>
-                                                  ) : null;
-                                                })}
-                                              </span>
-                                            ) : (
-                                              <span className="text-muted-foreground">Select types</span>
-                                            )}
-                                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
-                                          </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-56 p-2" align="start">
-                                          <div className="space-y-1">
-                                            {availableDealTypes.map((type) => {
-                                              const isSelected = deal.dealTypes?.includes(type.id) || false;
-                                              return (
-                                                <button
-                                                  key={type.id}
-                                                  className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
-                                                  onClick={() => {
-                                                    const currentTypes = deal.dealTypes || [];
-                                                    const newTypes = isSelected
-                                                      ? currentTypes.filter(t => t !== type.id)
-                                                      : [...currentTypes, type.id];
-                                                    updateDeal('dealTypes', newTypes);
-                                                  }}
-                                                >
-                                                  <Checkbox checked={isSelected} className="pointer-events-none" />
-                                                  {type.label}
-                                                </button>
-                                              );
-                                            })}
-                                          </div>
-                                        </PopoverContent>
-                                      </Popover>
-                                    </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Engagement</span>
-                                      <Select
-                                        value={deal.engagementType}
-                                        onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}
-                                      >
-                                        <SelectTrigger className="w-full h-8 text-sm">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, config]) => (
-                                            <SelectItem key={key} value={key}>
-                                              {config.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Exclusivity</span>
-                                      <Select
-                                        value={deal.exclusivity || ''}
-                                        onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}
-                                      >
-                                        <SelectTrigger className="w-full h-8 text-sm">
-                                          <SelectValue placeholder="Select..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {Object.entries(EXCLUSIVITY_CONFIG).map(([key, config]) => (
-                                            <SelectItem key={key} value={key}>
-                                              {config.label}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Right Column - Company Info */}
-                                  <div className="space-y-3 min-w-0">
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Company URL</span>
-                                      <DebouncedInput
-                                        value={deal.companyUrl || ''}
-                                        onChange={(value) => updateDeal('companyUrl', String(value))}
-                                        placeholder="https://example.com"
-                                        className="w-full h-8 text-sm"
-                                      />
-                                    </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Business Model</span>
-                                      <Select
-                                        value={deal.businessModel || ''}
-                                        onValueChange={(value) => updateDeal('businessModel', value)}
-                                      >
-                                        <SelectTrigger className="w-full h-8 text-sm">
-                                          <SelectValue placeholder="Select industry..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {INDUSTRY_OPTIONS.map((industry) => (
-                                            <SelectItem key={industry} value={industry}>
-                                              {industry}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
-                                      <span className="text-muted-foreground text-sm">Client Contact</span>
-                                      <div className="min-w-0">
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
-                                              <TooltipTrigger asChild>
-                                                <PopoverTrigger asChild>
-                                                  <Button
-                                                    variant="outline"
-                                                    className="w-full justify-start h-8 px-3 font-normal text-sm overflow-hidden"
-                                                  >
-                                                    <span className="truncate">
-                                                      {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
-                                                    </span>
-                                                  </Button>
-                                                </PopoverTrigger>
-                                              </TooltipTrigger>
-                                              {deal.contact && deal.contactInfo && (
-                                                <TooltipContent side="left" className="max-w-[200px]">
-                                                  <p className="font-medium">{deal.contact}</p>
-                                                  <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
-                                                </TooltipContent>
-                                              )}
-                                              <PopoverContent className="w-72 p-4 bg-popover" align="start">
-                                                <div className="space-y-4">
-                                                  <div className="space-y-2">
-                                                    <label className="text-sm font-medium">Contact Name</label>
-                                                    <DebouncedInput
-                                                      value={deal.contact || ''}
-                                                      onChange={(value) => updateDeal('contact', String(value))}
-                                                      onSave={() => setContactPopoverOpen(false)}
-                                                      placeholder="Enter contact name"
-                                                    />
-                                                  </div>
-                                                  <div className="space-y-2">
-                                                    <label className="text-sm font-medium">Contact Info</label>
-                                                    <DebouncedInput
-                                                      value={deal.contactInfo || ''}
-                                                      onChange={(value) => updateDeal('contactInfo', String(value))}
-                                                      onSave={() => setContactPopoverOpen(false)}
-                                                      placeholder="Email or phone number"
-                                                    />
-                                                  </div>
-                                                </div>
-                                              </PopoverContent>
-                                            </Popover>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Referral Source</span>
-                                      <ReferralSourceInput
-                                        value={deal.referredBy || null}
-                                        onChange={(referrer) => updateDeal('referredBy', referrer)}
-                                        className="[&_input]:h-8 [&_input]:text-sm"
-                                      />
-                                    </div>
-                                    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                      <span className="text-muted-foreground text-sm">Analyst</span>
-                                      <Select
-                                        value={deal.analyst || ''}
-                                        onValueChange={(value: string) => updateDeal('analyst', value === '__none__' ? '' : value)}
-                                      >
-                                        <SelectTrigger className="w-full h-8 text-sm">
-                                          <SelectValue placeholder="Select analyst..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="__none__">None</SelectItem>
-                                          {members.map((member) => (
-                                            <SelectItem key={member.id} value={member.display_name || member.user_id}>
-                                              {member.display_name || 'Unknown'}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {/* Hours & Fees Section */}
-                                <Separator className="my-4" />
-                                <div className="space-y-3">
-                                  <h4 className="text-sm font-medium flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-muted-foreground" />
-                                    Hours & Fees
-                                  </h4>
+                                {(leftFields.length > 0 || rightFields.length > 0) && (
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Hours */}
                                     <div className="space-y-3 min-w-0">
-                                      <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                        <span className="text-muted-foreground text-sm">Pre-Signing</span>
-                                        <DebouncedInput
-                                          type="number"
-                                          step="0.25"
-                                          value={deal.preSigningHours ?? ''}
-                                          onChange={(value) => updateDeal('preSigningHours', Number(value) || 0)}
-                                          placeholder="0"
-                                          className="w-full h-8 text-sm"
-                                          min={0}
-                                        />
-                                      </div>
-                                      <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                        <span className="text-muted-foreground text-sm">Post-Signing</span>
-                                        <DebouncedInput
-                                          type="number"
-                                          step="0.25"
-                                          value={deal.postSigningHours ?? ''}
-                                          onChange={(value) => updateDeal('postSigningHours', Number(value) || 0)}
-                                          placeholder="0"
-                                          className="w-full h-8 text-sm"
-                                          min={0}
-                                        />
-                                      </div>
-                                      <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                        <span className="text-muted-foreground text-sm">Total Hours</span>
-                                        <span className="text-sm font-medium h-8 flex items-center">
-                                          {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toLocaleString()}
-                                        </span>
-                                      </div>
-                                      <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                        <span className="text-muted-foreground text-sm">Revenue / Hour</span>
-                                        <span className="text-sm font-medium h-8 flex items-center">
-                                          {(() => {
-                                            const totalHours = (deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0);
-                                            if (totalHours === 0) return '-';
-                                            const revenuePerHour = (deal.totalFee ?? 0) / totalHours;
-                                            return `$${revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-                                          })()}
-                                        </span>
-                                      </div>
+                                      {leftFields.map(fId => renderDealInfoField(fId))}
                                     </div>
-                                    {/* Fees */}
                                     <div className="space-y-3 min-w-0">
-                                      <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                        <span className="text-muted-foreground text-sm">Retainer Fee</span>
-                                        <div className="relative w-full">
-                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                                          <Input
-                                            type="text"
-                                            value={deal.retainerFee ? Math.round(deal.retainerFee).toLocaleString() : ''}
-                                            onChange={(e) => {
-                                              const raw = e.target.value.replace(/,/g, '');
-                                              if (raw === '' || /^\d+$/.test(raw)) {
-                                                updateDeal('retainerFee', raw ? Number(raw) : 0);
-                                              }
-                                            }}
-                                            placeholder="0"
-                                            className="pl-5 h-8 text-sm w-full"
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                        <span className="text-muted-foreground text-sm">Milestone Fee</span>
-                                        <div className="relative w-full">
-                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                                          <Input
-                                            type="text"
-                                            value={deal.milestoneFee ? Math.round(deal.milestoneFee).toLocaleString() : ''}
-                                            onChange={(e) => {
-                                              const raw = e.target.value.replace(/,/g, '');
-                                              if (raw === '' || /^\d+$/.test(raw)) {
-                                                updateDeal('milestoneFee', raw ? Number(raw) : 0);
-                                              }
-                                            }}
-                                            placeholder="0"
-                                            className="pl-5 h-8 text-sm w-full"
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                        <span className="text-muted-foreground text-sm">Success Fee %</span>
-                                        <div className="flex items-center gap-2">
-                                          <div className="relative w-16 shrink-0">
-                                            <Input
-                                              type="number"
-                                              value={deal.successFeePercent ?? ''}
-                                              onChange={(e) => updateDeal('successFeePercent', e.target.value ? Number(e.target.value) : 0)}
-                                              placeholder="0"
-                                              className="pr-6 h-8 text-sm w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                              min={0}
-                                              max={100}
-                                              step={0.1}
-                                            />
-                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
-                                          </div>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                               <span className="text-sm text-muted-foreground whitespace-nowrap flex-1 text-right cursor-help">
-                                                <span className="font-medium text-foreground">{(() => {
-                                                  const total = deal.totalFee ?? 0;
-                                                  const milestone = deal.milestoneFee ?? 0;
-                                                  const retainer = deal.retainerFee ?? 0;
-                                                  const closing = Math.max(0, total - milestone - retainer);
-                                                  if (closing >= 1_000_000) return `$${(closing / 1_000_000).toFixed(1)}M`;
-                                                  if (closing >= 1_000) return `$${(closing / 1_000).toFixed(1)}K`;
-                                                  return `$${Math.round(closing).toLocaleString()}`;
-                                                })()}</span>
-                                              </span>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="max-w-[200px] text-center">
-                                              <p className="text-xs">Amount due at closing of the facility, less fees already paid</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </div>
-                                      </div>
-                                      <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
-                                        <span className="text-muted-foreground text-sm">Total Fee</span>
-                                        <div className="relative w-full">
-                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                                          <Input
-                                            type="text"
-                                            value={deal.totalFee ? Math.round(deal.totalFee).toLocaleString() : ''}
-                                            onChange={(e) => {
-                                              const raw = e.target.value.replace(/,/g, '');
-                                              if (raw === '' || /^\d+$/.test(raw)) {
-                                                updateDeal('totalFee', raw ? Number(raw) : 0);
-                                              }
-                                            }}
-                                            placeholder="0"
-                                            className="pl-5 h-8 text-sm w-full"
-                                          />
-                                        </div>
-                                      </div>
+                                      {rightFields.map(fId => renderDealInfoField(fId))}
                                     </div>
                                   </div>
-                                </div>
+                                )}
+                                
+                                {isDealInfoFieldVisible('hoursAndFees') && renderDealInfoField('hoursAndFees')}
                               </CardContent>
                             </Card>
                           );
+                        }
                         case 'outstanding-items':
                           return (
                             <div key={id} className="space-y-6">
