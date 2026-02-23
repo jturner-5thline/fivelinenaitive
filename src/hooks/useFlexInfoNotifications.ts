@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface FlexInfoNotification {
   id: string;
@@ -14,6 +15,8 @@ export interface FlexInfoNotification {
 }
 
 export function useFlexInfoNotifications(dealId: string | undefined) {
+  const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const [notifications, setNotifications] = useState<FlexInfoNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -22,7 +25,7 @@ export function useFlexInfoNotifications(dealId: string | undefined) {
   notificationsRef.current = notifications;
 
   const fetchNotifications = useCallback(async () => {
-    if (!dealId) {
+    if (!dealId || !is5thLine) {
       setNotifications([]);
       setIsLoading(false);
       return;

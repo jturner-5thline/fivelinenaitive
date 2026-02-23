@@ -19,11 +19,12 @@ export interface FlexNotification {
 
 export function useFlexNotifications(limit: number = 10) {
   const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const [notifications, setNotifications] = useState<FlexNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) {
+    if (!user || !is5thLine) {
       setNotifications([]);
       setIsLoading(false);
       return;
