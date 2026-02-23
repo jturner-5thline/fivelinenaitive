@@ -43,7 +43,7 @@ export function EmailIntelligenceWidget() {
   if (toggles.hideEmailHints) return null;
 
   return (
-    <Card className="border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
+    <Card className="h-full flex flex-col border-primary/10 bg-gradient-to-br from-primary/5 to-transparent">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-medium flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />

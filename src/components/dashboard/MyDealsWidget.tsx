@@ -73,7 +73,7 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="h-full">
         <CardHeader className="pb-3">
           <Skeleton className="h-5 w-32" />
         </CardHeader>
@@ -85,8 +85,8 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="h-full">
+      <Card className="h-full flex flex-col">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors">
             <CardTitle className="text-base font-medium flex items-center justify-between">
@@ -101,8 +101,8 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="pt-0 space-y-3">
+        <CollapsibleContent className="flex-1 overflow-hidden">
+          <CardContent className="pt-0 space-y-3 h-full">
             {/* Filters */}
             <ToggleGroup type="single" value={filter} onValueChange={(v) => v && setFilter(v as StageFilter)} className="justify-start">
               <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All</ToggleGroupItem>

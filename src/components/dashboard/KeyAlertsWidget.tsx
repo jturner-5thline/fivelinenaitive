@@ -117,8 +117,8 @@ export function KeyAlertsWidget() {
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="h-full">
+      <Card className="h-full flex flex-col">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-2 cursor-pointer hover:bg-muted/50 transition-colors">
             <CardTitle className="text-base font-medium flex items-center justify-between">
@@ -133,8 +133,8 @@ export function KeyAlertsWidget() {
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="pt-0">
+        <CollapsibleContent className="flex-1 overflow-hidden">
+          <CardContent className="pt-0 h-full">
             <ScrollArea className="max-h-[300px]">
               {alerts.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No alerts — everything looks good.</p>

@@ -41,7 +41,7 @@ export function AgentSuggestionsWidget() {
   }
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+    <Card className="h-full flex flex-col border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
