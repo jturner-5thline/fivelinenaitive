@@ -369,7 +369,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     open ? lender?.name ?? null : null
   );
   
-  const { contacts: additionalContacts, addContact, deleteContact: deleteAdditionalContact } = useLenderContacts(
+  const { contacts: additionalContacts, addContact, updateContact: updateAdditionalContact, deleteContact: deleteAdditionalContact } = useLenderContacts(
     open ? lender?.id ?? null : null
   );
 
@@ -898,6 +898,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   <LenderContactsList 
                     contacts={additionalContacts} 
                     onDelete={deleteAdditionalContact}
+                    onUpdate={updateAdditionalContact}
                     isEditMode={true}
                   />
                 </section>
@@ -1451,6 +1452,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <LenderContactsList 
                               contacts={additionalContacts} 
                               onDelete={deleteAdditionalContact}
+                              onUpdate={updateAdditionalContact}
                               isEditMode={false}
                             />
                           </section>
