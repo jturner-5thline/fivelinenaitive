@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MessageSquare, X, Pin } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
@@ -11,9 +12,11 @@ import { PinnedInsightsPanel } from '@/components/dashboard/chat/PinnedInsightsP
 
 export function FloatingCopilotDrawer() {
   const { user } = useAuth();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
 
-  if (!user) return null;
+  // Hide on onboarding and auth pages
+  if (!user || location.pathname === '/onboarding' || location.pathname === '/auth') return null;
 
   return (
     <>
