@@ -125,7 +125,7 @@ export function AISearchWidget() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-50">
+    <div className="fixed bottom-4 right-4 z-50">
       {/* Morphing Blob Button */}
       <MorphingBlob 
         isActive={isOpen} 
@@ -136,7 +136,7 @@ export function AISearchWidget() {
       {isOpen && (
         <div
           ref={panelRef}
-          className="absolute bottom-16 left-0 w-[380px] bg-card border border-border rounded-xl shadow-xl animate-scale-in"
+          className="absolute bottom-16 right-0 w-[380px] bg-card border border-border rounded-xl shadow-xl animate-scale-in"
         >
           {/* Header */}
           <div className="p-4 border-b border-border">
