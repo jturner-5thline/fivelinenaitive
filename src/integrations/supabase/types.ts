@@ -5050,6 +5050,7 @@ export type Database = {
       }
       page_views: {
         Row: {
+          company_id: string | null
           created_at: string
           device_type: string | null
           id: string
@@ -5061,6 +5062,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           id?: string
@@ -5072,6 +5074,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           id?: string
@@ -7212,6 +7215,7 @@ export type Database = {
       }
       ux_accessibility_issues: {
         Row: {
+          company_id: string | null
           created_at: string
           description: string | null
           element_selector: string | null
@@ -7224,6 +7228,7 @@ export type Database = {
           wcag_criteria: string | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           description?: string | null
           element_selector?: string | null
@@ -7236,6 +7241,7 @@ export type Database = {
           wcag_criteria?: string | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           description?: string | null
           element_selector?: string | null
@@ -7252,6 +7258,7 @@ export type Database = {
       ux_click_heatmap: {
         Row: {
           click_count: number | null
+          company_id: string | null
           created_at: string
           device_type: string | null
           element_selector: string
@@ -7259,11 +7266,13 @@ export type Database = {
           id: string
           page_path: string
           session_id: string
+          user_id: string | null
           x_percent: number | null
           y_percent: number | null
         }
         Insert: {
           click_count?: number | null
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           element_selector: string
@@ -7271,11 +7280,13 @@ export type Database = {
           id?: string
           page_path: string
           session_id: string
+          user_id?: string | null
           x_percent?: number | null
           y_percent?: number | null
         }
         Update: {
           click_count?: number | null
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           element_selector?: string
@@ -7283,6 +7294,7 @@ export type Database = {
           id?: string
           page_path?: string
           session_id?: string
+          user_id?: string | null
           x_percent?: number | null
           y_percent?: number | null
         }
@@ -7290,6 +7302,7 @@ export type Database = {
       }
       ux_client_errors: {
         Row: {
+          company_id: string | null
           component_name: string | null
           created_at: string
           error_message: string | null
@@ -7301,6 +7314,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          company_id?: string | null
           component_name?: string | null
           created_at?: string
           error_message?: string | null
@@ -7312,6 +7326,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          company_id?: string | null
           component_name?: string | null
           created_at?: string
           error_message?: string | null
@@ -7327,6 +7342,7 @@ export type Database = {
       ux_feature_usage: {
         Row: {
           action_type: string
+          company_id: string | null
           created_at: string
           feature_name: string
           id: string
@@ -7337,6 +7353,7 @@ export type Database = {
         }
         Insert: {
           action_type: string
+          company_id?: string | null
           created_at?: string
           feature_name: string
           id?: string
@@ -7347,6 +7364,7 @@ export type Database = {
         }
         Update: {
           action_type?: string
+          company_id?: string | null
           created_at?: string
           feature_name?: string
           id?: string
@@ -7359,6 +7377,7 @@ export type Database = {
       }
       ux_navigation_events: {
         Row: {
+          company_id: string | null
           created_at: string
           device_type: string | null
           from_path: string | null
@@ -7369,8 +7388,10 @@ export type Database = {
           session_id: string
           time_on_previous_page_ms: number | null
           to_path: string
+          user_id: string | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           from_path?: string | null
@@ -7381,8 +7402,10 @@ export type Database = {
           session_id: string
           time_on_previous_page_ms?: number | null
           to_path: string
+          user_id?: string | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           from_path?: string | null
@@ -7393,11 +7416,13 @@ export type Database = {
           session_id?: string
           time_on_previous_page_ms?: number | null
           to_path?: string
+          user_id?: string | null
         }
         Relationships: []
       }
       ux_performance_metrics: {
         Row: {
+          company_id: string | null
           created_at: string
           device_type: string | null
           id: string
@@ -7405,9 +7430,11 @@ export type Database = {
           page_path: string
           rating: string | null
           session_id: string
+          user_id: string | null
           value_ms: number | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           id?: string
@@ -7415,9 +7442,11 @@ export type Database = {
           page_path: string
           rating?: string | null
           session_id: string
+          user_id?: string | null
           value_ms?: number | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           id?: string
@@ -7425,6 +7454,7 @@ export type Database = {
           page_path?: string
           rating?: string | null
           session_id?: string
+          user_id?: string | null
           value_ms?: number | null
         }
         Relationships: []
@@ -7432,6 +7462,7 @@ export type Database = {
       ux_rage_clicks: {
         Row: {
           click_count: number | null
+          company_id: string | null
           created_at: string
           device_type: string | null
           element_selector: string | null
@@ -7439,9 +7470,11 @@ export type Database = {
           id: string
           page_path: string
           session_id: string
+          user_id: string | null
         }
         Insert: {
           click_count?: number | null
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           element_selector?: string | null
@@ -7449,9 +7482,11 @@ export type Database = {
           id?: string
           page_path: string
           session_id: string
+          user_id?: string | null
         }
         Update: {
           click_count?: number | null
+          company_id?: string | null
           created_at?: string
           device_type?: string | null
           element_selector?: string | null
@@ -7459,12 +7494,14 @@ export type Database = {
           id?: string
           page_path?: string
           session_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
       ux_search_events: {
         Row: {
           clicked_result_index: number | null
+          company_id: string | null
           created_at: string
           filters_used: Json | null
           id: string
@@ -7476,6 +7513,7 @@ export type Database = {
         }
         Insert: {
           clicked_result_index?: number | null
+          company_id?: string | null
           created_at?: string
           filters_used?: Json | null
           id?: string
@@ -7487,6 +7525,7 @@ export type Database = {
         }
         Update: {
           clicked_result_index?: number | null
+          company_id?: string | null
           created_at?: string
           filters_used?: Json | null
           id?: string
@@ -7502,6 +7541,7 @@ export type Database = {
         Row: {
           category: string | null
           comment: string | null
+          company_id: string | null
           created_at: string
           id: string
           page_path: string
@@ -7512,6 +7552,7 @@ export type Database = {
         Insert: {
           category?: string | null
           comment?: string | null
+          company_id?: string | null
           created_at?: string
           id?: string
           page_path: string
@@ -7522,6 +7563,7 @@ export type Database = {
         Update: {
           category?: string | null
           comment?: string | null
+          company_id?: string | null
           created_at?: string
           id?: string
           page_path?: string
