@@ -195,7 +195,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
 
   const handleShare = useCallback((content: string) => {
     if (navigator.share) {
-      navigator.share({ title: 'nAItive Assistant', text: content }).catch(() => {});
+      navigator.share({ title: 'naitive Assistant', text: content }).catch(() => {});
     } else {
       navigator.clipboard.writeText(content);
       toast.success('Copied to clipboard — paste to share');
@@ -215,7 +215,7 @@ export function DashboardAIInput({ isDrawerMode = false }: DashboardAIInputProps
           <div className={cn('flex items-center justify-between gap-2', expanded ? 'p-3 border-b' : 'mb-3')}>
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">nAItive Assistant</span>
+              <span className="text-sm font-medium">naitive Assistant</span>
               {isLoading && <span className="text-[10px] text-muted-foreground animate-pulse">processing...</span>}
             </div>
             <div className="flex items-center gap-1">
