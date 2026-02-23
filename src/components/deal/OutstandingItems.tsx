@@ -626,7 +626,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             
             <div className="flex-1 min-w-0">
               <span className={cn(
-                "text-sm block",
+                "text-sm block truncate",
                 isCompletedRow && "line-through text-muted-foreground"
               )}>
                 {item.text}
