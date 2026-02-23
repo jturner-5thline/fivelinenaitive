@@ -49,6 +49,7 @@ const PANEL_CONFIG: Record<DealPanelId, { label: string; icon: React.ComponentTy
   'ai-suggestions': { label: 'AI Smart Suggestions', icon: AlertCircle },
   'deal-information': { label: 'Deal Information', icon: FileText },
   'outstanding-items': { label: 'Outstanding Items', icon: CheckSquare },
+  'activity-timeline': { label: 'Activity Timeline', icon: Clock },
 };
 
 interface SortablePanelItemProps {

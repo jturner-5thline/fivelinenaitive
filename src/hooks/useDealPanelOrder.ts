@@ -9,7 +9,8 @@ export type DealPanelId =
   | 'ai-activity-summary' 
   | 'ai-suggestions' 
   | 'deal-information' 
-  | 'outstanding-items';
+  | 'outstanding-items'
+  | 'activity-timeline';
 
 export interface DealPanel {
   id: DealPanelId;
@@ -26,6 +27,7 @@ const DEFAULT_PANEL_ORDER: DealPanelId[] = [
   'ai-suggestions',
   'deal-information',
   'outstanding-items',
+  'activity-timeline',
 ];
 
 // Default visibility: all panels visible
@@ -36,6 +38,7 @@ const DEFAULT_PANEL_VISIBILITY: Record<DealPanelId, boolean> = {
   'ai-suggestions': true,
   'deal-information': true,
   'outstanding-items': true,
+  'activity-timeline': true,
 };
 
 interface DealPanelLayout {

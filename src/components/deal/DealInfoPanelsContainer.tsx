@@ -44,6 +44,7 @@ const PANEL_CONFIG: Record<DealPanelId, {
   'ai-suggestions': { label: 'AI Smart Suggestions', icon: AlertCircle, isCollapsible: true },
   'deal-information': { label: 'Deal Information', icon: Search, isCollapsible: false },
   'outstanding-items': { label: 'Outstanding Items', icon: Search, isCollapsible: false },
+  'activity-timeline': { label: 'Activity Timeline', icon: Clock, isCollapsible: false },
 };
 
 export function DealInfoPanelsContainer({
@@ -173,6 +174,7 @@ export function DealInfoPanelsContainer({
     ),
     'deal-information': () => dealInformationContent,
     'outstanding-items': () => outstandingItemsContent,
+    'activity-timeline': () => null, // Rendered separately in DealDetail
   }), [
     isResearchPanelOpen, onResearchPanelOpenChange, researchPanelContent,
     isAssistantPanelOpen, onAssistantPanelOpenChange, assistantPanelContent,
