@@ -2152,16 +2152,27 @@ export default function DealDetail() {
         <DealsHeader />
 
         <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
-          {/* Back button and Undo */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
-            <Button variant="ghost" size="sm" className="gap-2 self-start" asChild>
+          {/* Back button, alerts, and undo - side by side */}
+          <div className="flex items-center gap-3 mb-1 flex-wrap">
+            <Button variant="ghost" size="sm" className="gap-2 shrink-0" asChild>
               <Link to="/deals">
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">Back to Pipeline</span>
                 <span className="sm:hidden">Back</span>
               </Link>
             </Button>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
+
+            {/* Proactive Alert Bar - inline */}
+            <ProactiveAlertBar 
+              deal={deal}
+              checklistTotal={allChecklistItems.length}
+              checklistComplete={0}
+              outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
+              infoRequestCount={infoRequestActionCount}
+              onNavigate={handleTabChange}
+            />
+
+            <div className="flex items-center gap-2 flex-wrap ml-auto">
               {viewModified && (
                 <Button
                   variant="outline"
@@ -2186,16 +2197,6 @@ export default function DealDetail() {
               )}
             </div>
           </div>
-
-          {/* Proactive Alert Bar - replaces old stale lender notification */}
-          <ProactiveAlertBar 
-            deal={deal}
-            checklistTotal={allChecklistItems.length}
-            checklistComplete={0}
-            outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
-            infoRequestCount={infoRequestActionCount}
-            onNavigate={handleTabChange}
-          />
 
           {/* Deal Pulse Dashboard */}
           <DealPulseDashboard 

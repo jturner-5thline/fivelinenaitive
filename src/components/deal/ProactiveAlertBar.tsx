@@ -126,7 +126,7 @@ export function ProactiveAlertBar({ deal, checklistTotal = 0, checklistComplete 
   };
 
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
+    <div className="flex flex-wrap gap-2">
       {visibleAlerts.map(alert => {
         const Icon = alert.icon;
         return (
