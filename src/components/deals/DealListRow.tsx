@@ -1,4 +1,5 @@
-import { useState, ReactNode } from 'react';
+import { useState, ReactNode, useCallback } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Bell, ArrowRightLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -39,9 +40,11 @@ interface DealListRowProps {
   flexEngagement?: DealFlexEngagement;
   columnOrder?: DealListColumnId[];
   notificationCount?: number;
+  isSelected?: boolean;
+  onToggleSelect?: (dealId: string) => void;
 }
 
-export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0 }: DealListRowProps) {
+export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0, isSelected, onToggleSelect }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const navigate = useNavigate();
@@ -264,9 +267,17 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
 
   return (
     <TableRow 
-      className={`group cursor-pointer rounded-md shadow-[inset_0_0_0_1px_rgba(59,130,246,0.25)] bg-transparent hover:shadow-[inset_0_0_0_1px_hsl(292,46%,72%,0.6)] transition-colors duration-200 ${timeAgoData.isStale ? 'bg-warning/5' : ''} [&>td:first-child]:rounded-l-md [&>td:last-child]:rounded-r-md`}
+      className={`group cursor-pointer rounded-md shadow-[inset_0_0_0_1px_rgba(59,130,246,0.25)] bg-transparent hover:shadow-[inset_0_0_0_1px_hsl(292,46%,72%,0.6)] transition-colors duration-200 ${timeAgoData.isStale ? 'bg-warning/5' : ''} ${isSelected ? 'bg-primary/10 shadow-[inset_0_0_0_1px_hsl(272,100%,70%,0.5)]' : ''} [&>td:first-child]:rounded-l-md [&>td:last-child]:rounded-r-md`}
       onClick={() => navigate(`/deal/${deal.id}`)}
     >
+      {onToggleSelect && (
+        <TableCell className="w-[40px] px-2" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggleSelect(deal.id)}
+          />
+        </TableCell>
+      )}
       {columnOrder.map(colId => columnCells[colId])}
 
       {/* Actions - always last */}

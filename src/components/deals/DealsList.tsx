@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
@@ -27,6 +27,8 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DealsBulkActionBar } from './DealsBulkActionBar';
 
 interface DealsListProps {
   deals: Deal[];
@@ -71,6 +73,7 @@ const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold
 export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid' }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set());
   const { columnOrder, activeColumns, visibleColumns, updateColumnOrder, toggleColumnVisibility } = useDealListColumnOrder();
   
   // Fetch FLEx engagement scores for all visible deals
@@ -91,6 +94,25 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
       return sortDirection === 'asc' ? comparison : -comparison;
     });
   }, [deals, sortField, sortDirection, flexEngagementScores]);
+
+  const toggleSelectDeal = useCallback((dealId: string) => {
+    setSelectedDealIds(prev => {
+      const next = new Set(prev);
+      if (next.has(dealId)) next.delete(dealId);
+      else next.add(dealId);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedDealIds.size === sortedDeals.length) {
+      setSelectedDealIds(new Set());
+    } else {
+      setSelectedDealIds(new Set(sortedDeals.map(d => d.id)));
+    }
+  }, [selectedDealIds.size, sortedDeals]);
+
+  const clearSelection = useCallback(() => setSelectedDealIds(new Set()), []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -153,6 +175,12 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
             <Table className="border-separate border-spacing-y-1.5">
               <TableHeader>
                 <TableRow className="bg-card rounded-md [&>th:first-child]:rounded-l-md [&>th:last-child]:rounded-r-md hover:bg-card">
+                  <TableHead className="w-[40px] px-2">
+                    <Checkbox
+                      checked={sortedDeals.length > 0 && selectedDealIds.size === sortedDeals.length}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
                   <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
                     {activeColumns.map((colId) => (
                       <SortableTableHead key={colId} id={colId} />
@@ -172,12 +200,19 @@ export function DealsList({ deals, onStatusChange, onMarkReviewed, onToggleFlag,
                     flexEngagement={flexEngagementScores?.get(deal.id)}
                     columnOrder={activeColumns}
                     notificationCount={flexNotificationCounts[deal.id] || 0}
+                    isSelected={selectedDealIds.has(deal.id)}
+                    onToggleSelect={toggleSelectDeal}
                   />
                 ))}
               </TableBody>
             </Table>
           </DndContext>
         </div>
+        <DealsBulkActionBar
+          selectedDealIds={selectedDealIds}
+          onClearSelection={clearSelection}
+          onComplete={clearSelection}
+        />
       </div>
     );
   }
