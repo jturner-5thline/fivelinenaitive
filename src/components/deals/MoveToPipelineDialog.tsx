@@ -68,7 +68,7 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-popover border-border shadow-2xl brightness-125">
+      <DialogContent className="sm:max-w-md border-purple-500/40 shadow-2xl shadow-purple-500/20" style={{ background: 'linear-gradient(135deg, hsl(240, 20%, 22%), hsl(260, 25%, 18%))' }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" />
