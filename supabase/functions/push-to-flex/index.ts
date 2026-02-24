@@ -173,7 +173,7 @@ serve(async (req) => {
         key_items: d.key_items || undefined,
         is_published: !d.publish_as_anonymous,
         deal_manager_name: (d as any).deals?.manager || undefined,
-        managing_company: (d as any).deals?.companies?.name || undefined,
+        managing_company: "5th Line",
       }));
       
       const bulkPayload = {
@@ -383,7 +383,7 @@ serve(async (req) => {
         team: writeUpData!.team && writeUpData!.team.length > 0 ? writeUpData!.team : undefined,
         visible_metrics: writeUpData!.visibleMetrics || undefined,
         deal_manager_name: deal.manager || undefined,
-        managing_company: (deal as any).companies?.name || undefined,
+        managing_company: "5th Line",
       };
 
       flexPayload = {
