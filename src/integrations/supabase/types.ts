@@ -1748,6 +1748,63 @@ export type Database = {
           },
         ]
       }
+      deal_memo_approvals: {
+        Row: {
+          approver_role: string
+          approver_user_id: string
+          created_at: string
+          deal_id: string
+          deal_memo_id: string
+          id: string
+          rejection_reason: string | null
+          resolved_at: string | null
+          status: string
+          submitted_by: string
+          task_id: string | null
+        }
+        Insert: {
+          approver_role: string
+          approver_user_id: string
+          created_at?: string
+          deal_id: string
+          deal_memo_id: string
+          id?: string
+          rejection_reason?: string | null
+          resolved_at?: string | null
+          status?: string
+          submitted_by: string
+          task_id?: string | null
+        }
+        Update: {
+          approver_role?: string
+          approver_user_id?: string
+          created_at?: string
+          deal_id?: string
+          deal_memo_id?: string
+          id?: string
+          rejection_reason?: string | null
+          resolved_at?: string | null
+          status?: string
+          submitted_by?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_memo_approvals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_memo_approvals_deal_memo_id_fkey"
+            columns: ["deal_memo_id"]
+            isOneToOne: false
+            referencedRelation: "deal_memos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_memo_audit_logs: {
         Row: {
           created_at: string
@@ -1821,43 +1878,67 @@ export type Database = {
       deal_memos: {
         Row: {
           analyst_notes: string | null
+          approval_state: string
+          approved_at: string | null
           created_at: string
           created_by: string | null
+          current_approval_level: string | null
+          current_approver_user_id: string | null
           deal_id: string
           highlights: string | null
           hurdles: string | null
           id: string
+          last_submitted_by_user_id: string | null
           lender_notes: string | null
           narrative: string | null
           other_notes: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          submitted_at: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           analyst_notes?: string | null
+          approval_state?: string
+          approved_at?: string | null
           created_at?: string
           created_by?: string | null
+          current_approval_level?: string | null
+          current_approver_user_id?: string | null
           deal_id: string
           highlights?: string | null
           hurdles?: string | null
           id?: string
+          last_submitted_by_user_id?: string | null
           lender_notes?: string | null
           narrative?: string | null
           other_notes?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          submitted_at?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           analyst_notes?: string | null
+          approval_state?: string
+          approved_at?: string | null
           created_at?: string
           created_by?: string | null
+          current_approval_level?: string | null
+          current_approver_user_id?: string | null
           deal_id?: string
           highlights?: string | null
           hurdles?: string | null
           id?: string
+          last_submitted_by_user_id?: string | null
           lender_notes?: string | null
           narrative?: string | null
           other_notes?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          submitted_at?: string | null
           updated_at?: string
           updated_by?: string | null
         }
