@@ -11,6 +11,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -33,7 +34,14 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { isAdmin } = useAdminRole();
   const { toast } = useToast();
   const { pipelines } = usePipelineContext();
-  const dynamicStageConfig = getStageConfig();
+  const { getStageConfigForDeal } = usePipelineStageConfig();
+  const globalStageConfig = getStageConfig();
+
+  // Use pipeline-specific stages if deal belongs to a pipeline
+  const dealPipeline = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId) : null;
+  const stageEntries = dealPipeline?.stages?.length
+    ? dealPipeline.stages.map(s => [s.id, { label: s.label, color: s.color }] as const)
+    : Object.entries(globalStageConfig);
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
 
   // Animation states - keep mounted during exit animation
@@ -238,7 +246,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(dynamicStageConfig).map(([key, { label }]) => (
+                  {stageEntries.map(([key, { label }]) => (
                     <SelectItem key={key} value={key}>
                       {label}
                     </SelectItem>

@@ -94,6 +94,8 @@ import { useChecklistCategories } from '@/hooks/useChecklistCategories';
 import { StatusHistoryPopover } from '@/components/deal/StatusHistoryPopover';
 import { useDealClaapRecordings } from '@/hooks/useDealClaapRecordings';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
 import { useDealInfoFieldOrder, DealInfoFieldId, DEAL_INFO_FIELD_DEFINITIONS } from '@/hooks/useDealInfoFieldOrder';
@@ -456,6 +458,8 @@ export default function DealDetail() {
   const { dealTypes: availableDealTypes } = useDealTypes();
   const { stages: dealStages, getStageConfig } = useDealStages();
   const dynamicStageConfig = getStageConfig();
+  const { getStageConfigForDeal } = usePipelineStageConfig();
+  const { pipelines } = usePipelineContext();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { getDealById, updateDeal: updateDealInDb, addLenderToDeal, updateLender: updateLenderInDb, deleteLender: deleteLenderInDb, deleteLenderNoteHistory, deleteDeal, deals, isLoading: isDealsLoading } = useDealsContext();
   const { activities: activityLogs, logActivity, isLoading: isLoadingActivities } = useActivityLog(id);
@@ -2410,20 +2414,24 @@ export default function DealDetail() {
                   </Button>
                 )}
                 <Select
-                  value={dynamicStageConfig[deal.stage] ? deal.stage : (dealStages[0]?.id || 'final-credit-items')}
+                  value={getStageConfigForDeal(deal.stage, deal.pipelineId).label !== deal.stage ? deal.stage : (dealStages[0]?.id || 'final-credit-items')}
                   onValueChange={(value: DealStage) => updateDeal('stage', value)}
                 >
                   <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 border">
                     <SelectValue>
-                      {dynamicStageConfig[deal.stage]?.label || STAGE_CONFIG[deal.stage]?.label || deal.stage}
+                      {getStageConfigForDeal(deal.stage, deal.pipelineId).label}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {dealStages.map((stage) => (
-                      <SelectItem key={stage.id} value={stage.id}>
-                        {stage.label}
-                      </SelectItem>
-                    ))}
+                    {(() => {
+                      const dealPipeline = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId) : null;
+                      const stagesForDeal = dealPipeline?.stages?.length ? dealPipeline.stages : dealStages;
+                      return stagesForDeal.map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id}>
+                          {stage.label}
+                        </SelectItem>
+                      ));
+                    })()}
                   </SelectContent>
                 </Select>
                 </div>
