@@ -108,7 +108,7 @@ export function useMyTasks() {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .or(`assigned_to.eq.${user.id},assigned_by.eq.${user.id}`)
+        .eq('assigned_to', user.id)
         .is('archived_at', null)
         .is('parent_task_id', null)
         .order('position', { ascending: true })
