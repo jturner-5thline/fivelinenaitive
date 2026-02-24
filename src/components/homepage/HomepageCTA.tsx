@@ -18,7 +18,8 @@ export const HomepageCTA = () => {
           <div className="flex items-center justify-center">
             <Button
               size="lg"
-              className="bg-white text-[hsl(270,20%,8%)] hover:bg-white/90 px-8 py-6 text-base font-semibold"
+              variant="liquid-glass"
+              className="px-8 py-6 text-base font-semibold text-white"
               asChild
             >
               <Link to="/waitlist">
