@@ -59,7 +59,29 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
     approveApproval,
     rejectApproval,
     nextApproverLabel,
-  } = useDealMemoApproval(dealId, memo?.id);
+  } = useDealMemoApproval(dealId, memo?.id, {
+    saveMemo: async () => {
+      const newValues = {
+        narrative: localValues.narrative || null,
+        highlights: localValues.highlights || null,
+        hurdles: localValues.hurdles || null,
+        lender_notes: localValues.lender_notes || null,
+        analyst_notes: localValues.analyst_notes || null,
+        other_notes: localValues.other_notes || null,
+      };
+      const oldValues: Record<string, string | null> = {
+        narrative: memo?.narrative || null,
+        highlights: memo?.highlights || null,
+        hurdles: memo?.hurdles || null,
+        lender_notes: memo?.lender_notes || null,
+        analyst_notes: memo?.analyst_notes || null,
+        other_notes: memo?.other_notes || null,
+      };
+      await saveMemo(newValues);
+      await logChanges(dealId, oldValues, newValues);
+      setHasChanges(false);
+    },
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -311,36 +333,37 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {/* Approval Button Area */}
-              {approvalInfo.approvalState === 'approved' ? (
+              {/* Approval Status Badge */}
+              {approvalInfo.approvalState === 'approved' && (
                 <Badge className="gap-1.5 bg-success/15 text-success border-success/30 hover:bg-success/15">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Approved
                 </Badge>
-              ) : approvalInfo.approvalState === 'pending' && !isCurrentApprover ? (
+              )}
+              {approvalInfo.approvalState === 'pending' && !isCurrentApprover && (
                 <Badge variant="outline" className="gap-1.5 border-amber-500/30 text-amber-600">
                   <Clock className="h-3.5 w-3.5" />
                   Approval Pending
                 </Badge>
-              ) : approvalInfo.approvalState === 'rejected' && userRole ? (
+              )}
+              {approvalInfo.approvalState === 'rejected' && approvalInfo.rejectionReason && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        size="sm"
-                        onClick={submitForApproval}
-                        disabled={isApprovalSubmitting || !memo}
-                      >
-                        {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                        Resubmit for Approval
-                      </Button>
+                      <Badge variant="outline" className="gap-1.5 border-destructive/30 text-destructive cursor-help">
+                        <XCircle className="h-3.5 w-3.5" />
+                        Rejected
+                      </Badge>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
-                      <p>Previously rejected: {approvalInfo.rejectionReason || 'No reason given'}</p>
+                      <p>{approvalInfo.rejectionReason}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              ) : isCurrentApprover ? (
+              )}
+
+              {/* Approve/Reject controls for current approver */}
+              {isCurrentApprover && (
                 <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
@@ -363,16 +386,22 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                     Reject
                   </Button>
                 </div>
-              ) : userRole && userRole !== 'admin' ? (
+              )}
+
+              {/* Submit for Approval button - always available for users with a role (except when they are the current approver) */}
+              {userRole && !isCurrentApprover && userRole !== 'admin' && (
                 <Button
                   size="sm"
                   onClick={submitForApproval}
-                  disabled={isApprovalSubmitting || !memo || approvalInfo.approvalState === 'pending'}
+                  disabled={isApprovalSubmitting || !memo}
                 >
                   {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                  Submit for Approval
+                  {approvalInfo.approvalState === 'not_submitted' ? 'Submit for Approval' : 'Resubmit for Approval'}
                 </Button>
-              ) : userRole === 'admin' && approvalInfo.approvalState === 'not_submitted' ? (
+              )}
+
+              {/* Admin self-approve button */}
+              {userRole === 'admin' && !isCurrentApprover && (
                 <Button
                   size="sm"
                   onClick={submitForApproval}
@@ -381,7 +410,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                   {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
                   Approve
                 </Button>
-              ) : null}
+              )}
 
               {onGoToDataRoom && (
                 <Button

@@ -96,7 +96,11 @@ async function getAdminUserId(): Promise<string | null> {
   return data?.user_id || null;
 }
 
-export function useDealMemoApproval(dealId: string | undefined, memoId: string | undefined): DealMemoApprovalHook {
+export function useDealMemoApproval(
+  dealId: string | undefined,
+  memoId: string | undefined,
+  options?: { saveMemo?: () => Promise<void> }
+): DealMemoApprovalHook {
   const { user } = useAuth();
   const [approvalInfo, setApprovalInfo] = useState<ApprovalInfo>({
     approvalState: 'not_submitted',
@@ -188,6 +192,11 @@ export function useDealMemoApproval(dealId: string | undefined, memoId: string |
     if (!dealId || !memoId || !user || !userRole) return;
     setIsSubmitting(true);
     try {
+      // Auto-save memo before submitting
+      if (options?.saveMemo) {
+        await options.saveMemo();
+      }
+
       // Admin can self-approve
       if (userRole === 'admin') {
         await supabase
