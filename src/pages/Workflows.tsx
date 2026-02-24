@@ -49,6 +49,8 @@ import {
 } from '@/components/ui/collapsible';
 import { WorkflowBuilder, WorkflowData, TriggerType, ActionType, WorkflowAction } from '@/components/workflows/WorkflowBuilder';
 import { WorkflowCanvas } from '@/components/workflows/canvas/WorkflowCanvas';
+import { NODE_REGISTRY } from '@/components/workflows/canvas/nodeRegistry';
+import type { CanvasNodeData } from '@/components/workflows/canvas/types';
 import { WorkflowAnalytics } from '@/components/workflows/WorkflowAnalytics';
 import { WorkflowVersionHistory } from '@/components/workflows/WorkflowVersionHistory';
 import { WorkflowTemplatesLibrary } from '@/components/workflows/WorkflowTemplatesLibrary';
@@ -326,7 +328,13 @@ export default function Workflows() {
       if (error) throw error;
       
       if (data?.workflow) {
-        setTemplateData(data.workflow);
+        // Store the parsed workflow with its canvas nodes/edges for the canvas to use
+        setTemplateData({
+          ...data.workflow,
+          // Preserve the raw nodes/edges from the AI so we can pass them as initialNodes/initialEdges
+          _canvasNodes: data.workflow.nodes,
+          _canvasEdges: data.workflow.edges,
+        });
         setShowNLInput(false);
         setNlDescription('');
         setIsDialogOpen(true);
@@ -1020,10 +1028,47 @@ export default function Workflows() {
             }}
             isSaving={isSaving}
             initialNodes={
-              editingWorkflow?.trigger_config?.canvasNodes as any[] || []
+              editingWorkflow?.trigger_config?.canvasNodes as any[] ||
+              (() => {
+                const rawNodes = (templateData as any)?._canvasNodes;
+                if (!rawNodes?.length) return [];
+                return rawNodes.map((n: any, i: number) => {
+                  const reg = NODE_REGISTRY.find(r => r.type === n.type);
+                  if (!reg) return null;
+                  const nodeData: CanvasNodeData = {
+                    label: reg.label,
+                    nodeType: reg.type,
+                    icon: reg.icon,
+                    category: reg.category,
+                    inputs: reg.inputs,
+                    outputs: reg.outputs,
+                    configSchema: reg.configSchema,
+                    config: n.config || {},
+                    description: reg.description,
+                  };
+                  return {
+                    id: n.id || `ai_${i}`,
+                    type: 'workflowNode',
+                    position: { x: 50 + i * 270, y: 150 },
+                    data: nodeData as unknown as Record<string, unknown>,
+                  };
+                }).filter(Boolean);
+              })()
             }
             initialEdges={
-              editingWorkflow?.trigger_config?.canvasEdges as any[] || []
+              editingWorkflow?.trigger_config?.canvasEdges as any[] ||
+              (() => {
+                const rawEdges = (templateData as any)?._canvasEdges;
+                if (!rawEdges?.length) return [];
+                return rawEdges.map((e: any, i: number) => ({
+                  id: `ai_edge_${i}`,
+                  source: e.source,
+                  target: e.target,
+                  sourceHandle: e.sourceHandle,
+                  animated: true,
+                  style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+                }));
+              })()
             }
           />
         </div>
