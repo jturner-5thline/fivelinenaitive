@@ -110,8 +110,8 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
-        <CollapsibleContent className="flex-1 overflow-hidden">
-          <CardContent className="pt-0 space-y-3 h-full">
+        <CollapsibleContent className="flex-1 min-h-0 flex flex-col">
+          <CardContent className="pt-0 space-y-3 flex-1 min-h-0 flex flex-col">
             <div className="flex items-center justify-between gap-2">
               <ToggleGroup type="single" value={filter} onValueChange={(v) => v && setFilter(v as TaskFilter)} className="justify-start">
                 <ToggleGroupItem value="today" className="text-xs h-7 px-2.5">Today</ToggleGroupItem>
@@ -127,7 +127,7 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
               </ToggleGroup>
             </div>
 
-            <ScrollArea className="max-h-[400px]">
+            <ScrollArea className="flex-1 min-h-0">
               {tasks.length === 0 ? (
                 <div className="text-center py-8">
                   <CheckCircle2 className="h-8 w-8 text-muted-foreground mx-auto mb-2" />

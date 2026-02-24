@@ -133,9 +133,9 @@ export function KeyAlertsWidget() {
             </CardTitle>
           </CardHeader>
         </CollapsibleTrigger>
-        <CollapsibleContent className="flex-1 overflow-hidden">
-          <CardContent className="pt-0 h-full">
-            <ScrollArea className="max-h-[300px]">
+        <CollapsibleContent className="flex-1 min-h-0 flex flex-col">
+          <CardContent className="pt-0 flex-1 min-h-0">
+            <ScrollArea className="h-full">
               {alerts.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No alerts — everything looks good.</p>
               ) : (
