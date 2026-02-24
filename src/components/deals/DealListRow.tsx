@@ -1,5 +1,5 @@
 import { useState, ReactNode } from 'react';
-import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Bell } from 'lucide-react';
+import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Bell, ArrowRightLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
@@ -12,8 +12,10 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { FlagNoteDialog } from './FlagNoteDialog';
+import { MoveToPipelineDialog } from './MoveToPipelineDialog';
 import { DealListColumnId, DEFAULT_VISIBLE_COLUMNS } from '@/hooks/useDealListColumnOrder';
 import { isPast, isToday } from 'date-fns';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,11 +43,13 @@ interface DealListRowProps {
 
 export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0 }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
+  const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
   const { isAdmin } = useAdminRole();
+  const { pipelines } = usePipelineContext();
   const dynamicStageConfig = getStageConfig();
   
   const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
@@ -356,6 +360,17 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
+              {pipelines.length > 1 && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsPipelineDialogOpen(true);
+                  }}
+                >
+                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                  Move to Pipeline
+                </DropdownMenuItem>
+              )}
               {deal.status !== 'archived' && (
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -381,6 +396,13 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          <MoveToPipelineDialog
+            dealId={deal.id}
+            dealName={deal.company}
+            currentPipelineId={deal.pipelineId}
+            isOpen={isPipelineDialogOpen}
+            onClose={() => setIsPipelineDialogOpen(false)}
+          />
         </div>
       </TableCell>
     </TableRow>

@@ -606,6 +606,7 @@ export function useDealsDatabase() {
       if (updates.companyUrl !== undefined) dbUpdates.company_url = updates.companyUrl;
       if (updates.businessModel !== undefined) dbUpdates.business_model = updates.businessModel;
       if (updates.closingDate !== undefined) dbUpdates.closing_date = updates.closingDate;
+      if (updates.pipelineId !== undefined) dbUpdates.pipeline_id = updates.pipelineId;
 
       const { error } = await supabase
         .from('deals')
