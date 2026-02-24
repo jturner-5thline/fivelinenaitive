@@ -34,7 +34,7 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
   const [statusNote, setStatusNote] = useState<string>('');
   const [isMoving, setIsMoving] = useState(false);
 
-  const availablePipelines = pipelines.filter(p => p.id !== currentPipelineId);
+  const availablePipelines = pipelines;
   const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
 
   const handleMove = async () => {
