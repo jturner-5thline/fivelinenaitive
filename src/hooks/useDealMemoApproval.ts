@@ -258,10 +258,10 @@ export function useDealMemoApproval(
       const today = new Date().toISOString().split('T')[0];
 
       // Create approval task
-      const { data: taskData } = await supabase
+      const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .insert({
-          title: `Review & Approve: ${companyName} Memo`,
+          title: `Review ${companyName}`,
           assigned_to: nextApprover.userId,
           assigned_by: user.id,
           deal_id: dealId,
@@ -274,6 +274,10 @@ export function useDealMemoApproval(
         } as any)
         .select('id')
         .single();
+
+      if (taskError) {
+        console.error('Failed to create approval task:', taskError);
+      }
 
       // Create approval record
       await supabase
@@ -359,10 +363,10 @@ export function useDealMemoApproval(
         const today = new Date().toISOString().split('T')[0];
 
         // Create next approval task
-        const { data: taskData } = await supabase
+        const { data: taskData, error: taskError } = await supabase
           .from('tasks')
           .insert({
-            title: `Review & Approve: ${deal?.company || 'Deal'} Memo`,
+            title: `Review ${deal?.company || 'Deal'}`,
             assigned_to: nextApprover.userId,
             assigned_by: user.id,
             deal_id: dealId,
@@ -375,6 +379,10 @@ export function useDealMemoApproval(
           } as any)
           .select('id')
           .single();
+
+        if (taskError) {
+          console.error('Failed to create escalation task:', taskError);
+        }
 
         await supabase
           .from('deal_memo_approvals')
