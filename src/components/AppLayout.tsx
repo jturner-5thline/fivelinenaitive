@@ -2,6 +2,7 @@ import * as React from "react";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { TaskAssignmentBanner } from "@/components/TaskAssignmentBanner";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
@@ -133,6 +134,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
       <FeedbackWidget />
+      <TaskAssignmentBanner />
     </SidebarProvider>
   );
 }
