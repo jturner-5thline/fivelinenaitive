@@ -46,7 +46,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 type ViewMode = 'list' | 'board' | 'calendar' | 'reporting' | 'focus';
-type FilterStatus = 'all' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
+type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'blocked' | 'complete';
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title';
 
 export default function Tasks() {
@@ -86,7 +86,8 @@ export default function Tasks() {
   // Filter and sort (starred items float to top)
   const filtered = (viewMode === 'focus' ? focusTasks : tasks)
     .filter(t => {
-      if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+      if (filterStatus === 'incomplete' && t.status === 'complete') return false;
+      if (filterStatus !== 'all' && filterStatus !== 'incomplete' && t.status !== filterStatus) return false;
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     })
@@ -368,10 +369,11 @@ export default function Tasks() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">All statuses</SelectItem>
+              <SelectItem value="incomplete" className="text-xs">Incomplete</SelectItem>
+              <SelectItem value="complete" className="text-xs">Complete</SelectItem>
               <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
               <SelectItem value="in_progress" className="text-xs">In Progress</SelectItem>
               <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
-              <SelectItem value="complete" className="text-xs">Complete</SelectItem>
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
