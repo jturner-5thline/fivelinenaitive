@@ -72,7 +72,9 @@ async function resolveUserRole(
     return 'analyst';
   }
 
-  return null;
+  // Fallback: any authenticated user who can access the deal memo
+  // is treated as analyst level so they can submit for approval
+  return 'analyst';
 }
 
 /** Resolve a display name to a user_id via profiles */
