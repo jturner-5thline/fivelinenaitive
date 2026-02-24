@@ -51,7 +51,7 @@ type SortBy = 'due_date' | 'priority' | 'created_at' | 'title';
 
 export default function Tasks() {
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks();
-  const { overdueCount, dueTodayCount } = useTaskNotifications();
+  const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView } = useTaskSavedViews();
   const { templates, applyTemplate } = useTaskTemplates();
   const teamMembers = useTeamMembers();
@@ -319,20 +319,24 @@ export default function Tasks() {
             <span className="text-sm text-muted-foreground">
               {filtered.length} task{filtered.length !== 1 ? 's' : ''}
             </span>
-            {(overdueCount > 0 || dueTodayCount > 0) && (
-              <div className="flex items-center gap-1.5">
-                {overdueCount > 0 && (
-                  <Badge variant="destructive" className="text-[10px] h-5 px-1.5 gap-1">
-                    <Bell className="h-2.5 w-2.5" /> {overdueCount} overdue
-                  </Badge>
-                )}
-                {dueTodayCount > 0 && (
-                  <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1 border-amber-500/30 text-amber-600">
-                    {dueTodayCount} due today
-                  </Badge>
-                )}
-              </div>
-            )}
+            {(() => {
+              const visibleOverdue = filtered.filter(t => !t.due_date ? false : (isPast(new Date(t.due_date + 'T23:59:59')) && !isToday(new Date(t.due_date + 'T00:00:00')) && t.status !== 'complete')).length;
+              const visibleDueToday = filtered.filter(t => !t.due_date ? false : (isToday(new Date(t.due_date + 'T00:00:00')) && t.status !== 'complete')).length;
+              return (visibleOverdue > 0 || visibleDueToday > 0) ? (
+                <div className="flex items-center gap-1.5">
+                  {visibleOverdue > 0 && (
+                    <Badge variant="destructive" className="text-[10px] h-5 px-1.5 gap-1">
+                      <Bell className="h-2.5 w-2.5" /> {visibleOverdue} overdue
+                    </Badge>
+                  )}
+                  {visibleDueToday > 0 && (
+                    <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-1 border-amber-500/30 text-amber-600">
+                      {visibleDueToday} due today
+                    </Badge>
+                  )}
+                </div>
+              ) : null;
+            })()}
           </div>
           <div className="flex items-center gap-2">
             <Tabs value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
