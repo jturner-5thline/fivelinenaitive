@@ -61,24 +61,7 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Info Requests
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (notifications.length === 0) {
+  if (isLoading || notifications.length === 0) {
     return null;
   }
 
