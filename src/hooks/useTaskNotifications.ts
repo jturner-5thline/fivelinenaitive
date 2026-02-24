@@ -24,7 +24,7 @@ export function useTaskNotifications() {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .or(`assigned_to.eq.${user.id},assigned_by.eq.${user.id}`)
+        .eq('assigned_to', user.id)
         .is('archived_at', null)
         .neq('status', 'complete')
         .order('due_date', { ascending: true });
