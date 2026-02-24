@@ -1,0 +1,123 @@
+import { useState } from 'react';
+import { ArrowRightLeft } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
+import { toast } from 'sonner';
+
+interface MoveToPipelineDialogProps {
+  dealId: string;
+  dealName: string;
+  currentPipelineId?: string | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOpen, onClose }: MoveToPipelineDialogProps) {
+  const { pipelines } = usePipelineContext();
+  const { updateDeal } = useDealsContext();
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
+  const [selectedStageId, setSelectedStageId] = useState<string>('');
+  const [isMoving, setIsMoving] = useState(false);
+
+  const availablePipelines = pipelines.filter(p => p.id !== currentPipelineId);
+  const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
+
+  const handleMove = async () => {
+    if (!selectedPipelineId || !selectedStageId) return;
+    setIsMoving(true);
+    try {
+      await updateDeal(dealId, {
+        pipelineId: selectedPipelineId,
+        stage: selectedStageId,
+      });
+      toast.success(`Moved "${dealName}" to ${selectedPipeline?.name}`);
+      onClose();
+    } catch (error) {
+      toast.error('Failed to move deal');
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+      setSelectedPipelineId('');
+      setSelectedStageId('');
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ArrowRightLeft className="h-5 w-5" />
+            Move to Pipeline
+          </DialogTitle>
+          <DialogDescription>
+            Move <span className="font-medium text-foreground">{dealName}</span> to a different pipeline. You'll need to select a starting stage in the new pipeline.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Target Pipeline</Label>
+            <Select value={selectedPipelineId} onValueChange={(val) => { setSelectedPipelineId(val); setSelectedStageId(''); }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a pipeline..." />
+              </SelectTrigger>
+              <SelectContent>
+                {availablePipelines.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}{p.isDefault ? ' (Default)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedPipeline && (
+            <div className="space-y-2">
+              <Label>Starting Stage</Label>
+              <Select value={selectedStageId} onValueChange={setSelectedStageId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a stage..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedPipeline.stages.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${s.color}`} />
+                        {s.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleMove} disabled={!selectedPipelineId || !selectedStageId || isMoving}>
+            {isMoving ? 'Moving...' : 'Move Deal'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

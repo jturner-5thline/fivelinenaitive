@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Archive, Trash2, ExternalLink } from 'lucide-react';
+import { X, Archive, Trash2, ExternalLink, ArrowRightLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Deal, DealStatus, DealStage, EngagementType, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, ExclusivityType } from '@/types/deal';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { MoveToPipelineDialog } from './MoveToPipelineDialog';
 
 interface DealEditDrawerProps {
   deal: Deal;
@@ -30,7 +32,9 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { getStageConfig } = useDealStages();
   const { isAdmin } = useAdminRole();
   const { toast } = useToast();
+  const { pipelines } = usePipelineContext();
   const dynamicStageConfig = getStageConfig();
+  const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
 
   // Animation states - keep mounted during exit animation
   const [isVisible, setIsVisible] = useState(false);
@@ -348,7 +352,18 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
             {/* Danger Zone */}
             <div className="pt-4 border-t border-border space-y-2">
               <Label className="text-muted-foreground">Actions</Label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                {pipelines.length > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPipelineDialogOpen(true)}
+                    className="flex-1"
+                  >
+                    <ArrowRightLeft className="h-4 w-4 mr-2" />
+                    Move to Pipeline
+                  </Button>
+                )}
                 {deal.status !== 'archived' && (
                   <Button
                     variant="outline"
@@ -373,6 +388,13 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 )}
               </div>
             </div>
+            <MoveToPipelineDialog
+              dealId={deal.id}
+              dealName={deal.company}
+              currentPipelineId={deal.pipelineId}
+              isOpen={isPipelineDialogOpen}
+              onClose={() => setIsPipelineDialogOpen(false)}
+            />
           </div>
 
           {/* Footer */}
