@@ -2207,7 +2207,7 @@ export default function DealDetail() {
           />
 
           {/* Header Card */}
-          <Card className="mt-4 mb-6">
+          <Card className="mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]">
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
