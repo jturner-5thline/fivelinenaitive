@@ -312,7 +312,7 @@ serve(async (req) => {
       }
 
       flexPayload = {
-        action: "unpublish_deal",
+        action: "deal_unpublished",
         deal_id: lastSync.flex_deal_id,
       };
       activityDescription = "Deal unpublished from FLEx";
