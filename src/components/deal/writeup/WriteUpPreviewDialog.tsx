@@ -160,61 +160,30 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
       const A4_H = 297;
       const MARGIN = 12;
       const CONTENT_W = A4_W - MARGIN * 2;
-      const GAP = 3;
 
-      // Find all sections marked with data-pdf-section, or fall back to direct children
-      let sections = Array.from(el.querySelectorAll('[data-pdf-section]')) as HTMLElement[];
-      if (sections.length === 0) {
-        sections = Array.from(el.children) as HTMLElement[];
-      }
+      // Single html2canvas call for the entire content
+      const DPI_SCALE = 1.5;
+      const canvas = await html2canvas(el, {
+        scale: DPI_SCALE,
+        useCORS: true,
+        backgroundColor: T.bg,
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.7);
+      const scaleFactor = CONTENT_W / (canvas.width / DPI_SCALE);
+      const totalH = (canvas.height / DPI_SCALE) * scaleFactor;
+      const pageH = A4_H - MARGIN * 2;
 
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      let currentY = MARGIN;
-      let isFirstSection = true;
+      let yOff = 0;
+      let pageIdx = 0;
 
-      for (const section of sections) {
-        // Skip invisible/empty sections
-        if (section.offsetHeight === 0) continue;
-
-        const DPI_SCALE = 2;
-        const canvas = await html2canvas(section, {
-          scale: DPI_SCALE,
-          useCORS: true,
-          backgroundColor: T.bg,
-          logging: false,
-        });
-
-        const scaleFactor = CONTENT_W / (canvas.width / DPI_SCALE);
-        const sectionH = (canvas.height / DPI_SCALE) * scaleFactor;
-
-        // If this section won't fit on the current page, start a new one
-        const remaining = A4_H - MARGIN - currentY;
-        if (sectionH > remaining && !isFirstSection) {
-          pdf.addPage();
-          currentY = MARGIN;
-        }
-
-        // If a single section is taller than a full page, tile it across pages
-        if (sectionH > A4_H - MARGIN * 2) {
-          const imgData = canvas.toDataURL('image/jpeg', 0.75);
-          const fullImgH = sectionH;
-          let yOff = 0;
-          while (yOff < fullImgH) {
-            if (yOff > 0) {
-              pdf.addPage();
-              currentY = MARGIN;
-            }
-            pdf.addImage(imgData, 'JPEG', MARGIN, currentY - yOff, CONTENT_W, fullImgH);
-            yOff += A4_H - MARGIN * 2;
-          }
-          currentY = MARGIN + (fullImgH % (A4_H - MARGIN * 2)) + GAP;
-        } else {
-          const imgData = canvas.toDataURL('image/jpeg', 0.75);
-          pdf.addImage(imgData, 'JPEG', MARGIN, currentY, CONTENT_W, sectionH);
-          currentY += sectionH + GAP;
-        }
-
-        isFirstSection = false;
+      while (yOff < totalH) {
+        if (pageIdx > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', MARGIN, MARGIN - yOff, CONTENT_W, totalH);
+        yOff += pageH;
+        pageIdx++;
       }
 
       if (scrollParent) {
