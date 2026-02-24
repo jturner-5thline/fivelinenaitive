@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { FileText, Save, Loader2, Plus, X, FolderOpen, Check } from 'lucide-react';
+import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 import { useDealMemo } from '@/hooks/useDealMemo';
 import { useDealMemoNotification } from '@/hooks/useDealMemoNotification';
 import { useDealMemoAuditLog } from '@/hooks/useDealMemoAuditLog';
+import { useDealMemoApproval } from '@/hooks/useDealMemoApproval';
 import { MemoAuditLogPopover } from '@/components/deal/MemoAuditLogPopover';
 
 interface DealMemoDialogProps {
@@ -48,7 +50,19 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
   const { memo, isLoading, isSaving, saveMemo } = useDealMemo(dealId);
   const { hasUnreadUpdates, markAsViewed } = useDealMemoNotification(dealId);
   const { entries: auditEntries, isLoading: auditLoading, logChanges } = useDealMemoAuditLog(dealId);
+  const {
+    approvalInfo,
+    userRole,
+    isCurrentApprover,
+    isSubmitting: isApprovalSubmitting,
+    submitForApproval,
+    approveApproval,
+    rejectApproval,
+    nextApproverLabel,
+  } = useDealMemoApproval(dealId, memo?.id);
   const [isOpen, setIsOpen] = useState(false);
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [localValues, setLocalValues] = useState<Record<string, string>>({
     narrative: '',
     highlights: '',
@@ -297,6 +311,78 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Approval Button Area */}
+              {approvalInfo.approvalState === 'approved' ? (
+                <Badge className="gap-1.5 bg-success/15 text-success border-success/30 hover:bg-success/15">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Approved
+                </Badge>
+              ) : approvalInfo.approvalState === 'pending' && !isCurrentApprover ? (
+                <Badge variant="outline" className="gap-1.5 border-amber-500/30 text-amber-600">
+                  <Clock className="h-3.5 w-3.5" />
+                  Approval Pending
+                </Badge>
+              ) : approvalInfo.approvalState === 'rejected' && userRole ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        onClick={submitForApproval}
+                        disabled={isApprovalSubmitting || !memo}
+                      >
+                        {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                        Resubmit for Approval
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Previously rejected: {approvalInfo.rejectionReason || 'No reason given'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : isCurrentApprover ? (
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-success/40 text-success hover:bg-success/10"
+                    onClick={approveApproval}
+                    disabled={isApprovalSubmitting}
+                  >
+                    {isApprovalSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => setShowRejectInput(true)}
+                    disabled={isApprovalSubmitting}
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                    Reject
+                  </Button>
+                </div>
+              ) : userRole && userRole !== 'admin' ? (
+                <Button
+                  size="sm"
+                  onClick={submitForApproval}
+                  disabled={isApprovalSubmitting || !memo || approvalInfo.approvalState === 'pending'}
+                >
+                  {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  Submit for Approval
+                </Button>
+              ) : userRole === 'admin' && approvalInfo.approvalState === 'not_submitted' ? (
+                <Button
+                  size="sm"
+                  onClick={submitForApproval}
+                  disabled={isApprovalSubmitting || !memo}
+                >
+                  {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                  Approve
+                </Button>
+              ) : null}
+
               {onGoToDataRoom && (
                 <Button
                   variant="outline"
@@ -325,6 +411,43 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
               </Button>
             </div>
           </div>
+          {/* Reject reason input */}
+          {showRejectInput && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+              <Input
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Reason for rejection..."
+                className="flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && rejectReason.trim()) {
+                    rejectApproval(rejectReason.trim());
+                    setShowRejectInput(false);
+                    setRejectReason('');
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={!rejectReason.trim() || isApprovalSubmitting}
+                onClick={() => {
+                  rejectApproval(rejectReason.trim());
+                  setShowRejectInput(false);
+                  setRejectReason('');
+                }}
+              >
+                Confirm Reject
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => { setShowRejectInput(false); setRejectReason(''); }}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </DialogHeader>
 
         <ScrollArea className="flex-1">
