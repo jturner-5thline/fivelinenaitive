@@ -311,12 +311,17 @@ serve(async (req) => {
         );
       }
 
-      const companyName = (deal as any).companies?.name || deal.company || '';
+      const managingCompany = (deal as any).companies?.name || '';
+      const resolvedManagingCompany = managingCompany.toLowerCase().includes('5th line') ? '5th Line' : managingCompany;
+      const dealCompanyName = deal.company || '';
       flexPayload = {
-        action: "deal_unpublished",
-        deal_id: lastSync.flex_deal_id,
-        company_name: companyName.toLowerCase().includes('5th line') ? '5th Line' : companyName,
-        managing_company: companyName.toLowerCase().includes('5th line') ? '5th Line' : companyName,
+        event: "deal_unpublished",
+        deal: {
+          id: dealId,
+          deal_id: lastSync.flex_deal_id,
+          company_name: dealCompanyName,
+          managing_company: resolvedManagingCompany,
+        },
       };
       activityDescription = "Deal unpublished from FLEx";
     } else if (action === "sync_data_room") {
@@ -399,8 +404,20 @@ serve(async (req) => {
     console.log(`totalEquityRaised from writeUpData: "${writeUpData?.totalEquityRaised}"`);
     console.log(`${action} deal ${dealId} on FLEx:`, JSON.stringify(flexPayload, null, 2));
 
+    // Use FLEX_API_URL env var for unpublish/data_room actions, fallback to hardcoded for publish/sync
+    let targetUrl = FLEX_API_URL;
+    if (action === "unpublish" || action === "sync_data_room") {
+      const envFlexUrl = Deno.env.get("FLEX_API_URL");
+      console.log(`FLEX_API_URL env var: "${envFlexUrl}"`);
+      if (envFlexUrl && envFlexUrl.startsWith("http")) {
+        // If FLEX_API_URL is a base URL, append the sync endpoint
+        targetUrl = envFlexUrl.endsWith("/naitive-flex-sync") ? envFlexUrl : `${envFlexUrl}/naitive-flex-sync`;
+      }
+    }
+    console.log(`Sending to FLEx URL: ${targetUrl}`);
+
     // Send to FLEx API
-    const flexResponse = await fetch(FLEX_API_URL, {
+    const flexResponse = await fetch(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
