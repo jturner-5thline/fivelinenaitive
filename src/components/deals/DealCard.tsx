@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
-import { useDealStages } from '@/contexts/DealStagesContext';
+import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
@@ -50,8 +50,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   const { formatCurrencyValue, preferences } = usePreferences();
   const { updateDeal } = useDealsContext();
   const { dealTypes } = useDealTypes();
-  const { getStageConfig } = useDealStages();
-  const dynamicStageConfig = getStageConfig();
+  const { getStageConfigForDeal } = usePipelineStageConfig();
   const mentionUsers = useTeamMembers();
 
   useEffect(() => {
@@ -97,7 +96,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
   };
   
   const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
-  const stageConfig = dynamicStageConfig[deal.stage] || STAGE_CONFIG[deal.stage] || { label: deal.stage, color: 'bg-muted' };
+  const stageConfig = getStageConfigForDeal(deal.stage, deal.pipelineId);
 
   const getDealTypeLabels = () => {
     if (!deal.dealTypes || deal.dealTypes.length === 0) return [];

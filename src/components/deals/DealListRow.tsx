@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
-import { useDealStages } from '@/contexts/DealStagesContext';
+import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { DealFlexEngagement } from '@/hooks/useFlexEngagementScores';
 import { TableCell, TableRow } from '@/components/ui/table';
@@ -47,13 +47,12 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
-  const { getStageConfig } = useDealStages();
   const { isAdmin } = useAdminRole();
   const { pipelines } = usePipelineContext();
-  const dynamicStageConfig = getStageConfig();
+  const { getStageConfigForDeal } = usePipelineStageConfig();
   
   const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
-  const stageConfig = dynamicStageConfig[deal.stage] || STAGE_CONFIG[deal.stage] || { label: deal.stage, color: 'bg-muted' };
+  const stageConfig = getStageConfigForDeal(deal.stage, deal.pipelineId);
 
   const getDealTypeLabels = () => {
     if (!deal.dealTypes || deal.dealTypes.length === 0) return [];
