@@ -334,7 +334,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
             </div>
             <div className="flex items-center gap-2">
               {/* Approval Status Badge */}
-              {approvalInfo.approvalState === 'approved' && (
+              {approvalInfo.approvalState === 'approved' && !hasChanges && (
                 <Badge className="gap-1.5 bg-success/15 text-success border-success/30 hover:bg-success/15">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Approved
@@ -396,7 +396,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                   disabled={isApprovalSubmitting || !memo}
                 >
                   {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                  {approvalInfo.approvalState === 'not_submitted' ? 'Submit for Approval' : 'Resubmit for Approval'}
+                  {approvalInfo.approvalState === 'not_submitted' ? 'Submit for Approval' : hasChanges ? 'Resubmit' : 'Resubmit for Approval'}
                 </Button>
               )}
 
