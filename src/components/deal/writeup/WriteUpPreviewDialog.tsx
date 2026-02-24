@@ -176,7 +176,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
         // Skip invisible/empty sections
         if (section.offsetHeight === 0) continue;
 
-        const DPI_SCALE = 3;
+        const DPI_SCALE = 2;
         const canvas = await html2canvas(section, {
           scale: DPI_SCALE,
           useCORS: true,
@@ -196,7 +196,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
 
         // If a single section is taller than a full page, tile it across pages
         if (sectionH > A4_H - MARGIN * 2) {
-          const imgData = canvas.toDataURL('image/png');
+          const imgData = canvas.toDataURL('image/jpeg', 0.75);
           const fullImgH = sectionH;
           let yOff = 0;
           while (yOff < fullImgH) {
@@ -204,13 +204,13 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
               pdf.addPage();
               currentY = MARGIN;
             }
-            pdf.addImage(imgData, 'PNG', MARGIN, currentY - yOff, CONTENT_W, fullImgH);
+            pdf.addImage(imgData, 'JPEG', MARGIN, currentY - yOff, CONTENT_W, fullImgH);
             yOff += A4_H - MARGIN * 2;
           }
           currentY = MARGIN + (fullImgH % (A4_H - MARGIN * 2)) + GAP;
         } else {
-          const imgData = canvas.toDataURL('image/png');
-          pdf.addImage(imgData, 'PNG', MARGIN, currentY, CONTENT_W, sectionH);
+          const imgData = canvas.toDataURL('image/jpeg', 0.75);
+          pdf.addImage(imgData, 'JPEG', MARGIN, currentY, CONTENT_W, sectionH);
           currentY += sectionH + GAP;
         }
 
