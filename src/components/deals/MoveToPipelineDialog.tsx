@@ -11,9 +11,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealsContext } from '@/contexts/DealsContext';
-import { useDealStages } from '@/contexts/DealStagesContext';
+import { useStatusNotes } from '@/hooks/useStatusNotes';
 import { toast } from 'sonner';
 
 interface MoveToPipelineDialogProps {
@@ -27,8 +28,10 @@ interface MoveToPipelineDialogProps {
 export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOpen, onClose }: MoveToPipelineDialogProps) {
   const { pipelines } = usePipelineContext();
   const { updateDeal } = useDealsContext();
+  const { addStatusNote } = useStatusNotes(dealId);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
   const [selectedStageId, setSelectedStageId] = useState<string>('');
+  const [statusNote, setStatusNote] = useState<string>('');
   const [isMoving, setIsMoving] = useState(false);
 
   const availablePipelines = pipelines.filter(p => p.id !== currentPipelineId);
@@ -42,6 +45,9 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
         pipelineId: selectedPipelineId,
         stage: selectedStageId,
       });
+      if (statusNote.trim()) {
+        await addStatusNote(statusNote.trim());
+      }
       toast.success(`Moved "${dealName}" to ${selectedPipeline?.name}`);
       onClose();
     } catch (error) {
@@ -56,6 +62,7 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
       onClose();
       setSelectedPipelineId('');
       setSelectedStageId('');
+      setStatusNote('');
     }
   };
 
@@ -109,6 +116,16 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
               </Select>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label>Status Note <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Textarea
+              placeholder="Add a note about this move..."
+              value={statusNote}
+              onChange={(e) => setStatusNote(e.target.value)}
+              rows={3}
+            />
+          </div>
         </div>
 
         <DialogFooter>
