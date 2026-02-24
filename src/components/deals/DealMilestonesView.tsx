@@ -80,16 +80,16 @@ export function DealMilestonesView({ onBack, managerFilter = [] }: { onBack?: ()
     return [...selectedIds].filter(id => visibleIds.has(id));
   }, [selectedIds, visibleIds]);
 
-  const bulkUpdateDueDate = async (date: Date | undefined) => {
-    if (activeSelected.length === 0 || !date) return;
+  const bulkUpdateDueDate = async (date: Date | undefined | null) => {
+    if (activeSelected.length === 0) return;
     setIsBulkUpdating(true);
     try {
-      const dateStr = format(date, 'yyyy-MM-dd');
+      const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
       const updates = activeSelected.map(id =>
         supabase.from('deal_milestones').update({ due_date: dateStr }).eq('id', id)
       );
       await Promise.all(updates);
-      toast({ title: 'Due dates updated', description: `Updated ${activeSelected.length} milestone(s)` });
+      toast({ title: date ? 'Due dates updated' : 'Due dates removed', description: `Updated ${activeSelected.length} milestone(s)` });
       clearSelection();
       refetch();
     } catch (e) {
@@ -202,6 +202,17 @@ export function DealMilestonesView({ onBack, managerFilter = [] }: { onBack?: ()
                 onSelect={(date) => bulkUpdateDueDate(date)}
                 initialFocus
               />
+              <div className="border-t p-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs text-destructive hover:text-destructive"
+                  onClick={() => bulkUpdateDueDate(null)}
+                >
+                  <X className="h-3 w-3 mr-1.5" />
+                  Remove due date
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
 
