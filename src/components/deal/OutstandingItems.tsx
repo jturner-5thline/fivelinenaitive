@@ -775,11 +775,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               <span className="text-sm font-normal text-muted-foreground">
                 ({deliveredCount}/{items.length} delivered)
               </span>
-            ) : (
-              <span className="text-xs font-normal text-muted-foreground italic whitespace-nowrap">
-                No Outstanding Items
-              </span>
-            )}
+            ) : null}
             {overdueCount > 0 && (
               <span className="text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-md">
                 {overdueCount} overdue
