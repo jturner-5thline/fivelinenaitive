@@ -11,7 +11,7 @@ export const HomepageCTA = () => {
       <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight whitespace-nowrap">
-            Ready to Experience naitive?
+            Ready to Experience n<span className="bg-gradient-to-r from-[hsl(270,65%,55%)] to-[hsl(220,70%,72%)] bg-clip-text text-transparent">ai</span>tive?
           </h2>
 
 
