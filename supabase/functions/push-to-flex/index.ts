@@ -311,9 +311,11 @@ serve(async (req) => {
         );
       }
 
+      const companyName = (deal as any).companies?.name || deal.company || '';
       flexPayload = {
         action: "deal_unpublished",
         deal_id: lastSync.flex_deal_id,
+        company_name: companyName.toLowerCase().includes('5th line') ? '5th Line' : companyName,
       };
       activityDescription = "Deal unpublished from FLEx";
     } else if (action === "sync_data_room") {
