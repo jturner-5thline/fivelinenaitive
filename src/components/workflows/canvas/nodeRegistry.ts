@@ -307,6 +307,31 @@ export const NODE_REGISTRY: NodePaletteItem[] = [
       },
     },
   },
+  {
+    type: 'integration/create_task',
+    label: 'Create Task',
+    icon: '✅',
+    category: 'integration',
+    description: 'Create a task and assign it to a team member',
+    inputs: [{ key: 'context', type: 'object' }],
+    outputs: [{ key: 'task_id', type: 'uuid' }, { key: 'success', type: 'boolean' }],
+    configSchema: {
+      title: { type: 'string', label: 'Task Title', required: true, placeholder: 'Follow up on {{deal_name}}' },
+      description: { type: 'textarea', label: 'Description', placeholder: 'Details about the task...' },
+      assignee: { type: 'string', label: 'Assign To (email or user ID)', placeholder: 'user@company.com' },
+      priority: {
+        type: 'select',
+        label: 'Priority',
+        options: [
+          { value: 'low', label: 'Low' },
+          { value: 'medium', label: 'Medium' },
+          { value: 'high', label: 'High' },
+          { value: 'urgent', label: 'Urgent' },
+        ],
+      },
+      due_in_days: { type: 'number', label: 'Due In (days from now)', placeholder: '3' },
+    },
+  },
 
   // ── Utility ──
   {

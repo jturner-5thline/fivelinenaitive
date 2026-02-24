@@ -13,6 +13,7 @@ export type CanvasNodeType =
   | 'integration/webhook'
   | 'integration/database_insert'
   | 'integration/notification'
+  | 'integration/create_task'
   | 'utility/delay'
   | 'utility/retry';
 

@@ -49,6 +49,7 @@ INTEGRATIONS (category: "integration"):
 - integration/webhook: HTTP request. Config: { url: "https://...", method: "GET"|"POST"|"PUT" }
 - integration/database_insert: Log to DB. Config: { table: "activity_logs"|"deal_flag_notes", activity_type?: "type" }
 - integration/notification: In-app notification. Config: { title: "title", priority: "low"|"normal"|"high" }
+- integration/create_task: Create & assign a task. Config: { title: "task title", description?: "details", assignee?: "email or user_id", priority: "low"|"medium"|"high"|"urgent", due_in_days?: number }
 
 UTILITY (category: "utility"):
 - utility/delay: Wait. Config: { amount: number, unit: "seconds"|"minutes"|"hours" }
