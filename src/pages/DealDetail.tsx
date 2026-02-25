@@ -3564,7 +3564,7 @@ export default function DealDetail() {
                                     : item.requestedBy === lender.name
                                 );
                                 const staleStatus = isLenderStale(lender);
-                                const shouldHighlight = highlightStale && staleStatus.isStale;
+                                const shouldAnimate = highlightStale && staleStatus.isStale;
                                 return (
                                   <SortableLenderItem key={lender.id} lender={lender}>
                                     <div
@@ -3572,8 +3572,9 @@ export default function DealDetail() {
                                       data-lender-stale={staleStatus.isStale ? 'true' : undefined}
                                       className={cn(
                                         'rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all',
-                                        shouldHighlight && staleStatus.isUrgent && 'border-destructive/30 bg-destructive/5 shadow-destructive/10 animate-pulse-highlight',
-                                        shouldHighlight && !staleStatus.isUrgent && 'border-warning/30 bg-warning/5 shadow-warning/10 animate-pulse-highlight'
+                                        staleStatus.isStale && staleStatus.isUrgent && 'border-destructive/40 shadow-[0_0_12px_2px_hsl(var(--destructive)/0.15)]',
+                                        staleStatus.isStale && !staleStatus.isUrgent && 'border-warning/40 shadow-[0_0_12px_2px_hsl(var(--warning)/0.15)]',
+                                        shouldAnimate && 'animate-pulse-highlight'
                                       )}>
                                       <div className="flex gap-3">
                                         <div className="flex-1 min-w-0">
