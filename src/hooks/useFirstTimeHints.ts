@@ -9,7 +9,9 @@ export type HintId =
   | 'analytics-nav'
   | 'settings-menu'
   | 'deal-card'
-  | 'widgets-section';
+  | 'widgets-section'
+  | 'tasks-add'
+  | 'tasks-views';
 
 // Priority order for hints - only the first non-dismissed hint will be shown
 const HINT_PRIORITY: HintId[] = [
@@ -19,6 +21,8 @@ const HINT_PRIORITY: HintId[] = [
   'widgets-section',
   'analytics-nav',
   'settings-menu',
+  'tasks-add',
+  'tasks-views',
 ];
 
 interface UseFirstTimeHintsReturn {

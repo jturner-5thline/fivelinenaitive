@@ -12,6 +12,8 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useTaskTemplates } from '@/hooks/useTaskTemplates';
 import { useTaskLabels } from '@/hooks/useTaskLabels';
 import { Button } from '@/components/ui/button';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
+import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -51,6 +53,7 @@ type SortBy = 'due_date' | 'priority' | 'created_at' | 'title';
 
 export default function Tasks() {
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks();
+  const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView } = useTaskSavedViews();
   const { templates, applyTemplate } = useTaskTemplates();
@@ -338,27 +341,34 @@ export default function Tasks() {
               ) : null;
             })()}
           </div>
-          <div className="flex items-center gap-2">
-            <Tabs value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
-              <TabsList className="h-8">
-                <TabsTrigger value="focus" className="text-xs gap-1 px-2 h-7">
-                  <Star className="h-3.5 w-3.5" /> Focus
-                </TabsTrigger>
-                <TabsTrigger value="list" className="text-xs gap-1 px-2 h-7">
-                  <ListTodo className="h-3.5 w-3.5" /> List
-                </TabsTrigger>
-                <TabsTrigger value="board" className="text-xs gap-1 px-2 h-7">
-                  <LayoutGrid className="h-3.5 w-3.5" /> Board
-                </TabsTrigger>
-                <TabsTrigger value="calendar" className="text-xs gap-1 px-2 h-7">
-                  <Calendar className="h-3.5 w-3.5" /> Calendar
-                </TabsTrigger>
-                <TabsTrigger value="reporting" className="text-xs gap-1 px-2 h-7">
-                  <BarChart3 className="h-3.5 w-3.5" /> Reports
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+          <HintTooltip
+            hint="Switch between Focus, List, Board, Calendar, and Reports to view your tasks the way you prefer."
+            visible={isHintVisible('tasks-views')}
+            onDismiss={() => dismissHint('tasks-views')}
+            side="bottom"
+          >
+            <div className="flex items-center gap-2">
+              <Tabs value={viewMode} onValueChange={v => setViewMode(v as ViewMode)}>
+                <TabsList className="h-8">
+                  <TabsTrigger value="focus" className="text-xs gap-1 px-2 h-7">
+                    <Star className="h-3.5 w-3.5" /> Focus
+                  </TabsTrigger>
+                  <TabsTrigger value="list" className="text-xs gap-1 px-2 h-7">
+                    <ListTodo className="h-3.5 w-3.5" /> List
+                  </TabsTrigger>
+                  <TabsTrigger value="board" className="text-xs gap-1 px-2 h-7">
+                    <LayoutGrid className="h-3.5 w-3.5" /> Board
+                  </TabsTrigger>
+                  <TabsTrigger value="calendar" className="text-xs gap-1 px-2 h-7">
+                    <Calendar className="h-3.5 w-3.5" /> Calendar
+                  </TabsTrigger>
+                  <TabsTrigger value="reporting" className="text-xs gap-1 px-2 h-7">
+                    <BarChart3 className="h-3.5 w-3.5" /> Reports
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </HintTooltip>
         </div>
 
         {/* Toolbar */}
@@ -472,14 +482,21 @@ export default function Tasks() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            onClick={() => { setIsCreating(true); setTimeout(() => newTaskRef.current?.focus(), 50); }}
+          <HintTooltip
+            hint="Click here to create a new task. You can assign it to a deal, set a due date, and add details."
+            visible={isHintVisible('tasks-add')}
+            onDismiss={() => dismissHint('tasks-add')}
+            side="bottom"
           >
-            <Plus className="h-3.5 w-3.5" />
-            Add Task
-          </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => { setIsCreating(true); setTimeout(() => newTaskRef.current?.focus(), 50); }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Task
+            </Button>
+          </HintTooltip>
         </div>
 
         {/* Main content */}
