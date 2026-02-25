@@ -136,11 +136,11 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase
       .from('company_settings')
-      .update({
+      .upsert({
+        company_id: company.id,
         deals_widgets_config: newWidgets as any,
         deals_special_widgets: newSpecialWidgets as any,
-      })
-      .eq('company_id', company.id);
+      }, { onConflict: 'company_id' });
 
     if (error) {
       console.error('Failed to save company widgets:', error);
