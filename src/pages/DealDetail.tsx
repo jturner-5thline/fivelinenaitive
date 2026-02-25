@@ -4313,11 +4313,11 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="deal-management" className={cn("mt-6 space-y-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
-                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <div className="lg:col-span-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+                    <div className="lg:col-span-2 flex">
                       <DealTasksPanel dealId={id!} />
                     </div>
-                    <div className="lg:col-span-3">
+                    <div className="lg:col-span-3 flex">
                       <FlexInfoNotificationsPanel dealId={id} />
                     </div>
                   </div>
