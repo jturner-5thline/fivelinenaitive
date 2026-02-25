@@ -26,7 +26,7 @@ import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { CreateDealDialog } from './CreateDealDialog';
 
-export function DealsHeader({ children }: { children?: React.ReactNode }) {
+export function DealsHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut, user } = useAuth();
@@ -106,7 +106,6 @@ export function DealsHeader({ children }: { children?: React.ReactNode }) {
           </nav>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
-          {children}
           <div className="w-36 sm:w-52">
             <GlobalSearchAI />
           </div>
