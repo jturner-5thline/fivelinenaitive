@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, GanttChart } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
@@ -8,6 +8,7 @@ import { MilestoneManagerFilter } from '@/components/deals/MilestoneManagerFilte
 import { DealsList } from '@/components/deals/DealsList';
 import { DealMilestonesView } from '@/components/deals/DealMilestonesView';
 import { DealsPipelineView } from '@/components/deals/DealsPipelineView';
+import { DealsTimelineView } from '@/components/deals/DealsTimelineView';
 import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
@@ -61,9 +62,9 @@ import { useCompany } from '@/hooks/useCompany';
 export default function Dashboard() {
   const [groupBy, setGroupBy] = useState<string | null>('status');
   const [showMilestones, setShowMilestones] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline'>(() => {
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline' | 'timeline'>(() => {
     const stored = localStorage.getItem('deals-view-mode');
-    return (stored === 'grid' || stored === 'list' || stored === 'pipeline') ? stored : 'grid';
+    return (stored === 'grid' || stored === 'list' || stored === 'pipeline' || stored === 'timeline') ? stored : 'grid';
   });
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
@@ -439,11 +440,12 @@ export default function Dashboard() {
                 )}
 
                 {/* View Mode Dropdown */}
-                <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline') => setViewMode(val)}>
+                <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline' | 'timeline') => setViewMode(val)}>
                   <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden shrink-0">
                     {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
                     {viewMode === 'list' && <List className="h-4 w-4" />}
                     {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
+                    {viewMode === 'timeline' && <GanttChart className="h-4 w-4" />}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="grid">
@@ -462,6 +464,12 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2">
                         <Kanban className="h-4 w-4" />
                         Pipeline
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="timeline">
+                      <div className="flex items-center gap-2">
+                        <GanttChart className="h-4 w-4" />
+                        Timeline
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -499,6 +507,8 @@ export default function Dashboard() {
                   onMarkReviewed={handleMarkReviewed}
                   onToggleFlag={handleToggleFlag}
                 />
+              ) : viewMode === 'timeline' ? (
+                <DealsTimelineView deals={deals} />
               ) : (
                 <DealsList 
                   deals={deals} 

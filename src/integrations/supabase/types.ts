@@ -2043,6 +2043,54 @@ export type Database = {
           },
         ]
       }
+      deal_pipeline_configs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          deal_id: string
+          id: string
+          stages: Json
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          stages?: Json
+          start_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          stages?: Json
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_pipeline_configs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_pipeline_configs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_pipelines: {
         Row: {
           company_id: string
