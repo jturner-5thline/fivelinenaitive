@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, LayoutDashboard, Briefcase, Users, FolderOpen, Settings2, BarChart3, CheckSquare, Bot, Milestone, PanelLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, LayoutDashboard, Briefcase, Users, FolderOpen, Settings2, BarChart3, CheckSquare, Bot, Milestone, PanelLeft, PanelTop } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +29,11 @@ const platformTourSteps: TourStep[] = [
     title: 'Navigation Sidebar',
     description: "Use the left-hand sidebar to move between pages — Dashboard, Deals, Tasks, Lenders, Analytics, and more. You can collapse it for more space or hover to peek at the menu.",
     icon: <PanelLeft className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Header Bar',
+    description: "The top header gives you quick access to create new deals, switch views, access notifications, and open settings — all without leaving the page you're on.",
+    icon: <PanelTop className="h-8 w-8 text-primary" />,
   },
   {
     title: 'Dashboard',
