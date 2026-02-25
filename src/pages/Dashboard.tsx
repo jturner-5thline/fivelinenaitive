@@ -7,6 +7,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useDashboardPresets, WidgetConfig, GridItem } from '@/hooks/useDashboardPresets';
 import { WIDGET_REGISTRY } from '@/components/dashboard/widgetRegistry';
 import { Button } from '@/components/ui/button';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
+import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { PresetManager } from '@/components/dashboard/PresetManager';
@@ -37,7 +39,7 @@ export default function Dashboard() {
   const [isEditing, setIsEditing] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
-
+  const { isHintVisible, dismissHint } = useFirstTimeHints();
   const firstName = profile?.first_name || profile?.display_name?.split(' ')[0] || 'there';
 
   const getTimeBasedGreeting = () => {
@@ -128,6 +130,12 @@ export default function Dashboard() {
 
           <DashboardAIInput />
 
+          <HintTooltip
+            hint="Use these quick actions to open your calendar, email, quick prompts, or create a new deal — all without leaving the dashboard."
+            visible={isHintVisible('dashboard-quick-actions')}
+            onDismiss={() => dismissHint('dashboard-quick-actions')}
+            side="bottom"
+          >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setCalendarOpen(true)}>
               <div className="flex flex-col items-center text-center space-y-3">
@@ -176,12 +184,19 @@ export default function Dashboard() {
               }
             />
           </div>
+          </HintTooltip>
 
           {/* Header row: Edit button */}
           <div className="flex items-center justify-between">
             <div />
             <div className="flex items-center gap-2">
               {isSaving && <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>}
+              <HintTooltip
+                hint="Click 'Edit' to customize your dashboard — add, remove, or rearrange widgets to match your workflow."
+                visible={isHintVisible('dashboard-edit')}
+                onDismiss={() => dismissHint('dashboard-edit')}
+                side="left"
+              >
               <Button
                 variant={isEditing ? "default" : "outline"}
                 size="sm"
@@ -191,6 +206,7 @@ export default function Dashboard() {
                 {isEditing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
                 {isEditing ? 'Done' : 'Edit'}
               </Button>
+              </HintTooltip>
             </div>
           </div>
 
