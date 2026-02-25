@@ -107,88 +107,69 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
 
   const ganttAreaRef = useRef<HTMLDivElement>(null);
   const globalInfoRef = useRef({ globalWeeks: 16, globalStart: new Date() });
+  const configsRef = useRef(configs);
+  configsRef.current = configs;
 
   const handleDragStart = useCallback((e: React.MouseEvent, dealId: string, containerEl: HTMLDivElement) => {
     e.preventDefault();
-    const cfg = configs[dealId];
+    const cfg = configsRef.current[dealId];
     if (!cfg) return;
     setDraggingDealId(dealId);
     const info = globalInfoRef.current;
-    dragRef.current = {
-      startX: e.clientX,
-      origStartDate: cfg.startDate,
-      containerWidth: containerEl.getBoundingClientRect().width,
-      globalWeeks: info.globalWeeks,
-      globalStartDate: info.globalStart,
-    };
+    const startX = e.clientX;
+    const origStartDate = cfg.startDate;
+    const containerWidth = containerEl.getBoundingClientRect().width;
+    const gWeeks = info.globalWeeks;
+    let lastDelta = 0;
 
     const onMouseMove = (ev: MouseEvent) => {
-      if (!dragRef.current) return;
-      const dx = ev.clientX - dragRef.current.startX;
-      const pxPerWeek = dragRef.current.containerWidth / Math.max(dragRef.current.globalWeeks, 1);
+      const dx = ev.clientX - startX;
+      const pxPerWeek = containerWidth / Math.max(gWeeks, 1);
       const deltaWeeks = Math.round(dx / pxPerWeek);
-      if (deltaWeeks === 0) return;
-      const origDate = new Date(dragRef.current.origStartDate + 'T00:00:00');
+      if (deltaWeeks === lastDelta) return;
+      lastDelta = deltaWeeks;
+      const origDate = new Date(origStartDate + 'T00:00:00');
       const newDate = addDays(origDate, deltaWeeks * 7);
-      const newDateStr = newDate.toISOString().split('T')[0];
-      updateStartDate(dealId, newDateStr);
+      updateStartDate(dealId, newDate.toISOString().split('T')[0]);
     };
 
     const onMouseUp = () => {
       setDraggingDealId(null);
-      dragRef.current = null;
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, [configs, updateStartDate]);
+  }, [updateStartDate]);
 
   // Resize handler for individual stage edges
-  const resizingRef = useRef<{ startX: number; dealId: string; stageId: string; origWeeks: number; barWidth: number; totalWeeks: number } | null>(null);
-
   const handleResizeStart = useCallback((e: React.MouseEvent, dealId: string, stageId: string, barEl: HTMLDivElement) => {
     e.preventDefault();
-    e.stopPropagation(); // prevent drag-move from firing
-    const cfg = configs[dealId];
+    e.stopPropagation();
+    const cfg = configsRef.current[dealId];
     if (!cfg) return;
     const stage = cfg.stages.find(s => s.id === stageId);
     if (!stage) return;
     const totalW = getTotalWeeks(cfg);
+    const startX = e.clientX;
+    const origWeeks = stage.weeks;
+    const barWidth = barEl.getBoundingClientRect().width;
+    let lastNewWeeks = origWeeks;
 
-    resizingRef.current = {
-      startX: e.clientX,
-      dealId,
-      stageId,
-      origWeeks: stage.weeks,
-      barWidth: barEl.getBoundingClientRect().width,
-      totalWeeks: totalW,
-    };
     document.body.style.cursor = 'col-resize';
 
     const onMouseMove = (ev: MouseEvent) => {
-      if (!resizingRef.current) return;
-      const dx = ev.clientX - resizingRef.current.startX;
-      const pxPerWeek = resizingRef.current.barWidth / Math.max(resizingRef.current.totalWeeks, 1);
-      const deltaWeeks = Math.round(dx / pxPerWeek);
-      const newWeeks = Math.max(0, resizingRef.current.origWeeks + deltaWeeks);
-      const diff = newWeeks - resizingRef.current.origWeeks;
-      if (diff !== 0) {
-        // We update via delta from current to avoid compound drift
-        const currentCfg = configs[dealId];
-        const currentStage = currentCfg?.stages.find(s => s.id === stageId);
-        if (currentStage) {
-          const currentDelta = newWeeks - currentStage.weeks;
-          if (currentDelta !== 0) {
-            updateStageWeeks(dealId, stageId, currentDelta);
-          }
-        }
-      }
+      const dx = ev.clientX - startX;
+      const pxPerWeek = barWidth / Math.max(totalW, 1);
+      const newWeeks = Math.max(0, origWeeks + Math.round(dx / pxPerWeek));
+      if (newWeeks === lastNewWeeks) return;
+      const delta = newWeeks - lastNewWeeks;
+      lastNewWeeks = newWeeks;
+      updateStageWeeks(dealId, stageId, delta);
     };
 
     const onMouseUp = () => {
-      resizingRef.current = null;
       document.body.style.cursor = '';
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
@@ -196,7 +177,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, [configs, updateStageWeeks]);
+  }, [updateStageWeeks]);
 
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
@@ -444,7 +425,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                                     <div
                                       className="absolute right-0 top-0 w-2 h-full cursor-col-resize z-20 group/resize hover:bg-background/30"
                                       onMouseDown={(e) => {
-                                        const barEl = e.currentTarget.closest('[style]')?.parentElement as HTMLDivElement | null;
+                                        const barEl = e.currentTarget.parentElement?.parentElement as HTMLDivElement | null;
                                         if (barEl) handleResizeStart(e, deal.id, stage.id, barEl);
                                       }}
                                     >
