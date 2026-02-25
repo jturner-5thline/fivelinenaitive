@@ -104,7 +104,7 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
   const maxScrollHeight = 220;
 
   return (
-    <Card>
+    <Card className="h-full">
       <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
         <CardHeader className={cn("pb-3", !isOpen && "py-2")}>
           <CollapsibleTrigger asChild>
