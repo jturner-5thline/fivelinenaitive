@@ -57,7 +57,7 @@ export default function Help() {
     localStorage.removeItem('dismissed-hints');
     localStorage.removeItem('hints-fully-dismissed');
     sessionStorage.removeItem('demo-tour-shown-this-session');
-    window.location.href = '/deals';
+    window.dispatchEvent(new Event('restart-platform-tour'));
   };
 
   const handleOpenWalkthrough = (guide: FeatureGuide) => {
