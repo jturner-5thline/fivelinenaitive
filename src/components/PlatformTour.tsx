@@ -57,7 +57,7 @@ const platformTourSteps: TourStep[] = [
   },
   {
     title: 'Tasks',
-    description: 'Stay on top of your work with the task manager. Create, assign, and track tasks linked to your deals.',
+    description: "Stay on top of your work with the task manager. Navigate to 'My Tasks' from the sidebar to see everything assigned to you — create, assign, and track tasks across List, Board, Calendar, and Timeline views.",
     icon: <CheckSquare className="h-8 w-8 text-primary" />,
   },
   {
