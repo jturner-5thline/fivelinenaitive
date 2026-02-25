@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, LayoutDashboard, Briefcase, Users, FolderOpen, Settings2, BarChart3, CheckSquare, Bot } from 'lucide-react';
+import { ChevronRight, ChevronLeft, LayoutDashboard, Briefcase, Users, FolderOpen, Settings2, BarChart3, CheckSquare, Bot, Milestone } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,11 @@ const platformTourSteps: TourStep[] = [
     title: 'Deals Pipeline',
     description: 'Manage your entire deal flow. Create new deals, track progress through stages, and filter by status, type, or assignee.',
     icon: <Briefcase className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Milestones',
+    description: "Track key milestones for each deal — from kick-off to closing. Mark progress, set due dates, and keep your entire team aligned on what's next.",
+    icon: <Milestone className="h-8 w-8 text-primary" />,
   },
   {
     title: 'Tasks',
