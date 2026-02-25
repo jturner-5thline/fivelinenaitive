@@ -433,14 +433,14 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
               <Button 
                 onClick={handleSave} 
                 disabled={!hasChanges || isSaving}
-                size="sm"
+                size="icon"
+                className="h-8 w-8"
               >
                 {isSaving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-4 w-4" />
                 )}
-                Save
               </Button>
             </div>
           </div>
