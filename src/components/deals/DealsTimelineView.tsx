@@ -397,17 +397,18 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                                   <span className="truncate px-1">
                                     {stagePct > 18 ? `${stage.name} (${stage.weeks}w)` : `${stage.weeks}w`}
                                   </span>
-                                  {!isLast && (
-                                    <div
-                                      className="absolute right-0 top-0 w-2 h-full cursor-col-resize z-20 group/resize hover:bg-background/30"
-                                      onMouseDown={(e) => {
-                                        const barEl = e.currentTarget.parentElement?.parentElement as HTMLDivElement | null;
-                                        if (barEl) handleResizeStart(e, deal.id, stage.id, barEl);
-                                      }}
-                                    >
-                                      <div className="absolute right-[3px] top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary-foreground/40 rounded-full group-hover/resize:bg-primary-foreground/80" />
-                                    </div>
-                                  )}
+                                  <div
+                                    className={cn(
+                                      'absolute top-0 h-full cursor-col-resize z-20 group/resize hover:bg-background/30',
+                                      isLast ? 'right-0 w-3 rounded-r-md' : 'right-0 w-2'
+                                    )}
+                                    onMouseDown={(e) => {
+                                      const barEl = e.currentTarget.parentElement?.parentElement as HTMLDivElement | null;
+                                      if (barEl) handleResizeStart(e, deal.id, stage.id, barEl);
+                                    }}
+                                  >
+                                    <div className="absolute right-[3px] top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary-foreground/40 rounded-full group-hover/resize:bg-primary-foreground/80" />
+                                  </div>
                                 </div>
                               );
                             })}
