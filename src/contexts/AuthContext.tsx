@@ -130,6 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Block personal email domains (including Google SSO with personal emails)
           const userEmail = session.user.email;
           if (userEmail && isBlockedEmailDomain(userEmail)) {
+            // Store the error so the Auth page can display it
+            sessionStorage.setItem('naitive_blocked_domain_error', 'true');
             // Sign out the user immediately
             await supabase.auth.signOut();
             return;

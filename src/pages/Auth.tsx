@@ -67,6 +67,15 @@ const Auth = () => {
   // Get redirect URL from query params (for invite links, etc.)
   const redirectUrl = searchParams.get('redirect') || '/deals';
 
+  // Check if user was redirected due to blocked domain (e.g. Google SSO with personal email)
+  useEffect(() => {
+    const blockedError = sessionStorage.getItem('naitive_blocked_domain_error');
+    if (blockedError) {
+      sessionStorage.removeItem('naitive_blocked_domain_error');
+      toast.error(BLOCKED_DOMAIN_ERROR);
+    }
+  }, []);
+
   useEffect(() => {
     // Check for password recovery event
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
