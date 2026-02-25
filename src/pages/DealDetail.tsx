@@ -3260,7 +3260,6 @@ export default function DealDetail() {
                         case 'outstanding-items':
                           return (
                             <div key={id} className="space-y-6">
-                              <FlexInfoNotificationsPanel dealId={id} />
                               <OutstandingItems
                                 items={outstandingItems}
                                 lenderNames={deal.lenders?.map(l => l.name) || []}
