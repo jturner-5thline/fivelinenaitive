@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Deal } from '@/types/deal';
 import { useMultiDealPipelineConfigs, DealPipelineConfig } from '@/hooks/useDealPipelineConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
-import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle, GripHorizontal } from 'lucide-react';
+import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle, GripHorizontal, Undo2, Redo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, addDays, differenceInCalendarWeeks, min as dateMin, max as dateMax } from 'date-fns';
 
@@ -79,7 +79,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
 
   const allDealIds = useMemo(() => deals.map(d => d.id), [deals]);
 
-  const { configs, isLoading, updateStageWeeks, updateStartDate, updateStageName, addStage, removeStage } = useMultiDealPipelineConfigs(
+  const { configs, isLoading, updateStageWeeks, updateStartDate, updateStageName, addStage, removeStage, undo, redo, canUndo, canRedo } = useMultiDealPipelineConfigs(
     allDealIds,
     dealCreatedAtMap
   );
@@ -198,6 +198,22 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
     document.addEventListener('mouseup', onMouseUp);
   }, [configs, updateStageWeeks]);
 
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [undo, redo]);
+
   const visibleDeals = deals.filter(d => visibleDealIds.has(d.id));
 
   // Compute global date range across all visible deals for a unified Gantt axis
@@ -297,7 +313,31 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
           {/* Multi-deal Gantt Chart */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Timeline</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">Timeline</CardTitle>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={undo}
+                    disabled={!canUndo}
+                    title="Undo (Ctrl+Z)"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={redo}
+                    disabled={!canRedo}
+                    title="Redo (Ctrl+Shift+Z)"
+                  >
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <ScrollArea className="w-full pb-4">
