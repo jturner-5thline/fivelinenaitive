@@ -388,24 +388,28 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                 </div>
               )}
 
-              {/* Submit for Approval button - always available for users with a role (except when they are the current approver) */}
-              {userRole && !isCurrentApprover && userRole !== 'admin' && (
+              {/* Submit for Approval button - only show when memo has content */}
+              {userRole && !isCurrentApprover && userRole !== 'admin' && memo && (
+                localValues.narrative.trim() || localValues.highlights.trim() || localValues.hurdles.trim() || localValues.lender_notes.trim() || localValues.analyst_notes.trim() || localValues.other_notes.trim()
+              ) && (
                 <Button
                   size="sm"
                   onClick={submitForApproval}
-                  disabled={isApprovalSubmitting || !memo}
+                  disabled={isApprovalSubmitting}
                 >
                   {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                   {approvalInfo.approvalState === 'not_submitted' ? 'Submit for Approval' : hasChanges ? 'Resubmit' : 'Resubmit for Approval'}
                 </Button>
               )}
 
-              {/* Admin self-approve button */}
-              {userRole === 'admin' && !isCurrentApprover && (
+              {/* Admin self-approve button - only show when memo has content */}
+              {userRole === 'admin' && !isCurrentApprover && memo && (
+                localValues.narrative.trim() || localValues.highlights.trim() || localValues.hurdles.trim() || localValues.lender_notes.trim() || localValues.analyst_notes.trim() || localValues.other_notes.trim()
+              ) && (
                 <Button
                   size="sm"
                   onClick={submitForApproval}
-                  disabled={isApprovalSubmitting || !memo}
+                  disabled={isApprovalSubmitting}
                 >
                   {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
                   Approve
