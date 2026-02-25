@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanyProfileSettings } from '@/components/company/CompanyProfileSettings';
 import { CompanyMembersSettings } from '@/components/company/CompanyMembersSettings';
-import { PendingInvitations } from '@/components/company/PendingInvitations';
 import { CreateCompanyDialog } from '@/components/company/CreateCompanyDialog';
 import { useCompany } from '@/hooks/useCompany';
 import { Loader2, Building2 } from 'lucide-react';
@@ -105,10 +104,6 @@ export default function Company() {
                 <CompanyMembersSettings />
               </TabsContent>
             </Tabs>
-
-            {isAdmin && company && (
-              <PendingInvitations companyId={company.id} companyName={company.name} />
-            )}
           </div>
         </main>
       </div>

@@ -169,7 +169,22 @@ export function PendingInvitations({ companyId, companyName }: PendingInvitation
   }
 
   if (invitations.length === 0) {
-    return null;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Pending Invitations
+          </CardTitle>
+          <CardDescription>No pending invitations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-4">
+            All invitations have been accepted or there are none yet.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
