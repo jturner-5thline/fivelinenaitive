@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, GanttChart } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { DealFilters } from '@/components/deals/DealFilters';
@@ -445,7 +445,7 @@ export default function Dashboard() {
                     {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
                     {viewMode === 'list' && <List className="h-4 w-4" />}
                     {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
-                    {viewMode === 'timeline' && <GanttChart className="h-4 w-4" />}
+                    {viewMode === 'timeline' && <ChartGantt className="h-4 w-4" />}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="grid">
@@ -468,7 +468,7 @@ export default function Dashboard() {
                     </SelectItem>
                     <SelectItem value="timeline">
                       <div className="flex items-center gap-2">
-                        <GanttChart className="h-4 w-4" />
+                        <ChartGantt className="h-4 w-4" />
                         Timeline
                       </div>
                     </SelectItem>
