@@ -72,7 +72,7 @@ export function MemoSectionContextMenu({
           side="left"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onFocusOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
+          onInteractOutside={() => setPopoverOpen(false)}
         >
           <MemoCommentThreadContent
             section={section}
