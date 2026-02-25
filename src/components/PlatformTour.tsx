@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronRight, ChevronLeft, LayoutDashboard, Briefcase, Users, FolderOpen, Settings2, BarChart3, CheckSquare, Bot, Milestone } from 'lucide-react';
+import { ChevronRight, ChevronLeft, LayoutDashboard, Briefcase, Users, FolderOpen, Settings2, BarChart3, CheckSquare, Bot, Milestone, PanelLeft } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,11 @@ const platformTourSteps: TourStep[] = [
     title: 'Welcome to naitive!',
     description: "You're all set up! Let's take a quick tour of the platform to help you hit the ground running.",
     icon: <Sparkles className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Navigation Sidebar',
+    description: "Use the left-hand sidebar to move between pages — Dashboard, Deals, Tasks, Lenders, Analytics, and more. You can collapse it for more space or hover to peek at the menu.",
+    icon: <PanelLeft className="h-8 w-8 text-primary" />,
   },
   {
     title: 'Dashboard',
