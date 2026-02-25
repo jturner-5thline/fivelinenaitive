@@ -1846,6 +1846,82 @@ export type Database = {
           },
         ]
       }
+      deal_memo_comments: {
+        Row: {
+          content: string
+          created_at: string
+          deal_id: string
+          id: string
+          item_index: number | null
+          memo_id: string | null
+          mentioned_user_ids: string[] | null
+          parent_comment_id: string | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          section: string
+          updated_at: string
+          user_display_name: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          item_index?: number | null
+          memo_id?: string | null
+          mentioned_user_ids?: string[] | null
+          parent_comment_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          section: string
+          updated_at?: string
+          user_display_name?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          item_index?: number | null
+          memo_id?: string | null
+          mentioned_user_ids?: string[] | null
+          parent_comment_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          section?: string
+          updated_at?: string
+          user_display_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_memo_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_memo_comments_memo_id_fkey"
+            columns: ["memo_id"]
+            isOneToOne: false
+            referencedRelation: "deal_memos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_memo_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "deal_memo_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_memo_views: {
         Row: {
           deal_id: string

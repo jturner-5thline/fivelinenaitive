@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck } from 'lucide-react';
+import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,7 +13,10 @@ import { useDealMemo } from '@/hooks/useDealMemo';
 import { useDealMemoNotification } from '@/hooks/useDealMemoNotification';
 import { useDealMemoAuditLog } from '@/hooks/useDealMemoAuditLog';
 import { useDealMemoApproval } from '@/hooks/useDealMemoApproval';
+import { useDealMemoComments } from '@/hooks/useDealMemoComments';
 import { MemoAuditLogPopover } from '@/components/deal/MemoAuditLogPopover';
+import { MemoSectionContextMenu } from '@/components/deal/MemoSectionContextMenu';
+import { MemoCommentThread } from '@/components/deal/MemoCommentThread';
 
 interface DealMemoDialogProps {
   dealId: string;
@@ -82,6 +85,15 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
       setHasChanges(false);
     },
   });
+  const {
+    comments: allComments,
+    addComment,
+    resolveComment,
+    unresolveComment,
+    deleteComment,
+    getCommentsForSection,
+    getCommentCountForSection,
+  } = useDealMemoComments(dealId);
   const [isOpen, setIsOpen] = useState(false);
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -252,6 +264,19 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
       handleAddHurdle();
     }
   };
+
+  // Comment helpers
+  const makeCommentHandlers = (section: string, itemIndex?: number | null) => ({
+    comments: getCommentsForSection(section, itemIndex),
+    commentCount: getCommentCountForSection(section, itemIndex),
+    onAddComment: (content: string, mentionedUserIds?: string[]) =>
+      addComment(section, content, itemIndex, mentionedUserIds, null, memo?.id),
+    onReply: (parentId: string, content: string, mentionedUserIds?: string[]) =>
+      addComment(section, content, itemIndex, mentionedUserIds, parentId, memo?.id),
+    onResolve: resolveComment,
+    onUnresolve: unresolveComment,
+    onDelete: deleteComment,
+  });
 
   const handleSave = async () => {
     const newValues = {
@@ -493,226 +518,246 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
           ) : (
             <div className="py-4 px-6 space-y-6">
               {/* Narrative Section */}
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-2">
-                  Narrative
-                </label>
-                <Textarea
-                  value={localValues.narrative}
-                  onChange={(e) => handleChange('narrative', e.target.value)}
-                  placeholder="Describe the company, what they are looking for, and the proposed solution..."
-                  className="min-h-[100px] resize-none"
-                />
-                <Separator className="mt-6" />
-              </div>
+              <MemoSectionContextMenu section="narrative" sectionLabel="Narrative" {...makeCommentHandlers('narrative')}>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-foreground">Narrative</label>
+                    <MemoCommentThread section="narrative" sectionLabel="Narrative" {...makeCommentHandlers('narrative')} />
+                  </div>
+                  <Textarea
+                    value={localValues.narrative}
+                    onChange={(e) => handleChange('narrative', e.target.value)}
+                    placeholder="Describe the company, what they are looking for, and the proposed solution..."
+                    className="min-h-[100px] resize-none"
+                  />
+                  <Separator className="mt-6" />
+                </div>
+              </MemoSectionContextMenu>
 
               {/* Deal Highlights Section - List based */}
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-2">
-                  Deal Highlights: Why We Can Get Them an Offer
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <Button 
-                    type="button"
-                    variant="outline" 
-                    size="icon"
-                    onClick={handleAddHighlight}
-                    disabled={!newHighlight.trim()}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Input
-                    value={newHighlight}
-                    onChange={(e) => setNewHighlight(e.target.value)}
-                    onKeyDown={handleHighlightKeyDown}
-                    placeholder="Add a highlight..."
-                    className="flex-1"
-                  />
+              <MemoSectionContextMenu section="highlights" sectionLabel="Highlights" {...makeCommentHandlers('highlights')}>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Deal Highlights: Why We Can Get Them an Offer
+                    </label>
+                    <MemoCommentThread section="highlights" sectionLabel="Highlights" {...makeCommentHandlers('highlights')} />
+                  </div>
+                  <div className="flex gap-2 mb-3">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleAddHighlight}
+                      disabled={!newHighlight.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      value={newHighlight}
+                      onChange={(e) => setNewHighlight(e.target.value)}
+                      onKeyDown={handleHighlightKeyDown}
+                      placeholder="Add a highlight..."
+                      className="flex-1"
+                    />
+                  </div>
+                  {highlightsList.length > 0 ? (
+                    <ol className="space-y-2">
+                      {highlightsList.map((highlight, index) => (
+                        <MemoSectionContextMenu key={index} section="highlights" sectionLabel="Highlight" itemIndex={index} {...makeCommentHandlers('highlights', index)}>
+                          <li className="flex items-start gap-2 p-2 bg-muted/50 rounded-md group">
+                            <span className="text-sm font-medium text-muted-foreground min-w-[20px] mt-0.5">
+                              {index + 1}.
+                            </span>
+                            {editingHighlight === index ? (
+                              <Input
+                                autoFocus
+                                value={highlight}
+                                onChange={(e) => handleEditHighlight(index, e.target.value)}
+                                onBlur={() => setEditingHighlight(null)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') setEditingHighlight(null);
+                                  if (e.key === 'Escape') setEditingHighlight(null);
+                                }}
+                                className="flex-1 h-7 text-sm"
+                              />
+                            ) : (
+                              <span
+                                className="flex-1 text-sm cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => setEditingHighlight(index)}
+                              >
+                                {highlight}
+                              </span>
+                            )}
+                            <MemoCommentThread section="highlights" sectionLabel="Highlight" itemIndex={index} {...makeCommentHandlers('highlights', index)} />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRemoveHighlight(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </li>
+                        </MemoSectionContextMenu>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      No highlights added yet
+                    </p>
+                  )}
+                  <Separator className="mt-6" />
                 </div>
-                {highlightsList.length > 0 ? (
-                  <ol className="space-y-2">
-                    {highlightsList.map((highlight, index) => (
-                      <li 
-                        key={index}
-                        className="flex items-start gap-2 p-2 bg-muted/50 rounded-md group"
-                      >
-                        <span className="text-sm font-medium text-muted-foreground min-w-[20px] mt-0.5">
-                          {index + 1}.
-                        </span>
-                        {editingHighlight === index ? (
-                          <Input
-                            autoFocus
-                            value={highlight}
-                            onChange={(e) => handleEditHighlight(index, e.target.value)}
-                            onBlur={() => setEditingHighlight(null)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') setEditingHighlight(null);
-                              if (e.key === 'Escape') setEditingHighlight(null);
-                            }}
-                            className="flex-1 h-7 text-sm"
-                          />
-                        ) : (
-                          <span
-                            className="flex-1 text-sm cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => setEditingHighlight(index)}
-                          >
-                            {highlight}
-                          </span>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRemoveHighlight(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    No highlights added yet
-                  </p>
-                )}
-                <Separator className="mt-6" />
-              </div>
+              </MemoSectionContextMenu>
 
               {/* Deal Hurdles Section - List based */}
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-2">
-                  Deal Hurdles & Remedies
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <Button 
-                    type="button"
-                    variant="outline" 
-                    size="icon"
-                    onClick={handleAddHurdle}
-                    disabled={!newHurdle.trim()}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Input
-                    value={newHurdle}
-                    onChange={(e) => setNewHurdle(e.target.value)}
-                    onKeyDown={handleHurdleKeyDown}
-                    placeholder="Add a hurdle..."
-                    className="flex-1"
-                  />
-                </div>
-                {hurdlesList.length > 0 ? (
-                  <TooltipProvider>
-                  <ol className="space-y-2">
-                    {hurdlesList.map((item, index) => (
-                      <li 
-                        key={index}
-                        className={`p-2 rounded-md group ${item.resolved ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50'}`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleHurdleResolved(index)}
-                                className={`mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors ${
-                                  item.resolved 
-                                    ? 'bg-primary border-primary text-primary-foreground' 
-                                    : 'border-muted-foreground/30 hover:border-primary'
-                                }`}
-                              >
-                                {item.resolved && <Check className="h-3 w-3" />}
-                              </button>
-                            </TooltipTrigger>
-                            {item.resolved && item.resolvedBy && (
-                              <TooltipContent side="top">
-                                <p>Resolved by {item.resolvedBy}</p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                          <div className="flex-1 min-w-0">
-                            {editingHurdle === index ? (
-                              <Input
-                                autoFocus
-                                value={item.hurdle}
-                                onChange={(e) => handleEditHurdle(index, e.target.value)}
-                                onBlur={() => setEditingHurdle(null)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') setEditingHurdle(null);
-                                  if (e.key === 'Escape') setEditingHurdle(null);
-                                }}
-                                className="h-7 text-sm"
-                              />
-                            ) : (
-                              <span
-                                className={`text-sm cursor-pointer hover:text-primary transition-colors block ${item.resolved ? 'line-through text-muted-foreground' : ''}`}
-                                onClick={() => setEditingHurdle(index)}
-                              >
-                                {item.hurdle}
-                              </span>
-                            )}
-                            {/* Remedy sub-field */}
-                            {editingRemedy === index ? (
-                              <Input
-                                autoFocus
-                                value={item.remedy}
-                                onChange={(e) => handleEditRemedy(index, e.target.value)}
-                                onBlur={() => setEditingRemedy(null)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') setEditingRemedy(null);
-                                  if (e.key === 'Escape') setEditingRemedy(null);
-                                }}
-                                placeholder="Add a remedy..."
-                                className="h-7 text-sm mt-1"
-                              />
-                            ) : (
-                              <span
-                                className={`text-xs cursor-pointer hover:text-primary transition-colors block mt-1 ${item.resolved ? 'line-through text-muted-foreground/60' : 'text-muted-foreground'}`}
-                                onClick={() => setEditingRemedy(index)}
-                              >
-                                {item.remedy ? `Remedy: ${item.remedy}` : '+ Add remedy'}
-                              </span>
-                            )}
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                            onClick={() => handleRemoveHurdle(index)}
+              <MemoSectionContextMenu section="hurdles" sectionLabel="Hurdles" {...makeCommentHandlers('hurdles')}>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-foreground">
+                      Deal Hurdles & Remedies
+                    </label>
+                    <MemoCommentThread section="hurdles" sectionLabel="Hurdles" {...makeCommentHandlers('hurdles')} />
+                  </div>
+                  <div className="flex gap-2 mb-3">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleAddHurdle}
+                      disabled={!newHurdle.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      value={newHurdle}
+                      onChange={(e) => setNewHurdle(e.target.value)}
+                      onKeyDown={handleHurdleKeyDown}
+                      placeholder="Add a hurdle..."
+                      className="flex-1"
+                    />
+                  </div>
+                  {hurdlesList.length > 0 ? (
+                    <TooltipProvider>
+                    <ol className="space-y-2">
+                      {hurdlesList.map((item, index) => (
+                        <MemoSectionContextMenu key={index} section="hurdles" sectionLabel="Hurdle" itemIndex={index} {...makeCommentHandlers('hurdles', index)}>
+                          <li 
+                            className={`p-2 rounded-md group ${item.resolved ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50'}`}
                           >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                  </TooltipProvider>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    No hurdles added yet
-                  </p>
-                )}
-                <Separator className="mt-6" />
-              </div>
+                            <div className="flex items-start gap-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleHurdleResolved(index)}
+                                    className={`mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors ${
+                                      item.resolved 
+                                        ? 'bg-primary border-primary text-primary-foreground' 
+                                        : 'border-muted-foreground/30 hover:border-primary'
+                                    }`}
+                                  >
+                                    {item.resolved && <Check className="h-3 w-3" />}
+                                  </button>
+                                </TooltipTrigger>
+                                {item.resolved && item.resolvedBy && (
+                                  <TooltipContent side="top">
+                                    <p>Resolved by {item.resolvedBy}</p>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                              <div className="flex-1 min-w-0">
+                                {editingHurdle === index ? (
+                                  <Input
+                                    autoFocus
+                                    value={item.hurdle}
+                                    onChange={(e) => handleEditHurdle(index, e.target.value)}
+                                    onBlur={() => setEditingHurdle(null)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') setEditingHurdle(null);
+                                      if (e.key === 'Escape') setEditingHurdle(null);
+                                    }}
+                                    className="h-7 text-sm"
+                                  />
+                                ) : (
+                                  <span
+                                    className={`text-sm cursor-pointer hover:text-primary transition-colors block ${item.resolved ? 'line-through text-muted-foreground' : ''}`}
+                                    onClick={() => setEditingHurdle(index)}
+                                  >
+                                    {item.hurdle}
+                                  </span>
+                                )}
+                                {/* Remedy sub-field */}
+                                {editingRemedy === index ? (
+                                  <Input
+                                    autoFocus
+                                    value={item.remedy}
+                                    onChange={(e) => handleEditRemedy(index, e.target.value)}
+                                    onBlur={() => setEditingRemedy(null)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') setEditingRemedy(null);
+                                      if (e.key === 'Escape') setEditingRemedy(null);
+                                    }}
+                                    placeholder="Add a remedy..."
+                                    className="h-7 text-sm mt-1"
+                                  />
+                                ) : (
+                                  <span
+                                    className={`text-xs cursor-pointer hover:text-primary transition-colors block mt-1 ${item.resolved ? 'line-through text-muted-foreground/60' : 'text-muted-foreground'}`}
+                                    onClick={() => setEditingRemedy(index)}
+                                  >
+                                    {item.remedy ? `Remedy: ${item.remedy}` : '+ Add remedy'}
+                                  </span>
+                                )}
+                              </div>
+                              <MemoCommentThread section="hurdles" sectionLabel="Hurdle" itemIndex={index} {...makeCommentHandlers('hurdles', index)} />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                onClick={() => handleRemoveHurdle(index)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </li>
+                        </MemoSectionContextMenu>
+                      ))}
+                    </ol>
+                    </TooltipProvider>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      No hurdles added yet
+                    </p>
+                  )}
+                  <Separator className="mt-6" />
+                </div>
+              </MemoSectionContextMenu>
 
               {/* Other sections */}
               {MEMO_SECTIONS.map((section, index) => (
-                <div key={section.key}>
-                  <label className="text-sm font-medium text-foreground block mb-2">
-                    {section.label}
-                  </label>
-                  <Textarea
-                    value={localValues[section.key]}
-                    onChange={(e) => handleChange(section.key, e.target.value)}
-                    placeholder={section.placeholder}
-                    className="min-h-[100px] resize-none"
-                  />
-                  {index < MEMO_SECTIONS.length - 1 && (
-                    <Separator className="mt-6" />
-                  )}
-                </div>
+                <MemoSectionContextMenu key={section.key} section={section.key} sectionLabel={section.label} {...makeCommentHandlers(section.key)}>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-foreground">
+                        {section.label}
+                      </label>
+                      <MemoCommentThread section={section.key} sectionLabel={section.label} {...makeCommentHandlers(section.key)} />
+                    </div>
+                    <Textarea
+                      value={localValues[section.key]}
+                      onChange={(e) => handleChange(section.key, e.target.value)}
+                      placeholder={section.placeholder}
+                      className="min-h-[100px] resize-none"
+                    />
+                    {index < MEMO_SECTIONS.length - 1 && (
+                      <Separator className="mt-6" />
+                    )}
+                  </div>
+                </MemoSectionContextMenu>
               ))}
             </div>
           )}
