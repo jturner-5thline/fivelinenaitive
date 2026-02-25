@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Bell, Check, Mail, Building2, User, X, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -28,6 +29,14 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
     localStorage.setItem(INFO_REQUESTS_COLLAPSED_KEY, (!open).toString());
   };
   const { notifications, isLoading, pendingCount, approveAccess, denyAccess } = useFlexInfoNotifications(dealId);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending'>('all');
+
+  const filteredNotifications = useMemo(() => {
+    if (statusFilter === 'pending') {
+      return notifications.filter(n => n.status === 'pending');
+    }
+    return notifications;
+  }, [notifications, statusFilter]);
 
   const handleApprove = async (notificationId: string) => {
     const success = await approveAccess(notificationId);
@@ -133,128 +142,137 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="pt-0">
-            <ScrollArea className="pr-3" style={{ height: notifications.length > 2 ? maxScrollHeight : 'auto' }}>
-              <div className="space-y-3 pb-1">
-                {notifications.map((notification) => {
-                  const styles = getStatusStyles(notification.status);
-                  return (
-                    <div
-                      key={notification.id}
-                      className={cn(
-                        'p-3 rounded-lg border transition-all relative',
-                        styles.container
-                      )}
-                    >
-                      {/* Status indicator dot */}
-                      {notification.status === 'pending' && (
-                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-                        </span>
-                      )}
-                      
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={cn('w-2 h-2 rounded-full flex-shrink-0', styles.dot)} />
-                            <p className={cn(
-                              'text-sm font-medium text-foreground',
-                              notification.status === 'read' && 'text-muted-foreground'
-                            )}>
-                              {notification.message}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted-foreground ml-4">
-                            {notification.company_name && (
-                              <span className="flex items-center gap-1">
-                                <Building2 className="h-3 w-3" />
-                                {notification.company_name}
-                              </span>
-                            )}
-                            {notification.user_email && (
-                              <span className="flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                {notification.user_email}
-                              </span>
-                            )}
-                            {notification.lender_name && (
-                              <span className="flex items-center gap-1">
-                                <User className="h-3 w-3" />
-                                {notification.lender_name}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1 ml-4">
-                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                          {notification.status === 'approved' ? (
-                            <>
-                              <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                <Check className="h-3 w-3 mr-1" />
-                                Approved
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDeny(notification.id)}
-                                className="h-7 text-xs text-muted-foreground hover:text-destructive"
-                                title="Change to Denied"
-                              >
-                                <RotateCcw className="h-3 w-3 mr-1" />
-                                Deny
-                              </Button>
-                            </>
-                          ) : notification.status === 'denied' ? (
-                            <>
-                              <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-                                <X className="h-3 w-3 mr-1" />
-                                Denied
-                              </Badge>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleApprove(notification.id)}
-                                className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                                title="Change to Approved"
-                              >
-                                <RotateCcw className="h-3 w-3 mr-1" />
-                                Approve
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDeny(notification.id)}
-                                className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              >
-                                <X className="h-3.5 w-3.5 mr-1" />
-                                Deny
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleApprove(notification.id)}
-                                className="h-8"
-                              >
-                                <Check className="h-3.5 w-3.5 mr-1" />
-                                Approve
-                              </Button>
-                            </>
+            <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as 'all' | 'pending')} className="justify-start mb-3">
+              <ToggleGroupItem value="all" className="text-xs h-7 px-3">All</ToggleGroupItem>
+              <ToggleGroupItem value="pending" className="text-xs h-7 px-3">Pending</ToggleGroupItem>
+            </ToggleGroup>
+            {filteredNotifications.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No {statusFilter === 'pending' ? 'pending ' : ''}info requests</p>
+            ) : (
+              <>
+                <ScrollArea className="pr-3" style={{ height: filteredNotifications.length > 2 ? maxScrollHeight : 'auto' }}>
+                  <div className="space-y-3 pb-1">
+                    {filteredNotifications.map((notification) => {
+                      const styles = getStatusStyles(notification.status);
+                      return (
+                        <div
+                          key={notification.id}
+                          className={cn(
+                            'p-3 rounded-lg border transition-all relative',
+                            styles.container
                           )}
+                        >
+                          {notification.status === 'pending' && (
+                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                            </span>
+                          )}
+                          
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={cn('w-2 h-2 rounded-full flex-shrink-0', styles.dot)} />
+                                <p className={cn(
+                                  'text-sm font-medium text-foreground',
+                                  notification.status === 'read' && 'text-muted-foreground'
+                                )}>
+                                  {notification.message}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted-foreground ml-4">
+                                {notification.company_name && (
+                                  <span className="flex items-center gap-1">
+                                    <Building2 className="h-3 w-3" />
+                                    {notification.company_name}
+                                  </span>
+                                )}
+                                {notification.user_email && (
+                                  <span className="flex items-center gap-1">
+                                    <Mail className="h-3 w-3" />
+                                    {notification.user_email}
+                                  </span>
+                                )}
+                                {notification.lender_name && (
+                                  <span className="flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    {notification.lender_name}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 ml-4">
+                                {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 flex items-center gap-2">
+                              {notification.status === 'approved' ? (
+                                <>
+                                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Approved
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeny(notification.id)}
+                                    className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                                    title="Change to Denied"
+                                  >
+                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                    Deny
+                                  </Button>
+                                </>
+                              ) : notification.status === 'denied' ? (
+                                <>
+                                  <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+                                    <X className="h-3 w-3 mr-1" />
+                                    Denied
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleApprove(notification.id)}
+                                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                                    title="Change to Approved"
+                                  >
+                                    <RotateCcw className="h-3 w-3 mr-1" />
+                                    Approve
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeny(notification.id)}
+                                    className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    <X className="h-3.5 w-3.5 mr-1" />
+                                    Deny
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApprove(notification.id)}
+                                    className="h-8"
+                                  >
+                                    <Check className="h-3.5 w-3.5 mr-1" />
+                                    Approve
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-            {notifications.length > 2 && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Scroll to see {notifications.length - 2} more
-              </p>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                {filteredNotifications.length > 2 && (
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Scroll to see {filteredNotifications.length - 2} more
+                  </p>
+                )}
+              </>
             )}
           </CardContent>
         </CollapsibleContent>
