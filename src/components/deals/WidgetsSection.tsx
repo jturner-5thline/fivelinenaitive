@@ -58,16 +58,19 @@ const CHART_COLORS = [
 ];
 
 export function WidgetsSection({ deals }: WidgetsSectionProps) {
-  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, specialWidgets, toggleSpecialWidget } = useWidgets();
+  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, specialWidgets, toggleSpecialWidget, isAdminUser } = useWidgets();
   const { formatCurrencyValue } = usePreferences();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    const handler = () => setIsEditMode(prev => !prev);
+    const handler = () => {
+      if (!isAdminUser) return;
+      setIsEditMode(prev => !prev);
+    };
     window.addEventListener('toggle-widgets-edit-mode', handler);
     return () => window.removeEventListener('toggle-widgets-edit-mode', handler);
-  }, []);
+  }, [isAdminUser]);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingWidget, setEditingWidget] = useState<Widget | undefined>();
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
