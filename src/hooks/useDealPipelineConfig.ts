@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -25,6 +25,9 @@ const DEFAULT_STAGES: PipelineStage[] = [
   { id: 'docs', name: 'Docs, Closing & Funding', weeks: 3, order: 5 },
 ];
 
+/**
+ * Hook for a single deal's pipeline config.
+ */
 export function useDealPipelineConfig(dealId: string | null, dealCreatedAt?: string) {
   const { user } = useAuth();
   const [config, setConfig] = useState<DealPipelineConfig | null>(null);
@@ -51,7 +54,6 @@ export function useDealPipelineConfig(dealId: string | null, dealCreatedAt?: str
           stages: (data.stages as any as PipelineStage[]).sort((a, b) => a.order - b.order),
         });
       } else {
-        // Initialize with defaults
         const defaultStart = dealCreatedAt
           ? new Date(dealCreatedAt).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0];
@@ -136,4 +138,112 @@ export function useDealPipelineConfig(dealId: string | null, dealCreatedAt?: str
     updateStageWeeks,
     updateStartDate,
   };
+}
+
+/**
+ * Bulk-fetch pipeline configs for multiple deals at once.
+ */
+export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap: Record<string, string>) {
+  const { user } = useAuth();
+  const [configs, setConfigs] = useState<Record<string, DealPipelineConfig>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    if (dealIds.length === 0) { setIsLoading(false); return; }
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('deal_pipeline_configs')
+        .select('*')
+        .in('deal_id', dealIds);
+      if (error) throw error;
+
+      const map: Record<string, DealPipelineConfig> = {};
+      for (const row of (data || [])) {
+        map[row.deal_id] = {
+          id: row.id,
+          dealId: row.deal_id,
+          startDate: row.start_date,
+          stages: (row.stages as any as PipelineStage[]).sort((a, b) => a.order - b.order),
+        };
+      }
+      // Fill defaults for deals without config
+      for (const id of dealIds) {
+        if (!map[id]) {
+          const defaultStart = dealCreatedAtMap[id]
+            ? new Date(dealCreatedAtMap[id]).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0];
+          map[id] = { dealId: id, startDate: defaultStart, stages: [...DEFAULT_STAGES] };
+        }
+      }
+      setConfigs(map);
+    } catch (err) {
+      console.error('Error fetching pipeline configs:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dealIds.join(','), dealCreatedAtMap]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const saveConfig = useCallback(async (updatedConfig: DealPipelineConfig) => {
+    if (!user?.id) return;
+    const payload = {
+      deal_id: updatedConfig.dealId,
+      user_id: user.id,
+      start_date: updatedConfig.startDate,
+      stages: updatedConfig.stages as any,
+    };
+    try {
+      if (updatedConfig.id) {
+        const { error } = await supabase
+          .from('deal_pipeline_configs')
+          .update(payload)
+          .eq('id', updatedConfig.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from('deal_pipeline_configs')
+          .insert(payload)
+          .select('id')
+          .single();
+        if (error) throw error;
+        setConfigs(prev => ({
+          ...prev,
+          [updatedConfig.dealId]: { ...updatedConfig, id: data.id },
+        }));
+        return;
+      }
+    } catch (err: any) {
+      console.error('Error saving pipeline config:', err);
+      toast.error('Failed to save timeline config');
+    }
+  }, [user?.id]);
+
+  const updateStageWeeks = useCallback((dealId: string, stageId: string, delta: number) => {
+    setConfigs(prev => {
+      const cfg = prev[dealId];
+      if (!cfg) return prev;
+      const updated = {
+        ...cfg,
+        stages: cfg.stages.map(s =>
+          s.id === stageId ? { ...s, weeks: Math.max(0, s.weeks + delta) } : s
+        ),
+      };
+      saveConfig(updated);
+      return { ...prev, [dealId]: updated };
+    });
+  }, [saveConfig]);
+
+  const updateStartDate = useCallback((dealId: string, newDate: string) => {
+    setConfigs(prev => {
+      const cfg = prev[dealId];
+      if (!cfg) return prev;
+      const updated = { ...cfg, startDate: newDate };
+      saveConfig(updated);
+      return { ...prev, [dealId]: updated };
+    });
+  }, [saveConfig]);
+
+  return { configs, isLoading, updateStageWeeks, updateStartDate };
 }
