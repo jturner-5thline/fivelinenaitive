@@ -78,6 +78,7 @@ import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
 import { useLenderSyncRequests } from '@/hooks/useLenderSyncRequests';
 import { useLenderSyncRealtimeNotifications } from '@/hooks/useLenderSyncRealtimeNotifications';
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
+import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -234,14 +235,15 @@ export default function Lenders() {
   const [selectedLenderIds, setSelectedLenderIds] = useState<Set<string>>(new Set());
   const [isPushingSelectedToFlex, setIsPushingSelectedToFlex] = useState(false);
 
-  // FLEx sync features only for 5th Line users
+  // FLEx sync features only for ppina@5thline.co and 5th Line admins
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+  const { canSeeFlexSync } = useCanSeeFlexSync();
 
-  // Get pending sync requests count (only for 5th Line)
+  // Get pending sync requests count (only for authorized users)
   const { pendingCount: syncPendingCount, refetch: refetchSyncRequests } = useLenderSyncRequests();
 
-  // Enable realtime notifications for new sync requests (only for 5th Line)
-  useLenderSyncRealtimeNotifications(is5thLine ? refetchSyncRequests : () => {});
+  // Enable realtime notifications for new sync requests (only for authorized users)
+  useLenderSyncRealtimeNotifications(canSeeFlexSync ? refetchSyncRequests : () => {});
 
   // Debounce search query for server-side search
   useEffect(() => {
@@ -1002,8 +1004,8 @@ export default function Lenders() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Sync dropdown - only for 5th Line */}
-                {is5thLine && (
+                {/* Sync dropdown - only for ppina and 5th Line admins */}
+                {canSeeFlexSync && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -1062,7 +1064,7 @@ export default function Lenders() {
 
             <div className="space-y-4">
                 {/* Flex Sync Requests Panel - show when toggled or has pending requests */}
-                {is5thLine && (showSyncPanel || syncPendingCount > 0) && (
+                {canSeeFlexSync && (showSyncPanel || syncPendingCount > 0) && (
                   <LenderSyncRequestsPanel onLenderApproved={refetchMasterLenders} />
                 )}
                 
@@ -1269,7 +1271,7 @@ export default function Lenders() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                      {is5thLine && (
+                      {canSeeFlexSync && (
                       <Button
                         variant="default"
                         size="sm"

@@ -1,18 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 
 let instanceCounter = 0;
 
 export function useDealNotificationCounts(dealIds: string[]) {
-  const { user } = useAuth();
-  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+  const { canSeeFlexSync } = useCanSeeFlexSync();
   const [flexCounts, setFlexCounts] = useState<Record<string, number>>({});
   const dealIdsKey = dealIds.join(',');
   const instanceId = useRef(++instanceCounter);
 
   const fetchCounts = useCallback(async () => {
-    if (dealIds.length === 0 || !is5thLine) {
+    if (dealIds.length === 0 || !canSeeFlexSync) {
       setFlexCounts({});
       return;
     }

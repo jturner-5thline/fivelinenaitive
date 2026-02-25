@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useBrowserNotifications, sendDesktopNotification } from '@/hooks/useBrowserNotifications';
+import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 
 interface NotificationSettingsProps {
   collapsible?: boolean;
@@ -21,6 +22,7 @@ interface NotificationSettingsProps {
 export function NotificationSettings({ collapsible = false, open, onOpenChange }: NotificationSettingsProps) {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+  const { canSeeFlexSync } = useCanSeeFlexSync();
   const { profile, isLoading, updateProfile } = useProfile();
   const { permission, isSupported, isGranted, isDenied, requestPermission } = useBrowserNotifications();
   const [isSaving, setIsSaving] = useState(false);
@@ -243,7 +245,7 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
               />
             </div>
 
-            {is5thLine && (
+            {canSeeFlexSync && (
             <div className="flex items-center justify-between">
               <Label htmlFor="notify_flex_alerts" className="flex flex-col gap-1">
                 <span className="flex items-center gap-2">
@@ -263,7 +265,7 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
             </div>
             )}
 
-            {is5thLine && (
+            {canSeeFlexSync && (
             <div className="flex items-center justify-between">
               <Label htmlFor="notify_info_request_emails" className="flex flex-col gap-1">
                 <span className="flex items-center gap-2">
