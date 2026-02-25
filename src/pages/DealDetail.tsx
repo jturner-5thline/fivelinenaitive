@@ -4318,9 +4318,6 @@ export default function DealDetail() {
                     <div className="lg:col-span-2">
                       <DealTasksPanel dealId={id!} />
                     </div>
-                    <div className="lg:col-span-1">
-                      <InfoRequestsPanel />
-                    </div>
                   </div>
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
