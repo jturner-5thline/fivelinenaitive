@@ -63,7 +63,6 @@ export default function Dashboard() {
     const sorted = [...activePreset.grid_config].sort((a, b) => (a.y * 12 + a.x) - (b.y * 12 + b.x));
     const [moved] = sorted.splice(fromIndex, 1);
     sorted.splice(toIndex, 0, moved);
-    // Reassign positions
     const updated = sorted.map((item, idx) => ({
       ...item,
       x: (idx % 2) * 6,
@@ -145,7 +144,6 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">Calendar</span>
               </div>
             </Card>
-            <FullCalendarView open={calendarOpen} onOpenChange={setCalendarOpen} />
             <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setEmailOpen(true)}>
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="relative h-12 w-12 rounded-xl border border-[hsl(280,85%,65%,0.55)] bg-[hsl(275,80%,40%,0.3)] backdrop-blur-xl flex items-center justify-center overflow-hidden shadow-[inset_0_1px_1px_hsl(280,85%,75%,0.35),0_4px_24px_hsl(275,80%,45%,0.4)] before:absolute before:inset-0 before:bg-[linear-gradient(135deg,hsl(280,85%,75%,0.3)_0%,transparent_50%,hsl(275,80%,40%,0.15)_100%)] before:rounded-xl">
@@ -154,11 +152,6 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">Email</span>
               </div>
             </Card>
-            <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-              <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
-                <DealEmailsTab dealId="" />
-              </DialogContent>
-            </Dialog>
             <QuickPromptsDialog
               trigger={
                 <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
@@ -185,6 +178,14 @@ export default function Dashboard() {
             />
           </div>
           </HintTooltip>
+
+          {/* Dialogs moved outside the grid so they don't occupy grid cells */}
+          <FullCalendarView open={calendarOpen} onOpenChange={setCalendarOpen} />
+          <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+            <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+              <DealEmailsTab dealId="" />
+            </DialogContent>
+          </Dialog>
 
           {/* Header row: Edit button */}
           <div className="flex items-center justify-between">

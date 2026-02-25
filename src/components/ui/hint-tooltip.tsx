@@ -74,7 +74,7 @@ export function HintTooltip({
   };
 
   return (
-    <div className="relative inline-block">
+    <div className="relative w-full">
       {/* Highlight glow effect around the element */}
       {showHint && (
         <>
