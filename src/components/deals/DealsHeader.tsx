@@ -227,7 +227,7 @@ export function DealsHeader() {
                     localStorage.removeItem('dismissed-hints');
                     localStorage.removeItem('hints-fully-dismissed');
                     sessionStorage.removeItem('demo-tour-shown-this-session');
-                    window.location.href = '/deals';
+                    window.dispatchEvent(new Event('restart-platform-tour'));
                   }}
                   className="flex items-center gap-2 cursor-pointer"
                 >
