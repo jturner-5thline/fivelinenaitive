@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Lightbulb, Users, Settings, User, LogOut, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useTheme } from "next-themes";
 import naitiveIconLight from "@/assets/naitive-icon-light.png";
@@ -198,6 +198,10 @@ export function AppSidebar() {
                 <DropdownMenuItem onClick={() => navigate("/settings")}>
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.dispatchEvent(new Event('restart-platform-tour'))}>
+                  <Compass className="mr-2 h-4 w-4" />
+                  Take a tour
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">

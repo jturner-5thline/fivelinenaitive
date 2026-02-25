@@ -19,7 +19,7 @@ import { PipelineSelector } from '@/components/deals/PipelineSelector';
 
 import { EmailVerificationBanner } from '@/components/deals/EmailVerificationBanner';
 import { DemoBanner } from '@/components/deals/DemoBanner';
-import { DemoTour } from '@/components/deals/DemoTour';
+
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
 
 import { LatestUpdatesDropdown } from '@/components/deals/LatestUpdatesDropdown';
@@ -190,7 +190,7 @@ export default function Dashboard() {
 
         <main className="container mx-auto max-w-7xl px-4 pt-4 pb-3 sm:px-6 lg:px-8">
           <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
-          <DemoTour />
+          
           <EmailVerificationBanner />
           <DemoBanner onDataCleared={refreshDeals} />
           <CreateCompanyBanner />
