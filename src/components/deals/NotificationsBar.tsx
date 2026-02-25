@@ -123,7 +123,7 @@ export function NotificationsBar({ deals }: NotificationsBarProps) {
         {staleDeals.map((deal) => (
           <Link
             key={deal.dealId}
-            to={`/deal/${deal.dealId}?highlight=stale`}
+            to={`/deal/${deal.dealId}?tab=lenders&highlight=stale`}
             className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive/10 border border-destructive/20 hover:bg-destructive/20 transition-colors cursor-pointer w-64 shrink-0 group"
           >
             <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
