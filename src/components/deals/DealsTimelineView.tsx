@@ -302,7 +302,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                 <div style={{ minWidth: Math.max(600, globalWeeks * (expanded ? 80 : 50)) }}>
                   {/* Week tick headers */}
                   <div className="flex border-b border-border mb-1">
-                    <div className={cn('shrink-0 text-[10px] text-muted-foreground px-2', expanded ? 'w-52' : 'w-40')}>Deal</div>
+                    <div className={cn('shrink-0 text-[10px] text-muted-foreground px-2 sticky left-0 z-10 bg-card', expanded ? 'w-52' : 'w-40')}>Deal</div>
                     <div className="flex-1 flex">
                       {weekTicks.map((tick, i) => (
                         <div
@@ -339,7 +339,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                       >
                         <button
                           className={cn(
-                            'shrink-0 px-2 text-left text-xs font-medium truncate border-l-2',
+                            'shrink-0 px-2 text-left text-xs font-medium truncate border-l-2 sticky left-0 z-10 bg-card',
                             expanded ? 'w-52 py-3' : 'w-40 py-2',
                             DEAL_ROW_COLORS[dealIdx % DEAL_ROW_COLORS.length],
                             expandedDealId === deal.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
