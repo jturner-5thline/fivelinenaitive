@@ -62,11 +62,18 @@ export function MemoSectionContextMenu({
       </ContextMenu>
       
       {/* Hidden popover anchor for context menu trigger */}
-      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen} modal>
         <PopoverTrigger asChild>
           <span className="absolute top-0 right-0 w-0 h-0 pointer-events-none" />
         </PopoverTrigger>
-        <PopoverContent className="w-[360px] p-0" align="end" side="left">
+        <PopoverContent
+          className="w-[360px] p-0"
+          align="end"
+          side="left"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onFocusOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <MemoCommentThreadContent
             section={section}
             sectionLabel={sectionLabel}
