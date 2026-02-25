@@ -146,6 +146,37 @@ export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap:
   const [configs, setConfigs] = useState<Record<string, DealPipelineConfig>>({});
   const [isLoading, setIsLoading] = useState(true);
 
+  // Undo/redo history
+  const historyRef = useRef<Record<string, DealPipelineConfig>[]>([]);
+  const historyIndexRef = useRef(-1);
+  const skipHistoryRef = useRef(false);
+
+  const pushHistory = useCallback((snapshot: Record<string, DealPipelineConfig>) => {
+    if (skipHistoryRef.current) return;
+    // Trim any forward history
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    historyRef.current.push(JSON.parse(JSON.stringify(snapshot)));
+    historyIndexRef.current = historyRef.current.length - 1;
+    // Limit history to 50 entries
+    if (historyRef.current.length > 50) {
+      historyRef.current.shift();
+      historyIndexRef.current--;
+    }
+  }, []);
+
+  const setConfigsWithHistory = useCallback((updater: (prev: Record<string, DealPipelineConfig>) => Record<string, DealPipelineConfig>) => {
+    setConfigs(prev => {
+      const next = updater(prev);
+      pushHistory(next);
+      return next;
+    });
+  }, [pushHistory]);
+
+  const canUndo = historyIndexRef.current > 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+
+  const [undoRedoTick, setUndoRedoTick] = useState(0); // force re-render for canUndo/canRedo
+
   const fetchAll = useCallback(async () => {
     if (dealIds.length === 0) { setIsLoading(false); return; }
     setIsLoading(true);
@@ -175,6 +206,9 @@ export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap:
         }
       }
       setConfigs(map);
+      // Initialize undo history with fetched state
+      historyRef.current = [JSON.parse(JSON.stringify(map))];
+      historyIndexRef.current = 0;
     } catch (err) {
       console.error('Error fetching pipeline configs:', err);
     } finally {
@@ -219,7 +253,7 @@ export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap:
   }, [user?.id]);
 
   const updateStageWeeks = useCallback((dealId: string, stageId: string, delta: number) => {
-    setConfigs(prev => {
+    setConfigsWithHistory(prev => {
       const cfg = prev[dealId];
       if (!cfg) return prev;
       const updated = {
@@ -231,20 +265,20 @@ export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap:
       saveConfig(updated);
       return { ...prev, [dealId]: updated };
     });
-  }, [saveConfig]);
+  }, [saveConfig, setConfigsWithHistory]);
 
   const updateStartDate = useCallback((dealId: string, newDate: string) => {
-    setConfigs(prev => {
+    setConfigsWithHistory(prev => {
       const cfg = prev[dealId];
       if (!cfg) return prev;
       const updated = { ...cfg, startDate: newDate };
       saveConfig(updated);
       return { ...prev, [dealId]: updated };
     });
-  }, [saveConfig]);
+  }, [saveConfig, setConfigsWithHistory]);
 
   const updateStageName = useCallback((dealId: string, stageId: string, newName: string) => {
-    setConfigs(prev => {
+    setConfigsWithHistory(prev => {
       const cfg = prev[dealId];
       if (!cfg) return prev;
       const updated = {
@@ -256,10 +290,10 @@ export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap:
       saveConfig(updated);
       return { ...prev, [dealId]: updated };
     });
-  }, [saveConfig]);
+  }, [saveConfig, setConfigsWithHistory]);
 
   const addStage = useCallback((dealId: string) => {
-    setConfigs(prev => {
+    setConfigsWithHistory(prev => {
       const cfg = prev[dealId];
       if (!cfg) return prev;
       const maxOrder = Math.max(0, ...cfg.stages.map(s => s.order));
@@ -273,10 +307,10 @@ export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap:
       saveConfig(updated);
       return { ...prev, [dealId]: updated };
     });
-  }, [saveConfig]);
+  }, [saveConfig, setConfigsWithHistory]);
 
   const removeStage = useCallback((dealId: string, stageId: string) => {
-    setConfigs(prev => {
+    setConfigsWithHistory(prev => {
       const cfg = prev[dealId];
       if (!cfg || cfg.stages.length <= 1) return prev;
       const updated = {
@@ -286,7 +320,36 @@ export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap:
       saveConfig(updated);
       return { ...prev, [dealId]: updated };
     });
+  }, [saveConfig, setConfigsWithHistory]);
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current--;
+    const snapshot = JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current]));
+    skipHistoryRef.current = true;
+    setConfigs(snapshot);
+    skipHistoryRef.current = false;
+    setUndoRedoTick(t => t + 1);
+    // Save all changed configs
+    Object.values(snapshot).forEach((cfg: any) => saveConfig(cfg));
   }, [saveConfig]);
 
-  return { configs, isLoading, updateStageWeeks, updateStartDate, updateStageName, addStage, removeStage };
+  const redo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current++;
+    const snapshot = JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current]));
+    skipHistoryRef.current = true;
+    setConfigs(snapshot);
+    skipHistoryRef.current = false;
+    setUndoRedoTick(t => t + 1);
+    Object.values(snapshot).forEach((cfg: any) => saveConfig(cfg));
+  }, [saveConfig]);
+
+  return {
+    configs, isLoading, updateStageWeeks, updateStartDate, updateStageName, addStage, removeStage,
+    undo, redo,
+    canUndo: historyIndexRef.current > 0,
+    canRedo: historyIndexRef.current < historyRef.current.length - 1,
+    undoRedoTick,
+  };
 }
