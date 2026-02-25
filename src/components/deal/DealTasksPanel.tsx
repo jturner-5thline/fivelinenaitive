@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,6 +131,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
         ) : tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tasks yet. Create one to get started.</p>
         ) : (
+          <ScrollArea className="max-h-[380px]">
           <div className="space-y-4">
             {pendingTasks.length > 0 && (
               <div className="space-y-2">
@@ -230,6 +232,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
               </div>
             )}
           </div>
+          </ScrollArea>
         )}
           </CardContent>
         </CollapsibleContent>
