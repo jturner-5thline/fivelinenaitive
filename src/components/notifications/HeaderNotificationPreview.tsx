@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
+import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 
 interface NotificationPreview {
   id: string;
@@ -14,6 +15,7 @@ interface NotificationPreview {
 export function HeaderNotificationPreview() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { canSeeFlexSync } = useCanSeeFlexSync();
   const [preview, setPreview] = useState<NotificationPreview | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -71,8 +73,12 @@ export function HeaderNotificationPreview() {
           }
           showPreview(n.title || n.message || 'New notification', n.id, n.deal_id ? `/deal/${n.deal_id}?tab=deal-management` : '/deals');
         }
-      )
-      .on(
+      );
+
+
+    // Only subscribe to FLEx-related tables for authorized users
+    if (canSeeFlexSync) {
+      channel.on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -85,8 +91,9 @@ export function HeaderNotificationPreview() {
           const link = n.deal_id ? `/deal/${n.deal_id}?tab=deal-management` : '/deals';
           showPreview(msg, n.id, link);
         }
-      )
-      .on(
+      );
+
+      channel.on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -101,13 +108,15 @@ export function HeaderNotificationPreview() {
             showPreview(`FLEx Sync: "${lenderName}" requires review`, n.id, '/lenders');
           }
         }
-      )
-      .subscribe();
+      );
+    }
+
+    channel.subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, showPreview]);
+  }, [user, showPreview, canSeeFlexSync]);
 
   useEffect(() => {
     return () => {

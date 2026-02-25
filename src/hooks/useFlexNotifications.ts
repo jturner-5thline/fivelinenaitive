@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 
 export interface FlexNotification {
   id: string;
@@ -19,12 +20,12 @@ export interface FlexNotification {
 
 export function useFlexNotifications(limit: number = 10) {
   const { user } = useAuth();
-  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+  const { canSeeFlexSync } = useCanSeeFlexSync();
   const [notifications, setNotifications] = useState<FlexNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user || !is5thLine) {
+    if (!user || !canSeeFlexSync) {
       setNotifications([]);
       setIsLoading(false);
       return;

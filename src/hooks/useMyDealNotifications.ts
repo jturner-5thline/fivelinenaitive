@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
+import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 
 /**
  * Fetches the total count of actionable FLEx info notifications
@@ -8,13 +9,14 @@ import { useProfile } from '@/hooks/useProfile';
  */
 export function useMyDealNotifications() {
   const { profile } = useProfile();
+  const { canSeeFlexSync } = useCanSeeFlexSync();
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const displayName = profile?.display_name;
 
   const fetchCount = useCallback(async () => {
-    if (!displayName) {
+    if (!displayName || !canSeeFlexSync) {
       setCount(0);
       setIsLoading(false);
       return;
