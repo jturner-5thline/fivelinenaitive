@@ -393,7 +393,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                                   title={`${stage.name}: ${stage.weeks}w (${format(stage.startDate, 'MMM d')} – ${format(stage.endDate, 'MMM d')})`}
                                 >
                                   <span className="truncate px-0.5">
-                                    {stagePct > 18 ? stage.name : stagePct > 10 ? `${stage.weeks}w` : ''}
+                                    {stagePct > 18 ? `${stage.name} (${stage.weeks}w)` : `${stage.weeks}w`}
                                   </span>
                                   {/* Resize handle on right edge (except last stage) */}
                                   {!isLast && (
