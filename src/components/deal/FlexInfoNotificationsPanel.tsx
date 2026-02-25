@@ -70,8 +70,33 @@ export function FlexInfoNotificationsPanel({ dealId }: FlexInfoNotificationsPane
     }
   };
 
-  if (isLoading || notifications.length === 0) {
-    return null;
+  if (isLoading) {
+    return (
+      <Card className="h-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Info Requests
+          </CardTitle>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (notifications.length === 0) {
+    return (
+      <Card className="h-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Info Requests
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-4">No info requests yet</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   const getStatusStyles = (status: string) => {
