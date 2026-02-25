@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Deal } from '@/types/deal';
 import { useMultiDealPipelineConfigs, DealPipelineConfig } from '@/hooks/useDealPipelineConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
-import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle, GripHorizontal, Undo2, Redo2 } from 'lucide-react';
+import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle, GripHorizontal, Undo2, Redo2, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, addDays, differenceInCalendarWeeks, min as dateMin, max as dateMax } from 'date-fns';
 
@@ -66,6 +67,9 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
 
   // Track which deal's editor is expanded
   const [expandedDealId, setExpandedDealId] = useState<string | null>(null);
+
+  // Fullscreen / expanded mode
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Drag state
   const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
@@ -292,45 +296,18 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
       ) : (
         <>
           {/* Multi-deal Gantt Chart */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Timeline</CardTitle>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={undo}
-                    disabled={!canUndo}
-                    title="Undo (Ctrl+Z)"
-                  >
-                    <Undo2 className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={redo}
-                    disabled={!canRedo}
-                    title="Redo (Ctrl+Shift+Z)"
-                  >
-                    <Redo2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="w-full pb-4">
-                <div style={{ minWidth: Math.max(600, globalWeeks * 50) }}>
+          {(() => {
+            const ganttContent = (expanded: boolean) => (
+              <ScrollArea className={cn('w-full pb-4', expanded && 'h-[70vh]')}>
+                <div style={{ minWidth: Math.max(600, globalWeeks * (expanded ? 80 : 50)) }}>
                   {/* Week tick headers */}
                   <div className="flex border-b border-border mb-1">
-                    <div className="w-40 shrink-0 text-[10px] text-muted-foreground px-2">Deal</div>
+                    <div className={cn('shrink-0 text-[10px] text-muted-foreground px-2', expanded ? 'w-52' : 'w-40')}>Deal</div>
                     <div className="flex-1 flex">
                       {weekTicks.map((tick, i) => (
                         <div
                           key={i}
-                          className="text-[10px] text-muted-foreground text-center shrink-0"
+                          className={cn('text-muted-foreground text-center shrink-0', expanded ? 'text-xs' : 'text-[10px]')}
                           style={{ width: `${100 / Math.max(globalWeeks, 1)}%` }}
                         >
                           {format(tick, 'MMM d')}
@@ -348,7 +325,6 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                     const estimatedClose = addDays(dealStart, totalW * 7);
                     const stageRanges = computeStageRanges(cfg);
 
-                    // Position relative to globalStart
                     const offsetWeeks = differenceInCalendarWeeks(dealStart, globalStart, { weekStartsOn: 1 });
                     const offsetPct = (offsetWeeks / Math.max(globalWeeks, 1)) * 100;
                     const widthPct = (totalW / Math.max(globalWeeks, 1)) * 100;
@@ -361,10 +337,10 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                           'hover:bg-muted/30 transition-colors'
                         )}
                       >
-                        {/* Deal name label */}
                         <button
                           className={cn(
-                            'w-40 shrink-0 px-2 py-2 text-left text-xs font-medium truncate border-l-2',
+                            'shrink-0 px-2 text-left text-xs font-medium truncate border-l-2',
+                            expanded ? 'w-52 py-3' : 'w-40 py-2',
                             DEAL_ROW_COLORS[dealIdx % DEAL_ROW_COLORS.length],
                             expandedDealId === deal.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                           )}
@@ -380,12 +356,12 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                           </span>
                         </button>
 
-                        {/* Gantt bar area */}
-                        <div className="flex-1 h-10 relative" ref={ganttAreaRef}>
+                        <div className={cn('flex-1 relative', expanded ? 'h-14' : 'h-10')} ref={ganttAreaRef}>
                           <div
                             className={cn(
-                              'absolute top-1 h-8 flex rounded-md cursor-grab active:cursor-grabbing',
+                              'absolute flex rounded-md cursor-grab active:cursor-grabbing',
                               'bg-background/5 shadow-[0_0_15px_rgba(139,92,246,0.08)]',
+                              expanded ? 'top-2 h-10' : 'top-1 h-8',
                               draggingDealId === deal.id && 'ring-2 ring-primary/50 shadow-lg'
                             )}
                             style={{ left: `${offsetPct}%`, width: `${Math.max(widthPct, 0.5)}%` }}
@@ -406,7 +382,8 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                                 <div
                                   key={stage.id}
                                   className={cn(
-                                    'relative flex items-center justify-center text-[10px] font-semibold',
+                                    'relative flex items-center justify-center font-semibold',
+                                    expanded ? 'text-xs' : 'text-[10px]',
                                     STAGE_STYLES[i % STAGE_STYLES.length].bg,
                                     STAGE_STYLES[i % STAGE_STYLES.length].border,
                                     STAGE_STYLES[i % STAGE_STYLES.length].text,
@@ -417,10 +394,9 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                                   style={{ width: `${stagePct}%` }}
                                   title={`${stage.name}: ${stage.weeks}w (${format(stage.startDate, 'MMM d')} – ${format(stage.endDate, 'MMM d')})`}
                                 >
-                                  <span className="truncate px-0.5">
+                                  <span className="truncate px-1">
                                     {stagePct > 18 ? `${stage.name} (${stage.weeks}w)` : `${stage.weeks}w`}
                                   </span>
-                                  {/* Resize handle on right edge (except last stage) */}
                                   {!isLast && (
                                     <div
                                       className="absolute right-0 top-0 w-2 h-full cursor-col-resize z-20 group/resize hover:bg-background/30"
@@ -443,8 +419,58 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                 </div>
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>
-            </CardContent>
-          </Card>
+            );
+
+            const toolbarButtons = (
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+                  <Undo2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
+                  <Redo2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setIsFullscreen(f => !f)}
+                  title={isFullscreen ? 'Exit fullscreen' : 'Expand timeline'}
+                >
+                  {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            );
+
+            return (
+              <>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-medium">Timeline</CardTitle>
+                      {toolbarButtons}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {ganttContent(false)}
+                  </CardContent>
+                </Card>
+
+                <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+                  <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] p-0">
+                    <DialogHeader className="px-6 pt-6 pb-2">
+                      <div className="flex items-center justify-between">
+                        <DialogTitle className="text-base font-medium">Deal Timeline</DialogTitle>
+                        {toolbarButtons}
+                      </div>
+                    </DialogHeader>
+                    <div className="px-6 pb-6">
+                      {ganttContent(true)}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
+            );
+          })()}
 
           {/* Expanded stage editor for selected deal */}
           {expandedDealId && configs[expandedDealId] && (() => {
