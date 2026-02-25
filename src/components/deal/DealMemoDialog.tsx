@@ -419,14 +419,14 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
               {onGoToDataRoom && (
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon"
+                  className="h-8 w-8"
                   onClick={() => {
                     setIsOpen(false);
                     onGoToDataRoom();
                   }}
                 >
-                  <FolderOpen className="h-4 w-4 mr-2" />
-                  Data Room
+                  <FolderOpen className="h-4 w-4" />
                 </Button>
               )}
               <MemoAuditLogPopover entries={auditEntries} isLoading={auditLoading} onRevert={handleRevert} />
