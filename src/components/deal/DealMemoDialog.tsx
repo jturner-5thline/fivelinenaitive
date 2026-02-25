@@ -402,8 +402,10 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
                 </Button>
               )}
 
-              {/* Admin self-approve button - only show when memo has content */}
+              {/* Admin self-approve button - only show when memo has content and is not already approved without changes */}
               {userRole === 'admin' && !isCurrentApprover && memo && (
+                approvalInfo.approvalState !== 'approved' || hasChanges
+              ) && (
                 localValues.narrative.trim() || localValues.highlights.trim() || localValues.hurdles.trim() || localValues.lender_notes.trim() || localValues.analyst_notes.trim() || localValues.other_notes.trim()
               ) && (
                 <Button
