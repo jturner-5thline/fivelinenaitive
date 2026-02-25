@@ -160,15 +160,8 @@ function MemoCommentThreadContent({
     setTimeout(() => newCommentRef.current?.focus(), 100);
   }, []);
 
-  const extractMentionedIds = (text: string): string[] => {
-    const ids: string[] = [];
-    const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
-    let match;
-    while ((match = mentionRegex.exec(text)) !== null) {
-      ids.push(match[2]);
-    }
-    return ids;
-  };
+  const [mentionedIds, setMentionedIds] = useStateInline<string[]>([]);
+  const [replyMentionedIds, setReplyMentionedIds] = useStateInline<string[]>([]);
 
   const handleTextChange = (value: string, type: 'new' | 'reply') => {
     if (type === 'new') setNewComment(value);
@@ -203,11 +196,16 @@ function MemoCommentThreadContent({
     const atIndex = textBeforeCursor.lastIndexOf('@');
     const before = text.slice(0, atIndex);
     const after = text.slice(cursorPosition);
-    const mentionTag = `@[${member.display_name}](${member.user_id})`;
-    const newVal = before + mentionTag + ' ' + after;
+    const mentionDisplay = `@${member.display_name}`;
+    const newVal = before + mentionDisplay + ' ' + after;
 
-    if (type === 'new') setNewComment(newVal);
-    else setReplyText(newVal);
+    if (type === 'new') {
+      setNewComment(newVal);
+      setMentionedIds(prev => prev.includes(member.user_id) ? prev : [...prev, member.user_id]);
+    } else {
+      setReplyText(newVal);
+      setReplyMentionedIds(prev => prev.includes(member.user_id) ? prev : [...prev, member.user_id]);
+    }
     setShowMentions(false);
     ref.focus();
   };
@@ -220,18 +218,18 @@ function MemoCommentThreadContent({
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
     setIsSubmitting(true);
-    const ids = extractMentionedIds(newComment);
-    await onAddComment(newComment, ids);
+    await onAddComment(newComment, mentionedIds);
     setNewComment('');
+    setMentionedIds([]);
     setIsSubmitting(false);
   };
 
   const handleSubmitReply = async (parentId: string) => {
     if (!replyText.trim()) return;
     setIsSubmitting(true);
-    const ids = extractMentionedIds(replyText);
-    await onReply(parentId, replyText, ids);
+    await onReply(parentId, replyText, replyMentionedIds);
     setReplyText('');
+    setReplyMentionedIds([]);
     setReplyingTo(null);
     setIsSubmitting(false);
   };
