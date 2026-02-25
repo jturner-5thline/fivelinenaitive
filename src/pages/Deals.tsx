@@ -186,7 +186,137 @@ export default function Dashboard() {
       </Helmet>
 
       <div className="bg-transparent">
-        <DealsHeader />
+        <DealsHeader>
+          <div className="flex items-center gap-2 mr-2">
+            {showMilestones ? (
+              <MilestoneManagerFilter
+                selected={filters.manager}
+                onChange={(manager) => updateFilters({ manager })}
+              />
+            ) : (
+              <div className="flex-1">
+                <DealFilters
+                  filters={filters}
+                  onFilterChange={updateFilters}
+                />
+              </div>
+            )}
+
+            {/* Stale / Flag / Notification toggles */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={filters.staleOnly}
+                    onPressedChange={(pressed) => {
+                      if (pressed) {
+                        updateFilters({ staleOnly: true, flaggedOnly: false, hasNotificationsOnly: false });
+                      } else {
+                        updateFilters({ staleOnly: false });
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className={`h-8 w-8 p-0 relative backdrop-blur-md border transition-all duration-200 ${filters.staleOnly ? 'bg-gradient-to-br from-amber-500/25 to-orange-600/20 border-amber-500/50 text-amber-400 shadow-[0_0_12px_hsl(38,90%,50%,0.2)] hover:from-amber-500/30 hover:to-orange-600/25' : 'bg-gradient-to-br from-amber-500/10 to-orange-600/5 border-amber-500/20 text-amber-400/60 hover:from-amber-500/15 hover:to-orange-600/10 hover:border-amber-500/35 hover:text-amber-400'}`}
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    {staleDealCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-2 -right-2 h-5 min-w-5 px-1.5 text-xs rounded-full"
+                      >
+                        {staleDealCount}
+                      </Badge>
+                    )}
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Show only stale deals ({preferences.staleDealsDays}+ days)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={filters.flaggedOnly}
+                    onPressedChange={(pressed) => {
+                      if (pressed) {
+                        updateFilters({ flaggedOnly: true, staleOnly: false, hasNotificationsOnly: false });
+                      } else {
+                        updateFilters({ flaggedOnly: false });
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.flaggedOnly ? 'bg-gradient-to-br from-red-500/25 to-red-900/20 border-red-500/50 text-red-400 shadow-[0_0_12px_hsl(0,70%,45%,0.2)] hover:from-red-500/30 hover:to-red-900/25' : 'bg-gradient-to-br from-red-500/10 to-red-900/5 border-red-500/20 text-red-400/60 hover:from-red-500/15 hover:to-red-900/10 hover:border-red-500/35 hover:text-red-400'}`}
+                  >
+                    <Flag className="h-4 w-4" />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Show only flagged deals</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={filters.hasNotificationsOnly}
+                    onPressedChange={(pressed) => {
+                      if (pressed) {
+                        updateFilters({ hasNotificationsOnly: true, staleOnly: false, flaggedOnly: false });
+                      } else {
+                        updateFilters({ hasNotificationsOnly: false });
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className={`h-8 w-8 p-0 backdrop-blur-md border transition-all duration-200 ${filters.hasNotificationsOnly ? 'bg-gradient-to-br from-cyan-500/25 to-teal-600/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_12px_hsl(185,70%,50%,0.2)] hover:from-cyan-500/30 hover:to-teal-600/25' : 'bg-gradient-to-br from-cyan-500/10 to-teal-600/5 border-cyan-500/20 text-cyan-400/60 hover:from-cyan-500/15 hover:to-teal-600/10 hover:border-cyan-500/35 hover:text-cyan-400'}`}
+                  >
+                    <Bell className="h-4 w-4" />
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Show only deals with notifications</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* Sort Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 h-8 shrink-0">
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Sort</span>
+                  {sortField === 'flexEngagement' && (
+                    <Flame className="h-3 w-3 text-orange-500" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => toggleSort('updatedAt')} className={sortField === 'updatedAt' ? 'bg-accent' : ''}>
+                  Updated Date {sortField === 'updatedAt' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('createdAt')} className={sortField === 'createdAt' ? 'bg-accent' : ''}>
+                  Created Date {sortField === 'createdAt' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('title')} className={sortField === 'title' ? 'bg-accent' : ''}>
+                  Title {sortField === 'title' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('value')} className={sortField === 'value' ? 'bg-accent' : ''}>
+                  Deal Value {sortField === 'value' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleSort('flexEngagement')} className={sortField === 'flexEngagement' ? 'bg-accent' : ''}>
+                  Engagement Score {sortField === 'flexEngagement' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </DealsHeader>
 
         <main className="container mx-auto max-w-7xl px-4 pt-4 pb-3 sm:px-6 lg:px-8">
           <OnboardingModal open={showOnboarding} onComplete={completeOnboarding} />
