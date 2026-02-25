@@ -14,7 +14,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, CalendarIcon, CheckCircle2, Circle, Clock } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Plus, Trash2, CalendarIcon, CheckCircle2, Circle, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { useDealTasks } from '@/hooks/useDealTasks';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,12 +32,13 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const { tasks, isLoading, createTask, updateTaskStatus, deleteTask } = useDealTasks(dealId);
   const teamMembers = useTeamMembers();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  
   // Build a lookup for team member display names
   const memberMap = useMemo(() => {
     const map = new Map<string, TeamMember>();
@@ -100,15 +102,29 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="text-base">Tasks</CardTitle>
-        <Button size="sm" variant="outline" onClick={() => setIsCreateOpen(true)} className="gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          Add Task
-        </Button>
-      </CardHeader>
-      <CardContent>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="flex flex-row items-center justify-between pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="text-base flex items-center gap-2">
+              Tasks
+              {pendingTasks.length > 0 && !isOpen && (
+                <span className="text-xs font-normal text-muted-foreground">({pendingTasks.length} open)</span>
+              )}
+            </CardTitle>
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }} className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                Add Task
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
         {isLoading && tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">Loading tasks…</p>
         ) : tasks.length === 0 ? (
@@ -215,7 +231,8 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
             )}
           </div>
         )}
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
 
       {/* Create Task Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -287,6 +304,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+      </Card>
+    </Collapsible>
   );
 }
