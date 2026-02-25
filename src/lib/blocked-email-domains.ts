@@ -3,7 +3,7 @@
  * Only corporate/business email addresses are permitted.
  */
 export const BLOCKED_EMAIL_DOMAINS = [
-  'gmail.com',
+  
   'outlook.com',
   'hotmail.com',
   'live.com',
