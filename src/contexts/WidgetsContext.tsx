@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 
 export type WidgetMetric = 
   | 'active-deals'
@@ -57,49 +59,6 @@ const DEFAULT_SPECIAL_WIDGETS: Record<SpecialWidget, boolean> = {
   'stale-deals': false,
 };
 
-const STORAGE_KEY = 'dashboard-widgets';
-const SPECIAL_WIDGETS_STORAGE_KEY = 'dashboard-special-widgets';
-
-const loadWidgets = (): Widget[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.error('Failed to load widgets from localStorage:', error);
-  }
-  return DEFAULT_WIDGETS;
-};
-
-const saveWidgets = (widgets: Widget[]) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
-  } catch (error) {
-    console.error('Failed to save widgets to localStorage:', error);
-  }
-};
-
-const loadSpecialWidgets = (): Record<SpecialWidget, boolean> => {
-  try {
-    const stored = localStorage.getItem(SPECIAL_WIDGETS_STORAGE_KEY);
-    if (stored) {
-      return { ...DEFAULT_SPECIAL_WIDGETS, ...JSON.parse(stored) };
-    }
-  } catch (error) {
-    console.error('Failed to load special widgets from localStorage:', error);
-  }
-  return DEFAULT_SPECIAL_WIDGETS;
-};
-
-const saveSpecialWidgets = (specialWidgets: Record<SpecialWidget, boolean>) => {
-  try {
-    localStorage.setItem(SPECIAL_WIDGETS_STORAGE_KEY, JSON.stringify(specialWidgets));
-  } catch (error) {
-    console.error('Failed to save special widgets to localStorage:', error);
-  }
-};
-
 interface WidgetsContextType {
   widgets: Widget[];
   addWidget: (widget: Omit<Widget, 'id'>) => void;
@@ -108,47 +67,130 @@ interface WidgetsContextType {
   reorderWidgets: (widgets: Widget[]) => void;
   specialWidgets: Record<SpecialWidget, boolean>;
   toggleSpecialWidget: (widget: SpecialWidget) => void;
+  isAdminUser: boolean;
 }
 
 const WidgetsContext = createContext<WidgetsContextType | undefined>(undefined);
 
 export function WidgetsProvider({ children }: { children: ReactNode }) {
-  const [widgets, setWidgets] = useState<Widget[]>(loadWidgets);
-  const [specialWidgets, setSpecialWidgets] = useState<Record<SpecialWidget, boolean>>(loadSpecialWidgets);
+  const { company, isAdmin } = useCompany();
+  const [widgets, setWidgets] = useState<Widget[]>(DEFAULT_WIDGETS);
+  const [specialWidgets, setSpecialWidgets] = useState<Record<SpecialWidget, boolean>>(DEFAULT_SPECIAL_WIDGETS);
+  const [loaded, setLoaded] = useState(false);
 
+  // Load widgets from company_settings
   useEffect(() => {
-    saveWidgets(widgets);
-  }, [widgets]);
+    if (!company?.id) return;
 
-  useEffect(() => {
-    saveSpecialWidgets(specialWidgets);
-  }, [specialWidgets]);
+    const loadFromCompany = async () => {
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('deals_widgets_config, deals_special_widgets')
+        .eq('company_id', company.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Failed to load company widgets:', error);
+        // Fall back to localStorage for migration
+        fallbackToLocalStorage();
+        setLoaded(true);
+        return;
+      }
+
+      if (data?.deals_widgets_config) {
+        setWidgets(data.deals_widgets_config as unknown as Widget[]);
+      } else {
+        // Migrate from localStorage if available
+        fallbackToLocalStorage();
+      }
+
+      if (data?.deals_special_widgets) {
+        setSpecialWidgets({ ...DEFAULT_SPECIAL_WIDGETS, ...(data.deals_special_widgets as unknown as Record<SpecialWidget, boolean>) });
+      } else {
+        const stored = localStorage.getItem('dashboard-special-widgets');
+        if (stored) {
+          try {
+            setSpecialWidgets({ ...DEFAULT_SPECIAL_WIDGETS, ...JSON.parse(stored) });
+          } catch {}
+        }
+      }
+
+      setLoaded(true);
+    };
+
+    loadFromCompany();
+  }, [company?.id]);
+
+  const fallbackToLocalStorage = () => {
+    try {
+      const stored = localStorage.getItem('dashboard-widgets');
+      if (stored) {
+        setWidgets(JSON.parse(stored));
+      }
+    } catch {}
+  };
+
+  // Save to company_settings (debounced via effect)
+  const saveToCompany = useCallback(async (newWidgets: Widget[], newSpecialWidgets: Record<SpecialWidget, boolean>) => {
+    if (!company?.id || !loaded) return;
+
+    const { error } = await supabase
+      .from('company_settings')
+      .update({
+        deals_widgets_config: newWidgets as any,
+        deals_special_widgets: newSpecialWidgets as any,
+      })
+      .eq('company_id', company.id);
+
+    if (error) {
+      console.error('Failed to save company widgets:', error);
+    }
+  }, [company?.id, loaded]);
 
   const addWidget = (widget: Omit<Widget, 'id'>) => {
+    if (!isAdmin) return;
     const newWidget: Widget = {
       ...widget,
       id: `w${Date.now()}`,
     };
-    setWidgets(prev => [...prev, newWidget]);
+    setWidgets(prev => {
+      const updated = [...prev, newWidget];
+      saveToCompany(updated, specialWidgets);
+      return updated;
+    });
   };
 
   const updateWidget = (id: string, updates: Partial<Widget>) => {
-    setWidgets(prev => prev.map(w => w.id === id ? { ...w, ...updates } : w));
+    if (!isAdmin) return;
+    setWidgets(prev => {
+      const updated = prev.map(w => w.id === id ? { ...w, ...updates } : w);
+      saveToCompany(updated, specialWidgets);
+      return updated;
+    });
   };
 
   const deleteWidget = (id: string) => {
-    setWidgets(prev => prev.filter(w => w.id !== id));
+    if (!isAdmin) return;
+    setWidgets(prev => {
+      const updated = prev.filter(w => w.id !== id);
+      saveToCompany(updated, specialWidgets);
+      return updated;
+    });
   };
 
   const reorderWidgets = (newWidgets: Widget[]) => {
+    if (!isAdmin) return;
     setWidgets(newWidgets);
+    saveToCompany(newWidgets, specialWidgets);
   };
 
   const toggleSpecialWidget = (widget: SpecialWidget) => {
-    setSpecialWidgets(prev => ({
-      ...prev,
-      [widget]: !prev[widget],
-    }));
+    if (!isAdmin) return;
+    setSpecialWidgets(prev => {
+      const updated = { ...prev, [widget]: !prev[widget] };
+      saveToCompany(widgets, updated);
+      return updated;
+    });
   };
 
   return (
@@ -160,6 +202,7 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
       reorderWidgets,
       specialWidgets,
       toggleSpecialWidget,
+      isAdminUser: isAdmin,
     }}>
       {children}
     </WidgetsContext.Provider>
