@@ -127,6 +127,26 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
+  // Multi-select state
+  const [selectedLenders, setSelectedLenders] = useState<Set<string>>(new Set());
+
+  const toggleLenderSelection = useCallback((name: string) => {
+    setSelectedLenders(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }, []);
+
+  const handleBulkAdd = useCallback(() => {
+    selectedLenders.forEach(name => {
+      onAddLender(name);
+    });
+    toast.success(`${selectedLenders.size} lender${selectedLenders.size !== 1 ? 's' : ''} added to deal`);
+    setSelectedLenders(new Set());
+  }, [selectedLenders, onAddLender]);
+
   // Remove reason state
   const [removingLender, setRemovingLender] = useState<{ id: string; name: string } | null>(null);
   const [removeReason, setRemoveReason] = useState('');
@@ -413,16 +433,26 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                       );
                     }
                     const lender = row.lender;
+                    const isSelected = selectedLenders.has(lender.name);
                     return (
                       <div
                         className={cn(
                           'group flex border-b border-border/50 hover:bg-muted/50 transition-colors',
-                          lender.isOnDeal && 'bg-primary/5'
+                          lender.isOnDeal && 'bg-primary/5',
+                          isSelected && !lender.isOnDeal && 'bg-primary/10'
                         )}
                       >
-                        {/* Row number */}
-                        <div className="flex-shrink-0 w-[50px] px-2 py-1.5 text-xs text-muted-foreground border-r border-border/50 bg-muted/30 sticky left-0 z-10">
-                          {index + 1}
+                        {/* Row number + checkbox */}
+                        <div className="flex-shrink-0 w-[50px] px-2 py-1.5 text-xs text-muted-foreground border-r border-border/50 bg-muted/30 sticky left-0 z-10 flex items-center justify-center">
+                          {lender.isOnDeal ? (
+                            <span>{index + 1}</span>
+                          ) : (
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleLenderSelection(lender.name)}
+                              className="h-3.5 w-3.5"
+                            />
+                          )}
                         </div>
                         {COLUMNS.map((col) => {
                           // Status column
@@ -542,6 +572,32 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
           </div>
         )}
       </div>
+
+      {/* Floating bulk-add bar */}
+      {selectedLenders.size > 0 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-primary text-primary-foreground px-5 py-3 rounded-xl shadow-lg animate-in slide-in-from-bottom-4 fade-in">
+          <span className="text-sm font-medium">
+            {selectedLenders.size} lender{selectedLenders.size !== 1 ? 's' : ''} selected
+          </span>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 gap-1.5"
+            onClick={handleBulkAdd}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add to Deal
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+            onClick={() => setSelectedLenders(new Set())}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Remove reason overlay */}
       {removingLender && (
