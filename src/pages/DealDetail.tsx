@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
@@ -132,6 +132,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Popover,
@@ -2414,27 +2419,74 @@ export default function DealDetail() {
                     Restore from Archive
                   </Button>
                 )}
-                <Select
-                  value={getStageConfigForDeal(deal.stage, deal.pipelineId).label !== deal.stage ? deal.stage : (dealStages[0]?.id || 'final-credit-items')}
-                  onValueChange={(value: DealStage) => updateDeal('stage', value)}
-                >
-                  <SelectTrigger className="w-auto text-xs rounded-lg h-6 px-2 border">
-                    <SelectValue>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-6 px-2 text-xs rounded-lg border gap-1">
                       {getStageConfigForDeal(deal.stage, deal.pipelineId).label}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
+                      <ChevronDown className="h-3 w-3 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="bg-popover min-w-[200px]">
+                    <DropdownMenuLabel className="text-xs">Stage</DropdownMenuLabel>
                     {(() => {
                       const dealPipeline = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId) : null;
                       const stagesForDeal = dealPipeline?.stages?.length ? dealPipeline.stages : dealStages;
                       return stagesForDeal.map((stage) => (
-                        <SelectItem key={stage.id} value={stage.id}>
+                        <DropdownMenuItem
+                          key={stage.id}
+                          onClick={() => updateDeal('stage', stage.id)}
+                          className={cn("text-xs", deal.stage === stage.id && "bg-accent font-medium")}
+                        >
                           {stage.label}
-                        </SelectItem>
+                        </DropdownMenuItem>
                       ));
                     })()}
-                  </SelectContent>
-                </Select>
+                    {pipelines.length > 1 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger className="text-xs">
+                            <GitBranch className="h-3 w-3 mr-2" />
+                            Move to Pipeline
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="bg-popover min-w-[180px]">
+                            {pipelines.map((pipeline) => (
+                              <DropdownMenuSub key={pipeline.id}>
+                                <DropdownMenuSubTrigger
+                                  className={cn("text-xs", deal.pipelineId === pipeline.id && "bg-accent font-medium")}
+                                >
+                                  {pipeline.name}
+                                  {deal.pipelineId === pipeline.id && (
+                                    <span className="ml-auto text-[10px] text-muted-foreground">(current)</span>
+                                  )}
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="bg-popover min-w-[160px]">
+                                  <DropdownMenuLabel className="text-xs">Select starting stage</DropdownMenuLabel>
+                                  {(pipeline.stages?.length ? pipeline.stages : dealStages).map((stage) => (
+                                    <DropdownMenuItem
+                                      key={stage.id}
+                                      className="text-xs"
+                                      onClick={() => {
+                                        updateDeal('pipelineId', pipeline.id);
+                                        updateDeal('stage', stage.id);
+                                        toast({
+                                          title: 'Pipeline changed',
+                                          description: `Moved to "${pipeline.name}" → ${stage.label}`,
+                                        });
+                                      }}
+                                    >
+                                      {stage.label}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 </div>
                 <div className="flex items-center gap-1.5 ml-auto">
                   <span className="text-xs text-muted-foreground">Close:</span>
