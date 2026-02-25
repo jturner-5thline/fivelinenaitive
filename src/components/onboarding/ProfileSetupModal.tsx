@@ -6,7 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Loader2, User } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { seedSampleDeal } from '@/utils/seedSampleDeal';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProfileSetupModalProps {
   open: boolean;
@@ -16,6 +19,7 @@ interface ProfileSetupModalProps {
 
 export function ProfileSetupModal({ open, onComplete, companyName }: ProfileSetupModalProps) {
   const { profile, updateProfile, uploadAvatar } = useProfile();
+  const { user } = useAuth();
   const [firstName, setFirstName] = useState(profile?.first_name || '');
   const [lastName, setLastName] = useState(profile?.last_name || '');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url || null);
@@ -87,6 +91,23 @@ export function ProfileSetupModal({ open, onComplete, companyName }: ProfileSetu
       }, false);
 
       toast.success('Profile updated successfully!');
+      
+      // Seed a sample deal for new users (fire and forget)
+      if (user) {
+        const { data: membership } = await supabase
+          .from('company_members')
+          .select('company_id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        
+        seedSampleDeal(user.id, membership?.company_id).then((seeded) => {
+          if (seeded) {
+            toast.success('A sample deal has been created to help you get started!');
+          }
+        });
+      }
+      
       onComplete();
     } catch (error) {
       toast.error('Failed to save profile');
