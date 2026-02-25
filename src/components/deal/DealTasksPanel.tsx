@@ -122,7 +122,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className="h-full flex flex-col">
+      <Card className="h-full w-full flex flex-col">
         <CollapsibleTrigger asChild>
           <CardHeader className="flex flex-row items-center justify-between pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
             <CardTitle className="text-base flex items-center gap-2">
