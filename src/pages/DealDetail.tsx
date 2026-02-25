@@ -4317,7 +4317,7 @@ export default function DealDetail() {
                     <div className="lg:col-span-1">
                       <DealTasksPanel dealId={id!} />
                     </div>
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-2">
                       <FlexInfoNotificationsPanel dealId={id} />
                     </div>
                   </div>
