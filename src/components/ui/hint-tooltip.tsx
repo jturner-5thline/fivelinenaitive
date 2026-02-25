@@ -47,10 +47,10 @@ export function HintTooltip({
 
   const getArrowClasses = () => {
     const baseArrowPosition = {
-      top: 'top-full border-t-primary/90 border-l-transparent border-r-transparent border-b-transparent',
-      bottom: 'bottom-full border-b-primary/90 border-l-transparent border-r-transparent border-t-transparent',
-      left: 'left-full border-l-primary/90 border-t-transparent border-b-transparent border-r-transparent',
-      right: 'right-full border-r-primary/90 border-t-transparent border-b-transparent border-l-transparent',
+      top: 'top-full border-t-[hsl(220,80%,50%)] border-l-transparent border-r-transparent border-b-transparent',
+      bottom: 'bottom-full border-b-[hsl(220,80%,50%)] border-l-transparent border-r-transparent border-t-transparent',
+      left: 'left-full border-l-[hsl(220,80%,50%)] border-t-transparent border-b-transparent border-r-transparent',
+      right: 'right-full border-r-[hsl(220,80%,50%)] border-t-transparent border-b-transparent border-l-transparent',
     };
 
     // Adjust horizontal position based on align for top/bottom sides
@@ -82,15 +82,16 @@ export function HintTooltip({
           <div 
             className="absolute -inset-2 rounded-xl pointer-events-none z-[99]"
             style={{
-              background: 'hsl(var(--primary) / 0.15)',
-              boxShadow: '0 0 20px 8px hsl(var(--primary) / 0.3), 0 0 40px 16px hsl(var(--primary) / 0.15)',
+              background: 'hsl(220, 80%, 50%, 0.15)',
+              boxShadow: '0 0 20px 8px hsl(220, 80%, 50%, 0.3), 0 0 40px 16px hsl(250, 70%, 55%, 0.15)',
               animation: 'hint-glow 2s ease-in-out infinite',
             }}
           />
           {/* Inner ring */}
           <div 
-            className="absolute -inset-1 rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background pointer-events-none z-[99]"
+            className="absolute -inset-1 rounded-lg pointer-events-none z-[99]"
             style={{
+              boxShadow: '0 0 0 2px hsl(220, 80%, 50%, 0.6), 0 0 0 4px hsl(220, 80%, 50%, 0.2)',
               animation: 'hint-ring 2s ease-in-out infinite',
             }}
           />
@@ -108,11 +109,11 @@ export function HintTooltip({
             @keyframes hint-ring {
               0%, 100% {
                 opacity: 0.7;
-                box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+                box-shadow: 0 0 0 2px hsl(220, 80%, 50%, 0.6), 0 0 0 4px hsl(220, 80%, 50%, 0.2);
               }
               50% {
                 opacity: 1;
-                box-shadow: 0 0 8px 2px hsl(var(--primary) / 0.3);
+                box-shadow: 0 0 0 2px hsl(220, 80%, 50%, 0.8), 0 0 8px 4px hsl(250, 70%, 55%, 0.3);
               }
             }
           `}</style>
@@ -127,9 +128,14 @@ export function HintTooltip({
             alignClasses[align]
           )}
         >
-          <div className="relative flex items-center gap-2 rounded-lg bg-primary/90 px-3 py-1.5 text-primary-foreground shadow-lg backdrop-blur-sm whitespace-nowrap">
-            <Lightbulb className="h-3.5 w-3.5 flex-shrink-0" />
-            <p className="text-xs">{hint}</p>
+          <div 
+            className="relative flex items-center gap-3 rounded-xl px-5 py-3 text-white shadow-xl shadow-blue-500/20 whitespace-nowrap border border-blue-400/30"
+            style={{
+              background: 'linear-gradient(135deg, hsl(220, 80%, 50%), hsl(250, 70%, 55%), hsl(280, 60%, 50%))',
+            }}
+          >
+            <Lightbulb className="h-5 w-5 flex-shrink-0 drop-shadow-sm" />
+            <p className="text-sm font-medium tracking-wide">{hint}</p>
             <button
               onClick={(e) => {
                 e.stopPropagation();
