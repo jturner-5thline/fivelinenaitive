@@ -145,6 +145,59 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
     document.addEventListener('mouseup', onMouseUp);
   }, [configs, updateStartDate]);
 
+  // Resize handler for individual stage edges
+  const resizingRef = useRef<{ startX: number; dealId: string; stageId: string; origWeeks: number; barWidth: number; totalWeeks: number } | null>(null);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent, dealId: string, stageId: string, barEl: HTMLDivElement) => {
+    e.preventDefault();
+    e.stopPropagation(); // prevent drag-move from firing
+    const cfg = configs[dealId];
+    if (!cfg) return;
+    const stage = cfg.stages.find(s => s.id === stageId);
+    if (!stage) return;
+    const totalW = getTotalWeeks(cfg);
+
+    resizingRef.current = {
+      startX: e.clientX,
+      dealId,
+      stageId,
+      origWeeks: stage.weeks,
+      barWidth: barEl.getBoundingClientRect().width,
+      totalWeeks: totalW,
+    };
+    document.body.style.cursor = 'col-resize';
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const dx = ev.clientX - resizingRef.current.startX;
+      const pxPerWeek = resizingRef.current.barWidth / Math.max(resizingRef.current.totalWeeks, 1);
+      const deltaWeeks = Math.round(dx / pxPerWeek);
+      const newWeeks = Math.max(0, resizingRef.current.origWeeks + deltaWeeks);
+      const diff = newWeeks - resizingRef.current.origWeeks;
+      if (diff !== 0) {
+        // We update via delta from current to avoid compound drift
+        const currentCfg = configs[dealId];
+        const currentStage = currentCfg?.stages.find(s => s.id === stageId);
+        if (currentStage) {
+          const currentDelta = newWeeks - currentStage.weeks;
+          if (currentDelta !== 0) {
+            updateStageWeeks(dealId, stageId, currentDelta);
+          }
+        }
+      }
+    };
+
+    const onMouseUp = () => {
+      resizingRef.current = null;
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [configs, updateStageWeeks]);
+
   const visibleDeals = deals.filter(d => visibleDealIds.has(d.id));
 
   // Compute global date range across all visible deals for a unified Gantt axis
@@ -310,7 +363,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                         <div className="flex-1 h-10 relative" ref={ganttAreaRef}>
                           <div
                             className={cn(
-                              'absolute top-1 h-8 flex rounded overflow-hidden cursor-grab active:cursor-grabbing',
+                              'absolute top-1 h-8 flex rounded cursor-grab active:cursor-grabbing',
                               draggingDealId === deal.id && 'ring-2 ring-primary/50 shadow-lg'
                             )}
                             style={{ left: `${offsetPct}%`, width: `${Math.max(widthPct, 0.5)}%` }}
@@ -326,12 +379,15 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                             {stageRanges.map((stage, i) => {
                               if (stage.weeks === 0) return null;
                               const stagePct = (stage.weeks / Math.max(totalW, 1)) * 100;
+                              const isLast = i === stageRanges.length - 1;
                               return (
                                 <div
                                   key={stage.id}
                                   className={cn(
-                                    'flex items-center justify-center text-[10px] font-medium text-primary-foreground transition-all',
-                                    STAGE_COLORS[i % STAGE_COLORS.length]
+                                    'relative flex items-center justify-center text-[10px] font-medium text-primary-foreground',
+                                    STAGE_COLORS[i % STAGE_COLORS.length],
+                                    i === 0 && 'rounded-l',
+                                    isLast && 'rounded-r'
                                   )}
                                   style={{ width: `${stagePct}%` }}
                                   title={`${stage.name}: ${stage.weeks}w (${format(stage.startDate, 'MMM d')} – ${format(stage.endDate, 'MMM d')})`}
@@ -339,6 +395,18 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                                   <span className="truncate px-0.5">
                                     {stagePct > 18 ? stage.name : stagePct > 10 ? `${stage.weeks}w` : ''}
                                   </span>
+                                  {/* Resize handle on right edge (except last stage) */}
+                                  {!isLast && (
+                                    <div
+                                      className="absolute right-0 top-0 w-2 h-full cursor-col-resize z-20 group/resize hover:bg-background/30"
+                                      onMouseDown={(e) => {
+                                        const barEl = e.currentTarget.closest('[style]')?.parentElement as HTMLDivElement | null;
+                                        if (barEl) handleResizeStart(e, deal.id, stage.id, barEl);
+                                      }}
+                                    >
+                                      <div className="absolute right-[3px] top-1/2 -translate-y-1/2 w-[2px] h-4 bg-primary-foreground/40 rounded-full group-hover/resize:bg-primary-foreground/80" />
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
