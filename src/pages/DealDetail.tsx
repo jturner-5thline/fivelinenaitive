@@ -2426,7 +2426,7 @@ export default function DealDetail() {
                       <ChevronDown className="h-3 w-3 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="bg-popover min-w-[200px]">
+                  <DropdownMenuContent align="start" className="bg-popover min-w-[200px] max-h-[300px] overflow-y-auto">
                     <DropdownMenuLabel className="text-xs">Stage</DropdownMenuLabel>
                     {(() => {
                       const dealPipeline = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId) : null;
