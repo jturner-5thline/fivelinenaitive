@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Deal } from '@/types/deal';
 import { useMultiDealPipelineConfigs, DealPipelineConfig } from '@/hooks/useDealPipelineConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
-import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle } from 'lucide-react';
+import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle, GripHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, addDays, differenceInCalendarWeeks, min as dateMin, max as dateMax } from 'date-fns';
 
@@ -67,6 +67,10 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
   // Track which deal's editor is expanded
   const [expandedDealId, setExpandedDealId] = useState<string | null>(null);
 
+  // Drag state
+  const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
+  const dragRef = useRef<{ startX: number; origStartDate: string; containerWidth: number; globalWeeks: number; globalStartDate: Date } | null>(null);
+
   const dealCreatedAtMap = useMemo(() => {
     const map: Record<string, string> = {};
     deals.forEach(d => { map[d.id] = d.createdAt; });
@@ -101,6 +105,46 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
     localStorage.setItem('timeline-visible-deals', JSON.stringify([]));
   };
 
+  const ganttAreaRef = useRef<HTMLDivElement>(null);
+  const globalInfoRef = useRef({ globalWeeks: 16, globalStart: new Date() });
+
+  const handleDragStart = useCallback((e: React.MouseEvent, dealId: string, containerEl: HTMLDivElement) => {
+    e.preventDefault();
+    const cfg = configs[dealId];
+    if (!cfg) return;
+    setDraggingDealId(dealId);
+    const info = globalInfoRef.current;
+    dragRef.current = {
+      startX: e.clientX,
+      origStartDate: cfg.startDate,
+      containerWidth: containerEl.getBoundingClientRect().width,
+      globalWeeks: info.globalWeeks,
+      globalStartDate: info.globalStart,
+    };
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const pxPerWeek = dragRef.current.containerWidth / Math.max(dragRef.current.globalWeeks, 1);
+      const deltaWeeks = Math.round(dx / pxPerWeek);
+      if (deltaWeeks === 0) return;
+      const origDate = new Date(dragRef.current.origStartDate + 'T00:00:00');
+      const newDate = addDays(origDate, deltaWeeks * 7);
+      const newDateStr = newDate.toISOString().split('T')[0];
+      updateStartDate(dealId, newDateStr);
+    };
+
+    const onMouseUp = () => {
+      setDraggingDealId(null);
+      dragRef.current = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [configs, updateStartDate]);
+
   const visibleDeals = deals.filter(d => visibleDealIds.has(d.id));
 
   // Compute global date range across all visible deals for a unified Gantt axis
@@ -128,6 +172,9 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
 
     return { globalStart: earliest, globalEnd: latest, globalWeeks: weeks, weekTicks: ticks };
   }, [visibleDeals, configs, isLoading]);
+
+  // Keep ref in sync for drag handler
+  globalInfoRef.current = { globalWeeks, globalStart };
 
   if (deals.length === 0) {
     return (
@@ -260,11 +307,22 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                         </button>
 
                         {/* Gantt bar area */}
-                        <div className="flex-1 h-10 relative">
+                        <div className="flex-1 h-10 relative" ref={ganttAreaRef}>
                           <div
-                            className="absolute top-1 h-8 flex rounded overflow-hidden"
+                            className={cn(
+                              'absolute top-1 h-8 flex rounded overflow-hidden cursor-grab active:cursor-grabbing',
+                              draggingDealId === deal.id && 'ring-2 ring-primary/50 shadow-lg'
+                            )}
                             style={{ left: `${offsetPct}%`, width: `${Math.max(widthPct, 0.5)}%` }}
+                            onMouseDown={(e) => {
+                              const container = e.currentTarget.parentElement;
+                              if (container) handleDragStart(e, deal.id, container as HTMLDivElement);
+                            }}
+                            title="Drag to move timeline"
                           >
+                            <div className="absolute left-1 top-1/2 -translate-y-1/2 z-10 opacity-40 hover:opacity-80">
+                              <GripHorizontal className="h-3 w-3 text-primary-foreground" />
+                            </div>
                             {stageRanges.map((stage, i) => {
                               if (stage.weeks === 0) return null;
                               const stagePct = (stage.weeks / Math.max(totalW, 1)) * 100;
