@@ -17,15 +17,15 @@ interface DealsTimelineViewProps {
   deals: Deal[];
 }
 
-const STAGE_COLORS = [
-  'bg-blue-500',
-  'bg-violet-500',
-  'bg-emerald-500',
-  'bg-amber-500',
-  'bg-rose-500',
-  'bg-cyan-500',
-  'bg-indigo-500',
-  'bg-pink-500',
+const STAGE_STYLES = [
+  { bg: 'bg-blue-500/20 backdrop-blur-sm', border: 'border border-blue-400/50', text: 'text-blue-200', glow: 'shadow-[inset_0_1px_1px_rgba(96,165,250,0.2)]' },
+  { bg: 'bg-violet-500/20 backdrop-blur-sm', border: 'border border-violet-400/50', text: 'text-violet-200', glow: 'shadow-[inset_0_1px_1px_rgba(167,139,250,0.2)]' },
+  { bg: 'bg-emerald-500/20 backdrop-blur-sm', border: 'border border-emerald-400/50', text: 'text-emerald-200', glow: 'shadow-[inset_0_1px_1px_rgba(52,211,153,0.2)]' },
+  { bg: 'bg-amber-500/20 backdrop-blur-sm', border: 'border border-amber-400/50', text: 'text-amber-200', glow: 'shadow-[inset_0_1px_1px_rgba(251,191,36,0.2)]' },
+  { bg: 'bg-rose-500/20 backdrop-blur-sm', border: 'border border-rose-400/50', text: 'text-rose-200', glow: 'shadow-[inset_0_1px_1px_rgba(251,113,133,0.2)]' },
+  { bg: 'bg-cyan-500/20 backdrop-blur-sm', border: 'border border-cyan-400/50', text: 'text-cyan-200', glow: 'shadow-[inset_0_1px_1px_rgba(103,232,249,0.2)]' },
+  { bg: 'bg-indigo-500/20 backdrop-blur-sm', border: 'border border-indigo-400/50', text: 'text-indigo-200', glow: 'shadow-[inset_0_1px_1px_rgba(129,140,248,0.2)]' },
+  { bg: 'bg-pink-500/20 backdrop-blur-sm', border: 'border border-pink-400/50', text: 'text-pink-200', glow: 'shadow-[inset_0_1px_1px_rgba(244,114,182,0.2)]' },
 ];
 
 // Deal-level row colors for multi-deal Gantt differentiation
@@ -363,7 +363,8 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                         <div className="flex-1 h-10 relative" ref={ganttAreaRef}>
                           <div
                             className={cn(
-                              'absolute top-1 h-8 flex rounded cursor-grab active:cursor-grabbing',
+                              'absolute top-1 h-8 flex rounded-md cursor-grab active:cursor-grabbing',
+                              'bg-background/5 shadow-[0_0_15px_rgba(139,92,246,0.08)]',
                               draggingDealId === deal.id && 'ring-2 ring-primary/50 shadow-lg'
                             )}
                             style={{ left: `${offsetPct}%`, width: `${Math.max(widthPct, 0.5)}%` }}
@@ -384,10 +385,13 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                                 <div
                                   key={stage.id}
                                   className={cn(
-                                    'relative flex items-center justify-center text-[10px] font-medium text-primary-foreground',
-                                    STAGE_COLORS[i % STAGE_COLORS.length],
-                                    i === 0 && 'rounded-l',
-                                    isLast && 'rounded-r'
+                                    'relative flex items-center justify-center text-[10px] font-semibold',
+                                    STAGE_STYLES[i % STAGE_STYLES.length].bg,
+                                    STAGE_STYLES[i % STAGE_STYLES.length].border,
+                                    STAGE_STYLES[i % STAGE_STYLES.length].text,
+                                    STAGE_STYLES[i % STAGE_STYLES.length].glow,
+                                    i === 0 && 'rounded-l-md',
+                                    isLast && 'rounded-r-md'
                                   )}
                                   style={{ width: `${stagePct}%` }}
                                   title={`${stage.name}: ${stage.weeks}w (${format(stage.startDate, 'MMM d')} – ${format(stage.endDate, 'MMM d')})`}
@@ -468,7 +472,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                       key={stage.id}
                       className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2"
                     >
-                      <div className={cn('h-3 w-3 rounded-full shrink-0', STAGE_COLORS[i % STAGE_COLORS.length])} />
+                      <div className={cn('h-3 w-3 rounded-full shrink-0', STAGE_STYLES[i % STAGE_STYLES.length].bg, STAGE_STYLES[i % STAGE_STYLES.length].border)} />
                       <div className="flex-1 min-w-0">
                         <InlineEditField
                           value={stage.name}
