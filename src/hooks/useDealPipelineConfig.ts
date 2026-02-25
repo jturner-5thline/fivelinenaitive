@@ -18,11 +18,9 @@ export interface DealPipelineConfig {
 }
 
 const DEFAULT_STAGES: PipelineStage[] = [
-  { id: 'screen', name: 'Screening / Initial Review', weeks: 2, order: 1 },
-  { id: 'ic', name: 'IC / Structuring', weeks: 2, order: 2 },
-  { id: 'ts', name: 'Term Sheet / LOI', weeks: 3, order: 3 },
-  { id: 'dd', name: 'Confirmatory Diligence', weeks: 6, order: 4 },
-  { id: 'docs', name: 'Docs, Closing & Funding', weeks: 3, order: 5 },
+  { id: 'draft-terms', name: 'Draft Terms', weeks: 3, order: 1 },
+  { id: 'terms-review', name: 'Terms Review & Signing', weeks: 3, order: 2 },
+  { id: 'diligence-closing', name: 'Diligence & Closing', weeks: 8, order: 3 },
 ];
 
 /**
