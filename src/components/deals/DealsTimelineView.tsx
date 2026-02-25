@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2 } from 'lucide-react';
+import { InlineEditField } from '@/components/ui/inline-edit-field';
+import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, addDays, differenceInCalendarWeeks, min as dateMin, max as dateMax } from 'date-fns';
 
@@ -74,7 +75,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
 
   const allDealIds = useMemo(() => deals.map(d => d.id), [deals]);
 
-  const { configs, isLoading, updateStageWeeks, updateStartDate } = useMultiDealPipelineConfigs(
+  const { configs, isLoading, updateStageWeeks, updateStartDate, updateStageName, addStage, removeStage } = useMultiDealPipelineConfigs(
     allDealIds,
     dealCreatedAtMap
   );
@@ -342,7 +343,15 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                       className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2"
                     >
                       <div className={cn('h-3 w-3 rounded-full shrink-0', STAGE_COLORS[i % STAGE_COLORS.length])} />
-                      <span className="text-sm font-medium flex-1 min-w-0 truncate">{stage.name}</span>
+                      <div className="flex-1 min-w-0">
+                        <InlineEditField
+                          value={stage.name}
+                          onSave={(newName) => updateStageName(expandedDealId, stage.id, newName)}
+                          placeholder="Stage name"
+                          displayClassName="text-sm font-medium"
+                          inputClassName="h-7 text-sm"
+                        />
+                      </div>
                       <span className="text-xs text-muted-foreground hidden sm:block whitespace-nowrap">
                         {format(stage.startDate, 'MMM d')}
                         {stage.weeks > 0 && (
@@ -372,8 +381,28 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeStage(expandedDealId, stage.id)}
+                        disabled={cfg.stages.length <= 1}
+                        title="Remove stage"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   ))}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2 text-xs"
+                    onClick={() => addStage(expandedDealId)}
+                  >
+                    <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                    Add Stage
+                  </Button>
                 </CardContent>
               </Card>
             );

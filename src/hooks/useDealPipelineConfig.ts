@@ -245,5 +245,50 @@ export function useMultiDealPipelineConfigs(dealIds: string[], dealCreatedAtMap:
     });
   }, [saveConfig]);
 
-  return { configs, isLoading, updateStageWeeks, updateStartDate };
+  const updateStageName = useCallback((dealId: string, stageId: string, newName: string) => {
+    setConfigs(prev => {
+      const cfg = prev[dealId];
+      if (!cfg) return prev;
+      const updated = {
+        ...cfg,
+        stages: cfg.stages.map(s =>
+          s.id === stageId ? { ...s, name: newName } : s
+        ),
+      };
+      saveConfig(updated);
+      return { ...prev, [dealId]: updated };
+    });
+  }, [saveConfig]);
+
+  const addStage = useCallback((dealId: string) => {
+    setConfigs(prev => {
+      const cfg = prev[dealId];
+      if (!cfg) return prev;
+      const maxOrder = Math.max(0, ...cfg.stages.map(s => s.order));
+      const newStage: PipelineStage = {
+        id: `stage-${Date.now()}`,
+        name: 'New Stage',
+        weeks: 2,
+        order: maxOrder + 1,
+      };
+      const updated = { ...cfg, stages: [...cfg.stages, newStage] };
+      saveConfig(updated);
+      return { ...prev, [dealId]: updated };
+    });
+  }, [saveConfig]);
+
+  const removeStage = useCallback((dealId: string, stageId: string) => {
+    setConfigs(prev => {
+      const cfg = prev[dealId];
+      if (!cfg || cfg.stages.length <= 1) return prev;
+      const updated = {
+        ...cfg,
+        stages: cfg.stages.filter(s => s.id !== stageId).map((s, i) => ({ ...s, order: i + 1 })),
+      };
+      saveConfig(updated);
+      return { ...prev, [dealId]: updated };
+    });
+  }, [saveConfig]);
+
+  return { configs, isLoading, updateStageWeeks, updateStartDate, updateStageName, addStage, removeStage };
 }
