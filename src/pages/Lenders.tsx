@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -197,7 +202,7 @@ function formatCurrency(value: number | null | undefined): string {
 
 export default function Lenders() {
   const navigate = useNavigate();
-  const { deals } = useDealsContext();
+  const { deals, addLenderToDeal } = useDealsContext();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
   const { company } = useCompany();
@@ -570,6 +575,62 @@ export default function Lenders() {
       description: `Exported ${selectedLenders.length} lender${selectedLenders.length !== 1 ? 's' : ''} to CSV.` 
     });
   }, [selectedLenderIds, masterLenders]);
+
+  // Add to Deal state
+  const [addToDealOpen, setAddToDealOpen] = useState(false);
+  const [dealSearchQuery, setDealSearchQuery] = useState('');
+  const [isAddingToDeal, setIsAddingToDeal] = useState(false);
+
+  const filteredDealsForPicker = useMemo(() => {
+    if (!dealSearchQuery.trim()) return deals.slice(0, 20);
+    const q = dealSearchQuery.toLowerCase();
+    return deals.filter(d => 
+      d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q)
+    ).slice(0, 20);
+  }, [deals, dealSearchQuery]);
+
+  const handleAddSelectedToDeal = useCallback(async (dealId: string) => {
+    if (selectedLenderIds.size === 0) return;
+    setIsAddingToDeal(true);
+
+    const selectedNames = masterLenders
+      .filter(l => selectedLenderIds.has(l.id))
+      .map(l => l.name);
+
+    // Get existing lenders on the deal to avoid duplicates
+    const targetDeal = deals.find(d => d.id === dealId);
+    const existingNames = new Set((targetDeal?.lenders || []).map(l => l.name.toLowerCase()));
+
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    for (const name of selectedNames) {
+      if (existingNames.has(name.toLowerCase())) {
+        skippedCount++;
+        continue;
+      }
+      await addLenderToDeal(dealId, { name });
+      addedCount++;
+    }
+
+    const dealName = targetDeal?.company || targetDeal?.name || 'deal';
+    if (addedCount > 0) {
+      toast({
+        title: `Added ${addedCount} lender${addedCount !== 1 ? 's' : ''} to ${dealName}`,
+        description: skippedCount > 0 ? `${skippedCount} already on the deal.` : undefined,
+      });
+    } else {
+      toast({
+        title: 'No lenders added',
+        description: 'All selected lenders are already on this deal.',
+      });
+    }
+
+    setAddToDealOpen(false);
+    setDealSearchQuery('');
+    clearSelection();
+    setIsAddingToDeal(false);
+  }, [selectedLenderIds, masterLenders, deals, addLenderToDeal, clearSelection]);
 
   const openAddDialog = () => {
     setEditingLenderId(null);
@@ -1116,6 +1177,52 @@ export default function Lenders() {
                       </Button>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Add to Deal */}
+                      <Popover open={addToDealOpen} onOpenChange={(open) => { setAddToDealOpen(open); if (!open) setDealSearchQuery(''); }}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <FolderPlus className="h-4 w-4" />
+                            Add to Deal
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-0" align="end" sideOffset={4}>
+                          <div className="p-2 border-b border-border">
+                            <div className="relative">
+                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                              <Input
+                                placeholder="Search deals..."
+                                value={dealSearchQuery}
+                                onChange={(e) => setDealSearchQuery(e.target.value)}
+                                className="h-8 pl-8 text-sm"
+                                autoFocus
+                              />
+                            </div>
+                          </div>
+                          <div className="max-h-60 overflow-auto p-1">
+                            {filteredDealsForPicker.length === 0 ? (
+                              <p className="text-xs text-muted-foreground text-center py-4">No deals found</p>
+                            ) : (
+                              filteredDealsForPicker.map(deal => (
+                                <button
+                                  key={deal.id}
+                                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors flex flex-col gap-0.5"
+                                  onClick={() => handleAddSelectedToDeal(deal.id)}
+                                  disabled={isAddingToDeal}
+                                >
+                                  <span className="font-medium truncate">{deal.company || deal.name}</span>
+                                  <span className="text-xs text-muted-foreground truncate">{deal.name}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                          {isAddingToDeal && (
+                            <div className="flex items-center justify-center gap-2 p-2 border-t border-border">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <span className="text-xs text-muted-foreground">Adding lenders...</span>
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
                       {selectedLenderIds.size >= 2 && (
                         <Button
                           variant="outline"
