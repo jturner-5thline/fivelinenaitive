@@ -60,6 +60,7 @@ import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
+import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
@@ -4313,7 +4314,14 @@ export default function DealDetail() {
 
                 <TabsContent value="deal-management" className={cn("mt-6 space-y-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
                   <FlexInfoNotificationsPanel dealId={id} />
-                  <DealTasksPanel dealId={id!} />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2">
+                      <DealTasksPanel dealId={id!} />
+                    </div>
+                    <div className="lg:col-span-1">
+                      <InfoRequestsPanel />
+                    </div>
+                  </div>
                   <DealActivityTab dealId={id!} />
                 </TabsContent>
 
