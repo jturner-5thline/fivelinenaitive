@@ -36,6 +36,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
   const [viewFilter, setViewFilter] = useState<'mine' | 'all'>('mine');
+  const [statusFilter, setStatusFilter] = useState<'incomplete' | 'completed' | 'all'>('incomplete');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -101,6 +102,14 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const pendingTasks = filteredTasks.filter(t => t.status !== 'completed');
   const completedTasks = filteredTasks.filter(t => t.status === 'completed');
 
+  const displayedTasks = useMemo(() => {
+    switch (statusFilter) {
+      case 'incomplete': return pendingTasks;
+      case 'completed': return completedTasks;
+      case 'all': return filteredTasks;
+    }
+  }, [statusFilter, pendingTasks, completedTasks, filteredTasks]);
+
   const getInitials = (member: TeamMember | undefined) => {
     if (!member) return '?';
     return (member.display_name || '')
@@ -135,115 +144,81 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-3">
-            <ToggleGroup type="single" value={viewFilter} onValueChange={(v) => v && setViewFilter(v as 'mine' | 'all')} className="justify-start">
-              <ToggleGroupItem value="mine" className="text-xs h-7 px-2.5">My Tasks</ToggleGroupItem>
-              <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All Tasks</ToggleGroupItem>
-            </ToggleGroup>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <ToggleGroup type="single" value={viewFilter} onValueChange={(v) => v && setViewFilter(v as 'mine' | 'all')} className="justify-start">
+                <ToggleGroupItem value="mine" className="text-xs h-7 px-2.5">My Tasks</ToggleGroupItem>
+                <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All Tasks</ToggleGroupItem>
+              </ToggleGroup>
+              <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as 'incomplete' | 'completed' | 'all')} className="justify-end">
+                <ToggleGroupItem value="incomplete" className="text-xs h-7 px-2.5">Incomplete</ToggleGroupItem>
+                <ToggleGroupItem value="completed" className="text-xs h-7 px-2.5">Completed</ToggleGroupItem>
+                <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
         {isLoading && tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">Loading tasks…</p>
         ) : tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No tasks yet. Create one to get started.</p>
+        ) : displayedTasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No tasks match this filter.</p>
         ) : (
           <ScrollArea className="max-h-[380px]">
-          <div className="space-y-4">
-            {pendingTasks.length > 0 && (
-              <div className="space-y-2">
-                {pendingTasks.map(task => {
-                  const assignee = memberMap.get(task.assigned_to);
-                  const assigner = memberMap.get(task.assigned_by);
-                  return (
-                    <div key={task.id} className="flex items-start gap-3 group rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors">
-                      <Checkbox
-                        checked={false}
-                        onCheckedChange={() => handleToggleStatus(task.id, task.status)}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{task.title}</p>
-                        {task.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                          {assignee && (
-                            <div className="flex items-center gap-1.5">
-                              <Avatar className="h-4 w-4">
-                                <AvatarImage src={assignee.avatar_url || undefined} />
-                                <AvatarFallback className="text-[8px]">{getInitials(assignee)}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-xs text-muted-foreground">{assignee.display_name}</span>
-                            </div>
-                          )}
-                          {task.due_date && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <CalendarIcon className="h-3 w-3" />
-                              {format(new Date(task.due_date), 'MMM d, yyyy')}
-                            </div>
-                          )}
-                          {task.status === 'in_progress' && (
-                            <span className="flex items-center gap-1 text-xs text-primary">
-                              <Clock className="h-3 w-3" />
-                              In Progress
-                            </span>
-                          )}
+          <div className="space-y-2">
+            {displayedTasks.map(task => {
+              const assignee = memberMap.get(task.assigned_to);
+              const isCompleted = task.status === 'completed';
+              return (
+                <div key={task.id} className={cn(
+                  "flex items-start gap-3 group rounded-lg border p-3 transition-colors",
+                  isCompleted ? "border-border/50 opacity-60 hover:opacity-100" : "border-border hover:bg-muted/30"
+                )}>
+                  <Checkbox
+                    checked={isCompleted}
+                    onCheckedChange={() => handleToggleStatus(task.id, task.status)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("text-sm", isCompleted ? "text-muted-foreground line-through" : "font-medium text-foreground")}>{task.title}</p>
+                    {!isCompleted && task.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                      {assignee && (
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={assignee.avatar_url || undefined} />
+                            <AvatarFallback className="text-[8px]">{getInitials(assignee)}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-muted-foreground">{assignee.display_name}</span>
                         </div>
-                      </div>
-                      {task.assigned_by === user?.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDelete(task.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                      )}
+                      {task.due_date && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <CalendarIcon className="h-3 w-3" />
+                          {format(new Date(task.due_date), 'MMM d, yyyy')}
+                        </div>
+                      )}
+                      {!isCompleted && task.status === 'in_progress' && (
+                        <span className="flex items-center gap-1 text-xs text-primary">
+                          <Clock className="h-3 w-3" />
+                          In Progress
+                        </span>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {completedTasks.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Completed ({completedTasks.length})</p>
-                {completedTasks.map(task => {
-                  const assignee = memberMap.get(task.assigned_to);
-                  return (
-                    <div key={task.id} className="flex items-start gap-3 group rounded-lg border border-border/50 p-3 opacity-60 hover:opacity-100 transition-opacity">
-                      <Checkbox
-                        checked={true}
-                        onCheckedChange={() => handleToggleStatus(task.id, task.status)}
-                        className="mt-0.5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-muted-foreground line-through">{task.title}</p>
-                        <div className="flex items-center gap-3 mt-1">
-                          {assignee && (
-                            <div className="flex items-center gap-1.5">
-                              <Avatar className="h-4 w-4">
-                                <AvatarImage src={assignee.avatar_url || undefined} />
-                                <AvatarFallback className="text-[8px]">{getInitials(assignee)}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-xs text-muted-foreground">{assignee.display_name}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      {task.assigned_by === user?.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDelete(task.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+                  {task.assigned_by === user?.id && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDelete(task.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
           </ScrollArea>
         )}
