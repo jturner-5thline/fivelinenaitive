@@ -611,7 +611,8 @@ export default function DealDetail() {
         return lenders;
     }
   }, [deal?.lenders, lenderSort, configuredStages]);
-  
+
+
 
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [removedLenders, setRemovedLenders] = useState<{ lender: DealLender; timestamp: string; id: string }[]>([]);
@@ -637,6 +638,18 @@ export default function DealDetail() {
     prevTabRef.current = newTab;
     setDealInfoTab(newTab);
   }, []);
+
+  // Auto-scroll to first stale lender when navigating from a notification
+  useEffect(() => {
+    if (!highlightStale || dealInfoTab !== 'lenders') return;
+    const timer = setTimeout(() => {
+      const staleLenderEl = document.querySelector('[data-lender-stale="true"]');
+      if (staleLenderEl) {
+        staleLenderEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [highlightStale, dealInfoTab]);
   const [dealWriteUpData, setDealWriteUpData] = useState<DealWriteUpData>(() => getEmptyDealWriteUpData());
   const { criteria: savedMatchingCriteria } = useDealMatchingCriteria(id);
   const [isUpdatesWidgetOpen, setIsUpdatesWidgetOpen] = useState(false);
@@ -3554,11 +3567,14 @@ export default function DealDetail() {
                                 const shouldHighlight = highlightStale && staleStatus.isStale;
                                 return (
                                   <SortableLenderItem key={lender.id} lender={lender}>
-                                    <div className={cn(
-                                      'rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all',
-                                      shouldHighlight && staleStatus.isUrgent && 'border-destructive/30 bg-destructive/5 shadow-destructive/10',
-                                      shouldHighlight && !staleStatus.isUrgent && 'border-warning/30 bg-warning/5 shadow-warning/10'
-                                    )}>
+                                    <div
+                                      data-lender-id={lender.id}
+                                      data-lender-stale={staleStatus.isStale ? 'true' : undefined}
+                                      className={cn(
+                                        'rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all',
+                                        shouldHighlight && staleStatus.isUrgent && 'border-destructive/30 bg-destructive/5 shadow-destructive/10 animate-pulse-highlight',
+                                        shouldHighlight && !staleStatus.isUrgent && 'border-warning/30 bg-warning/5 shadow-warning/10 animate-pulse-highlight'
+                                      )}>
                                       <div className="flex gap-3">
                                         <div className="flex-1 min-w-0">
                                       <div className="grid grid-cols-[160px_160px_140px_auto_1fr] items-center gap-3">

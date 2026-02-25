@@ -231,7 +231,7 @@ export function NotificationsDropdown() {
                   return (
                     <Link
                       key={alert.dealId}
-                      to={`/deal/${alert.dealId}?highlight=stale`}
+                      to={`/deal/${alert.dealId}?tab=lenders&highlight=stale`}
                       onClick={() => {
                         if (!read) {
                           markAsRead([{ notification_type: 'stale_alert', notification_id: alert.dealId }]);

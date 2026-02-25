@@ -643,7 +643,7 @@ export function NotificationCarousel() {
 
   const handleNavigate = (dealId: string, type: string) => {
     if (type === 'stale_alert') {
-      navigate(`/deal/${dealId}?highlight=stale`);
+      navigate(`/deal/${dealId}?tab=lenders&highlight=stale`);
     } else if (type === 'flex') {
       navigate(`/deal/${dealId}?tab=deal-management#flex-engagement-section`);
     } else {

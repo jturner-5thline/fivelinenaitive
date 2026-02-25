@@ -167,7 +167,7 @@ export function NotificationListView({
               return (
                 <Link
                   key={alert.id}
-                  to={`/deal/${alert.dealId}${alert.type === 'stale-lender' ? '?highlight=stale' : ''}`}
+                  to={`/deal/${alert.dealId}${alert.type === 'stale-lender' ? '?tab=lenders&highlight=stale' : ''}`}
                   onClick={() => {
                     if (!read) markAsRead([{ notification_type: 'stale_alert', notification_id: alert.dealId }]);
                     onClose();

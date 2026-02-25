@@ -214,7 +214,7 @@ export default function Notifications() {
                         return (
                           <Link
                             key={alert.dealId}
-                            to={`/deal/${alert.dealId}?highlight=stale`}
+                            to={`/deal/${alert.dealId}?tab=lenders&highlight=stale`}
                             onClick={() => handleNotificationClick('stale_alert', alert.dealId, read)}
                             className={cn(
                               "flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors",
