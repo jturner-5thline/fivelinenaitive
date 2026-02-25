@@ -13,7 +13,8 @@ export type HintId =
   | 'tasks-add'
   | 'tasks-views'
   | 'dashboard-quick-actions'
-  | 'dashboard-edit';
+  | 'dashboard-edit'
+  | 'deal-tabs';
 
 // Priority order for hints - only the first non-dismissed hint will be shown
 const HINT_PRIORITY: HintId[] = [
@@ -27,6 +28,7 @@ const HINT_PRIORITY: HintId[] = [
   'settings-menu',
   'tasks-add',
   'tasks-views',
+  'deal-tabs',
 ];
 
 interface UseFirstTimeHintsReturn {

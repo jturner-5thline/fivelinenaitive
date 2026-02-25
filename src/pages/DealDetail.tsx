@@ -83,6 +83,8 @@ import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
 import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
+import { HintTooltip } from '@/components/ui/hint-tooltip';
+import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 import { DataRoomV2 } from '@/components/deal/DataRoomV2';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
@@ -623,6 +625,7 @@ export default function DealDetail() {
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails'>(initialTab || 'deal-info');
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
+  const { isHintVisible, dismissHint } = useFirstTimeHints();
   
   // Track tab direction for swipe animation
   const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'emails'] as const;
@@ -2575,6 +2578,12 @@ export default function DealDetail() {
               <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
                 <div className="flex items-center gap-2">
                   <DealMemoDialog dealId={deal.id} companyName={deal.company} onGoToDataRoom={() => handleTabChange('data-room')} />
+                  <HintTooltip
+                    hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
+                    visible={isHintVisible('deal-tabs')}
+                    onDismiss={() => dismissHint('deal-tabs')}
+                    side="bottom"
+                  >
                     <TabsList className="inline-flex h-10 items-center justify-start rounded-md bg-transparent p-0 text-muted-foreground overflow-x-auto max-w-full">
                     <TabsTrigger value="deal-space" className="gap-2">
                       <Sparkles className="h-4 w-4" />
@@ -2611,6 +2620,7 @@ export default function DealDetail() {
                     Emails
                   </TabsTrigger>
                   </TabsList>
+                  </HintTooltip>
                   <div className="flex items-center gap-2 ml-auto">
                     <CreateTaskButton dealId={id!} dealName={deal?.company} />
                     <DropdownMenu>
