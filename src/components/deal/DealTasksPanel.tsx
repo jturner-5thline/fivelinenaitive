@@ -16,6 +16,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Plus, Trash2, CalendarIcon, CheckCircle2, Circle, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { useDealTasks } from '@/hooks/useDealTasks';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
@@ -34,6 +35,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const teamMembers = useTeamMembers();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
+  const [viewFilter, setViewFilter] = useState<'mine' | 'all'>('mine');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -89,8 +91,15 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     }
   };
 
-  const pendingTasks = tasks.filter(t => t.status !== 'completed');
-  const completedTasks = tasks.filter(t => t.status === 'completed');
+  const filteredTasks = useMemo(() => {
+    if (viewFilter === 'mine' && user?.id) {
+      return tasks.filter(t => t.assigned_to === user.id);
+    }
+    return tasks;
+  }, [tasks, viewFilter, user?.id]);
+
+  const pendingTasks = filteredTasks.filter(t => t.status !== 'completed');
+  const completedTasks = filteredTasks.filter(t => t.status === 'completed');
 
   const getInitials = (member: TeamMember | undefined) => {
     if (!member) return '?';
@@ -125,7 +134,11 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <ToggleGroup type="single" value={viewFilter} onValueChange={(v) => v && setViewFilter(v as 'mine' | 'all')} className="justify-start">
+              <ToggleGroupItem value="mine" className="text-xs h-7 px-2.5">My Tasks</ToggleGroupItem>
+              <ToggleGroupItem value="all" className="text-xs h-7 px-2.5">All Tasks</ToggleGroupItem>
+            </ToggleGroup>
         {isLoading && tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">Loading tasks…</p>
         ) : tasks.length === 0 ? (
