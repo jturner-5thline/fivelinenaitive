@@ -140,7 +140,7 @@ export function GammaIntegrationPanel({ dealData }: GammaIntegrationPanelProps) 
                   <SelectValue placeholder={isLoadingThemes ? 'Loading...' : 'Default'} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Default</SelectItem>
+                  <SelectItem value="default">Default</SelectItem>
                   {themes.map(t => (
                     <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                   ))}
