@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +51,9 @@ import { ComposeEmailDialog } from './email/ComposeEmailDialog';
 
 interface DealEmailsTabProps {
   dealId: string;
+  externalEmails?: MockEmail[];
+  onRefresh?: () => void;
+  isRefreshingExternal?: boolean;
 }
 
 type ViewFilter = 'all' | 'unread' | 'needs_response';
@@ -72,8 +75,15 @@ interface SidebarItem {
   filterFn: (e: MockEmail) => boolean;
 }
 
-export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
-  const [emails, setEmails] = useState<MockEmail[]>(initialMockEmails);
+export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal }: DealEmailsTabProps) {
+  const [emails, setEmails] = useState<MockEmail[]>(externalEmails || initialMockEmails);
+
+  // Sync external emails when they change
+  useEffect(() => {
+    if (externalEmails) {
+      setEmails(externalEmails);
+    }
+  }, [externalEmails]);
   const [selectedThread, setSelectedThread] = useState<EmailThread | null>(null);
   const [activeItemId, setActiveItemId] = useState<string>('all_inbox');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
@@ -226,11 +236,17 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
   };
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setIsRefreshing(false);
-    toast.success('Inbox refreshed');
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      setIsRefreshing(true);
+      await new Promise(r => setTimeout(r, 1000));
+      setIsRefreshing(false);
+      toast.success('Inbox refreshed');
+    }
   };
+
+  const effectiveRefreshing = isRefreshingExternal ?? isRefreshing;
 
   const toggleSection = (title: string) => {
     setCollapsedSections(prev => ({ ...prev, [title]: !prev[title] }));
@@ -286,10 +302,10 @@ export function DealEmailsTab({ dealId }: DealEmailsTabProps) {
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">Email Intelligence Settings</TooltipContent>
         </Tooltip>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={isRefreshing}>
-          <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleRefresh} disabled={effectiveRefreshing}>
+          <RefreshCw className={cn('h-3.5 w-3.5', effectiveRefreshing && 'animate-spin')} />
         </Button>
-        <Badge variant="secondary" className="text-[10px] h-5">Mock</Badge>
+        {!externalEmails && <Badge variant="secondary" className="text-[10px] h-5">Mock</Badge>}
       </div>
 
       <EmailIntelligenceDialog open={intelligenceOpen} onOpenChange={setIntelligenceOpen} />
