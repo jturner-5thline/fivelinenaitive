@@ -3932,6 +3932,54 @@ export type Database = {
           },
         ]
       }
+      gamma_analytics: {
+        Row: {
+          created_at: string
+          deal_id: string | null
+          event_type: string
+          generation_id: string | null
+          id: string
+          metadata: Json | null
+          template_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id?: string | null
+          event_type: string
+          generation_id?: string | null
+          id?: string
+          metadata?: Json | null
+          template_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string | null
+          event_type?: string
+          generation_id?: string | null
+          id?: string
+          metadata?: Json | null
+          template_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamma_analytics_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamma_analytics_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "gamma_generations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gamma_custom_templates: {
         Row: {
           company_id: string | null
@@ -3985,6 +4033,44 @@ export type Database = {
           },
         ]
       }
+      gamma_generation_comments: {
+        Row: {
+          content: string
+          created_at: string
+          generation_id: string
+          id: string
+          review_status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          generation_id: string
+          id?: string
+          review_status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          generation_id?: string
+          id?: string
+          review_status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamma_generation_comments_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "gamma_generations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gamma_generations: {
         Row: {
           created_at: string
@@ -3997,6 +4083,8 @@ export type Database = {
           pdf_url: string | null
           pptx_url: string | null
           prompt_text: string | null
+          review_count: number | null
+          review_status: string | null
           share_expires_at: string | null
           share_token: string | null
           status: string
@@ -4017,6 +4105,8 @@ export type Database = {
           pdf_url?: string | null
           pptx_url?: string | null
           prompt_text?: string | null
+          review_count?: number | null
+          review_status?: string | null
           share_expires_at?: string | null
           share_token?: string | null
           status?: string
@@ -4037,6 +4127,8 @@ export type Database = {
           pdf_url?: string | null
           pptx_url?: string | null
           prompt_text?: string | null
+          review_count?: number | null
+          review_status?: string | null
           share_expires_at?: string | null
           share_token?: string | null
           status?: string

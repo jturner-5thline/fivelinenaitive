@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Clock, ExternalLink, Eye, Trash2, Loader2, Star, StarOff, Search, Share2, Copy, Check } from 'lucide-react';
+import { Clock, ExternalLink, Eye, Trash2, Loader2, Star, StarOff, Search, Share2, Copy, Check, MessageSquare } from 'lucide-react';
+import { GammaFilePreview } from './GammaFilePreview';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -212,6 +213,7 @@ export function GammaHistoryPanel({ dealId, onView, refreshKey }: GammaHistoryPa
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => onView(gen)}>
                       <Eye className="h-3 w-3" />
                     </Button>
+                    <GammaFilePreview pdfUrl={gen.pdf_url || undefined} pptxUrl={gen.pptx_url || undefined} title={gen.title || undefined} />
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleShare(gen)}>
                       {copiedId === gen.id ? <Check className="h-3 w-3 text-primary" /> : <Share2 className="h-3 w-3" />}
                     </Button>

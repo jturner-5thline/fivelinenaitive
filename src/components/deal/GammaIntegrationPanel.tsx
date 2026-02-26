@@ -13,6 +13,8 @@ import { GammaCustomTemplates } from './gamma/GammaCustomTemplates';
 import { GammaAIPromptBuilder } from './gamma/GammaAIPromptBuilder';
 import { GammaHistoryPanel } from './gamma/GammaHistoryPanel';
 import { GammaAutoGenerateSettings } from './gamma/GammaAutoGenerateSettings';
+import { GammaCollaborationPanel } from './gamma/GammaCollaborationPanel';
+import { GammaAnalyticsDashboard } from './gamma/GammaAnalyticsDashboard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { GammaTemplate } from './gamma/GammaTemplateLibrary';
 
@@ -43,7 +45,10 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
   const [showThemes, setShowThemes] = useState(false);
   const [showCustomTemplates, setShowCustomTemplates] = useState(false);
   const [showAutoGen, setShowAutoGen] = useState(false);
+  const [showCollaboration, setShowCollaboration] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [selectedGenForCollab, setSelectedGenForCollab] = useState<string | null>(null);
   const [autoGenRules, setAutoGenRules] = useState<any[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(`gamma-auto-rules-${dealId}`) || '[]');
@@ -120,6 +125,7 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
     setViewingUrl(gen.gamma_url);
     setViewingPdfUrl(gen.pdf_url);
     setViewingPptxUrl(gen.pptx_url);
+    setSelectedGenForCollab(gen.id);
   };
 
   if (viewingUrl) {
@@ -129,8 +135,11 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
           url={viewingUrl}
           pdfUrl={viewingPdfUrl}
           pptxUrl={viewingPptxUrl}
-          onClose={() => { setViewingUrl(null); setViewingPdfUrl(undefined); setViewingPptxUrl(undefined); }}
+          onClose={() => { setViewingUrl(null); setViewingPdfUrl(undefined); setViewingPptxUrl(undefined); setSelectedGenForCollab(null); }}
         />
+        {selectedGenForCollab && (
+          <GammaCollaborationPanel generationId={selectedGenForCollab} />
+        )}
       </div>
     );
   }
@@ -257,6 +266,22 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
               localStorage.setItem(`gamma-auto-rules-${dealId}`, JSON.stringify(rules));
             }}
           />
+        </CollapsibleContent>
+      </Collapsible>
+
+
+
+
+      {/* Analytics */}
+      <Collapsible open={showAnalytics} onOpenChange={setShowAnalytics}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full">
+            Analytics
+            {showAnalytics ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3">
+          <GammaAnalyticsDashboard dealId={dealId} />
         </CollapsibleContent>
       </Collapsible>
 
