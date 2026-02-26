@@ -30,7 +30,7 @@ export function DealsHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut, user } = useAuth();
-  const { company, isAdmin: isCompanyAdmin } = useCompany();
+  const { company } = useCompany();
   const { profile } = useProfile();
   const { isHintVisible, dismissHint, dismissAllHints, isFirstTimeUser } = useFirstTimeHints();
   const { isAdmin } = useAdminRole();
@@ -109,7 +109,6 @@ export function DealsHeader() {
           <div className="w-36 sm:w-52">
             <GlobalSearchAI />
           </div>
-          {isCompanyAdmin && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -123,7 +122,6 @@ export function DealsHeader() {
             </TooltipTrigger>
             <TooltipContent>Customize widgets</TooltipContent>
           </Tooltip>
-          )}
           
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
