@@ -36,8 +36,7 @@ export function useGamma() {
           action: 'generate',
           inputText,
           format: options?.format || 'presentation',
-          numCards: options?.numCards,
-          themeId: options?.themeId,
+          themeId: options?.themeId && options.themeId !== 'default' ? options.themeId : undefined,
         },
       });
 
