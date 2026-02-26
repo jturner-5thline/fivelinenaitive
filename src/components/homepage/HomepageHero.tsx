@@ -14,7 +14,7 @@ export const HomepageHero = () => {
       <div className="relative z-10 container mx-auto px-6 text-center pt-10">
         <Logo className="h-96 md:h-[33rem] lg:h-[36rem] mx-auto mb-0" />
 
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-light text-white mb-5 max-w-4xl mx-auto leading-[1.1] -mt-8">
+        <h1 className="text-xl md:text-2xl lg:text-3xl font-light text-white mb-5 max-w-4xl mx-auto leading-[1.1] -mt-24">
           The Operating System for Deal Management
         </h1>
 
