@@ -3932,6 +3932,59 @@ export type Database = {
           },
         ]
       }
+      gamma_custom_templates: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_shared: boolean
+          name: string
+          prompt: string
+          suggested_format: string
+          updated_at: string
+          usage_count: number
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_shared?: boolean
+          name: string
+          prompt: string
+          suggested_format?: string
+          updated_at?: string
+          usage_count?: number
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_shared?: boolean
+          name?: string
+          prompt?: string
+          suggested_format?: string
+          updated_at?: string
+          usage_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamma_custom_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gamma_generations: {
         Row: {
           created_at: string
@@ -3940,9 +3993,12 @@ export type Database = {
           gamma_url: string | null
           generation_id: string
           id: string
+          is_starred: boolean
           pdf_url: string | null
           pptx_url: string | null
           prompt_text: string | null
+          share_expires_at: string | null
+          share_token: string | null
           status: string
           template_id: string | null
           theme_id: string | null
@@ -3957,9 +4013,12 @@ export type Database = {
           gamma_url?: string | null
           generation_id: string
           id?: string
+          is_starred?: boolean
           pdf_url?: string | null
           pptx_url?: string | null
           prompt_text?: string | null
+          share_expires_at?: string | null
+          share_token?: string | null
           status?: string
           template_id?: string | null
           theme_id?: string | null
@@ -3974,9 +4033,12 @@ export type Database = {
           gamma_url?: string | null
           generation_id?: string
           id?: string
+          is_starred?: boolean
           pdf_url?: string | null
           pptx_url?: string | null
           prompt_text?: string | null
+          share_expires_at?: string | null
+          share_token?: string | null
           status?: string
           template_id?: string | null
           theme_id?: string | null

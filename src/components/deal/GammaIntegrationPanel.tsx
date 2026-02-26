@@ -9,8 +9,10 @@ import { GammaGenerationProgress } from './gamma/GammaGenerationProgress';
 import { GammaViewer } from './gamma/GammaViewer';
 import { GammaDealPreview } from './gamma/GammaDealPreview';
 import { GammaTemplateLibrary, GAMMA_TEMPLATES } from './gamma/GammaTemplateLibrary';
+import { GammaCustomTemplates } from './gamma/GammaCustomTemplates';
 import { GammaAIPromptBuilder } from './gamma/GammaAIPromptBuilder';
 import { GammaHistoryPanel } from './gamma/GammaHistoryPanel';
+import { GammaAutoGenerateSettings } from './gamma/GammaAutoGenerateSettings';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { GammaTemplate } from './gamma/GammaTemplateLibrary';
 
@@ -39,11 +41,17 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
   const [viewingPdfUrl, setViewingPdfUrl] = useState<string | undefined>();
   const [viewingPptxUrl, setViewingPptxUrl] = useState<string | undefined>();
   const [showThemes, setShowThemes] = useState(false);
+  const [showCustomTemplates, setShowCustomTemplates] = useState(false);
+  const [showAutoGen, setShowAutoGen] = useState(false);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [autoGenRules, setAutoGenRules] = useState<any[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`gamma-auto-rules-${dealId}`) || '[]');
+    } catch { return []; }
+  });
 
   useEffect(() => { fetchThemes(); }, [fetchThemes]);
 
-  // Refresh history when a generation completes
   useEffect(() => {
     if (currentGeneration?.status === 'completed') {
       setHistoryRefreshKey(k => k + 1);
@@ -80,7 +88,6 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
         dealData.milestones.forEach(m => { prompt += `- ${m.completed ? '✓' : '○'} ${m.title}\n`; });
       }
     } else {
-      // Append deal context to custom/template prompts
       prompt += `\n\n---\nDeal Context:\n`;
       prompt += `Company: ${dealData.company}\n`;
       if (dealData.value) prompt += `Value: $${(dealData.value / 1_000_000).toFixed(2)}M\n`;
@@ -97,7 +104,7 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
 
   const handleGenerate = async () => {
     const templateLabel = selectedTemplate
-      ? GAMMA_TEMPLATES.find(t => t.id === selectedTemplate)?.label
+      ? GAMMA_TEMPLATES.find(t => t.id === selectedTemplate)?.label || selectedTemplate.replace('custom-', '')
       : undefined;
 
     await generate(buildDealPrompt(), {
@@ -115,7 +122,6 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
     setViewingPptxUrl(gen.pptx_url);
   };
 
-  // Viewing mode
   if (viewingUrl) {
     return (
       <div className="space-y-4">
@@ -150,6 +156,19 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Templates</p>
         <GammaTemplateLibrary selected={selectedTemplate} onSelect={handleTemplateSelect} />
       </div>
+
+      {/* Custom Templates */}
+      <Collapsible open={showCustomTemplates} onOpenChange={setShowCustomTemplates}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full">
+            Custom Templates
+            {showCustomTemplates ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3">
+          <GammaCustomTemplates selected={selectedTemplate} onSelect={handleTemplateSelect} />
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Format */}
       <div className="space-y-3">
@@ -218,6 +237,28 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
           pptxUrl={currentGeneration.pptxUrl}
         />
       )}
+
+      {/* Auto-Generate Rules */}
+      <Collapsible open={showAutoGen} onOpenChange={setShowAutoGen}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full">
+            Automation
+            {showAutoGen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {autoGenRules.length > 0 && (
+              <span className="text-primary normal-case font-normal">• {autoGenRules.length} rule{autoGenRules.length > 1 ? 's' : ''}</span>
+            )}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3">
+          <GammaAutoGenerateSettings
+            rules={autoGenRules}
+            onRulesChange={(rules) => {
+              setAutoGenRules(rules);
+              localStorage.setItem(`gamma-auto-rules-${dealId}`, JSON.stringify(rules));
+            }}
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Persistent History */}
       <GammaHistoryPanel dealId={dealId} onView={handleViewHistory} refreshKey={historyRefreshKey} />
