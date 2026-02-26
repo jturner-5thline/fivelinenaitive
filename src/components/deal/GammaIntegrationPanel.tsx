@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Wand2, Clock, ExternalLink, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Wand2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGamma } from '@/hooks/useGamma';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { GammaFormatSelector } from './gamma/GammaFormatSelector';
 import { GammaThemeGrid } from './gamma/GammaThemeGrid';
 import { GammaGenerationProgress } from './gamma/GammaGenerationProgress';
 import { GammaViewer } from './gamma/GammaViewer';
 import { GammaDealPreview } from './gamma/GammaDealPreview';
+import { GammaTemplateLibrary, GAMMA_TEMPLATES } from './gamma/GammaTemplateLibrary';
+import { GammaAIPromptBuilder } from './gamma/GammaAIPromptBuilder';
+import { GammaHistoryPanel } from './gamma/GammaHistoryPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import type { GammaTemplate } from './gamma/GammaTemplateLibrary';
 
 interface GammaIntegrationPanelProps {
+  dealId: string;
   dealData: {
     company: string;
     value?: number;
@@ -25,73 +29,101 @@ interface GammaIntegrationPanelProps {
   };
 }
 
-export function GammaIntegrationPanel({ dealData }: GammaIntegrationPanelProps) {
+export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPanelProps) {
   const { generate, fetchThemes, isGenerating, currentGeneration, themes, isLoadingThemes } = useGamma();
   const [format, setFormat] = useState<'presentation' | 'document'>('presentation');
   const [selectedTheme, setSelectedTheme] = useState<string>('default');
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
   const [viewingUrl, setViewingUrl] = useState<string | null>(null);
+  const [viewingPdfUrl, setViewingPdfUrl] = useState<string | undefined>();
+  const [viewingPptxUrl, setViewingPptxUrl] = useState<string | undefined>();
   const [showThemes, setShowThemes] = useState(false);
-  const [generationHistory, setGenerationHistory] = useState<Array<{
-    url: string;
-    pdfUrl?: string;
-    pptxUrl?: string;
-    createdAt: string;
-    format: string;
-  }>>([]);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   useEffect(() => { fetchThemes(); }, [fetchThemes]);
 
+  // Refresh history when a generation completes
   useEffect(() => {
-    if (currentGeneration?.status === 'completed' && currentGeneration.gammaUrl) {
-      setGenerationHistory(prev => [{
-        url: currentGeneration.gammaUrl!,
-        pdfUrl: currentGeneration.pdfUrl,
-        pptxUrl: currentGeneration.pptxUrl,
-        createdAt: new Date().toISOString(),
-        format,
-      }, ...prev]);
+    if (currentGeneration?.status === 'completed') {
+      setHistoryRefreshKey(k => k + 1);
     }
-  }, [currentGeneration?.status, currentGeneration?.gammaUrl, format]);
+  }, [currentGeneration?.status]);
+
+  const handleTemplateSelect = (template: GammaTemplate) => {
+    if (selectedTemplate === template.id) {
+      setSelectedTemplate(null);
+      setCustomPrompt('');
+    } else {
+      setSelectedTemplate(template.id);
+      setFormat(template.suggestedFormat);
+      setCustomPrompt(template.prompt);
+    }
+  };
 
   const buildDealPrompt = () => {
-    let prompt = `Create a professional ${format} about the following deal:\n\n`;
-    prompt += `**Company:** ${dealData.company}\n`;
-    if (dealData.value) prompt += `**Deal Value:** $${(dealData.value / 1_000_000).toFixed(2)}M\n`;
-    if (dealData.stage) prompt += `**Stage:** ${dealData.stage}\n`;
-    if (dealData.status) prompt += `**Status:** ${dealData.status}\n`;
-    if (dealData.deal_type) prompt += `**Deal Type:** ${dealData.deal_type}\n`;
-    if (dealData.narrative) prompt += `\n**Deal Narrative:**\n${dealData.narrative}\n`;
-    if (dealData.notes) prompt += `\n**Notes:**\n${dealData.notes}\n`;
-    if (dealData.lenders?.length) {
-      prompt += `\n**Lenders (${dealData.lenders.length}):**\n`;
-      dealData.lenders.slice(0, 10).forEach(l => { prompt += `- ${l.name}: ${l.stage}\n`; });
+    let prompt = customPrompt || `Create a professional ${format} about the following deal:\n\n`;
+    if (!customPrompt) {
+      prompt += `**Company:** ${dealData.company}\n`;
+      if (dealData.value) prompt += `**Deal Value:** $${(dealData.value / 1_000_000).toFixed(2)}M\n`;
+      if (dealData.stage) prompt += `**Stage:** ${dealData.stage}\n`;
+      if (dealData.status) prompt += `**Status:** ${dealData.status}\n`;
+      if (dealData.deal_type) prompt += `**Deal Type:** ${dealData.deal_type}\n`;
+      if (dealData.narrative) prompt += `\n**Deal Narrative:**\n${dealData.narrative}\n`;
+      if (dealData.notes) prompt += `\n**Notes:**\n${dealData.notes}\n`;
+      if (dealData.lenders?.length) {
+        prompt += `\n**Lenders (${dealData.lenders.length}):**\n`;
+        dealData.lenders.slice(0, 10).forEach(l => { prompt += `- ${l.name}: ${l.stage}\n`; });
+      }
+      if (dealData.milestones?.length) {
+        prompt += `\n**Milestones:**\n`;
+        dealData.milestones.forEach(m => { prompt += `- ${m.completed ? '✓' : '○'} ${m.title}\n`; });
+      }
+    } else {
+      // Append deal context to custom/template prompts
+      prompt += `\n\n---\nDeal Context:\n`;
+      prompt += `Company: ${dealData.company}\n`;
+      if (dealData.value) prompt += `Value: $${(dealData.value / 1_000_000).toFixed(2)}M\n`;
+      if (dealData.stage) prompt += `Stage: ${dealData.stage}\n`;
+      if (dealData.lenders?.length) prompt += `Lenders: ${dealData.lenders.length}\n`;
+      if (dealData.milestones?.length) {
+        const done = dealData.milestones.filter(m => m.completed).length;
+        prompt += `Milestones: ${done}/${dealData.milestones.length} completed\n`;
+      }
+      if (dealData.narrative) prompt += `Narrative: ${dealData.narrative}\n`;
     }
-    if (dealData.milestones?.length) {
-      prompt += `\n**Milestones:**\n`;
-      dealData.milestones.forEach(m => { prompt += `- ${m.completed ? '✓' : '○'} ${m.title}\n`; });
-    }
-    if (customPrompt) prompt += `\n**Additional Instructions:**\n${customPrompt}\n`;
     return prompt;
   };
 
   const handleGenerate = async () => {
+    const templateLabel = selectedTemplate
+      ? GAMMA_TEMPLATES.find(t => t.id === selectedTemplate)?.label
+      : undefined;
+
     await generate(buildDealPrompt(), {
       format,
       themeId: selectedTheme !== 'default' ? selectedTheme : undefined,
+      dealId,
+      templateId: selectedTemplate || undefined,
+      title: templateLabel || `${dealData.company} ${format}`,
     });
+  };
+
+  const handleViewHistory = (gen: any) => {
+    setViewingUrl(gen.gamma_url);
+    setViewingPdfUrl(gen.pdf_url);
+    setViewingPptxUrl(gen.pptx_url);
   };
 
   // Viewing mode
   if (viewingUrl) {
-    const historyItem = generationHistory.find(h => h.url === viewingUrl);
     return (
       <div className="space-y-4">
         <GammaViewer
           url={viewingUrl}
-          pdfUrl={historyItem?.pdfUrl}
-          pptxUrl={historyItem?.pptxUrl}
-          onClose={() => setViewingUrl(null)}
+          pdfUrl={viewingPdfUrl}
+          pptxUrl={viewingPptxUrl}
+          onClose={() => { setViewingUrl(null); setViewingPdfUrl(undefined); setViewingPptxUrl(undefined); }}
         />
       </div>
     );
@@ -112,6 +144,12 @@ export function GammaIntegrationPanel({ dealData }: GammaIntegrationPanelProps) 
 
       {/* Deal data preview */}
       <GammaDealPreview dealData={dealData} />
+
+      {/* Template Library */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Templates</p>
+        <GammaTemplateLibrary selected={selectedTemplate} onSelect={handleTemplateSelect} />
+      </div>
 
       {/* Format */}
       <div className="space-y-3">
@@ -142,9 +180,12 @@ export function GammaIntegrationPanel({ dealData }: GammaIntegrationPanelProps) 
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Custom prompt */}
+      {/* Custom prompt with AI builder */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Additional Instructions</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Instructions</p>
+          <GammaAIPromptBuilder dealData={dealData} format={format} onPromptGenerated={setCustomPrompt} />
+        </div>
         <Textarea
           placeholder="e.g., Focus on lender engagement metrics, add a risk analysis section, emphasize key milestones..."
           value={customPrompt}
@@ -178,42 +219,8 @@ export function GammaIntegrationPanel({ dealData }: GammaIntegrationPanelProps) 
         />
       )}
 
-      {/* History */}
-      {generationHistory.length > 1 && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Previous Generations</p>
-          <ScrollArea className="max-h-[180px]">
-            <div className="space-y-1.5">
-              {generationHistory.slice(1).map((gen, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group"
-                >
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <div>
-                      <span className="text-sm capitalize text-foreground">{gen.format}</span>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        {new Date(gen.createdAt).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => setViewingUrl(gen.url)}>
-                      <Eye className="h-3 w-3" /> View
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs" asChild>
-                      <a href={gen.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-3 w-3" /> Open
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
-      )}
+      {/* Persistent History */}
+      <GammaHistoryPanel dealId={dealId} onView={handleViewHistory} refreshKey={historyRefreshKey} />
     </div>
   );
 }

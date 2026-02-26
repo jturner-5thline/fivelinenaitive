@@ -66,7 +66,7 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
 
       <TabsContent value="gamma">
         {dealData ? (
-          <GammaIntegrationPanel dealData={dealData} />
+          <GammaIntegrationPanel dealId={dealId} dealData={dealData} />
         ) : (
           <div className="text-center py-8 text-muted-foreground">Deal data not available</div>
         )}

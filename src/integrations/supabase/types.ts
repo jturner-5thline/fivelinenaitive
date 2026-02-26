@@ -3932,6 +3932,68 @@ export type Database = {
           },
         ]
       }
+      gamma_generations: {
+        Row: {
+          created_at: string
+          deal_id: string
+          format: string
+          gamma_url: string | null
+          generation_id: string
+          id: string
+          pdf_url: string | null
+          pptx_url: string | null
+          prompt_text: string | null
+          status: string
+          template_id: string | null
+          theme_id: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          format?: string
+          gamma_url?: string | null
+          generation_id: string
+          id?: string
+          pdf_url?: string | null
+          pptx_url?: string | null
+          prompt_text?: string | null
+          status?: string
+          template_id?: string | null
+          theme_id?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          format?: string
+          gamma_url?: string | null
+          generation_id?: string
+          id?: string
+          pdf_url?: string | null
+          pptx_url?: string | null
+          prompt_text?: string | null
+          status?: string
+          template_id?: string | null
+          theme_id?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamma_generations_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gmail_messages: {
         Row: {
           bcc_emails: string[] | null

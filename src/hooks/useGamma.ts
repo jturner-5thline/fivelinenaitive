@@ -26,6 +26,9 @@ export function useGamma() {
     format?: 'presentation' | 'document' | 'webpage' | 'social';
     numCards?: number;
     themeId?: string;
+    dealId?: string;
+    templateId?: string;
+    title?: string;
   }) => {
     setIsGenerating(true);
     setCurrentGeneration(null);
@@ -48,6 +51,34 @@ export function useGamma() {
       };
       setCurrentGeneration(generation);
       toast.success('Gamma presentation generation started!');
+
+      // Save to DB if dealId provided
+      let dbRecordId: string | null = null;
+      if (options?.dealId) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: record } = await supabase
+              .from('gamma_generations')
+              .insert({
+                deal_id: options.dealId,
+                user_id: user.id,
+                generation_id: data.generationId,
+                status: 'pending',
+                format: options.format || 'presentation',
+                template_id: options.templateId || null,
+                prompt_text: inputText,
+                theme_id: options.themeId || null,
+                title: options.title || null,
+              })
+              .select('id')
+              .single();
+            dbRecordId = record?.id || null;
+          }
+        } catch (dbErr) {
+          console.error('Failed to save generation to DB:', dbErr);
+        }
+      }
 
       // Poll for completion
       const pollInterval = setInterval(async () => {
@@ -73,11 +104,31 @@ export function useGamma() {
             setCurrentGeneration(completed);
             setIsGenerating(false);
             toast.success('Gamma presentation ready!');
+
+            // Update DB record
+            if (dbRecordId) {
+              await supabase
+                .from('gamma_generations')
+                .update({
+                  status: 'completed',
+                  gamma_url: statusData.gammaUrl,
+                  pdf_url: statusData.pdfUrl,
+                  pptx_url: statusData.pptxUrl,
+                })
+                .eq('id', dbRecordId);
+            }
           } else if (statusData.status === 'failed') {
             clearInterval(pollInterval);
             setCurrentGeneration({ generationId: data.generationId, status: 'failed' });
             setIsGenerating(false);
             toast.error('Gamma presentation generation failed');
+
+            if (dbRecordId) {
+              await supabase
+                .from('gamma_generations')
+                .update({ status: 'failed' })
+                .eq('id', dbRecordId);
+            }
           }
         } catch (err) {
           console.error('Poll error:', err);
@@ -87,7 +138,6 @@ export function useGamma() {
         }
       }, 3000);
 
-      // Auto-clear poll after 5 minutes
       setTimeout(() => {
         clearInterval(pollInterval);
         setIsGenerating(false);
