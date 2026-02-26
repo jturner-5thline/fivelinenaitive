@@ -623,7 +623,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails' | 'reveal-space'>(initialTab || 'deal-info');
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails' | 'gamma'>(initialTab || 'deal-info');
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
   const { isHintVisible, dismissHint } = useFirstTimeHints();
@@ -2620,9 +2620,9 @@ export default function DealDetail() {
                     <Mail className="h-4 w-4" />
                     Emails
                   </TabsTrigger>
-                  <TabsTrigger value="reveal-space" className="gap-2">
+                  <TabsTrigger value="gamma" className="gap-2">
                     <Presentation className="h-4 w-4" />
-                    Reveal Space
+                    Gamma
                   </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
@@ -4435,7 +4435,7 @@ export default function DealDetail() {
                   <DealEmailsTab dealId={id!} />
                 </TabsContent>
 
-                <TabsContent value="reveal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`reveal-space-${tabDirection}`}>
+                <TabsContent value="gamma" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`gamma-${tabDirection}`}>
                   <GammaIntegrationPanel
                     dealData={{
                       company: deal.company,
