@@ -21,6 +21,7 @@ import { MemoCommentThread } from '@/components/deal/MemoCommentThread';
 interface DealMemoDialogProps {
   dealId: string;
   companyName: string;
+  dealNarrative?: string;
   onGoToDataRoom?: () => void;
 }
 
@@ -48,7 +49,7 @@ const MEMO_SECTIONS: MemoSection[] = [
   },
 ];
 
-export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemoDialogProps) {
+export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataRoom }: DealMemoDialogProps) {
   const { user } = useAuth();
   const { memo, isLoading, isSaving, saveMemo } = useDealMemo(dealId);
   const { hasUnreadUpdates, markAsViewed } = useDealMemoNotification(dealId);
@@ -145,7 +146,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
   useEffect(() => {
     if (memo) {
       setLocalValues({
-        narrative: memo.narrative || '',
+        narrative: memo.narrative || dealNarrative || '',
         highlights: memo.highlights || '',
         hurdles: memo.hurdles || '',
         lender_notes: memo.lender_notes || '',
@@ -156,7 +157,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
       setHurdlesList(parseHurdles(memo.hurdles));
     } else {
       setLocalValues({
-        narrative: '',
+        narrative: dealNarrative || '',
         highlights: '',
         hurdles: '',
         lender_notes: '',
@@ -169,7 +170,7 @@ export function DealMemoDialog({ dealId, companyName, onGoToDataRoom }: DealMemo
     setNewHighlight('');
     setNewHurdle('');
     setHasChanges(false);
-  }, [memo, isOpen]);
+  }, [memo, isOpen, dealNarrative]);
 
   const handleChange = (key: string, value: string) => {
     setLocalValues(prev => ({ ...prev, [key]: value }));
