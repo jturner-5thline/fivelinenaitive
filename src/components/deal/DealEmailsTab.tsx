@@ -261,7 +261,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const activeLabel = activeItem?.label || 'Inbox';
 
   return (
-    <Card className="overflow-hidden w-full max-w-full">
+    <Card className="overflow-hidden w-full max-w-full h-full flex flex-col">
       {/* Top toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b bg-muted/20">
         <Button variant="gradient" size="sm" className="gap-1.5 text-xs h-8 px-3" onClick={() => setComposeOpen(true)}>
@@ -323,8 +323,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         replyTo={composeReplyTo}
       />
 
-      <CardContent className="p-0">
-        <div className="flex h-full min-h-[560px] overflow-hidden max-w-full">
+      <CardContent className="p-0 flex-1 min-h-0">
+        <div className="flex h-full overflow-hidden max-w-full">
           {/* ─── Left: Grouped sidebar ─── */}
           <div className="border-r flex-shrink-0 w-[220px] flex flex-col">
             <div className="p-2">
