@@ -1,16 +1,28 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, FileText, StickyNote } from 'lucide-react';
+import { DollarSign, FileText, StickyNote, Presentation } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { DealSpaceAskAITab } from './DealSpaceAskAITab';
 import { DealSpaceFinancialsTab } from './DealSpaceFinancialsTab';
 import { DealSpaceDocumentsTab } from './DealSpaceDocumentsTab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
+import { GammaIntegrationPanel } from './GammaIntegrationPanel';
 
 interface DealSpaceTabProps {
   dealId: string;
+  dealData?: {
+    company: string;
+    value?: number;
+    stage?: string;
+    status?: string;
+    deal_type?: string;
+    notes?: string;
+    narrative?: string;
+    lenders?: Array<{ name: string; stage: string }>;
+    milestones?: Array<{ title: string; completed: boolean }>;
+  };
 }
 
-export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
+export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
   return (
     <Tabs defaultValue="ask-ai" className="w-full">
       <TabsList className="mb-2 rounded-sm">
@@ -30,6 +42,10 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
           <FileText className="h-4 w-4" />
           Documents
         </TabsTrigger>
+        <TabsTrigger value="gamma" className="flex items-center gap-2 rounded-sm">
+          <Presentation className="h-4 w-4" />
+          Gamma
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="ask-ai">
@@ -46,6 +62,14 @@ export function DealSpaceTab({ dealId }: DealSpaceTabProps) {
 
       <TabsContent value="documents">
         <DealSpaceDocumentsTab dealId={dealId} />
+      </TabsContent>
+
+      <TabsContent value="gamma">
+        {dealData ? (
+          <GammaIntegrationPanel dealData={dealData} />
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">Deal data not available</div>
+        )}
       </TabsContent>
     </Tabs>
   );
