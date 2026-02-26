@@ -15,9 +15,9 @@ const footerLinks = {
 
 export const HomepageFooter = () => {
   return (
-    <footer className="py-16 bg-[#0a0a12] border-t border-white/10">
+    <footer className="py-12 bg-[#0a0a12] border-t border-white/10">
       <div className="container mx-auto px-6">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-9">
           {/* Brand */}
           <div className="col-span-2">
             <Link to="/homepage" className="inline-block mb-4">
@@ -63,7 +63,7 @@ export const HomepageFooter = () => {
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-white/10">
+        <div className="pt-6 border-t border-white/10">
           <div className="flex flex-col md:flex-row items-center justify-center gap-4">
             <p className="text-sm text-white/40">
               © {new Date().getFullYear()} naitive. All rights reserved.
