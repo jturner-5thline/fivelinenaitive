@@ -40,7 +40,7 @@ function mapGmailToMockEmails(gmailMessages: any[]): MockEmail[] {
 export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   const {
     status, messages, isLoading,
-    listMessages,
+    listMessages, sendEmail,
   } = useGmail();
   const navigate = useNavigate();
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -101,6 +101,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
             externalEmails={mappedEmails}
             onRefresh={handleRefresh}
             isRefreshingExternal={isLoading}
+            onGmailSend={sendEmail}
           />
         </div>
       </DialogContent>
