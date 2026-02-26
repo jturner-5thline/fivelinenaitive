@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
-import { Logo } from "@/components/Logo";
+import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
 
 export const HomepageHero = () => {
   return (
@@ -12,7 +12,7 @@ export const HomepageHero = () => {
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-6 text-center -mt-20">
-        <Logo className="h-96 md:h-[33rem] lg:h-[36rem] mx-auto mb-0" />
+        <img src={naitiveLogoDark} alt="naitive" className="h-96 md:h-[33rem] lg:h-[36rem] mx-auto mb-0" />
 
         <h1 className="text-xl md:text-2xl lg:text-3xl font-light text-white mb-5 max-w-4xl mx-auto leading-[1.1] -mt-40">
           The Operating System for Deal Management
