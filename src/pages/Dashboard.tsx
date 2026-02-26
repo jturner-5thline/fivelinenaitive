@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Settings2, Pencil, Check, Calendar as CalendarIcon, Mail, Zap, Briefcase, LayoutTemplate } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
+import { InboxDialog } from '@/components/dashboard/InboxDialog';
 import { useProfile } from '@/hooks/useProfile';
 import { useDashboardPresets, WidgetConfig, GridItem } from '@/hooks/useDashboardPresets';
 import { WIDGET_REGISTRY } from '@/components/dashboard/widgetRegistry';
@@ -154,11 +153,7 @@ export default function Dashboard() {
                 <span className="text-sm font-medium text-foreground">Email</span>
               </div>
             </Card>
-            <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-              <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
-                <DealEmailsTab dealId="" />
-              </DialogContent>
-            </Dialog>
+            <InboxDialog open={emailOpen} onOpenChange={setEmailOpen} />
             <QuickPromptsDialog
               trigger={
                 <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
