@@ -54,6 +54,14 @@ interface DealEmailsTabProps {
   externalEmails?: MockEmail[];
   onRefresh?: () => void;
   isRefreshingExternal?: boolean;
+  onGmailSend?: (options: {
+    to: string[];
+    subject: string;
+    body?: string;
+    bodyHtml?: string;
+    cc?: string[];
+    bcc?: string[];
+  }) => Promise<any>;
 }
 
 type ViewFilter = 'all' | 'unread' | 'needs_response';
@@ -75,7 +83,7 @@ interface SidebarItem {
   filterFn: (e: MockEmail) => boolean;
 }
 
-export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal }: DealEmailsTabProps) {
+export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend }: DealEmailsTabProps) {
   const [emails, setEmails] = useState<MockEmail[]>(externalEmails || initialMockEmails);
 
   // Sync external emails when they change
@@ -312,7 +320,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <ComposeEmailDialog
         open={composeOpen}
         onOpenChange={(v) => { setComposeOpen(v); if (!v) setComposeReplyTo(null); }}
-        onSend={(emailData) => {
+        onSend={async (emailData) => {
+          // Actually send via Gmail API if available
+          if (onGmailSend) {
+            const result = await onGmailSend({
+              to: [emailData.to_email],
+              subject: emailData.subject,
+              body: emailData.body_preview,
+            });
+            if (!result) {
+              toast.error('Failed to send email');
+              return;
+            }
+            toast.success('Email sent successfully', { description: `To: ${emailData.to_email}`, icon: '✉️' });
+          }
           const newEmail: MockEmail = {
             ...emailData,
             id: `mock-sent-${Date.now()}`,
@@ -490,7 +511,20 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onBack={() => setSelectedThread(null)}
                 onToggleLink={handleToggleLink}
                 onToggleStar={handleToggleStar}
-                onSendReply={(emailData, threadId) => {
+                onSendReply={async (emailData, threadId) => {
+                  // Actually send via Gmail API if available
+                  if (onGmailSend) {
+                    const result = await onGmailSend({
+                      to: [emailData.to_email],
+                      subject: emailData.subject,
+                      body: emailData.body_preview,
+                    });
+                    if (!result) {
+                      toast.error('Failed to send email');
+                      return;
+                    }
+                    toast.success('Email sent successfully', { description: `To: ${emailData.to_email}`, icon: '✉️' });
+                  }
                   const newEmail: MockEmail = {
                     ...emailData,
                     id: `mock-sent-${Date.now()}`,

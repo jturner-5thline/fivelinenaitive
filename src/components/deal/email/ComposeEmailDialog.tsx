@@ -30,7 +30,7 @@ import { PreSendAlertDialog } from './PreSendAlertDialog';
 interface ComposeEmailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void;
+  onSend: (email: Omit<MockEmail, 'id' | 'threadId'>) => void | Promise<void>;
   replyTo?: { subject: string; to_email: string; to_name: string; threadId: string } | null;
 }
 
@@ -65,12 +65,9 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
 
     setIsSending(true);
 
-    // Simulate sending delay
-    await new Promise(r => setTimeout(r, 1200));
-
     const recipientName = to.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-    onSend({
+    await onSend({
       subject,
       from_name: 'You',
       from_email: 'jturner@5thline.co',
@@ -91,10 +88,6 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
     });
 
     setIsSending(false);
-    toast.success('Email sent successfully', {
-      description: `To: ${to}`,
-      icon: '✉️',
-    });
     resetForm();
     onOpenChange(false);
   };
