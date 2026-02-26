@@ -324,7 +324,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       />
 
       <CardContent className="p-0">
-        <div className="flex min-h-[560px] overflow-hidden max-w-full">
+        <div className="flex h-full min-h-[560px] overflow-hidden max-w-full">
           {/* ─── Left: Grouped sidebar ─── */}
           <div className="border-r flex-shrink-0 w-[220px] flex flex-col">
             <div className="p-2">
@@ -454,7 +454,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             </div>
 
             {/* Email list */}
-            <div className="flex-1 h-[440px] overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-auto">
               <EmailList
                 emails={filteredEmails}
                 selectedThread={currentThread}
