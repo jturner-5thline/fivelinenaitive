@@ -11,10 +11,10 @@ export const HomepageHero = () => {
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a12]" />
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-6 text-center pt-10">
-        <Logo className="h-96 md:h-[33rem] lg:h-[36rem] mx-auto mb-0" />
+      <div className="relative z-10 container mx-auto px-6 flex flex-col items-start justify-center min-h-screen">
+        <Logo className="h-96 md:h-[33rem] lg:h-[36rem] mb-0" />
 
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-light text-white mb-5 max-w-4xl mx-auto leading-[1.1] -mt-40">
+        <h1 className="text-xl md:text-2xl lg:text-3xl font-light text-white mb-5 max-w-4xl leading-[1.1] -mt-40">
           The Operating System for Deal Management
         </h1>
 
