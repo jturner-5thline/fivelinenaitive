@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, Presentation } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
@@ -80,6 +80,7 @@ import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
 import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
+import { GammaIntegrationPanel } from '@/components/deal/GammaIntegrationPanel';
 import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
 import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
 import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
@@ -622,13 +623,13 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails'>(initialTab || 'deal-info');
+  const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails' | 'gamma'>(initialTab || 'deal-info');
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
   // Track tab direction for swipe animation
-  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'emails'] as const;
+  const DEAL_TABS = ['deal-info', 'lenders', 'deal-management', 'deal-writeup', 'data-room', 'deal-space', 'emails', 'gamma'] as const;
   
   const handleTabChange = useCallback((newTab: typeof dealInfoTab) => {
     const prevIndex = DEAL_TABS.indexOf(prevTabRef.current);
@@ -2575,7 +2576,7 @@ export default function DealDetail() {
             {/* Main Content */}
             <div className="flex flex-col gap-6">
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails')}>
+              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'emails' | 'gamma')}>
                 <div className="flex items-center gap-2">
                   <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                   <HintTooltip
@@ -2618,6 +2619,10 @@ export default function DealDetail() {
                   <TabsTrigger value="emails" className="gap-2">
                     <Mail className="h-4 w-4" />
                     Emails
+                  </TabsTrigger>
+                  <TabsTrigger value="gamma" className="gap-2">
+                    <Presentation className="h-4 w-4" />
+                    Gamma
                   </TabsTrigger>
                   </TabsList>
                   </HintTooltip>
@@ -4428,6 +4433,22 @@ export default function DealDetail() {
 
                 <TabsContent value="emails" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`emails-${tabDirection}`}>
                   <DealEmailsTab dealId={id!} />
+                </TabsContent>
+
+                <TabsContent value="gamma" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`gamma-${tabDirection}`}>
+                  <GammaIntegrationPanel
+                    dealData={{
+                      company: deal.company,
+                      value: deal.value,
+                      stage: deal.stage,
+                      status: deal.status,
+                      deal_type: deal.dealTypes?.[0],
+                      notes: deal.notes,
+                      narrative: deal.narrative,
+                      lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage })),
+                      milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed })),
+                    }}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
