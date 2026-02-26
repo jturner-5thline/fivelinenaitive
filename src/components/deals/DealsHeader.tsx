@@ -46,7 +46,7 @@ export function DealsHeader() {
       <div className="flex h-14 sm:h-16 items-center justify-between pl-3 pr-3 sm:pr-6 gap-2">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-16" />
+            <Logo className="h-10" />
           </Link>
           <DemoModeBadge />
           <nav className="hidden items-center gap-1 md:flex">
