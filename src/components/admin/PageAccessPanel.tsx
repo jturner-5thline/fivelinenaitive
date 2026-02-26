@@ -123,6 +123,12 @@ const pageConfigs: PageConfig[] = [
     icon: <Bot className="h-5 w-5" />
   },
   { 
+    featureKey: "copilot_widget", 
+    label: "naitive Copilot", 
+    description: "Floating AI copilot drawer accessible from every page",
+    icon: <Sparkles className="h-5 w-5" />
+  },
+  { 
     featureKey: "deal_pulse_widgets", 
     label: "Deal Pulse Widgets", 
     description: "Health score, days in stage, lender count, response rate, milestones & data room metrics row",
