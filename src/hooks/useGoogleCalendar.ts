@@ -73,7 +73,9 @@ export function useGoogleCalendar() {
     if (!user) return;
     setIsConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/integrations?calendar_callback=true`;
+      const redirectUri = window.location.hostname === 'naitive.co'
+        ? 'https://fivelinenaitive.lovable.app/integrations?calendar_callback=true'
+        : `${window.location.origin}/integrations?calendar_callback=true`;
       const { data, error } = await supabase.functions.invoke('calendar-auth', {
         body: { action: 'get_auth_url', redirect_uri: redirectUri },
       });
@@ -92,7 +94,9 @@ export function useGoogleCalendar() {
     setIsConnecting(true);
     try {
       const redirectUri = sessionStorage.getItem('calendar_redirect_uri') ||
-        `${window.location.origin}/integrations?calendar_callback=true`;
+        (window.location.hostname === 'naitive.co'
+          ? 'https://fivelinenaitive.lovable.app/integrations?calendar_callback=true'
+          : `${window.location.origin}/integrations?calendar_callback=true`);
       const { error } = await supabase.functions.invoke('calendar-auth', {
         body: { action: 'exchange_code', code, redirect_uri: redirectUri },
       });
