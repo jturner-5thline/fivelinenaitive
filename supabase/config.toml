@@ -167,3 +167,6 @@ verify_jwt = false
 
 [functions.weekly-hours-reminder]
 verify_jwt = false
+
+[functions.gamma-integration]
+verify_jwt = false
