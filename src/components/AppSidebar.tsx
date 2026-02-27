@@ -8,6 +8,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { usePageAccessFlags } from "@/hooks/useFeatureFlags";
+import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -63,7 +64,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdminRole();
-  const { hasPageAccess, isLoading: isAccessLoading } = usePageAccessFlags();
+  const { hasPageAccess, isPageBeta, isLoading: isAccessLoading } = usePageAccessFlags();
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
@@ -125,7 +126,12 @@ export function AppSidebar() {
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <item.icon className={item.iconClassName || "h-4 w-4"} />
-                      {showExpanded && <span>{item.title}</span>}
+                      {showExpanded && (
+                        <span className="flex items-center gap-1.5">
+                          {item.title}
+                          {item.featureKey && <BetaBadge featureKey={`page_${item.featureKey}`} />}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

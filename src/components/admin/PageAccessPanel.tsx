@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -176,7 +177,6 @@ export function PageAccessPanel() {
     
     try {
       if (!flag) {
-        // Create the flag if it doesn't exist
         await createFlag.mutateAsync({ 
           name: featureKey, 
           description: `Access control for ${featureKey.replace(/_/g, ' ')}`,
@@ -192,6 +192,36 @@ export function PageAccessPanel() {
       toast.success(`${featureKey.replace('page_', '').replace(/_/g, ' ')} access set to ${statusLabel}`);
     } catch (error) {
       toast.error("Failed to update page access");
+    }
+  };
+
+  const handleBetaToggle = async (featureKey: string, isBeta: boolean) => {
+    const flag = getPageFlag(featureKey);
+    
+    try {
+      if (!flag) {
+        await createFlag.mutateAsync({ 
+          name: featureKey, 
+          description: `Access control for ${featureKey.replace(/_/g, ' ')}`,
+          status: 'deployed'
+        });
+        // After creation, we need to update the beta flag
+        // Re-fetch will happen, then we update
+        const { data } = await supabase
+          .from("feature_flags")
+          .select("id")
+          .eq("name", featureKey)
+          .single();
+        if (data) {
+          await updateFlag.mutateAsync({ id: data.id, is_beta: isBeta });
+        }
+      } else {
+        await updateFlag.mutateAsync({ id: flag.id, is_beta: isBeta });
+      }
+      const label = featureKey.replace('page_', '').replace(/_/g, ' ');
+      toast.success(`${label} ${isBeta ? 'marked as beta' : 'beta tag removed'}`);
+    } catch (error) {
+      toast.error("Failed to update beta status");
     }
   };
 
@@ -246,6 +276,7 @@ export function PageAccessPanel() {
           const flag = getPageFlag(config.featureKey);
           const status = (flag?.status || 'deployed') as FeatureStatus;
           const statusInfo = statusConfig[status];
+          const isBeta = flag?.is_beta ?? false;
 
           return (
             <Card key={config.featureKey}>
@@ -255,51 +286,69 @@ export function PageAccessPanel() {
                     {config.icon}
                   </div>
                   <div>
-                    <h4 className="font-medium">{config.label}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium">{config.label}</h4>
+                      {isBeta && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-warning text-warning font-semibold">
+                          Beta
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">{config.description}</p>
                   </div>
                 </div>
                 
-                <Select
-                  value={status}
-                  onValueChange={(value: FeatureStatus) => handleStatusChange(config.featureKey, value)}
-                  disabled={updateFlag.isPending || createFlag.isPending}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={statusInfo.variant} className="gap-1">
-                        {statusInfo.icon}
-                        {statusInfo.label}
-                      </Badge>
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="deployed">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Beta</span>
+                    <Switch
+                      checked={isBeta}
+                      onCheckedChange={(checked) => handleBetaToggle(config.featureKey, checked)}
+                      disabled={updateFlag.isPending || createFlag.isPending}
+                      className="scale-75"
+                    />
+                  </div>
+                  <Select
+                    value={status}
+                    onValueChange={(value: FeatureStatus) => handleStatusChange(config.featureKey, value)}
+                    disabled={updateFlag.isPending || createFlag.isPending}
+                  >
+                    <SelectTrigger className="w-[180px]">
                       <div className="flex items-center gap-2">
-                        <Rocket className="h-3 w-3" />
-                        All Users
+                        <Badge variant={statusInfo.variant} className="gap-1">
+                          {statusInfo.icon}
+                          {statusInfo.label}
+                        </Badge>
                       </div>
-                    </SelectItem>
-                    <SelectItem value="staging">
-                      <div className="flex items-center gap-2">
-                        <FlaskConical className="h-3 w-3" />
-                        5thLine Only (Staging)
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="james_only">
-                      <div className="flex items-center gap-2">
-                        <User className="h-3 w-3" />
-                        James Only
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="disabled">
-                      <div className="flex items-center gap-2">
-                        <Ban className="h-3 w-3" />
-                        Disabled
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="deployed">
+                        <div className="flex items-center gap-2">
+                          <Rocket className="h-3 w-3" />
+                          All Users
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="staging">
+                        <div className="flex items-center gap-2">
+                          <FlaskConical className="h-3 w-3" />
+                          5thLine Only (Staging)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="james_only">
+                        <div className="flex items-center gap-2">
+                          <User className="h-3 w-3" />
+                          James Only
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="disabled">
+                        <div className="flex items-center gap-2">
+                          <Ban className="h-3 w-3" />
+                          Disabled
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </Card>
           );

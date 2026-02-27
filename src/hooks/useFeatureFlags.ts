@@ -9,6 +9,7 @@ export interface FeatureFlag {
   name: string;
   description: string | null;
   status: FeatureStatus;
+  is_beta: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -35,13 +36,19 @@ export const useUpdateFeatureFlag = () => {
     mutationFn: async ({
       id,
       status,
+      is_beta,
     }: {
       id: string;
-      status: FeatureStatus;
+      status?: FeatureStatus;
+      is_beta?: boolean;
     }) => {
+      const updateData: Record<string, any> = {};
+      if (status !== undefined) updateData.status = status;
+      if (is_beta !== undefined) updateData.is_beta = is_beta;
+
       const { error } = await supabase
         .from("feature_flags")
-        .update({ status: status as any })
+        .update(updateData as any)
         .eq("id", id);
 
       if (error) throw error;
@@ -149,6 +156,18 @@ export const usePageAccessFlags = () => {
     
     return flag.status === 'deployed';
   };
+
+  const isPageBeta = (pageName: string): boolean => {
+    const flag = pageFlags.find(f => f.name === `page_${pageName}`);
+    return flag?.is_beta ?? false;
+  };
   
-  return { pageFlags, hasPageAccess, isLoading, is5thLineUser };
+  return { pageFlags, hasPageAccess, isPageBeta, isLoading, is5thLineUser };
+};
+
+// Hook to check beta status for any feature
+export const useIsBeta = (featureName: string): boolean => {
+  const { data: flags } = useFeatureFlags();
+  const flag = flags?.find(f => f.name === featureName);
+  return flag?.is_beta ?? false;
 };
