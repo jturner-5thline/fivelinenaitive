@@ -21,6 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/contexts/PreferencesContext';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { UserNotificationSettings } from '@/components/settings/UserNotificationSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -199,6 +200,7 @@ export default function Preferences() {
 
                 {/* Notifications Tab */}
                 <TabsContent value="notifications" className="space-y-4 mt-4">
+                  {isVisible('notifications') && <UserNotificationSettings />}
                   {isVisible('notifications') && <NotificationSettings />}
                   {isVisible('suggestions') && <SuggestionSettings />}
                 </TabsContent>

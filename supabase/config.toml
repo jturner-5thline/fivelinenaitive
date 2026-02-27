@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.gamma-integration]
 verify_jwt = false
+
+[functions.notification-engine]
+verify_jwt = false

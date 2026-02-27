@@ -12,7 +12,7 @@ import {
 import { 
   Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare, 
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout, ChevronDown,
-  ShieldCheck, Cog, Lightbulb, UserCheck
+  ShieldCheck, Cog, Lightbulb, UserCheck, Bell
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -33,6 +33,7 @@ import { ErrorLogsPanel } from "@/components/admin/ErrorLogsPanel";
 import { DataManagementPanel } from "@/components/admin/DataManagementPanel";
 import { PageAccessPanel } from "@/components/admin/PageAccessPanel";
 import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
+import { NotificationRulesPanel } from "@/components/admin/NotificationRulesPanel";
 import { DealsHeader } from "@/components/deals/DealsHeader";
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
 import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
@@ -50,6 +51,7 @@ const usersSubPages = [
 const accessSubPages = [
   { id: "pages", label: "Page Access", icon: Layout },
   { id: "permissions", label: "User Permissions", icon: Shield },
+  { id: "notifications-admin", label: "Notifications", icon: Bell },
   { id: "announcements", label: "Announcements", icon: Megaphone },
   { id: "waitlist", label: "Waitlist", icon: ListTodo },
 ];
@@ -217,6 +219,21 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent><PageAccessPanel /></CardContent>
+          </Card>
+        );
+      case "notifications-admin":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Notification Engine
+              </CardTitle>
+              <CardDescription>
+                Configure notification rules, delivery channels, templates, and default recipients for all notification types.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><NotificationRulesPanel /></CardContent>
           </Card>
         );
       case "permissions":
