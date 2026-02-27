@@ -44,6 +44,7 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
         side="bottom"
         sideOffset={4}
         avoidCollisions={false}
+        className="max-h-[300px] overflow-y-auto"
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
         onPointerDown={(e) => e.stopPropagation()}
       >
