@@ -183,14 +183,21 @@ export function useDealWriteup(dealId: string | undefined) {
       companyHighlights = row.company_highlights as unknown as CompanyHighlight[];
     }
     
-    // Parse financial_years from JSON and format currency values
+    // Parse financial_years from JSON, format currency values, and sort descending (newest first)
     let financialYears: FinancialYear[] = [];
     if (row.financial_years && Array.isArray(row.financial_years)) {
       financialYears = (row.financial_years as unknown as FinancialYear[]).map(fy => ({
         ...fy,
         revenue: formatStoredCurrency(fy.revenue),
         ebitda: formatStoredCurrency(fy.ebitda),
-      }));
+      })).sort((a, b) => {
+        const parseYear = (yearStr: string): number => {
+          if (!yearStr) return -Infinity;
+          const match = yearStr.match(/(\d{4})/);
+          return match ? parseInt(match[1], 10) : -Infinity;
+        };
+        return parseYear(b.year) - parseYear(a.year);
+      });
     }
 
     // Parse financial_comments from JSON (stored in financial_years or separately)
