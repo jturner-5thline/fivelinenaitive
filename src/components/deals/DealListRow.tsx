@@ -5,9 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { InlineStatusDropdown } from './InlineStatusDropdown';
+import { InlineStageDropdown } from './InlineStageDropdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -50,6 +52,7 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
+  const { updateDeal } = useDealsContext();
   const { dealTypes } = useDealTypes();
   const { isAdmin } = useAdminRole();
   const { pipelines } = usePipelineContext();
@@ -176,9 +179,12 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
     ),
     stage: (
       <TableCell key="stage">
-        <Badge variant="outline" className="text-xs rounded-lg">
-          {stageConfig.label}
-        </Badge>
+        <InlineStageDropdown
+          dealId={deal.id}
+          stage={deal.stage}
+          pipelineId={deal.pipelineId}
+          onStageChange={(id, newStage) => updateDeal(id, { stage: newStage })}
+        />
       </TableCell>
     ),
     manager: (
