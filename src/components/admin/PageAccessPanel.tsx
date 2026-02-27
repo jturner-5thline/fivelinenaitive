@@ -20,6 +20,8 @@ import {
   Bot,
   DollarSign,
   Activity,
+  Briefcase,
+  Building2,
 } from "lucide-react";
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from "sonner";
@@ -134,6 +136,24 @@ const pageConfigs: PageConfig[] = [
     label: "Deal Pulse Widgets", 
     description: "Health score, days in stage, lender count, response rate, milestones & data room metrics row",
     icon: <Activity className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_deal_detail", 
+    label: "Deal Detail Page", 
+    description: "Individual deal detail view with all deal information",
+    icon: <Briefcase className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_deal_space", 
+    label: "Deal Space", 
+    description: "AI-powered deal workspace with notes, financials, and documents",
+    icon: <Sparkles className="h-5 w-5" />
+  },
+  { 
+    featureKey: "page_lenders", 
+    label: "Lender Directory", 
+    description: "Master lender directory and management",
+    icon: <Building2 className="h-5 w-5" />
   },
 ];
 

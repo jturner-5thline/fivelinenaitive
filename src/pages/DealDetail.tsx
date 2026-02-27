@@ -3,6 +3,7 @@ import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'reac
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
+import { BetaBadge } from '@/components/ui/beta-badge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
 import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
@@ -2244,6 +2245,7 @@ export default function DealDetail() {
                     onSave={(value) => updateDeal('company', value)}
                     displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
+                  <BetaBadge featureKey="page_deal_detail" />
                   <Popover open={isFlagPopoverOpen} onOpenChange={(open) => {
                     setIsFlagPopoverOpen(open);
                     if (open) {
@@ -2589,6 +2591,7 @@ export default function DealDetail() {
                     <TabsTrigger value="deal-space" className="gap-2">
                       <Sparkles className="h-4 w-4" />
                       Deal Space
+                      <BetaBadge featureKey="page_deal_space" />
                     </TabsTrigger>
                     <TabsTrigger value="deal-info">Deal Information</TabsTrigger>
                   <TabsTrigger value="lenders" className="gap-2">

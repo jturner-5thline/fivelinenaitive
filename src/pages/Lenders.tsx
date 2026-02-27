@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus } from 'lucide-react';
 import { DealsHeader } from '@/components/deals/DealsHeader';
+import { BetaBadge } from '@/components/ui/beta-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -934,6 +935,7 @@ export default function Lenders() {
                 <h1 className="text-2xl font-semibold flex items-center gap-2 bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
                   <Building2 className="h-6 w-6 text-foreground" />
                   Lender Directory
+                  <BetaBadge featureKey="page_lenders" />
                 </h1>
                 <p className="text-muted-foreground">Manage your lender directory</p>
               </div>
