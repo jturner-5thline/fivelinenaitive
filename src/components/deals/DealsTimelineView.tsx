@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { InlineEditField } from '@/components/ui/inline-edit-field';
-import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle, GripHorizontal, Undo2, Redo2, Maximize2, Minimize2 } from 'lucide-react';
+import { CalendarDays, Minus, Plus, Clock, ArrowRight, ChevronDown, ChevronRight, Eye, EyeOff, Settings2, Trash2, PlusCircle, GripHorizontal, Undo2, Redo2, Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, addDays, differenceInCalendarWeeks, min as dateMin, max as dateMax } from 'date-fns';
 
@@ -70,6 +70,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
 
   // Fullscreen / expanded mode
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(80); // pixels per week in expanded mode
 
   // Drag state
   const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
@@ -299,7 +300,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
           {(() => {
             const ganttContent = (expanded: boolean) => (
               <ScrollArea className={cn('w-full pb-4', expanded && 'h-[70vh]')}>
-                <div style={{ minWidth: Math.max(600, globalWeeks * (expanded ? 80 : 50)) }}>
+                <div style={{ minWidth: Math.max(600, globalWeeks * (expanded ? zoomLevel : 50)) }}>
                   {/* Week tick headers */}
                   <div className="flex border-b border-border mb-1">
                     <div className={cn('shrink-0 text-[10px] text-muted-foreground px-2 sticky left-0 z-10 bg-card', expanded ? 'w-52' : 'w-40')}>Deal</div>
@@ -430,6 +431,17 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
                   <Redo2 className="h-3.5 w-3.5" />
                 </Button>
+                {isFullscreen && (
+                  <>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoomLevel(z => Math.max(20, z - 15))} title="Zoom out">
+                      <ZoomOut className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground w-8 text-center">{Math.round((zoomLevel / 80) * 100)}%</span>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoomLevel(z => Math.min(160, z + 15))} title="Zoom in">
+                      <ZoomIn className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
