@@ -17,17 +17,33 @@ interface InlineStatusDropdownProps {
 export function InlineStatusDropdown({ dealId, status, onStatusChange, className = '' }: InlineStatusDropdownProps) {
   const statusConfig = STATUS_CONFIG[status] || { label: status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
 
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Badge
-          variant="outline"
-          className={`${statusConfig.badgeColor} border-0 text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={handleTriggerClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="focus:outline-none"
         >
-          {statusConfig.label}
-        </Badge>
+          <Badge
+            variant="outline"
+            className={`${statusConfig.badgeColor} border-0 text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+          >
+            {statusConfig.label}
+          </Badge>
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuContent
+        align="start"
+        onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         {Object.entries(STATUS_CONFIG).map(([key, { label, dotColor }]) => (
           <DropdownMenuItem
             key={key}
