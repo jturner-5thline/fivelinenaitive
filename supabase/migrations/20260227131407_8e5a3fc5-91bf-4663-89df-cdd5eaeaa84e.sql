@@ -1,0 +1,1 @@
+ALTER TABLE public.feature_flags ADD COLUMN is_beta boolean NOT NULL DEFAULT false;
