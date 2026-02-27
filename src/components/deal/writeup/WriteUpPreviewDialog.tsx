@@ -62,11 +62,18 @@ interface WriteUpPreviewDialogProps {
 /* ── Helpers ── */
 function fmtCurrency(value: string | undefined): string {
   if (!value) return '—';
+  const upper = value.toUpperCase();
+  const hasMM = upper.includes('MM') || upper.includes('M');
+  const hasK = upper.includes('K');
   const cleaned = value.replace(/[^0-9.-]/g, '');
   const num = parseFloat(cleaned);
   if (isNaN(num)) return value;
+  // If value was already expressed in MM (e.g. "$7.49MM" → num=7.49), format as $X.XMM
+  if (hasMM && Math.abs(num) < 1_000) return `$${num.toFixed(1)}MM`;
+  if (hasK && Math.abs(num) < 1_000_000) return `$${num.toFixed(1)}K`;
+  // Raw large numbers
   if (Math.abs(num) >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}MM`;
-  if (Math.abs(num) >= 1_000) return `$${(num / 1_000).toFixed(0)}K`;
+  if (Math.abs(num) >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
   return `$${num.toLocaleString()}`;
 }
 
