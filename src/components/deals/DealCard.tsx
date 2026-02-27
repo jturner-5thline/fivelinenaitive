@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
 import { InlineStatusDropdown } from './InlineStatusDropdown';
+import { InlineStageDropdown } from './InlineStageDropdown';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -311,12 +312,13 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
             className="text-white"
           />
           {!compact && (
-            <Badge
-              variant="outline"
-              className="text-xs rounded-lg text-white"
-            >
-              {stageConfig.label}
-            </Badge>
+            <InlineStageDropdown
+              dealId={deal.id}
+              stage={deal.stage}
+              pipelineId={deal.pipelineId}
+              onStageChange={(id, newStage) => updateDeal(id, { stage: newStage })}
+              className="text-white"
+            />
           )}
           {deal.migratedFromPersonal && (
             <TooltipProvider>
