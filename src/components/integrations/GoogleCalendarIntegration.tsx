@@ -51,6 +51,7 @@ export function GoogleCalendarIntegration({ onDisconnect }: GoogleCalendarIntegr
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     status,
+    isStatusLoading,
     events,
     isLoading,
     isConnecting,
@@ -146,6 +147,28 @@ export function GoogleCalendarIntegration({ onDisconnect }: GoogleCalendarIntegr
     
     return days;
   };
+
+  if (isStatusLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-5 w-5 rounded" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-56" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-[400px] w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!status.connected) {
     return (

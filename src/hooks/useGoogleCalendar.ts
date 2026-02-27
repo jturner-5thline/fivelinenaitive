@@ -50,6 +50,7 @@ interface CalendarStatus {
 export function useGoogleCalendar() {
   const { user } = useAuth();
   const [status, setStatus] = useState<CalendarStatus>({ connected: false });
+  const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +58,7 @@ export function useGoogleCalendar() {
   const [error, setError] = useState<string | null>(null);
 
   const checkStatus = useCallback(async () => {
-    if (!user) return;
+    if (!user) { setIsStatusLoading(false); return; }
     try {
       const { data, error } = await supabase.functions.invoke('calendar-status');
       if (error) throw error;
@@ -66,6 +67,8 @@ export function useGoogleCalendar() {
     } catch (err: any) {
       console.error('Calendar status error:', err);
       setError(err.message);
+    } finally {
+      setIsStatusLoading(false);
     }
   }, [user]);
 
@@ -319,6 +322,7 @@ export function useGoogleCalendar() {
 
   return {
     status,
+    isStatusLoading,
     calendars,
     events,
     isLoading,

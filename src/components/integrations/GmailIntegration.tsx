@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -59,6 +60,7 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
   const { deals } = useDealsContext();
   const {
     status,
+    isStatusLoading,
     messages,
     isLoading,
     isConnecting,
@@ -247,6 +249,30 @@ export function GmailIntegration({ onDisconnect }: GmailIntegrationProps) {
   const handleToggleStar = async (messageId: string, currentlyStarred: boolean) => {
     await toggleStar(messageId, !currentlyStarred);
   };
+
+  if (isStatusLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-lg" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!status.connected) {
     return (
