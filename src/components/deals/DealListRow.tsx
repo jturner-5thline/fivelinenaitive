@@ -4,6 +4,7 @@ import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2,
 import { useNavigate } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
+import { InlineStatusDropdown } from './InlineStatusDropdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -165,12 +166,12 @@ export function DealListRow({ deal, onStatusChange, onMarkReviewed, onToggleFlag
     ),
     status: (
       <TableCell key="status">
-        <Badge
-          variant="outline"
-          className={`${statusConfig.badgeColor} text-foreground dark:text-[hsl(240,25%,5%)] border-0 text-xs rounded-lg font-semibold whitespace-nowrap`}
-        >
-          {statusConfig.label}
-        </Badge>
+        <InlineStatusDropdown
+          dealId={deal.id}
+          status={deal.status}
+          onStatusChange={onStatusChange}
+          className="text-foreground dark:text-[hsl(240,25%,5%)] whitespace-nowrap"
+        />
       </TableCell>
     ),
     stage: (

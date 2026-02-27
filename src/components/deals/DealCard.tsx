@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 import { Link } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
+import { InlineStatusDropdown } from './InlineStatusDropdown';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -303,12 +304,12 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           </div>
         </div>
         <div className={`flex items-center gap-2 ${compact ? 'mt-2' : 'mt-4'} flex-wrap`}>
-          <Badge
-            variant="outline"
-            className={`${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg font-semibold`}
-          >
-            {statusConfig.label}
-          </Badge>
+          <InlineStatusDropdown
+            dealId={deal.id}
+            status={deal.status}
+            onStatusChange={onStatusChange}
+            className="text-white"
+          />
           {!compact && (
             <Badge
               variant="outline"
