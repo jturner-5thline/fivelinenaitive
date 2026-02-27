@@ -30,6 +30,7 @@ interface GmailStatus {
 export function useGmail() {
   const { user } = useAuth();
   const [status, setStatus] = useState<GmailStatus>({ connected: false });
+  const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [messages, setMessages] = useState<GmailMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -37,7 +38,7 @@ export function useGmail() {
 
   // Check connection status
   const checkStatus = useCallback(async () => {
-    if (!user) return;
+    if (!user) { setIsStatusLoading(false); return; }
 
     try {
       const { data, error } = await supabase.functions.invoke('gmail-status');
@@ -48,6 +49,8 @@ export function useGmail() {
     } catch (err: any) {
       console.error('Gmail status error:', err);
       setError(err.message);
+    } finally {
+      setIsStatusLoading(false);
     }
   }, [user]);
 
@@ -304,6 +307,7 @@ export function useGmail() {
 
   return {
     status,
+    isStatusLoading,
     messages,
     isLoading,
     isConnecting,
