@@ -59,6 +59,8 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
       <DropdownMenuContent
         align="start"
         side="bottom"
+        sideOffset={4}
+        avoidCollisions={false}
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
         onPointerDown={(e) => e.stopPropagation()}
       >
