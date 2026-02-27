@@ -1192,7 +1192,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[1200px] h-[85vh] p-0 gap-0 flex flex-col overflow-hidden">
+      <DialogContent className="max-w-[98vw] w-[1600px] h-[92vh] p-0 gap-0 flex flex-col overflow-hidden">
         {/* ─── Toolbar ─── */}
         <div className="flex items-center gap-3 px-4 py-3 border-b bg-background shrink-0">
           <div className="flex items-center gap-1.5">
