@@ -874,7 +874,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         const match = yearStr.match(/(\d{4})/);
         return match ? parseInt(match[1], 10) : Infinity;
       };
-      return parseYear(a.year) - parseYear(b.year);
+      return parseYear(b.year) - parseYear(a.year);
     });
   };
 
