@@ -12,13 +12,21 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface EventsRequest {
-  action: "list" | "get" | "list_calendars" | "sync_all";
+  action: "list" | "get" | "list_calendars" | "sync_all" | "create" | "update" | "delete";
   calendar_id?: string;
   event_id?: string;
   time_min?: string;
   time_max?: string;
   max_results?: number;
   page_token?: string;
+  event_data?: {
+    summary: string;
+    description?: string;
+    location?: string;
+    start: string;
+    end: string;
+    all_day?: boolean;
+  };
 }
 
 interface NormalizedEvent {
@@ -297,6 +305,133 @@ serve(async (req: Request): Promise<Response> => {
           events: allEvents,
           synced_at: new Date().toISOString(),
         }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "create": {
+        if (!body.event_data?.summary) {
+          return new Response(JSON.stringify({ error: "event_data with summary required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const calendarId = body.calendar_id || "primary";
+        const ed = body.event_data;
+        const nylasEvent: any = {
+          title: ed.summary,
+          description: ed.description || undefined,
+          location: ed.location || undefined,
+        };
+
+        if (ed.all_day) {
+          nylasEvent.when = { start_date: ed.start, end_date: ed.end };
+        } else {
+          nylasEvent.when = {
+            start_time: Math.floor(new Date(ed.start).getTime() / 1000),
+            end_time: Math.floor(new Date(ed.end).getTime() / 1000),
+          };
+        }
+
+        const createUrl = new URL(`${baseUrl}/events`);
+        createUrl.searchParams.set("calendar_id", calendarId);
+
+        const createResp = await fetch(createUrl.toString(), {
+          method: "POST",
+          headers,
+          body: JSON.stringify(nylasEvent),
+        });
+        const createData = await createResp.json();
+
+        if (!createResp.ok) {
+          console.error("Nylas create event error:", createData);
+          return new Response(JSON.stringify({ error: createData.message || "Failed to create event" }), {
+            status: createResp.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ event: normalizeNylasEvent(createData.data, calendarId) }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "update": {
+        if (!body.event_id || !body.event_data?.summary) {
+          return new Response(JSON.stringify({ error: "event_id and event_data required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const calendarId = body.calendar_id || "primary";
+        const ed = body.event_data;
+        const nylasUpdate: any = {
+          title: ed.summary,
+          description: ed.description || "",
+          location: ed.location || "",
+        };
+
+        if (ed.all_day) {
+          nylasUpdate.when = { start_date: ed.start, end_date: ed.end };
+        } else {
+          nylasUpdate.when = {
+            start_time: Math.floor(new Date(ed.start).getTime() / 1000),
+            end_time: Math.floor(new Date(ed.end).getTime() / 1000),
+          };
+        }
+
+        const updateUrl = new URL(`${baseUrl}/events/${body.event_id}`);
+        updateUrl.searchParams.set("calendar_id", calendarId);
+
+        const updateResp = await fetch(updateUrl.toString(), {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(nylasUpdate),
+        });
+        const updateData = await updateResp.json();
+
+        if (!updateResp.ok) {
+          console.error("Nylas update event error:", updateData);
+          return new Response(JSON.stringify({ error: updateData.message || "Failed to update event" }), {
+            status: updateResp.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ event: normalizeNylasEvent(updateData.data, calendarId) }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      case "delete": {
+        if (!body.event_id) {
+          return new Response(JSON.stringify({ error: "event_id required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const calendarId = body.calendar_id || "primary";
+        const deleteUrl = new URL(`${baseUrl}/events/${body.event_id}`);
+        deleteUrl.searchParams.set("calendar_id", calendarId);
+
+        const deleteResp = await fetch(deleteUrl.toString(), {
+          method: "DELETE",
+          headers,
+        });
+
+        if (!deleteResp.ok) {
+          const deleteData = await deleteResp.json();
+          console.error("Nylas delete event error:", deleteData);
+          return new Response(JSON.stringify({ error: deleteData.message || "Failed to delete event" }), {
+            status: deleteResp.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

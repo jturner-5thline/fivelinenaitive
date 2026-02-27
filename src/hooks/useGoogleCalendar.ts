@@ -225,6 +225,94 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
+  const createEvent = useCallback(async (eventData: {
+    summary: string;
+    description?: string;
+    location?: string;
+    start: string;
+    end: string;
+    allDay?: boolean;
+  }, calendarId?: string) => {
+    if (!user) return null;
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-events', {
+        body: {
+          action: 'create',
+          calendar_id: calendarId,
+          event_data: {
+            summary: eventData.summary,
+            description: eventData.description,
+            location: eventData.location,
+            start: eventData.start,
+            end: eventData.end,
+            all_day: eventData.allDay,
+          },
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data.event as CalendarEvent;
+    } catch (err: any) {
+      console.error('Create event error:', err);
+      setError(err.message);
+      throw err;
+    }
+  }, [user]);
+
+  const updateEvent = useCallback(async (eventId: string, eventData: {
+    summary: string;
+    description?: string;
+    location?: string;
+    start: string;
+    end: string;
+    allDay?: boolean;
+  }, calendarId?: string) => {
+    if (!user) return null;
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-events', {
+        body: {
+          action: 'update',
+          event_id: eventId,
+          calendar_id: calendarId,
+          event_data: {
+            summary: eventData.summary,
+            description: eventData.description,
+            location: eventData.location,
+            start: eventData.start,
+            end: eventData.end,
+            all_day: eventData.allDay,
+          },
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data.event as CalendarEvent;
+    } catch (err: any) {
+      console.error('Update event error:', err);
+      setError(err.message);
+      throw err;
+    }
+  }, [user]);
+
+  const deleteEvent = useCallback(async (eventId: string, calendarId?: string) => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-events', {
+        body: {
+          action: 'delete',
+          event_id: eventId,
+          calendar_id: calendarId,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    } catch (err: any) {
+      console.error('Delete event error:', err);
+      setError(err.message);
+      throw err;
+    }
+  }, [user]);
+
   useEffect(() => {
     if (user) checkStatus();
   }, [user, checkStatus]);
@@ -244,5 +332,8 @@ export function useGoogleCalendar() {
     listEvents,
     getEvent,
     syncAllCalendars,
+    createEvent,
+    updateEvent,
+    deleteEvent,
   };
 }
