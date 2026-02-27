@@ -105,12 +105,17 @@ Tone should be professional, confident, and concise. Use a clean layout with cle
 interface GammaTemplateLibraryProps {
   selected: string | null;
   onSelect: (template: GammaTemplate) => void;
+  enabledTemplateIds?: string[] | null;
 }
 
-export function GammaTemplateLibrary({ selected, onSelect }: GammaTemplateLibraryProps) {
+export function GammaTemplateLibrary({ selected, onSelect, enabledTemplateIds }: GammaTemplateLibraryProps) {
+  const templates = enabledTemplateIds
+    ? GAMMA_TEMPLATES.filter(t => enabledTemplateIds.includes(t.id))
+    : GAMMA_TEMPLATES;
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-      {GAMMA_TEMPLATES.map((tpl) => {
+      {templates.map((tpl) => {
         const isActive = selected === tpl.id;
         return (
           <button

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Wand2, ChevronDown, ChevronUp } from 'lucide-react';
@@ -17,6 +17,8 @@ import { GammaCollaborationPanel } from './gamma/GammaCollaborationPanel';
 import { GammaAnalyticsDashboard } from './gamma/GammaAnalyticsDashboard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { GammaTemplate } from './gamma/GammaTemplateLibrary';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 
 interface GammaIntegrationPanelProps {
   dealId: string;
@@ -35,6 +37,23 @@ interface GammaIntegrationPanelProps {
 
 export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPanelProps) {
   const { generate, fetchThemes, isGenerating, currentGeneration, themes, isLoadingThemes } = useGamma();
+  const { company } = useCompany();
+  const [enabledTemplateIds, setEnabledTemplateIds] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (!company?.id) return;
+    (async () => {
+      const { data } = await supabase
+        .from('company_settings')
+        .select('deals_special_widgets')
+        .eq('company_id', company.id)
+        .single();
+      const config = data?.deals_special_widgets as Record<string, unknown> | null;
+      if (config && Array.isArray(config.gamma_enabled_templates)) {
+        setEnabledTemplateIds(config.gamma_enabled_templates as string[]);
+      }
+    })();
+  }, [company?.id]);
   const [format, setFormat] = useState<'presentation' | 'document'>('presentation');
   const [selectedTheme, setSelectedTheme] = useState<string>('default');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -163,7 +182,7 @@ export function GammaIntegrationPanel({ dealId, dealData }: GammaIntegrationPane
       {/* Template Library */}
       <div className="space-y-3">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Templates</p>
-        <GammaTemplateLibrary selected={selectedTemplate} onSelect={handleTemplateSelect} />
+        <GammaTemplateLibrary selected={selectedTemplate} onSelect={handleTemplateSelect} enabledTemplateIds={enabledTemplateIds} />
       </div>
 
       {/* Custom Templates */}
