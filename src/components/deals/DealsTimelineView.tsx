@@ -464,7 +464,7 @@ export function DealsTimelineView({ deals }: DealsTimelineViewProps) {
                         {toolbarButtons}
                       </div>
                     </DialogHeader>
-                    <div className="px-6 pb-6">
+                    <div className="px-6 pb-6 overflow-auto max-h-[calc(90vh-5rem)]">
                       {ganttContent(true)}
                     </div>
                   </DialogContent>
