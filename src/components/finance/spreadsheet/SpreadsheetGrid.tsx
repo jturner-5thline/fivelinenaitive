@@ -507,7 +507,7 @@ export function SpreadsheetGrid({
                         className={cn(
                           "border bg-background relative transition-none",
                           isSelected
-                            ? "ring-2 ring-primary z-[5] border-primary"
+                            ? "z-[5]"
                             : "border-border",
                           isRanged && !isSelected && "bg-primary/8",
                           isCopied && "marching-ants",
@@ -525,6 +525,7 @@ export function SpreadsheetGrid({
                           height: mergeSpan ? rh * mergeSpan.rowSpan : rh,
                           backgroundColor: effectiveBg,
                           left: colIndex < frozenCols ? ROW_NUM_WIDTH + sheet.colWidths.slice(0, colIndex).reduce((a, b) => a + (b || 100), 0) : undefined,
+                          ...(isSelected ? { boxShadow: 'inset 0 0 0 2px hsl(var(--primary))' } : {}),
                         }}
                         rowSpan={mergeSpan?.rowSpan}
                         colSpan={mergeSpan?.colSpan}
