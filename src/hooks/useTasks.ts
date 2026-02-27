@@ -69,6 +69,7 @@ export interface TaskActivityEvent {
   actor_profile?: { display_name: string; avatar_url: string | null } | null;
 }
 
+export type TaskOwnerFilter = 'mine' | 'others' | 'all';
 const TASKS_KEY = ['my-tasks'];
 
 function calculateNextDueDate(currentDueDate: string | null, rule: string): string | null {
@@ -96,23 +97,39 @@ function calculateNextDueDate(currentDueDate: string | null, rule: string): stri
   return date.toISOString().split('T')[0];
 }
 
-export function useMyTasks() {
+export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
   const { user } = useAuth();
+  const { company } = useCompany();
   const queryClient = useQueryClient();
 
   const { data: tasks = [], isLoading } = useQuery({
-    queryKey: TASKS_KEY,
+    queryKey: ['my-tasks', ownerFilter],
     enabled: !!user,
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from('tasks')
         .select('*')
-        .eq('assigned_to', user.id)
         .is('archived_at', null)
         .is('parent_task_id', null)
         .order('position', { ascending: true })
         .order('created_at', { ascending: false });
+
+      if (ownerFilter === 'mine') {
+        query = query.eq('assigned_to', user.id);
+      } else if (ownerFilter === 'others') {
+        query = query.neq('assigned_to', user.id);
+        if (company?.id) {
+          query = query.eq('company_id', company.id);
+        }
+      } else {
+        // 'all' — fetch all company tasks
+        if (company?.id) {
+          query = query.eq('company_id', company.id);
+        }
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as Task[];
     },

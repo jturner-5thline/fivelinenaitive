@@ -1,6 +1,6 @@
 import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useMyTasks, type Task } from '@/hooks/useTasks';
+import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
 import { TaskListView, type GroupBy } from '@/components/tasks/TaskListView';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { TaskCalendarView } from '@/components/tasks/TaskCalendarView';
@@ -32,7 +32,7 @@ import {
   ListTodo, LayoutGrid, Calendar, Plus, Search, Filter,
   SlidersHorizontal, Group, Trash2, BarChart3, Bell,
   Bookmark, BookmarkPlus, Download, FileDown, Star, MoreVertical,
-  Zap, Tag, ClipboardList, GripVertical,
+  Zap, Tag, ClipboardList, GripVertical, Users,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -52,7 +52,8 @@ type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'bloc
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title';
 
 export default function Tasks() {
-  const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks();
+  const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
+  const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView } = useTaskSavedViews();
@@ -317,7 +318,7 @@ export default function Tasks() {
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold">
-              {viewMode === 'focus' ? '🎯 My Focus' : 'My Tasks'}
+              {viewMode === 'focus' ? '🎯 My Focus' : ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
             <span className="text-sm text-muted-foreground">
               {filtered.length} task{filtered.length !== 1 ? 's' : ''}
@@ -377,6 +378,16 @@ export default function Tasks() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." className="h-8 text-xs pl-8" />
           </div>
+          <Select value={ownerFilter} onValueChange={v => setOwnerFilter(v as TaskOwnerFilter)}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <Users className="h-3 w-3 mr-1.5" /><SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mine" className="text-xs">My Tasks</SelectItem>
+              <SelectItem value="others" className="text-xs">Others' Tasks</SelectItem>
+              <SelectItem value="all" className="text-xs">All Tasks</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
             <SelectTrigger className="h-8 w-[140px] text-xs">
               <Filter className="h-3 w-3 mr-1.5" /><SelectValue />

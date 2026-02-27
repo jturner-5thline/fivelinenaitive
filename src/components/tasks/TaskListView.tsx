@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -213,7 +213,7 @@ export function TaskListView({
     >
       <div className="divide-y">
         {/* Column header */}
-        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
+        <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground bg-muted/30 sticky top-0 z-10">
           <div />
           <div
             className="cursor-pointer"
@@ -229,6 +229,7 @@ export function TaskListView({
           <div className="w-5" />
           <div />
           <div>Task name</div>
+          <div>Owner</div>
           <div>Due date</div>
           <div>Priority</div>
           <div>Status</div>
@@ -286,7 +287,7 @@ export function TaskListView({
                       {group === groups[0] && (
                         <>
                           {isCreating ? (
-                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
+                            <div className="grid grid-cols-[20px_20px_auto_16px_1fr_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5">
                               <div />
                               <div />
                               <div className="w-5" />
@@ -300,6 +301,7 @@ export function TaskListView({
                                 className="h-7 text-sm border-primary"
                                 autoFocus
                               />
+                              <div />
                               <div />
                               <div />
                               <div />
@@ -472,7 +474,7 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelec
       ref={setNodeRef}
       style={style}
       className={cn(
-        'grid grid-cols-[20px_20px_auto_16px_1fr_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
+        'grid grid-cols-[20px_20px_auto_16px_1fr_100px_120px_100px_100px_40px] gap-2 items-center px-4 py-1.5 hover:bg-muted/30 cursor-pointer transition-colors group',
         isSelected && 'bg-primary/5 border-r-2 border-r-primary',
         isMultiSelected && 'bg-primary/10',
         isFocused && 'ring-1 ring-inset ring-primary/40 bg-primary/5',
@@ -549,6 +551,27 @@ function SortableTaskRow({ task, isSelected, isMultiSelected, isFocused, onSelec
           >
             {task.title}
           </span>
+        )}
+      </div>
+
+      {/* Owner */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        {task.assignee_profile ? (
+          <>
+            <Avatar className="h-5 w-5">
+              {task.assignee_profile.avatar_url && (
+                <AvatarImage src={task.assignee_profile.avatar_url} />
+              )}
+              <AvatarFallback className="text-[8px]">
+                {task.assignee_profile.display_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-[11px] text-muted-foreground truncate">
+              {task.assignee_profile.display_name?.split(' ')[0]}
+            </span>
+          </>
+        ) : (
+          <span className="text-[11px] text-muted-foreground/40">—</span>
         )}
       </div>
 
