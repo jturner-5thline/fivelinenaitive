@@ -6,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -25,7 +27,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
+
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
@@ -34,26 +36,45 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
+    // Check gmail_tokens for a Nylas grant (shared connection for email + calendar)
     const { data: tokenRecord, error: fetchError } = await supabase
-      .from("calendar_tokens")
-      .select("id, expires_at, scope, created_at")
+      .from("gmail_tokens")
+      .select("id, grant_id, email_address, created_at")
       .eq("user_id", user.id)
       .single();
 
-    if (fetchError || !tokenRecord) {
-      return new Response(JSON.stringify({ connected: false, message: "Calendar not connected" }), {
+    if (fetchError || !tokenRecord || !tokenRecord.grant_id) {
+      return new Response(JSON.stringify({ connected: false, message: "Calendar not connected. Connect your Google account first." }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const isExpired = new Date(tokenRecord.expires_at) < new Date();
+    // Verify grant is still valid with Nylas
+    let isExpired = false;
+    if (NYLAS_API_KEY) {
+      try {
+        const grantResponse = await fetch(`${NYLAS_API_URI}/v3/grants/${tokenRecord.grant_id}`, {
+          headers: {
+            "Authorization": `Bearer ${NYLAS_API_KEY}`,
+            "Accept": "application/json",
+          },
+        });
+        if (!grantResponse.ok) {
+          if (grantResponse.status === 404 || grantResponse.status === 401) {
+            isExpired = true;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to verify Nylas grant for calendar:", e);
+      }
+    }
 
     return new Response(JSON.stringify({
-      connected: true,
-      expires_at: tokenRecord.expires_at,
+      connected: !isExpired,
       is_expired: isExpired,
-      scope: tokenRecord.scope,
+      scope: "calendar",
       connected_at: tokenRecord.created_at,
+      email: tokenRecord.email_address,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -41,10 +41,10 @@ export interface Calendar {
 
 interface CalendarStatus {
   connected: boolean;
-  expires_at?: string;
   is_expired?: boolean;
   scope?: string;
   connected_at?: string;
+  email?: string;
 }
 
 export function useGoogleCalendar() {
@@ -195,7 +195,6 @@ export function useGoogleCalendar() {
     }
   }, [user]);
 
-  /** Fetch all calendars and all events across them in one call */
   const syncAllCalendars = useCallback(async (options?: {
     timeMin?: string;
     timeMax?: string;
