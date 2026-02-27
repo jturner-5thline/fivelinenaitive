@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
-const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
+const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -47,114 +47,59 @@ interface NormalizedEvent {
   color_id: string | null;
 }
 
-function normalizeEvent(event: any, calendarId: string): NormalizedEvent {
+function nylasHeaders() {
   return {
-    id: event.id,
-    calendar_id: calendarId,
-    summary: event.summary || "(No title)",
-    description: event.description || null,
-    location: event.location || null,
-    start: event.start?.dateTime || event.start?.date,
-    end: event.end?.dateTime || event.end?.date,
-    all_day: !event.start?.dateTime,
-    status: event.status,
-    updated: event.updated || null,
-    created: event.created || null,
-    html_link: event.htmlLink || null,
-    hangout_link: event.hangoutLink || null,
-    conference_data: event.conferenceData || null,
-    attendees: event.attendees?.map((a: any) => ({
-      email: a.email,
-      display_name: a.displayName || null,
-      response_status: a.responseStatus,
-      organizer: a.organizer || false,
-      self: a.self || false,
-    })) || null,
-    organizer: event.organizer || null,
-    color_id: event.colorId || null,
+    "Authorization": `Bearer ${NYLAS_API_KEY}`,
+    "Accept": "application/json",
+    "Content-Type": "application/json",
   };
 }
 
-async function getValidAccessToken(supabase: any, userId: string): Promise<string | null> {
-  const { data: tokenRecord, error } = await supabase
-    .from("calendar_tokens")
-    .select("access_token, refresh_token, expires_at")
+function normalizeNylasEvent(event: any, calendarId: string): NormalizedEvent {
+  const startTime = event.when?.start_time
+    ? new Date(event.when.start_time * 1000).toISOString()
+    : event.when?.start_date || "";
+  const endTime = event.when?.end_time
+    ? new Date(event.when.end_time * 1000).toISOString()
+    : event.when?.end_date || "";
+  const isAllDay = !event.when?.start_time && !!event.when?.start_date;
+
+  return {
+    id: event.id,
+    calendar_id: calendarId,
+    summary: event.title || "(No title)",
+    description: event.description || null,
+    location: event.location || null,
+    start: startTime,
+    end: endTime,
+    all_day: isAllDay,
+    status: event.status || "confirmed",
+    updated: event.updated_at ? new Date(event.updated_at * 1000).toISOString() : null,
+    created: event.created_at ? new Date(event.created_at * 1000).toISOString() : null,
+    html_link: event.html_link || null,
+    hangout_link: event.conferencing?.details?.url || null,
+    conference_data: event.conferencing || null,
+    attendees: event.participants?.map((p: any) => ({
+      email: p.email,
+      display_name: p.name || null,
+      response_status: p.status || "needsAction",
+      organizer: false,
+      self: false,
+    })) || null,
+    organizer: event.organizer_email ? { email: event.organizer_email } : null,
+    color_id: null,
+  };
+}
+
+async function getGrantId(supabase: any, userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("gmail_tokens")
+    .select("grant_id")
     .eq("user_id", userId)
     .single();
 
-  if (error || !tokenRecord) return null;
-
-  if (new Date(tokenRecord.expires_at) > new Date()) {
-    return tokenRecord.access_token;
-  }
-
-  // Refresh expired token
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: tokenRecord.refresh_token,
-      grant_type: "refresh_token",
-    }),
-  });
-
-  const tokenData = await tokenResponse.json();
-  if (tokenData.error) {
-    console.error("Token refresh failed:", tokenData);
-    return null;
-  }
-
-  await supabase
-    .from("calendar_tokens")
-    .update({
-      access_token: tokenData.access_token,
-      expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId);
-
-  return tokenData.access_token;
-}
-
-async function fetchAllEvents(
-  accessToken: string,
-  calendarId: string,
-  timeMin: string,
-  timeMax: string,
-  maxResults: number
-): Promise<NormalizedEvent[]> {
-  const allEvents: NormalizedEvent[] = [];
-  let pageToken: string | undefined;
-
-  do {
-    const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
-    url.searchParams.set("timeMin", timeMin);
-    url.searchParams.set("timeMax", timeMax);
-    url.searchParams.set("maxResults", String(Math.min(maxResults, 2500)));
-    url.searchParams.set("singleEvents", "true");
-    url.searchParams.set("orderBy", "startTime");
-    if (pageToken) url.searchParams.set("pageToken", pageToken);
-
-    const response = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const data = await response.json();
-
-    if (data.error) {
-      console.error(`Events fetch error for ${calendarId}:`, data.error);
-      break;
-    }
-
-    for (const item of data.items || []) {
-      allEvents.push(normalizeEvent(item, calendarId));
-    }
-
-    pageToken = data.nextPageToken;
-  } while (pageToken && allEvents.length < maxResults);
-
-  return allEvents;
+  if (error || !data?.grant_id) return null;
+  return data.grant_id;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -171,6 +116,13 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
+    if (!NYLAS_API_KEY) {
+      return new Response(JSON.stringify({ error: "Nylas not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const token = authHeader.replace("Bearer ", "");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -182,9 +134,9 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const accessToken = await getValidAccessToken(supabase, user.id);
-    if (!accessToken) {
-      return new Response(JSON.stringify({ error: "Calendar not connected or token refresh failed" }), {
+    const grantId = await getGrantId(supabase, user.id);
+    if (!grantId) {
+      return new Response(JSON.stringify({ error: "Calendar not connected. Connect your Google account first." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -193,29 +145,31 @@ serve(async (req: Request): Promise<Response> => {
     const body: EventsRequest = await req.json();
     console.log("Calendar events action:", body.action, "for user:", user.id);
 
+    const headers = nylasHeaders();
+    const baseUrl = `${NYLAS_API_URI}/v3/grants/${grantId}`;
+
     switch (body.action) {
       case "list_calendars": {
-        const response = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        const response = await fetch(`${baseUrl}/calendars`, { headers });
         const data = await response.json();
 
-        if (data.error) {
-          return new Response(JSON.stringify({ error: data.error.message }), {
-            status: data.error.code || 500,
+        if (!response.ok) {
+          console.error("Nylas calendars error:", data);
+          return new Response(JSON.stringify({ error: data.message || "Failed to list calendars" }), {
+            status: response.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const calendars = (data.items || []).map((cal: any) => ({
+        const calendars = (data.data || []).map((cal: any) => ({
           id: cal.id,
-          summary: cal.summary,
-          description: cal.description,
-          primary: cal.primary || false,
-          background_color: cal.backgroundColor,
-          foreground_color: cal.foregroundColor,
-          access_role: cal.accessRole,
-          time_zone: cal.timeZone,
+          summary: cal.name || cal.id,
+          description: cal.description || null,
+          primary: cal.is_primary || false,
+          background_color: cal.hex_color || null,
+          foreground_color: cal.hex_foreground_color || null,
+          access_role: cal.read_only ? "reader" : "owner",
+          time_zone: cal.timezone || null,
         }));
 
         return new Response(JSON.stringify({ calendars }), {
@@ -231,32 +185,32 @@ serve(async (req: Request): Promise<Response> => {
         const timeMax = body.time_max || weekFromNow.toISOString();
         const maxResults = body.max_results || 50;
 
-        const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
-        url.searchParams.set("timeMin", timeMin);
-        url.searchParams.set("timeMax", timeMax);
-        url.searchParams.set("maxResults", String(maxResults));
-        url.searchParams.set("singleEvents", "true");
-        url.searchParams.set("orderBy", "startTime");
-        if (body.page_token) url.searchParams.set("pageToken", body.page_token);
+        const startUnix = Math.floor(new Date(timeMin).getTime() / 1000);
+        const endUnix = Math.floor(new Date(timeMax).getTime() / 1000);
 
-        const response = await fetch(url.toString(), {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        const url = new URL(`${baseUrl}/events`);
+        url.searchParams.set("calendar_id", calendarId);
+        url.searchParams.set("start", String(startUnix));
+        url.searchParams.set("end", String(endUnix));
+        url.searchParams.set("limit", String(maxResults));
+        if (body.page_token) url.searchParams.set("page_token", body.page_token);
+
+        const response = await fetch(url.toString(), { headers });
         const data = await response.json();
 
-        if (data.error) {
-          return new Response(JSON.stringify({ error: data.error.message }), {
-            status: data.error.code || 500,
+        if (!response.ok) {
+          console.error("Nylas events error:", data);
+          return new Response(JSON.stringify({ error: data.message || "Failed to list events" }), {
+            status: response.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const events = (data.items || []).map((e: any) => normalizeEvent(e, calendarId));
+        const events = (data.data || []).map((e: any) => normalizeNylasEvent(e, calendarId));
 
         return new Response(JSON.stringify({
           events,
-          next_page_token: data.nextPageToken,
-          time_zone: data.timeZone,
+          next_page_token: data.next_cursor || null,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -271,62 +225,71 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         const calendarId = body.calendar_id || "primary";
-        const response = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(body.event_id)}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        const event = await response.json();
+        const url = new URL(`${baseUrl}/events/${body.event_id}`);
+        url.searchParams.set("calendar_id", calendarId);
 
-        if (event.error) {
-          return new Response(JSON.stringify({ error: event.error.message }), {
-            status: event.error.code || 500,
+        const response = await fetch(url.toString(), { headers });
+        const data = await response.json();
+
+        if (!response.ok) {
+          return new Response(JSON.stringify({ error: data.message || "Failed to get event" }), {
+            status: response.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        return new Response(JSON.stringify({ event: normalizeEvent(event, calendarId) }), {
+        return new Response(JSON.stringify({ event: normalizeNylasEvent(data.data, calendarId) }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       case "sync_all": {
-        // Fetch all calendars, then all events from each
-        const calResponse = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        // Fetch all calendars
+        const calResponse = await fetch(`${baseUrl}/calendars`, { headers });
         const calData = await calResponse.json();
 
-        if (calData.error) {
-          return new Response(JSON.stringify({ error: calData.error.message }), {
-            status: calData.error.code || 500,
+        if (!calResponse.ok) {
+          return new Response(JSON.stringify({ error: calData.message || "Failed to list calendars" }), {
+            status: calResponse.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
-        const calendars = (calData.items || []).map((cal: any) => ({
+        const calendars = (calData.data || []).map((cal: any) => ({
           id: cal.id,
-          summary: cal.summary,
-          description: cal.description,
-          primary: cal.primary || false,
-          background_color: cal.backgroundColor,
-          foreground_color: cal.foregroundColor,
-          access_role: cal.accessRole,
-          time_zone: cal.timeZone,
+          summary: cal.name || cal.id,
+          description: cal.description || null,
+          primary: cal.is_primary || false,
+          background_color: cal.hex_color || null,
+          foreground_color: cal.hex_foreground_color || null,
+          access_role: cal.read_only ? "reader" : "owner",
+          time_zone: cal.timezone || null,
         }));
 
         const now = new Date();
         const threeMonthsOut = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-        const timeMin = body.time_min || now.toISOString();
-        const timeMax = body.time_max || threeMonthsOut.toISOString();
+        const startUnix = Math.floor(new Date(body.time_min || now.toISOString()).getTime() / 1000);
+        const endUnix = Math.floor(new Date(body.time_max || threeMonthsOut.toISOString()).getTime() / 1000);
         const maxResults = body.max_results || 500;
 
         const allEvents: NormalizedEvent[] = [];
         for (const cal of calendars) {
-          const events = await fetchAllEvents(accessToken, cal.id, timeMin, timeMax, maxResults);
-          allEvents.push(...events);
+          const url = new URL(`${baseUrl}/events`);
+          url.searchParams.set("calendar_id", cal.id);
+          url.searchParams.set("start", String(startUnix));
+          url.searchParams.set("end", String(endUnix));
+          url.searchParams.set("limit", String(Math.min(maxResults, 200)));
+
+          const evResponse = await fetch(url.toString(), { headers });
+          const evData = await evResponse.json();
+
+          if (evResponse.ok && evData.data) {
+            for (const e of evData.data) {
+              allEvents.push(normalizeNylasEvent(e, cal.id));
+            }
+          }
         }
 
-        // Sort all events by start time
         allEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
         return new Response(JSON.stringify({
@@ -339,7 +302,7 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       default:
-        return new Response(JSON.stringify({ error: "Invalid action. Allowed: list, get, list_calendars, sync_all" }), {
+        return new Response(JSON.stringify({ error: "Invalid action" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

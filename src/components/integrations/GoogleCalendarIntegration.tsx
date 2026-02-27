@@ -117,17 +117,9 @@ export function GoogleCalendarIntegration({ onDisconnect }: GoogleCalendarIntegr
     toast.success('Calendar refreshed');
   };
 
-  const goToPreviousWeek = () => {
-    setCurrentWeekStart(subWeeks(currentWeekStart, 1));
-  };
-
-  const goToNextWeek = () => {
-    setCurrentWeekStart(addWeeks(currentWeekStart, 1));
-  };
-
-  const goToToday = () => {
-    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  };
+  const goToPreviousWeek = () => setCurrentWeekStart(subWeeks(currentWeekStart, 1));
+  const goToNextWeek = () => setCurrentWeekStart(addWeeks(currentWeekStart, 1));
+  const goToToday = () => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   const handleEventClick = (event: CalendarEvent) => {
     if (event.html_link) {
@@ -164,7 +156,7 @@ export function GoogleCalendarIntegration({ onDisconnect }: GoogleCalendarIntegr
             Google Calendar
           </CardTitle>
           <CardDescription>
-            Connect your Google Calendar to view your events (read-only)
+            Connect your Google Calendar to view your events (read-only). Uses your Google account connection.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -194,6 +186,9 @@ export function GoogleCalendarIntegration({ onDisconnect }: GoogleCalendarIntegr
               <Badge variant="outline" className="text-green-600 border-green-600">
                 Connected
               </Badge>
+              {status.email && (
+                <span className="text-xs text-muted-foreground">{status.email}</span>
+              )}
               <span className="text-xs text-muted-foreground">Read-only</span>
             </CardDescription>
           </div>
