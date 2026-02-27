@@ -22,6 +22,7 @@ import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
 import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
+import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { useCompany } from '@/hooks/useCompany';
 
 const SETTINGS_SECTIONS = [
@@ -90,6 +91,10 @@ const SETTINGS_SECTIONS = [
     keywords: ['data', 'room', 'checklist', 'documents', 'required', 'files', 'information', 'items'],
   },
   {
+    id: 'gamma-templates',
+    keywords: ['gamma', 'templates', 'presentation', 'document', 'pitch', 'status', 'update'],
+  },
+  {
     id: 'preferences',
     keywords: ['preferences', 'theme', 'notifications', 'regional', 'settings', 'dark', 'light', 'mode'],
   },
@@ -118,7 +123,7 @@ const SETTINGS_SECTIONS = [
 // Tab definitions with which section IDs belong to each
 const TABS = [
   { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'database'] },
-  { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist'] },
+  { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates'] },
   { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels'] },
@@ -264,6 +269,7 @@ export default function Settings() {
                   {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
                   {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
                   {isVisible('data-room-checklist') && <DataRoomChecklistSettings />}
+                  {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
                 </TabsContent>
 
                 {/* Lenders Tab */}
