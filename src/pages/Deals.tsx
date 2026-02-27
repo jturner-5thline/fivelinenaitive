@@ -58,12 +58,17 @@ import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { useCompany } from '@/hooks/useCompany';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+
   const [groupBy, setGroupBy] = useState<string | null>('status');
   const [showMilestones, setShowMilestones] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline' | 'timeline'>(() => {
     const stored = localStorage.getItem('deals-view-mode');
+    if (stored === 'timeline' && !is5thLine) return 'grid';
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline' || stored === 'timeline') ? stored : 'grid';
   });
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
@@ -466,12 +471,14 @@ export default function Dashboard() {
                         Pipeline
                       </div>
                     </SelectItem>
-                    <SelectItem value="timeline">
-                      <div className="flex items-center gap-2">
-                        <ChartGantt className="h-4 w-4" />
-                        Timeline
-                      </div>
-                    </SelectItem>
+                    {is5thLine && (
+                      <SelectItem value="timeline">
+                        <div className="flex items-center gap-2">
+                          <ChartGantt className="h-4 w-4" />
+                          Timeline
+                        </div>
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 <Button
