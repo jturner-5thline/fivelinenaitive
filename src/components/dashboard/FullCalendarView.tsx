@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   format,
   startOfWeek,
@@ -44,6 +44,9 @@ import {
   Search,
   Timer,
   Briefcase,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -65,6 +68,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { CalendarEventDialog } from '@/components/integrations/CalendarEventDialog';
 
 // ─── Types ───────────────────────────────────────────────────
 type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda';
@@ -353,11 +357,13 @@ function EventDetailPopover({
   colorClass,
   onClose,
   dealMatch,
+  onEdit,
 }: {
   event: CalendarEvent;
   colorClass: string;
   onClose: () => void;
   dealMatch?: DealMatch | null;
+  onEdit?: (event: CalendarEvent) => void;
 }) {
   const start = parseISO(event.start);
   const end = parseISO(event.end);
@@ -475,22 +481,35 @@ function EventDetailPopover({
               </>
             )}
 
-            {/* AI Research Button */}
+            {/* Action Buttons */}
             <Separator />
-            <Button
-              variant={showResearch ? "secondary" : "default"}
-              size="sm"
-              className="w-full gap-2 text-xs"
-              onClick={runResearch}
-              disabled={isResearching}
-            >
-              {isResearching ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Brain className="h-3.5 w-3.5" />
+            <div className="flex gap-2">
+              {onEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
+                  onClick={() => onEdit(event)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit
+                </Button>
               )}
-              {isResearching ? 'Researching...' : showResearch ? 'Refresh Research' : 'AI Meeting Intel'}
-            </Button>
+              <Button
+                variant={showResearch ? "secondary" : "default"}
+                size="sm"
+                className="flex-1 gap-2 text-xs"
+                onClick={runResearch}
+                disabled={isResearching}
+              >
+                {isResearching ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Brain className="h-3.5 w-3.5" />
+                )}
+                {isResearching ? 'Researching...' : showResearch ? 'Refresh' : 'AI Intel'}
+              </Button>
+            </div>
           </div>
 
           {/* Right: AI Research Panel */}
@@ -1090,23 +1109,86 @@ function CalendarAIPanel({
 
 // ─── Main Component ──────────────────────────────────────────
 export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) {
-  const { events: liveEvents, status: calendarStatus, listEvents, isLoading: calendarLoading } = useGoogleCalendar();
+  const { events: liveEvents, status: calendarStatus, listEvents, isLoading: calendarLoading, createEvent, updateEvent, deleteEvent } = useGoogleCalendar();
   const [view, setView] = useState<CalendarViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
 
-  // Fetch live calendar events for the visible date range when dialog opens or view changes
-  useEffect(() => {
-    if (!open || !calendarStatus?.connected) return;
+  const refreshEvents = useCallback(() => {
+    if (!calendarStatus?.connected) return;
     let timeMin: Date, timeMax: Date;
     if (view === 'day') { timeMin = startOfDay(currentDate); timeMax = endOfDay(currentDate); }
     else if (view === 'week') { timeMin = startOfWeek(currentDate); timeMax = endOfWeek(currentDate); }
     else if (view === 'agenda') { timeMin = startOfDay(currentDate); timeMax = endOfDay(addDays(currentDate, 13)); }
     else { timeMin = startOfWeek(startOfMonth(currentDate)); timeMax = endOfWeek(endOfMonth(currentDate)); }
     listEvents({ timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString(), maxResults: 200 });
-  }, [open, calendarStatus?.connected, view, currentDate, listEvents]);
+  }, [calendarStatus?.connected, view, currentDate, listEvents]);
+
+  // Fetch live calendar events for the visible date range when dialog opens or view changes
+  useEffect(() => {
+    if (!open) return;
+    refreshEvents();
+  }, [open, refreshEvents]);
+
+  const handleSaveEvent = useCallback(async (eventData: {
+    summary: string;
+    description?: string;
+    location?: string;
+    start: string;
+    end: string;
+    allDay?: boolean;
+  }) => {
+    setIsMutating(true);
+    try {
+      if (editingEvent?.id) {
+        await updateEvent(editingEvent.id, eventData, editingEvent.calendar_id);
+        toast.success('Event updated');
+      } else {
+        await createEvent(eventData);
+        toast.success('Event created');
+      }
+      setEventDialogOpen(false);
+      setEditingEvent(null);
+      refreshEvents();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save event');
+    } finally {
+      setIsMutating(false);
+    }
+  }, [editingEvent, createEvent, updateEvent, refreshEvents]);
+
+  const handleDeleteEvent = useCallback(async () => {
+    if (!editingEvent?.id) return;
+    setIsMutating(true);
+    try {
+      await deleteEvent(editingEvent.id, editingEvent.calendar_id);
+      toast.success('Event deleted');
+      setEventDialogOpen(false);
+      setEditingEvent(null);
+      setSelectedEvent(null);
+      refreshEvents();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete event');
+    } finally {
+      setIsMutating(false);
+    }
+  }, [editingEvent, deleteEvent, refreshEvents]);
+
+  const handleEditEvent = useCallback((event: CalendarEvent) => {
+    setEditingEvent(event);
+    setEventDialogOpen(true);
+    setSelectedEvent(null);
+  }, []);
+
+  const handleNewEvent = useCallback(() => {
+    setEditingEvent(null);
+    setEventDialogOpen(true);
+  }, []);
 
   const allEvents = calendarStatus?.connected && liveEvents.length > 0 ? liveEvents : mockEvents;
   const { matchEventToDeal } = useDealMatches(allEvents);
@@ -1203,6 +1285,11 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           <Separator orientation="vertical" className="h-6 mx-1" />
 
           <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => navigate('today')}>Today</Button>
+          {calendarStatus?.connected && (
+            <Button variant="default" size="sm" className="text-xs h-8 gap-1.5" onClick={handleNewEvent}>
+              <Plus className="h-3.5 w-3.5" />New Event
+            </Button>
+          )}
 
           <div className="flex items-center gap-0.5">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('prev')}><ChevronLeft className="h-4 w-4" /></Button>
@@ -1370,8 +1457,34 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
         </div>
 
         {selectedEvent && (
-          <EventDetailPopover event={selectedEvent} colorClass={getEventColorClass(selectedEvent, 0)} onClose={() => setSelectedEvent(null)} dealMatch={matchEventToDeal(selectedEvent)} />
+          <EventDetailPopover
+            event={selectedEvent}
+            colorClass={getEventColorClass(selectedEvent, 0)}
+            onClose={() => setSelectedEvent(null)}
+            dealMatch={matchEventToDeal(selectedEvent)}
+            onEdit={calendarStatus?.connected ? handleEditEvent : undefined}
+          />
         )}
+
+        <CalendarEventDialog
+          open={eventDialogOpen}
+          onOpenChange={(open) => {
+            setEventDialogOpen(open);
+            if (!open) setEditingEvent(null);
+          }}
+          event={editingEvent ? {
+            id: editingEvent.id,
+            summary: editingEvent.summary,
+            description: editingEvent.description || undefined,
+            location: editingEvent.location || undefined,
+            start: editingEvent.start,
+            end: editingEvent.end,
+            all_day: editingEvent.all_day,
+          } : null}
+          onSave={handleSaveEvent}
+          onDelete={editingEvent?.id ? handleDeleteEvent : undefined}
+          isLoading={isMutating}
+        />
       </DialogContent>
     </Dialog>
   );
