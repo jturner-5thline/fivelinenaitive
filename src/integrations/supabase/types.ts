@@ -5359,6 +5359,71 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_instances: {
+        Row: {
+          actor_user_id: string | null
+          body: string | null
+          channel_type: Database["public"]["Enums"]["notification_channel_type"]
+          context: Json | null
+          created_at: string
+          error_message: string | null
+          id: string
+          provider_id: string | null
+          read_at: string | null
+          recipient_user_id: string
+          rendered_data: Json | null
+          rule_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_instance_status"]
+          title: string | null
+          trigger_key: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          body?: string | null
+          channel_type: Database["public"]["Enums"]["notification_channel_type"]
+          context?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          provider_id?: string | null
+          read_at?: string | null
+          recipient_user_id: string
+          rendered_data?: Json | null
+          rule_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_instance_status"]
+          title?: string | null
+          trigger_key: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          body?: string | null
+          channel_type?: Database["public"]["Enums"]["notification_channel_type"]
+          context?: Json | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          provider_id?: string | null
+          read_at?: string | null
+          recipient_user_id?: string
+          rendered_data?: Json | null
+          rule_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_instance_status"]
+          title?: string | null
+          trigger_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_instances_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "notification_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_reads: {
         Row: {
           id: string
@@ -5382,6 +5447,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      notification_rules: {
+        Row: {
+          category: Database["public"]["Enums"]["notification_category"]
+          channels: Json
+          company_id: string | null
+          created_at: string
+          default_recipients: Json
+          description: string | null
+          id: string
+          is_enabled: boolean
+          metadata: Json | null
+          name: string
+          trigger_key: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["notification_category"]
+          channels?: Json
+          company_id?: string | null
+          created_at?: string
+          default_recipients?: Json
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json | null
+          name: string
+          trigger_key: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["notification_category"]
+          channels?: Json
+          company_id?: string | null
+          created_at?: string
+          default_recipients?: Json
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json | null
+          name?: string
+          trigger_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_rules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       outstanding_item_comments: {
         Row: {
@@ -7602,6 +7720,39 @@ export type Database = {
           },
         ]
       }
+      user_notification_preferences: {
+        Row: {
+          channel_overrides: Json
+          created_at: string
+          custom_recipients: Json | null
+          id: string
+          is_enabled: boolean
+          trigger_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_overrides?: Json
+          created_at?: string
+          custom_recipients?: Json | null
+          id?: string
+          is_enabled?: boolean
+          trigger_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_overrides?: Json
+          created_at?: string
+          custom_recipients?: Json | null
+          id?: string
+          is_enabled?: boolean
+          trigger_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_quick_prompts: {
         Row: {
           category: string | null
@@ -8800,6 +8951,15 @@ export type Database = {
         | "relationship_issues"
         | "terms_mismatch"
         | "other"
+      notification_category:
+        | "deals"
+        | "tasks"
+        | "lenders"
+        | "milestones"
+        | "reporting"
+        | "system"
+      notification_channel_type: "in_app" | "email" | "slack" | "sms" | "push"
+      notification_instance_status: "pending" | "sent" | "failed" | "skipped"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -8943,6 +9103,16 @@ export const Constants = {
         "terms_mismatch",
         "other",
       ],
+      notification_category: [
+        "deals",
+        "tasks",
+        "lenders",
+        "milestones",
+        "reporting",
+        "system",
+      ],
+      notification_channel_type: ["in_app", "email", "slack", "sms", "push"],
+      notification_instance_status: ["pending", "sent", "failed", "skipped"],
     },
   },
 } as const
