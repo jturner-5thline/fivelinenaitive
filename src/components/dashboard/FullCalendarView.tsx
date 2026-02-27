@@ -1090,12 +1090,23 @@ function CalendarAIPanel({
 
 // ─── Main Component ──────────────────────────────────────────
 export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) {
-  const { events: liveEvents, status: calendarStatus } = useGoogleCalendar();
+  const { events: liveEvents, status: calendarStatus, listEvents, isLoading: calendarLoading } = useGoogleCalendar();
   const [view, setView] = useState<CalendarViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+
+  // Fetch live calendar events for the visible date range when dialog opens or view changes
+  useEffect(() => {
+    if (!open || !calendarStatus?.connected) return;
+    let timeMin: Date, timeMax: Date;
+    if (view === 'day') { timeMin = startOfDay(currentDate); timeMax = endOfDay(currentDate); }
+    else if (view === 'week') { timeMin = startOfWeek(currentDate); timeMax = endOfWeek(currentDate); }
+    else if (view === 'agenda') { timeMin = startOfDay(currentDate); timeMax = endOfDay(addDays(currentDate, 13)); }
+    else { timeMin = startOfWeek(startOfMonth(currentDate)); timeMax = endOfWeek(endOfMonth(currentDate)); }
+    listEvents({ timeMin: timeMin.toISOString(), timeMax: timeMax.toISOString(), maxResults: 200 });
+  }, [open, calendarStatus?.connected, view, currentDate, listEvents]);
 
   const allEvents = calendarStatus?.connected && liveEvents.length > 0 ? liveEvents : mockEvents;
   const { matchEventToDeal } = useDealMatches(allEvents);
