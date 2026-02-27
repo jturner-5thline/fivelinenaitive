@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Briefcase, TrendingUp, Shield, Users, BarChart3, FileSpreadsheet, Megaphone, Landmark } from 'lucide-react';
+import { Briefcase, TrendingUp, Shield, Users, BarChart3, FileSpreadsheet, Megaphone, Landmark, RefreshCw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface GammaTemplate {
@@ -75,6 +75,30 @@ export const GAMMA_TEMPLATES: GammaTemplate[] = [
     icon: Megaphone,
     suggestedFormat: 'document',
     prompt: 'Create a polished marketing memo suitable for distribution to potential lenders. Include: investment highlights, company overview, financial summary, deal terms overview, and contact information. Make it visually appealing and professional.',
+  },
+  {
+    id: 'status-update',
+    label: 'Status Update',
+    description: 'Periodic client-facing deal progress report',
+    icon: RefreshCw,
+    suggestedFormat: 'document',
+    prompt: `Create a professional client-facing status update document with the following exact structure and sections:
+
+1. TITLE: "{Company Name} — Status Update: {Current Date}" as the main heading.
+
+2. KEY UPDATES: A bullet-point narrative section summarizing the most important recent developments — new lender outreach, materials submitted, upcoming calls, and any process milestones. Write 4-6 concise bullet points.
+
+3. KEY LENDERS – PROCESS STATUS & NEXT ACTIONS: A detailed table with exactly these columns: Lender | Process Stage | Key Focus Areas | Current Challenges | Next Action. Include all active lenders (not passed) with specific, actionable detail in each cell.
+
+4. LENDER PIPELINE SNAPSHOT: A visual card-based layout grouping all lenders into pipeline stages: "On Deck", "In Review", "Terms Issued", and "Passed". Show the count in each header (e.g., "In Review (4)") and list lender names as numbered items in each group. Use distinct color coding per stage.
+
+5. RECENT MILESTONES: Show 3 key accomplishments as individual cards with icons — each card should contain a single sentence describing a concrete achievement.
+
+6. NEXT STEPS: Show 2-3 upcoming action items as individual cards describing what will happen next in the process.
+
+7. WHAT WE NEED FROM YOU: A final section with any client action items, or state "No action items at this time" if none are needed.
+
+Tone should be professional, confident, and concise. Use a clean layout with clear section headers. This is meant for external client consumption.`,
   },
 ];
 
