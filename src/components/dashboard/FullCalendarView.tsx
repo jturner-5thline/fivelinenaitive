@@ -761,13 +761,27 @@ function DayColumn({
   events: dayEvents,
   onEventClick,
   showDayLabel,
+  onSlotClick,
 }: {
   date: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   showDayLabel: boolean;
+  onSlotClick?: (date: Date, hour: number) => void;
 }) {
   const timedEvents = dayEvents.filter(e => !e.all_day);
+
+  const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onSlotClick) return;
+    // Only trigger if clicking the background, not an event
+    if ((e.target as HTMLElement).closest('button')) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const hour = Math.floor(y / HOUR_HEIGHT);
+    const minutes = Math.round(((y % HOUR_HEIGHT) / HOUR_HEIGHT) * 2) * 30; // snap to 30min
+    const clickedHour = Math.max(0, Math.min(23, hour));
+    onSlotClick(date, clickedHour + minutes / 60);
+  };
 
   return (
     <div className="relative flex-1 min-w-0">
@@ -780,9 +794,9 @@ function DayColumn({
           {isToday(date) && <div className="mx-auto mt-0.5 h-1 w-1 rounded-full bg-primary" />}
         </div>
       )}
-      <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
+      <div className="relative cursor-pointer" style={{ height: HOURS.length * HOUR_HEIGHT }} onClick={handleGridClick}>
         {HOURS.map(h => (
-          <div key={h} className="absolute left-0 right-0 border-t border-border/30" style={{ top: h * HOUR_HEIGHT }} />
+          <div key={h} className="absolute left-0 right-0 border-t border-border/30 hover:bg-primary/5 transition-colors" style={{ top: h * HOUR_HEIGHT, height: HOUR_HEIGHT }} />
         ))}
         {isToday(date) && <CurrentTimeIndicator />}
         {timedEvents.map((event, idx) => {
@@ -1115,8 +1129,9 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
-  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [slotDefaults, setSlotDefaults] = useState<{ start: string; end: string } | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
 
   const refreshEvents = useCallback(() => {
@@ -1187,8 +1202,25 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
 
   const handleNewEvent = useCallback(() => {
     setEditingEvent(null);
+    setSlotDefaults(null);
     setEventDialogOpen(true);
   }, []);
+
+  const handleSlotClick = useCallback((date: Date, hour: number) => {
+    if (!calendarStatus?.connected) return;
+    const startHour = Math.floor(hour);
+    const startMin = (hour % 1) >= 0.5 ? 30 : 0;
+    const startDate = new Date(date);
+    startDate.setHours(startHour, startMin, 0, 0);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+    setEditingEvent(null);
+    setSlotDefaults({
+      start: format(startDate, "yyyy-MM-dd'T'HH:mm:ss"),
+      end: format(endDate, "yyyy-MM-dd'T'HH:mm:ss"),
+    });
+    setEventDialogOpen(true);
+  }, [calendarStatus?.connected]);
 
   const allEvents = calendarStatus?.connected && liveEvents.length > 0 ? liveEvents : mockEvents;
   const { matchEventToDeal } = useDealMatches(allEvents);
@@ -1441,11 +1473,11 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                       </div>
                     </div>
                     {view === 'day' ? (
-                      <DayColumn date={currentDate} events={getEventsForDay(currentDate)} onEventClick={setSelectedEvent} showDayLabel={false} />
+                      <DayColumn date={currentDate} events={getEventsForDay(currentDate)} onEventClick={setSelectedEvent} showDayLabel={false} onSlotClick={handleSlotClick} />
                     ) : (
                       <div className="flex flex-1">
                         {weekDays.map(day => (
-                          <DayColumn key={day.toISOString()} date={day} events={getEventsForDay(day)} onEventClick={setSelectedEvent} showDayLabel={true} />
+                          <DayColumn key={day.toISOString()} date={day} events={getEventsForDay(day)} onEventClick={setSelectedEvent} showDayLabel={true} onSlotClick={handleSlotClick} />
                         ))}
                       </div>
                     )}
@@ -1470,7 +1502,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           open={eventDialogOpen}
           onOpenChange={(open) => {
             setEventDialogOpen(open);
-            if (!open) setEditingEvent(null);
+            if (!open) { setEditingEvent(null); setSlotDefaults(null); }
           }}
           event={editingEvent ? {
             id: editingEvent.id,
@@ -1480,6 +1512,11 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
             start: editingEvent.start,
             end: editingEvent.end,
             all_day: editingEvent.all_day,
+          } : slotDefaults ? {
+            summary: '',
+            start: slotDefaults.start,
+            end: slotDefaults.end,
+            all_day: false,
           } : null}
           onSave={handleSaveEvent}
           onDelete={editingEvent?.id ? handleDeleteEvent : undefined}
