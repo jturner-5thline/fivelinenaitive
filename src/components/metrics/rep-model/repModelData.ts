@@ -827,11 +827,17 @@ const allRows: CellData[][] = [
   row82, row83, row84, row85,
 ];
 
+const COLS_TO_REMOVE = 4; // Remove columns A-D (indices 0-3)
+
 export function getInitialSheetState(): SheetState {
+  const adjustedRows = allRows.map(cells => {
+    const newCells = cells.slice(COLS_TO_REMOVE);
+    return { cells: newCells };
+  });
   return {
-    rows: allRows.map(cells => ({ cells })),
-    colCount: TOTAL_COLS,
-    rowCount: allRows.length,
+    rows: adjustedRows,
+    colCount: TOTAL_COLS - COLS_TO_REMOVE,
+    rowCount: adjustedRows.length,
   };
 }
 
