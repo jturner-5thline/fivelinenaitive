@@ -2969,6 +2969,69 @@ export type Database = {
           },
         ]
       }
+      diligence_report_comments: {
+        Row: {
+          content: string
+          created_at: string
+          deal_id: string
+          id: string
+          mentioned_user_ids: string[] | null
+          parent_comment_id: string | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          section_id: string
+          updated_at: string
+          user_display_name: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          mentioned_user_ids?: string[] | null
+          parent_comment_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          section_id: string
+          updated_at?: string
+          user_display_name?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          mentioned_user_ids?: string[] | null
+          parent_comment_id?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          section_id?: string
+          updated_at?: string
+          user_display_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diligence_report_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diligence_report_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "diligence_report_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_label_rules: {
         Row: {
           created_at: string
