@@ -177,7 +177,11 @@ Instructions:
 6. Flag any data quality concerns proactively
 7. For stress tests, clearly state assumptions and show step-by-step impacts
 8. Structure responses for IC-ready consumption: Executive Summary → Detail → Key Risks
-9. Use markdown formatting: tables for numbers, bold for key metrics, bullet points for observations`;
+9. Use markdown formatting: tables for numbers, bold for key metrics, bullet points for observations
+
+IMPORTANT: At the end of your response, on a new line, include a JSON block wrapped in <actions> tags suggesting 1-3 follow-up actions the user might want to take. Each action has a label, type, and optional prompt. Types: "add_to_report", "create_chart", "stress_test", "explain".
+Example:
+<actions>[{"label":"Add to report","type":"add_to_report"},{"label":"Chart this","type":"create_chart","prompt":"Create a chart of the revenue trend data"},{"label":"Stress test","type":"stress_test","prompt":"Run a downside scenario on these numbers"}]</actions>`;
 
     console.log("Deal diligence AI chat:", { userId: user.id, dealId, messageCount: messages?.length || 0 });
 
@@ -215,10 +219,20 @@ Instructions:
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "I couldn't generate a response.";
+    let content = data.choices?.[0]?.message?.content || "I couldn't generate a response.";
+
+    // Extract actions from content
+    let actions: any[] = [];
+    const actionsMatch = content.match(/<actions>([\s\S]*?)<\/actions>/);
+    if (actionsMatch) {
+      try {
+        actions = JSON.parse(actionsMatch[1]);
+      } catch { /* ignore parse errors */ }
+      content = content.replace(/<actions>[\s\S]*?<\/actions>/, "").trim();
+    }
 
     return new Response(
-      JSON.stringify({ content, error: null }),
+      JSON.stringify({ content, actions, error: null }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

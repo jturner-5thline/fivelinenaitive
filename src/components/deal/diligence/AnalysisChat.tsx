@@ -1,19 +1,28 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Plus, Trash2, Calculator, BarChart3, TrendingDown, Lightbulb, Sparkles } from 'lucide-react';
+import { Send, Loader2, Plus, Trash2, Calculator, BarChart3, TrendingDown, Lightbulb, Sparkles, FileText, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { AnalysisMessage } from './types';
+import { AnalysisMessage, MessageAction } from './types';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AnalysisChatProps {
   dealId: string;
   messages: AnalysisMessage[];
   onMessagesChange: (messages: AnalysisMessage[]) => void;
+  onAction?: (action: MessageAction, messageContent: string) => void;
   contextSummary?: string;
   className?: string;
 }
+
+const ACTION_ICONS: Record<string, React.ReactNode> = {
+  add_to_report: <FileText className="h-3 w-3" />,
+  create_chart: <BarChart3 className="h-3 w-3" />,
+  stress_test: <TrendingDown className="h-3 w-3" />,
+  explain: <HelpCircle className="h-3 w-3" />,
+};
 
 const QUICK_ACTIONS = [
   { label: 'Calculate ratios', icon: Calculator, prompt: 'Calculate all key leverage and coverage ratios from the available financial data.' },
@@ -22,7 +31,7 @@ const QUICK_ACTIONS = [
   { label: 'Key insights', icon: Lightbulb, prompt: 'What are the most important observations and red flags in this deal\'s financial data?' },
 ];
 
-export function AnalysisChat({ dealId, messages, onMessagesChange, contextSummary, className }: AnalysisChatProps) {
+export function AnalysisChat({ dealId, messages, onMessagesChange, onAction, contextSummary, className }: AnalysisChatProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -70,12 +79,20 @@ export function AnalysisChat({ dealId, messages, onMessagesChange, contextSummar
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
 
+      // Parse actions from response
+      const responseActions: MessageAction[] = (data?.actions || []).map((a: any) => ({
+        label: a.label,
+        type: a.type,
+        payload: a.prompt ? { prompt: a.prompt } : undefined,
+      }));
+
       const assistantMsg: AnalysisMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
         content: data?.content || 'I was unable to generate a response.',
         timestamp: new Date(),
         sources: data?.sources,
+        actions: responseActions.length > 0 ? responseActions : undefined,
       };
 
       onMessagesChange([...newMessages, assistantMsg]);
@@ -157,6 +174,28 @@ export function AnalysisChat({ dealId, messages, onMessagesChange, contextSummar
                       >
                         📎 {src.fileName}{src.cellAddress ? ` ${src.cellAddress}` : ''}
                       </span>
+                    ))}
+                  </div>
+                )}
+                {msg.role === 'assistant' && msg.actions && msg.actions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/20">
+                    {msg.actions.map((action, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          if (action.type === 'stress_test' || action.type === 'explain' || action.type === 'create_chart') {
+                            const prompt = (action.payload as any)?.prompt;
+                            if (prompt) sendMessage(prompt);
+                          } else if (action.type === 'add_to_report') {
+                            onAction?.(action, msg.content);
+                            toast.success('Added to report draft');
+                          }
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        {ACTION_ICONS[action.type] || <Sparkles className="h-3 w-3" />}
+                        {action.label}
+                      </button>
                     ))}
                   </div>
                 )}
