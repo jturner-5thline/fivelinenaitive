@@ -22,9 +22,11 @@ import { AnalyticsDashboard } from './dashboard/AnalyticsDashboard';
 import { SourceTracePanel, SourceTraceData } from './audit/SourceTracePanel';
 import { AuditLogPanel, AuditLogEntry } from './audit/AuditLogPanel';
 import { createExtractionAuditEntries } from './audit/auditUtils';
+import { CovenantMonitor } from './covenants/CovenantMonitor';
+import { ScenarioAnalysis } from './covenants/ScenarioAnalysis';
 import {
   LayoutMode, IngestedFile, DiligencePlatformState, AnalysisMessage,
-  DetectedStatement, FinancialMetric, DataIssue
+  DetectedStatement, FinancialMetric, DataIssue, CovenantConfig
 } from './types';
 
 interface DealDiligencePlatformProps {
@@ -72,6 +74,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
   const [isExtracting, setIsExtracting] = useState(false);
   const [activeTrace, setActiveTrace] = useState<SourceTraceData | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [covenants, setCovenants] = useState<CovenantConfig[]>([]);
 
   // Sync uploaded financials into the local files list
   useEffect(() => {
@@ -370,13 +373,23 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
 
         {layoutMode === 'dashboard' && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-            <div>
+            <div className="space-y-4">
               <AnalyticsDashboard
                 statements={statements}
                 metrics={metrics}
                 issues={issues}
                 auditMode={auditMode}
               />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <CovenantMonitor
+                  covenants={covenants}
+                  onCovenantsChange={setCovenants}
+                />
+                <ScenarioAnalysis
+                  metrics={metrics}
+                  covenants={covenants}
+                />
+              </div>
               {auditMode && auditLog.length > 0 && (
                 <AuditLogPanel entries={auditLog} className="mt-4" />
               )}
