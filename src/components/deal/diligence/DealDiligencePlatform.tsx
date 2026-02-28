@@ -19,6 +19,9 @@ import { IngestionPanel } from './IngestionPanel';
 import { ExtractionView } from './ExtractionView';
 import { AnalysisChat } from './AnalysisChat';
 import { AnalyticsDashboard } from './dashboard/AnalyticsDashboard';
+import { SourceTracePanel, SourceTraceData } from './audit/SourceTracePanel';
+import { AuditLogPanel, AuditLogEntry } from './audit/AuditLogPanel';
+import { createExtractionAuditEntries } from './audit/auditUtils';
 import {
   LayoutMode, IngestedFile, DiligencePlatformState, AnalysisMessage,
   DetectedStatement, FinancialMetric, DataIssue
@@ -67,6 +70,8 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
   const [metrics, setMetrics] = useState<FinancialMetric[]>(DEMO_METRICS);
   const [issues, setIssues] = useState<DataIssue[]>(DEMO_ISSUES);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [activeTrace, setActiveTrace] = useState<SourceTraceData | null>(null);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
 
   // Sync uploaded financials into the local files list
   useEffect(() => {
@@ -148,6 +153,14 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         if (data.statements) setStatements(data.statements);
         if (data.metrics) setMetrics(data.metrics);
         if (data.issues) setIssues(data.issues);
+
+        // Generate audit log entries
+        const newEntries = createExtractionAuditEntries(
+          data.statements || [],
+          data.metrics || [],
+          dealData?.company || 'System'
+        );
+        setAuditLog(prev => [...newEntries, ...prev]);
 
         // Auto-switch to split view after successful extraction
         if (data.statements?.length > 0 || data.metrics?.length > 0) {
@@ -333,9 +346,17 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
                 metrics={metrics}
                 issues={issues}
                 auditMode={auditMode}
+                files={files.map(f => ({ id: f.id, name: f.name }))}
+                onTraceClick={(trace) => setActiveTrace(trace)}
               />
+              {auditMode && auditLog.length > 0 && (
+                <AuditLogPanel entries={auditLog} className="mt-4" />
+              )}
             </div>
-            <div>
+            <div className="space-y-4">
+              {activeTrace && auditMode && (
+                <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />
+              )}
               <AnalysisChat
                 dealId={dealId}
                 messages={messages}
@@ -349,13 +370,21 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
 
         {layoutMode === 'dashboard' && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
-            <AnalyticsDashboard
-              statements={statements}
-              metrics={metrics}
-              issues={issues}
-              auditMode={auditMode}
-            />
             <div>
+              <AnalyticsDashboard
+                statements={statements}
+                metrics={metrics}
+                issues={issues}
+                auditMode={auditMode}
+              />
+              {auditMode && auditLog.length > 0 && (
+                <AuditLogPanel entries={auditLog} className="mt-4" />
+              )}
+            </div>
+            <div className="space-y-4">
+              {activeTrace && auditMode && (
+                <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />
+              )}
               <AnalysisChat
                 dealId={dealId}
                 messages={messages}

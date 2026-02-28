@@ -1,18 +1,21 @@
 import { useState } from 'react';
-import { FileSpreadsheet, ArrowRight, CheckCircle2, AlertTriangle, RefreshCw, Edit2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileSpreadsheet, AlertTriangle, Edit2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { DetectedStatement, DetectedLineItem, DataIssue, StatementType, FinancialMetric } from './types';
+import { CitationBadge } from './audit/CitationBadge';
+import { buildTraceForValue } from './audit/auditUtils';
+import { SourceTraceData } from './audit/SourceTracePanel';
 
 interface ExtractionViewProps {
   statements: DetectedStatement[];
   metrics: FinancialMetric[];
   issues: DataIssue[];
   auditMode: boolean;
+  files?: { id: string; name: string }[];
+  onTraceClick?: (trace: SourceTraceData) => void;
   className?: string;
 }
 
@@ -47,8 +50,19 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
   );
 }
 
-function StatementTable({ statement, auditMode }: { statement: DetectedStatement; auditMode: boolean }) {
+function StatementTable({ statement, auditMode, files, onTraceClick }: {
+  statement: DetectedStatement;
+  auditMode: boolean;
+  files?: { id: string; name: string }[];
+  onTraceClick?: (trace: SourceTraceData) => void;
+}) {
   const periods = statement.lineItems[0]?.values.map(v => v.period) || [];
+
+  const handleValueClick = (lineItemIdx: number, valueIdx: number) => {
+    if (!auditMode || !onTraceClick) return;
+    const trace = buildTraceForValue(statement, lineItemIdx, valueIdx, files || []);
+    if (trace) onTraceClick(trace);
+  };
 
   return (
     <div className="rounded-lg border border-border/40 overflow-hidden">
@@ -122,27 +136,29 @@ function StatementTable({ statement, auditMode }: { statement: DetectedStatement
                 </td>
                 {item.values.map((val, vi) => (
                   <td key={vi} className="text-right px-3 py-1.5 font-mono tabular-nums">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className={cn(
-                            auditMode && "cursor-pointer underline decoration-dotted decoration-muted-foreground/30",
-                            val.value !== null && val.value < 0 && "text-red-400"
-                          )}>
-                            {val.formatted || '—'}
-                          </span>
-                        </TooltipTrigger>
-                        {auditMode && val.sourceCell && (
-                          <TooltipContent side="top" className="max-w-xs">
-                            <div className="space-y-1 text-xs">
-                              <p className="font-medium">Source: {val.sourceCell}</p>
-                              {val.isFormula && <p className="font-mono text-[10px] text-muted-foreground">{val.formula}</p>}
-                              <p className="text-muted-foreground">Raw: {val.value}</p>
-                            </div>
-                          </TooltipContent>
+                    <div className="flex items-center justify-end gap-1">
+                      {auditMode && val.sourceCell && (
+                        <CitationBadge
+                          source={{
+                            fileId: '',
+                            fileName: statement.sheetName,
+                            sheetName: statement.sheetName,
+                            cellAddress: val.sourceCell,
+                          }}
+                          confidence={item.confidence}
+                          onClick={() => handleValueClick(idx, vi)}
+                        />
+                      )}
+                      <button
+                        onClick={() => handleValueClick(idx, vi)}
+                        className={cn(
+                          auditMode && "cursor-pointer hover:text-primary hover:underline decoration-dotted decoration-primary/40 transition-colors",
+                          val.value !== null && val.value < 0 && "text-red-400"
                         )}
-                      </Tooltip>
-                    </TooltipProvider>
+                      >
+                        {val.formatted || '—'}
+                      </button>
+                    </div>
                   </td>
                 ))}
               </tr>
@@ -233,7 +249,7 @@ function MetricsOverview({ metrics }: { metrics: FinancialMetric[] }) {
   );
 }
 
-export function ExtractionView({ statements, metrics, issues, auditMode, className }: ExtractionViewProps) {
+export function ExtractionView({ statements, metrics, issues, auditMode, files, onTraceClick, className }: ExtractionViewProps) {
   const [activeTab, setActiveTab] = useState<string>('overview');
 
   return (
@@ -267,7 +283,7 @@ export function ExtractionView({ statements, metrics, issues, auditMode, classNa
           {statements.length > 0 && (
             <div className="mt-6 space-y-4">
               {statements.map((s, i) => (
-                <StatementTable key={i} statement={s} auditMode={auditMode} />
+                <StatementTable key={i} statement={s} auditMode={auditMode} files={files} onTraceClick={onTraceClick} />
               ))}
             </div>
           )}
@@ -282,7 +298,7 @@ export function ExtractionView({ statements, metrics, issues, auditMode, classNa
 
         {statements.map(s => (
           <TabsContent key={s.type + s.sheetName} value={s.type + s.sheetName} className="mt-4">
-            <StatementTable statement={s} auditMode={auditMode} />
+            <StatementTable statement={s} auditMode={auditMode} files={files} onTraceClick={onTraceClick} />
           </TabsContent>
         ))}
 
