@@ -27,6 +27,8 @@ import { ScenarioAnalysis } from './covenants/ScenarioAnalysis';
 import { DataValidationPanel } from './validation/DataValidationPanel';
 import { TimeSeriesVariancePanel } from './timeseries/TimeSeriesVariancePanel';
 import { ReportEditor } from './report/ReportEditor';
+import { DataRoomIntegration } from './dataroom/DataRoomIntegration';
+import { ComparableBenchmarking } from './benchmarking/ComparableBenchmarking';
 import {
   LayoutMode, IngestedFile, DiligencePlatformState, AnalysisMessage,
   DetectedStatement, FinancialMetric, DataIssue, CovenantConfig
@@ -407,6 +409,19 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
                 statements={statements}
                 className="mt-0"
               />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <ComparableBenchmarking
+                  dealId={dealId}
+                  dealName={dealData?.company}
+                  dealValue={dealData?.value}
+                  metrics={metrics}
+                />
+                <DataRoomIntegration
+                  dealId={dealId}
+                  issues={issues}
+                  statements={statements}
+                />
+              </div>
               {auditMode && auditLog.length > 0 && (
                 <AuditLogPanel entries={auditLog} className="mt-4" />
               )}
@@ -428,6 +443,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
 
         {layoutMode === 'report' && (
           <ReportEditor
+            dealId={dealId}
             dealName={dealData?.company}
             dealStage={dealData?.stage}
             dealValue={dealData?.value}

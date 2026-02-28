@@ -71,34 +71,66 @@ Deno.serve(async (req) => {
 
     const documentsContext = (documents || []).map((d: any) => `- ${d.name}${d.notes ? `: ${d.notes}` : ""}`).join("\n");
 
+    if (action === "generate_section") {
+      const { sectionTitle, sectionId, metricsContext } = await req.json().catch(() => ({}));
+      
+      const sectionPrompt = `You are a senior credit analyst writing an IC screening memo for ${deal?.company || "a company"}.
+Deal Value: $${deal?.value ? (deal.value / 1e6).toFixed(1) + "MM" : "N/A"}
+Stage: ${deal?.stage || "N/A"}
+
+Available Financial Data:
+${financialsContext || "No files uploaded"}
+
+Documents:
+${documentsContext || "No documents"}
+
+${metricsContext ? `Key Metrics:\n${metricsContext}` : ""}
+
+Write the "${sectionTitle || "Executive Summary"}" section of a deal screening memo.
+- Use institutional-grade language appropriate for an Investment Committee
+- Be specific with numbers and data points where available
+- Clearly flag any estimates vs. confirmed data
+- Keep it concise but thorough (2-4 paragraphs)
+- Do not include the section title in your response
+- Use plain text, no markdown headers`;
+
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [{ role: "user", content: sectionPrompt }],
+          temperature: 0.4,
+        }),
+      });
+
+      if (!response.ok) {
+        const status = response.status;
+        if (status === 429 || status === 402) {
+          return new Response(
+            JSON.stringify({ error: status === 429 ? "Rate limit exceeded." : "AI credits exhausted." }),
+            { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        throw new Error("AI gateway error");
+      }
+
+      const aiData = await response.json();
+      const content = aiData.choices?.[0]?.message?.content || "";
+
+      return new Response(
+        JSON.stringify({ content, sectionId }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "extract") {
       // AI-powered extraction
       const extractionPrompt = `You are a financial data extraction engine for private credit/PE due diligence.
-
-Deal: ${deal?.company || "Unknown"}
-Deal Value: $${deal?.value ? (deal.value / 1000000).toFixed(1) + "MM" : "N/A"}
-Stage: ${deal?.stage || "N/A"}
-
-Available Financial Files:
-${financialsContext || "No files uploaded"}
-
-Available Documents:
-${documentsContext || "No documents"}
-
-Based on the available file metadata, generate a structured extraction result. Return a JSON object with:
-1. "statements": Array of detected financial statement structures. For each:
-   - type: "income_statement" | "balance_sheet" | "cash_flow" | "debt_schedule"
-   - confidence: 0.0-1.0
-   - sheetName: likely sheet name
-   - rowRange: [startRow, endRow] estimate
-   - lineItems: array of {label, standardKey, row, confidence, values: [{period, value, formatted}]}
-
-2. "metrics": Array of computed metrics: {key, label, type: "currency"|"percentage"|"multiple"|"ratio", value, formatted, trend, trendPct}
-
-3. "issues": Array of data quality issues: {id, severity, type, title, description}
-
-Generate realistic but clearly labeled as AI-estimated data based on the deal context and file metadata. Focus on key metrics like Revenue, EBITDA, margins, leverage, coverage ratios.
-
+...
 Return ONLY valid JSON, no markdown code fences.`;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
