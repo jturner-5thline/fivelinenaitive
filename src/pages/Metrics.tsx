@@ -23,6 +23,7 @@ import {
   Plus, Pencil, RotateCcw, Save, FolderOpen, BarChart3, LineChart as LineChartIcon, 
   PieChart as PieChartIcon, AreaChart, Star, ChevronDown, LayoutDashboard, Download
 } from "lucide-react";
+import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerformanceModelGrid";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -936,6 +937,9 @@ export default function Metrics() {
               </SortableContext>
             </DndContext>
           )}
+
+          {/* Rep Performance & Pipeline Model Grid */}
+          <RepPerformanceModelGrid />
         </div>
       </div>
 
