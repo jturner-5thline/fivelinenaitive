@@ -173,3 +173,6 @@ verify_jwt = false
 
 [functions.notification-engine]
 verify_jwt = false
+
+[functions.deal-diligence-ai]
+verify_jwt = false
