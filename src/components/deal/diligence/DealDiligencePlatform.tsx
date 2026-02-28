@@ -25,6 +25,8 @@ import { createExtractionAuditEntries } from './audit/auditUtils';
 import { CovenantMonitor } from './covenants/CovenantMonitor';
 import { ScenarioAnalysis } from './covenants/ScenarioAnalysis';
 import { DataValidationPanel } from './validation/DataValidationPanel';
+import { TimeSeriesVariancePanel } from './timeseries/TimeSeriesVariancePanel';
+import { ReportEditor } from './report/ReportEditor';
 import {
   LayoutMode, IngestedFile, DiligencePlatformState, AnalysisMessage,
   DetectedStatement, FinancialMetric, DataIssue, CovenantConfig
@@ -359,6 +361,10 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
                 issues={issues}
                 className="mt-4"
               />
+              <TimeSeriesVariancePanel
+                statements={statements}
+                className="mt-4"
+              />
               {auditMode && auditLog.length > 0 && (
                 <AuditLogPanel entries={auditLog} className="mt-4" />
               )}
@@ -397,6 +403,10 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
                   covenants={covenants}
                 />
               </div>
+              <TimeSeriesVariancePanel
+                statements={statements}
+                className="mt-0"
+              />
               {auditMode && auditLog.length > 0 && (
                 <AuditLogPanel entries={auditLog} className="mt-4" />
               )}
@@ -417,39 +427,13 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         )}
 
         {layoutMode === 'report' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4">
-            {/* Report sidebar outline */}
-            <div className="rounded-xl border border-border/30 p-4 h-fit sticky top-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Report Outline</h4>
-              <nav className="space-y-1">
-                {['Executive Summary', 'Business Overview', 'Financial Analysis', 'Revenue & Growth', 'Margins & Profitability', 'Leverage & Coverage', 'Working Capital', 'Key Risks & Hurdles', 'Covenants', 'Recommendation'].map((section, i) => (
-                  <button
-                    key={i}
-                    className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted/40 transition-colors text-muted-foreground hover:text-foreground"
-                  >
-                    {section}
-                  </button>
-                ))}
-              </nav>
-            </div>
-            {/* Report content area */}
-            <div className="rounded-xl border border-border/30 p-8 min-h-[600px]">
-              <div className="max-w-3xl mx-auto">
-                <h1 className="text-2xl font-serif font-bold mb-1">
-                  {dealData?.company || 'Deal'} — Initial Screening Memo
-                </h1>
-                <p className="text-sm text-muted-foreground mb-6">
-                  {dealData?.stage || 'Screening'} • {dealData?.value ? `$${(dealData.value / 1000000).toFixed(1)}MM` : 'TBD'}
-                </p>
-                <Separator className="mb-6" />
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <p className="text-muted-foreground italic">
-                    Report content will be generated here. Use the AI chat to analyze data, then click "Add to report" to build sections.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ReportEditor
+            dealName={dealData?.company}
+            dealStage={dealData?.stage}
+            dealValue={dealData?.value}
+            metrics={metrics}
+            statements={statements}
+          />
         )}
       </div>
     </div>
