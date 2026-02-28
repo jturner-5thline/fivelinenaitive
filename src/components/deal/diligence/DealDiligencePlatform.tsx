@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { IngestionPanel } from './IngestionPanel';
 import { ExtractionView } from './ExtractionView';
 import { AnalysisChat } from './AnalysisChat';
+import { AnalyticsDashboard } from './dashboard/AnalyticsDashboard';
 import {
   LayoutMode, IngestedFile, DiligencePlatformState, AnalysisMessage,
   DetectedStatement, FinancialMetric, DataIssue
@@ -347,29 +348,20 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         )}
 
         {layoutMode === 'dashboard' && (
-          <div className="space-y-6">
-            <IngestionPanel
-              files={files}
-              isUploading={isUploading}
-              onUpload={handleUpload}
-              onRemoveFile={handleRemoveFile}
-              onSelectFile={handleSelectFile}
-              selectedFileId={selectedFileId}
-              className="mb-4"
-            />
-            <ExtractionView
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+            <AnalyticsDashboard
               statements={statements}
               metrics={metrics}
               issues={issues}
               auditMode={auditMode}
             />
-            <div className="mt-6">
+            <div>
               <AnalysisChat
                 dealId={dealId}
                 messages={messages}
                 onMessagesChange={setMessages}
                 contextSummary={contextSummary}
-                className="h-[500px] rounded-xl border border-border/30"
+                className="h-[700px] rounded-xl border border-border/30 sticky top-4"
               />
             </div>
           </div>
