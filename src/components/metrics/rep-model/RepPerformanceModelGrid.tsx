@@ -13,9 +13,7 @@ interface EditChange {
 }
 
 const COL_WIDTHS: Record<number, number> = {
-  0: 180, // Name
-  1: 60,  // TEAM
-  2: 30, 3: 30, 4: 200, // spacer + metric label
+  0: 200, // Metric label (was col E, now col A after removing A-D)
 };
 const DEFAULT_COL_WIDTH = 110;
 
