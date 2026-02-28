@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Upload, LayoutDashboard, Columns2, FileText, Shield, ShieldCheck,
-  ChevronDown, Check, Loader2, FileSpreadsheet
+  ChevronDown, Check, Loader2, FileSpreadsheet, Keyboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,9 @@ import { TimeSeriesVariancePanel } from './timeseries/TimeSeriesVariancePanel';
 import { ReportEditor } from './report/ReportEditor';
 import { DataRoomIntegration } from './dataroom/DataRoomIntegration';
 import { ComparableBenchmarking } from './benchmarking/ComparableBenchmarking';
+import { DiligenceEmptyState } from './DiligenceEmptyState';
+import { useKeyboardShortcuts, ShortcutCheatSheet } from './KeyboardShortcuts';
+import { RealtimePresence } from './RealtimePresence';
 import {
   LayoutMode, IngestedFile, DiligencePlatformState, AnalysisMessage,
   DetectedStatement, FinancialMetric, DataIssue, CovenantConfig
@@ -50,7 +53,6 @@ const LAYOUT_MODES: { mode: LayoutMode; label: string; icon: React.ReactNode }[]
   { mode: 'report', label: 'Report', icon: <FileText className="h-3.5 w-3.5" /> },
 ];
 
-// Demo/mock data for extraction results (in production, these come from AI)
 const DEMO_STATEMENTS: DetectedStatement[] = [];
 const DEMO_METRICS: FinancialMetric[] = [];
 const DEMO_ISSUES: DataIssue[] = [];
@@ -80,6 +82,14 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
   const [activeTrace, setActiveTrace] = useState<SourceTraceData | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [covenants, setCovenants] = useState<CovenantConfig[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcuts
+  const { showCheatSheet, setShowCheatSheet } = useKeyboardShortcuts({
+    onSwitchMode: (mode) => setLayoutMode(mode as LayoutMode),
+    onExtract: () => triggerExtraction(),
+    onToggleAudit: () => setAuditMode(prev => !prev),
+  });
 
   // Sync uploaded financials into the local files list
   useEffect(() => {
@@ -95,53 +105,27 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
       storagePath: f.file_path,
     }));
     setFiles(synced);
-
-    // Auto-switch to split view when files are available
-    if (synced.length > 0 && layoutMode === 'ingestion') {
-      // Keep ingestion mode if user just arrived
-    }
   }, [financials]);
 
   const handleUpload = useCallback(async (fileList: FileList) => {
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
-      // Add provisional entry
       const tempId = crypto.randomUUID();
       setFiles(prev => [...prev, {
-        id: tempId,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        status: 'uploading',
-        progress: 30,
-        uploadedAt: new Date(),
+        id: tempId, name: file.name, size: file.size, type: file.type,
+        status: 'uploading', progress: 30, uploadedAt: new Date(),
       }]);
 
       try {
-        // Upload
         setFiles(prev => prev.map(f => f.id === tempId ? { ...f, progress: 60, status: 'uploading' } : f));
         const result = await uploadFinancial(file);
 
         if (result) {
-          // Parsing phase
           setFiles(prev => prev.map(f => f.id === tempId ? {
-            ...f,
-            progress: 80,
-            status: 'parsing',
-            dbId: result.id,
-            storagePath: result.file_path,
+            ...f, progress: 80, status: 'parsing', dbId: result.id, storagePath: result.file_path,
           } : f));
-
-          // Quick delay to simulate parsing
           await new Promise(r => setTimeout(r, 800));
-
-          setFiles(prev => prev.map(f => f.id === tempId ? {
-            ...f,
-            progress: 100,
-            status: 'ready',
-          } : f));
-
-          // Auto-trigger extraction after upload
+          setFiles(prev => prev.map(f => f.id === tempId ? { ...f, progress: 100, status: 'ready' } : f));
           triggerExtraction(result.id);
         }
       } catch {
@@ -161,19 +145,9 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         if (data.statements) setStatements(data.statements);
         if (data.metrics) setMetrics(data.metrics);
         if (data.issues) setIssues(data.issues);
-
-        // Generate audit log entries
-        const newEntries = createExtractionAuditEntries(
-          data.statements || [],
-          data.metrics || [],
-          dealData?.company || 'System'
-        );
+        const newEntries = createExtractionAuditEntries(data.statements || [], data.metrics || [], dealData?.company || 'System');
         setAuditLog(prev => [...newEntries, ...prev]);
-
-        // Auto-switch to split view after successful extraction
-        if (data.statements?.length > 0 || data.metrics?.length > 0) {
-          setLayoutMode('split');
-        }
+        if (data.statements?.length > 0 || data.metrics?.length > 0) setLayoutMode('split');
       }
     } catch (err) {
       console.error('Extraction error:', err);
@@ -195,9 +169,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
     setSelectedFileId(fileId);
     const file = files.find(f => f.id === fileId);
     if (file?.storagePath) {
-      const { data } = await supabase.storage
-        .from('deal-space')
-        .createSignedUrl(file.storagePath, 3600);
+      const { data } = await supabase.storage.from('deal-space').createSignedUrl(file.storagePath, 3600);
       if (data) {
         await parseExcelFromUrl(data.signedUrl, file.name);
         setLayoutMode('split');
@@ -206,10 +178,10 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
   }, [files, parseExcelFromUrl]);
 
   const toggleSource = (fileId: string) => {
-    setSelectedSources(prev =>
-      prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
-    );
+    setSelectedSources(prev => prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]);
   };
+
+  const handleEmptyUpload = () => fileInputRef.current?.click();
 
   const contextSummary = [
     dealData?.company ? `Company: ${dealData.company}` : '',
@@ -218,10 +190,23 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
     files.length > 0 ? `Files: ${files.map(f => f.name).join(', ')}` : '',
     metrics.length > 0 ? `Key Metrics: ${metrics.map(m => `${m.label}: ${m.formatted}`).join('; ')}` : '',
     statements.length > 0 ? `Detected: ${statements.map(s => s.type).join(', ')}` : '',
-  ].filter(Boolean).join('\\n');
+  ].filter(Boolean).join('\n');
+
+  const hasFiles = files.length > 0;
+  const hasMetrics = metrics.length > 0;
 
   return (
     <div className="flex flex-col gap-0 -mx-1">
+      {/* Hidden file input for empty state */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        multiple
+        accept=".xlsx,.xls,.csv,.pdf"
+        onChange={(e) => e.target.files && handleUpload(e.target.files)}
+      />
+
       {/* Toolbar */}
       <div className="flex items-center justify-between px-1 py-2">
         <div className="flex items-center gap-1">
@@ -230,10 +215,7 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
               key={lm.mode}
               variant={layoutMode === lm.mode ? "secondary" : "ghost"}
               size="sm"
-              className={cn(
-                "h-7 text-xs gap-1.5",
-                layoutMode === lm.mode && "bg-primary/10 text-primary"
-              )}
+              className={cn("h-7 text-xs gap-1.5", layoutMode === lm.mode && "bg-primary/10 text-primary")}
               onClick={() => setLayoutMode(lm.mode)}
             >
               {lm.icon}
@@ -243,7 +225,6 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
 
           <Separator orientation="vertical" className="h-5 mx-1" />
 
-          {/* Sources dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
@@ -269,7 +250,10 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
           </DropdownMenu>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          {/* Realtime presence */}
+          <RealtimePresence dealId={dealId} currentView={layoutMode} />
+
           {isExtracting && (
             <Badge variant="secondary" className="text-[10px] gap-1 h-6">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -296,14 +280,22 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
             </Tooltip>
           </TooltipProvider>
 
-          {files.filter(f => f.status === 'ready').length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs gap-1"
-              onClick={() => triggerExtraction()}
-              disabled={isExtracting}
-            >
+          {/* Keyboard shortcuts button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowCheatSheet(true)}>
+                  <Keyboard className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Keyboard shortcuts (⌘?)</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {hasFiles && files.filter(f => f.status === 'ready').length > 0 && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => triggerExtraction()} disabled={isExtracting}>
               {isExtracting ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
               Re-extract
             </Button>
@@ -311,76 +303,60 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         </div>
       </div>
 
+      {/* Shortcut cheat sheet overlay */}
+      <ShortcutCheatSheet open={showCheatSheet} onClose={() => setShowCheatSheet(false)} />
+
       {/* Content Area */}
       <div className="min-h-[600px]">
         {layoutMode === 'ingestion' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <IngestionPanel
-                files={files}
-                isUploading={isUploading}
-                onUpload={handleUpload}
-                onRemoveFile={handleRemoveFile}
-                onSelectFile={handleSelectFile}
-                selectedFileId={selectedFileId}
-              />
-            </div>
-            <div>
-              <AnalysisChat
-                dealId={dealId}
-                messages={messages}
-                onMessagesChange={setMessages}
-                contextSummary={contextSummary}
-                className="h-[600px] rounded-xl border border-border/30"
-              />
-            </div>
-          </div>
+          <>
+            {!hasFiles ? (
+              <DiligenceEmptyState mode="ingestion" hasFiles={false} hasMetrics={false} onUpload={handleEmptyUpload} />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <IngestionPanel
+                    files={files} isUploading={isUploading} onUpload={handleUpload}
+                    onRemoveFile={handleRemoveFile} onSelectFile={handleSelectFile} selectedFileId={selectedFileId}
+                  />
+                </div>
+                <div>
+                  <AnalysisChat
+                    dealId={dealId} messages={messages} onMessagesChange={setMessages}
+                    contextSummary={contextSummary} className="h-[600px] rounded-xl border border-border/30"
+                  />
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {layoutMode === 'split' && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
             <div>
               <IngestionPanel
-                files={files}
-                isUploading={isUploading}
-                onUpload={handleUpload}
-                onRemoveFile={handleRemoveFile}
-                onSelectFile={handleSelectFile}
-                selectedFileId={selectedFileId}
-                className="mb-4"
+                files={files} isUploading={isUploading} onUpload={handleUpload}
+                onRemoveFile={handleRemoveFile} onSelectFile={handleSelectFile} selectedFileId={selectedFileId} className="mb-4"
               />
-              <ExtractionView
-                statements={statements}
-                metrics={metrics}
-                issues={issues}
-                auditMode={auditMode}
-                files={files.map(f => ({ id: f.id, name: f.name }))}
-                onTraceClick={(trace) => setActiveTrace(trace)}
-              />
-              <DataValidationPanel
-                statements={statements}
-                metrics={metrics}
-                issues={issues}
-                className="mt-4"
-              />
-              <TimeSeriesVariancePanel
-                statements={statements}
-                className="mt-4"
-              />
-              {auditMode && auditLog.length > 0 && (
-                <AuditLogPanel entries={auditLog} className="mt-4" />
+              {hasMetrics || statements.length > 0 ? (
+                <>
+                  <ExtractionView
+                    statements={statements} metrics={metrics} issues={issues} auditMode={auditMode}
+                    files={files.map(f => ({ id: f.id, name: f.name }))} onTraceClick={(trace) => setActiveTrace(trace)}
+                  />
+                  <DataValidationPanel statements={statements} metrics={metrics} issues={issues} className="mt-4" />
+                  <TimeSeriesVariancePanel statements={statements} className="mt-4" />
+                  {auditMode && auditLog.length > 0 && <AuditLogPanel entries={auditLog} className="mt-4" />}
+                </>
+              ) : (
+                <DiligenceEmptyState mode="split" hasFiles={hasFiles} hasMetrics={false} onSwitchMode={(m) => setLayoutMode(m as LayoutMode)} />
               )}
             </div>
             <div className="space-y-4">
-              {activeTrace && auditMode && (
-                <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />
-              )}
+              {activeTrace && auditMode && <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />}
               <AnalysisChat
-                dealId={dealId}
-                messages={messages}
-                onMessagesChange={setMessages}
-                contextSummary={contextSummary}
-                className="h-[700px] rounded-xl border border-border/30 sticky top-4"
+                dealId={dealId} messages={messages} onMessagesChange={setMessages}
+                contextSummary={contextSummary} className="h-[700px] rounded-xl border border-border/30 sticky top-4"
               />
             </div>
           </div>
@@ -389,53 +365,29 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
         {layoutMode === 'dashboard' && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
             <div className="space-y-4">
-              <AnalyticsDashboard
-                statements={statements}
-                metrics={metrics}
-                issues={issues}
-                auditMode={auditMode}
-              />
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <CovenantMonitor
-                  covenants={covenants}
-                  onCovenantsChange={setCovenants}
-                />
-                <ScenarioAnalysis
-                  metrics={metrics}
-                  covenants={covenants}
-                />
-              </div>
-              <TimeSeriesVariancePanel
-                statements={statements}
-                className="mt-0"
-              />
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <ComparableBenchmarking
-                  dealId={dealId}
-                  dealName={dealData?.company}
-                  dealValue={dealData?.value}
-                  metrics={metrics}
-                />
-                <DataRoomIntegration
-                  dealId={dealId}
-                  issues={issues}
-                  statements={statements}
-                />
-              </div>
-              {auditMode && auditLog.length > 0 && (
-                <AuditLogPanel entries={auditLog} className="mt-4" />
+              {hasMetrics ? (
+                <>
+                  <AnalyticsDashboard statements={statements} metrics={metrics} issues={issues} auditMode={auditMode} />
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <CovenantMonitor covenants={covenants} onCovenantsChange={setCovenants} />
+                    <ScenarioAnalysis metrics={metrics} covenants={covenants} />
+                  </div>
+                  <TimeSeriesVariancePanel statements={statements} className="mt-0" />
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <ComparableBenchmarking dealId={dealId} dealName={dealData?.company} dealValue={dealData?.value} metrics={metrics} />
+                    <DataRoomIntegration dealId={dealId} issues={issues} statements={statements} />
+                  </div>
+                  {auditMode && auditLog.length > 0 && <AuditLogPanel entries={auditLog} className="mt-4" />}
+                </>
+              ) : (
+                <DiligenceEmptyState mode="dashboard" hasFiles={hasFiles} hasMetrics={false} onSwitchMode={(m) => setLayoutMode(m as LayoutMode)} />
               )}
             </div>
             <div className="space-y-4">
-              {activeTrace && auditMode && (
-                <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />
-              )}
+              {activeTrace && auditMode && <SourceTracePanel trace={activeTrace} onClose={() => setActiveTrace(null)} />}
               <AnalysisChat
-                dealId={dealId}
-                messages={messages}
-                onMessagesChange={setMessages}
-                contextSummary={contextSummary}
-                className="h-[700px] rounded-xl border border-border/30 sticky top-4"
+                dealId={dealId} messages={messages} onMessagesChange={setMessages}
+                contextSummary={contextSummary} className="h-[700px] rounded-xl border border-border/30 sticky top-4"
               />
             </div>
           </div>
@@ -443,12 +395,8 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
 
         {layoutMode === 'report' && (
           <ReportEditor
-            dealId={dealId}
-            dealName={dealData?.company}
-            dealStage={dealData?.stage}
-            dealValue={dealData?.value}
-            metrics={metrics}
-            statements={statements}
+            dealId={dealId} dealName={dealData?.company} dealStage={dealData?.stage}
+            dealValue={dealData?.value} metrics={metrics} statements={statements}
           />
         )}
       </div>
