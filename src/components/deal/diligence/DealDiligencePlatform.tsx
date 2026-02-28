@@ -24,6 +24,7 @@ import { AuditLogPanel, AuditLogEntry } from './audit/AuditLogPanel';
 import { createExtractionAuditEntries } from './audit/auditUtils';
 import { CovenantMonitor } from './covenants/CovenantMonitor';
 import { ScenarioAnalysis } from './covenants/ScenarioAnalysis';
+import { DataValidationPanel } from './validation/DataValidationPanel';
 import {
   LayoutMode, IngestedFile, DiligencePlatformState, AnalysisMessage,
   DetectedStatement, FinancialMetric, DataIssue, CovenantConfig
@@ -351,6 +352,12 @@ export function DealDiligencePlatform({ dealId, dealData }: DealDiligencePlatfor
                 auditMode={auditMode}
                 files={files.map(f => ({ id: f.id, name: f.name }))}
                 onTraceClick={(trace) => setActiveTrace(trace)}
+              />
+              <DataValidationPanel
+                statements={statements}
+                metrics={metrics}
+                issues={issues}
+                className="mt-4"
               />
               {auditMode && auditLog.length > 0 && (
                 <AuditLogPanel entries={auditLog} className="mt-4" />
