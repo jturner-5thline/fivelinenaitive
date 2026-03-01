@@ -87,7 +87,7 @@ function BodyScrollLock() {
 
 export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   return (
-    <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
+    <SidebarProvider defaultOpen={true} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
       <BodyScrollLock />
       {/* Neutral dark decorative background with orbs and waves */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true" style={{ background: '#0A0C14' }}>
@@ -147,7 +147,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         </svg>
       </div>
 
-      <div className="relative z-10 flex w-full h-full min-h-0 bg-transparent p-2 gap-1">
+      <div className="flex w-full h-full min-h-0 bg-transparent p-2 gap-1" style={{ isolation: 'auto' }}>
         <AppSidebar />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
