@@ -13,6 +13,7 @@ const shortcuts = [
   { keys: ['Ctrl', 'C'], description: 'Copy selected node' },
   { keys: ['Ctrl', 'V'], description: 'Paste copied node' },
   { keys: ['Ctrl', 'D'], description: 'Duplicate selected node' },
+  { keys: ['Ctrl', 'Enter'], description: 'Open Test Console' },
   { keys: ['Delete'], description: 'Delete selected node/edge' },
   { keys: ['Backspace'], description: 'Delete selected node/edge' },
   { keys: ['Shift', 'Click'], description: 'Multi-select nodes' },
