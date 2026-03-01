@@ -18,27 +18,30 @@ import {
   BaseEdge,
   getSmoothStepPath,
   type EdgeProps,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, Loader2, X, Undo2, Redo2, LayoutGrid, FileText, Play, Copy, Keyboard, Download, Upload } from 'lucide-react';
+import { Save, Loader2, X, Undo2, Redo2, LayoutGrid, FileText, Play, Copy, Keyboard, Download, Upload, Settings2, Package } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from 'sonner';
 
 import { AgentNode } from './AgentNode';
 import { AgentNodePalette } from './AgentNodePalette';
-import { AgentNodeInspector } from './AgentNodeInspector';
+import { EnhancedInspector } from './EnhancedInspector';
 import { GraphValidationPanel } from './GraphValidationPanel';
 import { CanvasTemplatesPicker } from './CanvasTemplatesPicker';
 import { AgentCanvasWizard } from './AgentCanvasWizard';
-import { InlineTestRunner } from './InlineTestRunner';
+import { EnhancedTestRunner } from './EnhancedTestRunner';
+import { GlobalContextPanel } from './GlobalContextPanel';
+import { ConvertToModuleDialog, useModuleManager } from './ModuleManager';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 import { AGENT_NODE_REGISTRY } from './agentNodeRegistry';
 import { useGraphValidation } from './useGraphValidation';
 import { useAutoLayout } from './useAutoLayout';
-import type { AgentCanvasNodeData } from './types';
+import type { AgentCanvasNodeData, GlobalContext, ModuleDefinition } from './types';
 import type { CanvasTemplate } from './canvasTemplates';
 
 interface AgentCanvasProps {
@@ -46,7 +49,7 @@ interface AgentCanvasProps {
   initialEdges?: Edge[];
   agentName?: string;
   agentId?: string;
-  onSave: (data: { name: string; nodes: Node[]; edges: Edge[] }) => void;
+  onSave: (data: { name: string; nodes: Node[]; edges: Edge[]; globalContext?: GlobalContext }) => void;
   onCancel: () => void;
   isSaving?: boolean;
 }
@@ -89,6 +92,8 @@ const edgeTypes: EdgeTypes = {
   labeled: LabeledEdge as any,
 };
 
+type RightPanel = 'none' | 'inspector' | 'test' | 'globals';
+
 export function AgentCanvas({
   initialNodes = [],
   initialEdges = [],
@@ -106,9 +111,18 @@ export function AgentCanvas({
   const [name, setName] = useState(agentName);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
-  const [showTestRunner, setShowTestRunner] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [copiedNode, setCopiedNode] = useState<Node | null>(null);
+  const [rightPanel, setRightPanel] = useState<RightPanel>('none');
+  const [globalContext, setGlobalContext] = useState<GlobalContext>({
+    envVars: [],
+    sharedContext: { company_id: '', user_id: '', environment: 'development', default_llm: 'google/gemini-2.5-flash', default_temperature: 0.7 },
+    authBindings: [],
+  });
+
+  // Module management
+  const { modules, updateModules } = useModuleManager();
 
   // Undo/redo
   const [history, setHistory] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
@@ -132,6 +146,11 @@ export function AgentCanvas({
     () => nodes.find(n => n.id === selectedNodeId) as (Node & { data: AgentCanvasNodeData }) | undefined,
     [nodes, selectedNodeId]
   );
+
+  // Multi-select tracking
+  const selectedNodeIds = useMemo(() => {
+    return nodes.filter(n => n.selected).map(n => n.id);
+  }, [nodes]);
 
   const pushHistory = useCallback(() => {
     setHistory(prev => {
@@ -161,17 +180,34 @@ export function AgentCanvas({
   // Auto-layout
   const autoLayout = useAutoLayout(setNodes, pushHistory);
 
-  // Connection validation
+  // Connection validation with type checking
   const isValidConnection = useCallback((connection: Connection) => {
-    // Prevent self-connections
     if (connection.source === connection.target) return false;
-    // Prevent duplicate edges
     const exists = edges.some(
       e => e.source === connection.source && e.target === connection.target &&
            e.sourceHandle === connection.sourceHandle && e.targetHandle === connection.targetHandle
     );
-    return !exists;
-  }, [edges]);
+    if (exists) return false;
+
+    // Type compatibility check
+    const sourceNode = nodes.find(n => n.id === connection.source);
+    const targetNode = nodes.find(n => n.id === connection.target);
+    if (sourceNode && targetNode) {
+      const sourceData = sourceNode.data as unknown as AgentCanvasNodeData;
+      const targetData = targetNode.data as unknown as AgentCanvasNodeData;
+      const sourcePort = sourceData.outputs?.find(o => o.key === connection.sourceHandle);
+      const targetPort = targetData.inputs?.find(i => i.key === connection.targetHandle);
+      if (sourcePort && targetPort) {
+        // 'any' is always compatible
+        if (sourcePort.type !== 'any' && targetPort.type !== 'any' && sourcePort.type !== targetPort.type) {
+          // Allow but warn - don't block
+          toast.warning(`Type mismatch: ${sourcePort.type} → ${targetPort.type}`, { duration: 2000 });
+        }
+      }
+    }
+
+    return true;
+  }, [edges, nodes]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -188,11 +224,13 @@ export function AgentCanvas({
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNodeId(node.id);
+    setRightPanel('inspector');
   }, []);
 
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
-  }, []);
+    if (rightPanel === 'inspector') setRightPanel('none');
+  }, [rightPanel]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -232,6 +270,7 @@ export function AgentCanvas({
           configSchema: registryItem.configSchema,
           config: {},
           description: registryItem.description,
+          tags: registryItem.tags,
         } satisfies AgentCanvasNodeData as unknown as Record<string, unknown>,
       };
 
@@ -256,12 +295,24 @@ export function AgentCanvas({
     [setNodes]
   );
 
+  const handleLabelChange = useCallback(
+    (nodeId: string, label: string) => {
+      setNodes(nds =>
+        nds.map(n =>
+          n.id === nodeId ? { ...n, data: { ...n.data, label } } : n
+        )
+      );
+    },
+    [setNodes]
+  );
+
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
       pushHistory();
       setNodes(nds => nds.filter(n => n.id !== nodeId));
       setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
       setSelectedNodeId(null);
+      setRightPanel('none');
     },
     [setNodes, setEdges, pushHistory]
   );
@@ -278,9 +329,23 @@ export function AgentCanvas({
     toast.success('Node duplicated');
   }, [setNodes, pushHistory]);
 
+  // Module creation
+  const handleConvertToModule = useCallback((module: ModuleDefinition) => {
+    updateModules([...modules, module]);
+  }, [modules, updateModules]);
+
+  const handleDeleteModule = useCallback((id: string) => {
+    updateModules(modules.filter(m => m.id !== id));
+    toast.success('Module deleted');
+  }, [modules, updateModules]);
+
+  const handleInsertModule = useCallback((module: ModuleDefinition) => {
+    toast.info(`Module "${module.name}" — use as reference template`);
+  }, []);
+
   // Export graph JSON
   const handleExport = useCallback(() => {
-    const graphData = { name, nodes, edges };
+    const graphData = { name, nodes, edges, globalContext };
     const blob = new Blob([JSON.stringify(graphData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -289,7 +354,7 @@ export function AgentCanvas({
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Graph exported');
-  }, [name, nodes, edges]);
+  }, [name, nodes, edges, globalContext]);
 
   // Import graph JSON
   const handleImport = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,6 +369,7 @@ export function AgentCanvas({
           setNodes(data.nodes);
           setEdges(data.edges || []);
           if (data.name) setName(data.name);
+          if (data.globalContext) setGlobalContext(data.globalContext);
           toast.success('Graph imported');
         } else {
           toast.error('Invalid graph file');
@@ -313,9 +379,14 @@ export function AgentCanvas({
       }
     };
     reader.readAsText(file);
-    // Reset input
     event.target.value = '';
   }, [setNodes, setEdges, pushHistory]);
+
+  // Toggle right panel
+  const togglePanel = useCallback((panel: RightPanel) => {
+    setRightPanel(prev => prev === panel ? 'none' : panel);
+    if (panel !== 'inspector') setSelectedNodeId(null);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -335,13 +406,18 @@ export function AgentCanvas({
         const node = nodes.find(n => n.id === selectedNodeId);
         if (node) duplicateNode(node);
       }
+      // Run test with Ctrl+Enter
+      if (isMeta && e.key === 'Enter') {
+        e.preventDefault();
+        setRightPanel('test');
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [undo, redo, selectedNodeId, nodes, copiedNode, duplicateNode]);
 
   const handleSave = () => {
-    onSave({ name, nodes, edges });
+    onSave({ name, nodes, edges, globalContext });
   };
 
   // Load template
@@ -393,6 +469,11 @@ export function AgentCanvas({
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => autoLayout(nodes, edges)} title="Auto Layout">
             <LayoutGrid className="h-4 w-4" />
           </Button>
+          {selectedNodeIds.length >= 2 && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowModuleDialog(true)} title="Convert to Module">
+              <Package className="h-4 w-4" />
+            </Button>
+          )}
           <div className="w-px h-5 bg-border mx-1" />
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={historyIndex <= 0} title="Undo (Ctrl+Z)">
             <Undo2 className="h-4 w-4" />
@@ -416,7 +497,22 @@ export function AgentCanvas({
             <Upload className="h-4 w-4" />
           </Button>
           <div className="w-px h-5 bg-border mx-1" />
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowTestRunner(v => !v)} title="Test Run">
+          <Button
+            variant={rightPanel === 'globals' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => togglePanel('globals')}
+            title="Global Context"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={rightPanel === 'test' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => togglePanel('test')}
+            title="Test Console (Ctrl+Enter)"
+          >
             <Play className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowShortcuts(true)} title="Keyboard Shortcuts">
@@ -435,7 +531,12 @@ export function AgentCanvas({
 
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden">
-        <AgentNodePalette onDragStart={onDragStart} />
+        <AgentNodePalette
+          onDragStart={onDragStart}
+          modules={modules}
+          onDeleteModule={handleDeleteModule}
+          onInsertModule={handleInsertModule}
+        />
 
         <div className="flex-1 flex flex-col">
           <div className="flex-1" ref={reactFlowWrapper}>
@@ -455,6 +556,8 @@ export function AgentCanvas({
               fitView
               deleteKeyCode={['Backspace', 'Delete']}
               multiSelectionKeyCode="Shift"
+              snapToGrid
+              snapGrid={[16, 16]}
               className="bg-background"
               defaultEdgeOptions={{
                 type: 'labeled',
@@ -476,7 +579,7 @@ export function AgentCanvas({
                     <div className="text-4xl mb-3">🧠</div>
                     <h3 className="text-base font-semibold text-foreground mb-1">Design your agent solution</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Drag components, use AI generation, or load a template to get started.
+                      Start with a Trigger node, add processing steps, and end with an Output node.
                     </p>
                     <div className="flex items-center justify-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => setShowWizard(true)}>
@@ -493,19 +596,34 @@ export function AgentCanvas({
           </div>
         </div>
 
-        {selectedNode && !showTestRunner && (
-          <AgentNodeInspector
+        {/* Right panels */}
+        {rightPanel === 'inspector' && selectedNode && (
+          <EnhancedInspector
             node={selectedNode}
             onConfigChange={handleConfigChange}
-            onClose={() => setSelectedNodeId(null)}
+            onLabelChange={handleLabelChange}
+            onClose={() => { setSelectedNodeId(null); setRightPanel('none'); }}
             onDelete={handleDeleteNode}
           />
         )}
 
-        {showTestRunner && (
-          <InlineTestRunner
+        {rightPanel === 'test' && (
+          <EnhancedTestRunner
             agentId={agentId || null}
-            onClose={() => setShowTestRunner(false)}
+            nodes={nodes}
+            edges={edges}
+            onClose={() => setRightPanel('none')}
+            onHighlightNode={(nodeId) => {
+              setSelectedNodeId(nodeId);
+            }}
+          />
+        )}
+
+        {rightPanel === 'globals' && (
+          <GlobalContextPanel
+            context={globalContext}
+            onChange={setGlobalContext}
+            onClose={() => setRightPanel('none')}
           />
         )}
       </div>
@@ -528,6 +646,15 @@ export function AgentCanvas({
       <KeyboardShortcutsHelp
         open={showShortcuts}
         onOpenChange={setShowShortcuts}
+      />
+
+      {/* Convert to module dialog */}
+      <ConvertToModuleDialog
+        open={showModuleDialog}
+        onOpenChange={setShowModuleDialog}
+        selectedNodes={nodes.filter(n => selectedNodeIds.includes(n.id))}
+        selectedEdges={edges.filter(e => selectedNodeIds.includes(e.source) || selectedNodeIds.includes(e.target))}
+        onConvert={handleConvertToModule}
       />
     </div>
   );

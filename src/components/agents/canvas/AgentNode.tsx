@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
-import type { AgentCanvasNodeData } from './types';
+import type { AgentCanvasNodeData, PortDataType } from './types';
 import { AGENT_NODE_CATEGORIES } from './agentNodeRegistry';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
@@ -14,28 +14,52 @@ interface ValidationIssue {
 }
 
 const sectionHeaders: Record<string, string> = {
+  trigger: 'Starts with',
   agent: 'Think with',
   tool: 'Call',
   memory: 'Remember',
   router: 'Route',
   ui: 'Ask user',
+  output: 'Returns',
+  module: 'Run module',
 };
 
 const sectionHeaderColors: Record<string, string> = {
+  trigger: 'text-primary',
   agent: 'text-chart-4',
   tool: 'text-chart-1',
   memory: 'text-chart-2',
   router: 'text-chart-3',
   ui: 'text-chart-5',
+  output: 'text-muted-foreground',
+  module: 'text-primary',
 };
 
 const cardBorderColors: Record<string, string> = {
+  trigger: 'border-primary/40',
   agent: 'border-chart-4/30',
   tool: 'border-chart-1/30',
   memory: 'border-chart-2/30',
   router: 'border-chart-3/30',
   ui: 'border-chart-5/30',
+  output: 'border-muted-foreground/30',
+  module: 'border-primary/30',
 };
+
+const portTypeColors: Record<string, string> = {
+  text: 'hsl(var(--chart-1))',
+  json: 'hsl(var(--chart-2))',
+  number: 'hsl(var(--chart-3))',
+  boolean: 'hsl(var(--chart-4))',
+  file: 'hsl(var(--chart-5))',
+  vector: 'hsl(var(--primary))',
+  any: 'hsl(var(--muted-foreground))',
+};
+
+function getPortColor(type: string): string {
+  const normalized = type.replace('string', 'text').replace('object[]', 'json').replace('object', 'json').replace('any[]', 'json');
+  return portTypeColors[normalized] || portTypeColors.any;
+}
 
 function AgentNodeComponent({ data, selected }: NodeProps & { data: AgentCanvasNodeData & { _validation?: ValidationIssue[] } }) {
   const catConfig = AGENT_NODE_CATEGORIES.find(c => c.key === data.category);
@@ -46,6 +70,9 @@ function AgentNodeComponent({ data, selected }: NodeProps & { data: AgentCanvasN
   const headerColor = sectionHeaderColors[data.category] || 'text-muted-foreground';
   const borderColor = cardBorderColors[data.category] || 'border-border';
 
+  const isTrigger = data.category === 'trigger';
+  const isOutput = data.category === 'output';
+
   return (
     <div
       className={cn(
@@ -53,7 +80,9 @@ function AgentNodeComponent({ data, selected }: NodeProps & { data: AgentCanvasN
         'bg-card text-card-foreground',
         borderColor,
         selected && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
-        errors.length > 0 && 'border-destructive/50'
+        errors.length > 0 && 'border-destructive/50',
+        isTrigger && 'border-l-4 border-l-primary',
+        isOutput && 'border-r-4 border-r-muted-foreground',
       )}
     >
       {/* Validation badge */}
@@ -88,20 +117,29 @@ function AgentNodeComponent({ data, selected }: NodeProps & { data: AgentCanvasN
         </TooltipProvider>
       )}
 
-      {/* Input handles */}
+      {/* Input handles with typed colors */}
       {data.inputs.map((input, i) => (
-        <Handle
-          key={`in-${input.key}`}
-          type="target"
-          position={Position.Left}
-          id={input.key}
-          style={{
-            ...handleStyle,
-            top: `${((i + 1) / (data.inputs.length + 1)) * 100}%`,
-            background: catConfig?.color || 'hsl(var(--muted-foreground))',
-            border: '2px solid hsl(var(--background))',
-          }}
-        />
+        <TooltipProvider key={`in-${input.key}`} delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={input.key}
+                style={{
+                  ...handleStyle,
+                  top: `${((i + 1) / (data.inputs.length + 1)) * 100}%`,
+                  background: getPortColor(input.type),
+                  border: '2px solid hsl(var(--background))',
+                }}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="left" className="text-[10px]">
+              <span className="font-mono">{input.label || input.key}</span>
+              <span className="text-muted-foreground ml-1">({input.type})</span>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       ))}
 
       {/* Section header */}
@@ -167,20 +205,29 @@ function AgentNodeComponent({ data, selected }: NodeProps & { data: AgentCanvasN
         </div>
       )}
 
-      {/* Output handles */}
+      {/* Output handles with typed colors */}
       {data.outputs.map((output, i) => (
-        <Handle
-          key={`out-${output.key}`}
-          type="source"
-          position={Position.Right}
-          id={output.key}
-          style={{
-            ...handleStyle,
-            top: `${((i + 1) / (data.outputs.length + 1)) * 100}%`,
-            background: catConfig?.color || 'hsl(var(--muted-foreground))',
-            border: '2px solid hsl(var(--background))',
-          }}
-        />
+        <TooltipProvider key={`out-${output.key}`} delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={output.key}
+                style={{
+                  ...handleStyle,
+                  top: `${((i + 1) / (data.outputs.length + 1)) * 100}%`,
+                  background: getPortColor(output.type),
+                  border: '2px solid hsl(var(--background))',
+                }}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-[10px]">
+              <span className="font-mono">{output.label || output.key}</span>
+              <span className="text-muted-foreground ml-1">({output.type})</span>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       ))}
     </div>
   );
