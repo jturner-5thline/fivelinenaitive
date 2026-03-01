@@ -171,7 +171,10 @@ export function FormulaBuilder({ value, onChange, availableWidgets = [] }: Formu
   const [selectedAgg, setSelectedAgg] = useState('sum');
   const [selectedFunction, setSelectedFunction] = useState('');
 
-  const dataSources = METRIC_WIDGET_DATA_SOURCES.filter(ds => ds.type === 'stat');
+  const allSources = METRIC_WIDGET_DATA_SOURCES;
+  const naitiveSources = allSources.filter(ds => !ds.id.startsWith('qb-') && !ds.id.startsWith('hs-'));
+  const qbSources = allSources.filter(ds => ds.id.startsWith('qb-'));
+  const hsSources = allSources.filter(ds => ds.id.startsWith('hs-'));
 
   return (
     <div className="space-y-4">
@@ -256,20 +259,66 @@ export function FormulaBuilder({ value, onChange, availableWidgets = [] }: Formu
         </TabsList>
 
         <TabsContent value="sources" className="mt-2">
-          <ScrollArea className="h-36">
-            <div className="grid grid-cols-2 gap-1">
-              {dataSources.map((ds) => (
-                <Button
-                  key={ds.id}
-                  variant="outline"
-                  size="sm"
-                  className="justify-start text-xs h-7 truncate"
-                  onClick={() => addToken({ type: 'source', sourceId: ds.id, label: ds.label })}
-                >
-                  <Plus className="h-3 w-3 mr-1 shrink-0" />
-                  <span className="truncate">{ds.label}</span>
-                </Button>
-              ))}
+          <ScrollArea className="h-48">
+            <div className="space-y-3">
+              {/* naitive Sources */}
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">naitive</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {naitiveSources.map((ds) => (
+                    <Button
+                      key={ds.id}
+                      variant="outline"
+                      size="sm"
+                      className="justify-start text-xs h-7 truncate"
+                      onClick={() => addToken({ type: 'source', sourceId: ds.id, label: ds.label })}
+                    >
+                      <Plus className="h-3 w-3 mr-1 shrink-0" />
+                      <span className="truncate">{ds.label}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {/* QuickBooks Sources */}
+              {qbSources.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">QuickBooks</p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {qbSources.map((ds) => (
+                      <Button
+                        key={ds.id}
+                        variant="outline"
+                        size="sm"
+                        className="justify-start text-xs h-7 truncate"
+                        onClick={() => addToken({ type: 'source', sourceId: ds.id, label: ds.label })}
+                      >
+                        <Plus className="h-3 w-3 mr-1 shrink-0" />
+                        <span className="truncate">{ds.label}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* HubSpot Sources */}
+              {hsSources.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">HubSpot</p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {hsSources.map((ds) => (
+                      <Button
+                        key={ds.id}
+                        variant="outline"
+                        size="sm"
+                        className="justify-start text-xs h-7 truncate"
+                        onClick={() => addToken({ type: 'source', sourceId: ds.id, label: ds.label })}
+                      >
+                        <Plus className="h-3 w-3 mr-1 shrink-0" />
+                        <span className="truncate">{ds.label}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
