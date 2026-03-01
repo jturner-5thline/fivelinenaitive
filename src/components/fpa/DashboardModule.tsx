@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, MessageSquare } from 'lucide-react';
 import { KPICards } from './dashboard/KPICards';
 import { InteractivePLTable } from './dashboard/InteractivePLTable';
 import { RevenueOPEXCharts } from './dashboard/RevenueOPEXCharts';
@@ -12,6 +13,7 @@ import { StressTesting } from './dashboard/StressTesting';
 import { SensitivityTable } from './dashboard/SensitivityTable';
 import { VarianceReviewPanel } from './collaboration/VarianceReviewPanel';
 import { BudgetApprovalWorkflow } from './collaboration/BudgetApprovalWorkflow';
+import { cn } from '@/lib/utils';
 
 export function DashboardModule() {
   const [dashboardTab, setDashboardTab] = useState('overview');
@@ -30,7 +32,10 @@ export function DashboardModule() {
             <TabsTrigger value="balance" className="text-xs">Balance Sheet</TabsTrigger>
             <TabsTrigger value="cashflow" className="text-xs">Cash Flow</TabsTrigger>
             <TabsTrigger value="scenarios" className="text-xs">Scenarios</TabsTrigger>
-            <TabsTrigger value="collaborate" className="text-xs">Collaborate</TabsTrigger>
+            <TabsTrigger value="collaborate" className="text-xs gap-1.5 relative">
+              Collaborate
+              <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[9px] font-bold">3</Badge>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
@@ -94,7 +99,7 @@ export function DashboardModule() {
       )}
 
       {dashboardTab === 'scenarios' && (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <ScenarioModeling />
           <SensitivityTable />
           <StressTesting />
