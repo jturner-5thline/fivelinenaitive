@@ -9,20 +9,20 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        /* PRIMARY — teal bg, dark text, glow on hover */
+        /* PRIMARY — liquid glass blue gradient */
         default:
-          "bg-primary text-primary-foreground font-semibold border-none shadow-sm hover:brightness-110 hover:shadow-accent-glow active:scale-[0.98]",
-        /* SECONDARY — transparent, accent border, accent text */
+          "relative overflow-hidden font-semibold border border-[rgba(168,208,255,0.35)] text-white shadow-[0_0_20px_rgba(126,184,247,0.2),inset_0_1px_0_rgba(255,255,255,0.25),inset_0_-1px_0_rgba(0,0,0,0.15)] bg-[linear-gradient(135deg,rgba(126,184,247,0.85),rgba(74,144,217,0.9))] backdrop-blur-[8px] [backdrop-filter:blur(8px)_saturate(1.4)] hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.95),rgba(90,160,235,0.95))] hover:shadow-[0_0_28px_rgba(126,184,247,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:-translate-y-px active:scale-[0.98]",
+        /* SECONDARY — ghost glass blue */
         outline:
-          "border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98]",
+          "bg-[rgba(126,184,247,0.06)] backdrop-blur-[8px] border border-[rgba(126,184,247,0.22)] text-[#A8D0FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[rgba(126,184,247,0.12)] hover:border-[rgba(126,184,247,0.4)] hover:shadow-[0_0_16px_rgba(126,184,247,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] active:scale-[0.98]",
         secondary:
-          "border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/60 active:scale-[0.98]",
+          "bg-[rgba(126,184,247,0.06)] backdrop-blur-[8px] border border-[rgba(126,184,247,0.22)] text-[#A8D0FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[rgba(126,184,247,0.12)] hover:border-[rgba(126,184,247,0.4)] hover:shadow-[0_0_16px_rgba(126,184,247,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] active:scale-[0.98]",
         /* TERTIARY — ghost, no border, muted text */
         ghost:
           "bg-transparent border-none text-muted-foreground hover:text-foreground",
         /* DROPDOWN — surface-3 fill, subtle border */
         dropdown:
-          "bg-secondary border border-border rounded-lg hover:border-primary/30",
+          "bg-secondary border border-border rounded-lg hover:border-[rgba(126,184,247,0.22)]",
         /* Destructive */
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
@@ -31,21 +31,21 @@ const buttonVariants = cva(
           "text-primary underline-offset-4 hover:underline",
         /* Accent — same as primary */
         accent:
-          "bg-primary text-primary-foreground font-semibold hover:brightness-110 hover:shadow-accent-glow",
+          "relative overflow-hidden font-semibold border border-[rgba(168,208,255,0.35)] text-white shadow-[0_0_20px_rgba(126,184,247,0.2),inset_0_1px_0_rgba(255,255,255,0.25)] bg-[linear-gradient(135deg,rgba(126,184,247,0.85),rgba(74,144,217,0.9))] backdrop-blur-[8px] hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.95),rgba(90,160,235,0.95))] hover:shadow-accent-glow",
         /* Success */
         success:
           "bg-success text-success-foreground hover:bg-success/90 shadow-sm",
         /* Hero */
         hero:
-          "bg-primary text-primary-foreground font-semibold shadow-lg hover:brightness-110 hover:shadow-accent-glow-strong hover:-translate-y-0.5",
+          "relative overflow-hidden font-semibold border border-[rgba(168,208,255,0.35)] text-white shadow-[0_0_20px_rgba(126,184,247,0.2),inset_0_1px_0_rgba(255,255,255,0.25)] bg-[linear-gradient(135deg,rgba(126,184,247,0.85),rgba(74,144,217,0.9))] backdrop-blur-[8px] hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.95),rgba(90,160,235,0.95))] hover:shadow-accent-glow-strong hover:-translate-y-0.5",
         "hero-outline":
           "border-2 border-primary bg-transparent text-primary hover:bg-primary/10 hover:border-primary/60",
         /* Gradient — brand gradient */
         gradient:
-          "bg-brand-gradient text-primary-foreground font-semibold hover:bg-brand-gradient-hover shadow-sm hover:shadow-accent-glow",
+          "bg-brand-gradient text-white font-semibold hover:bg-brand-gradient-hover shadow-sm hover:shadow-accent-glow",
         /* Liquid glass */
         "liquid-glass":
-          "relative overflow-hidden border border-primary/40 bg-primary/20 text-foreground backdrop-blur-xl shadow-glass hover:bg-primary/30 hover:border-primary/60 hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(14,206,206,0.15)_0%,transparent_50%)]",
+          "relative overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]",
       },
       size: {
         default: "h-10 px-4 py-2",

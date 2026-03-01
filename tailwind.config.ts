@@ -67,13 +67,13 @@ export default {
   			},
 			brand: 'hsl(var(--brand))',
 			'brand-gradient': {
-				from: '#0ECECE',
-				to: '#06B6D4'
+				from: '#7EB8F7',
+				to: '#4A90D9'
 			}
 		},
 		backgroundImage: {
-			'brand-gradient': 'linear-gradient(135deg, #0ECECE, #06B6D4)',
-			'brand-gradient-hover': 'linear-gradient(135deg, #22D6D6, #14C8DE)'
+			'brand-gradient': 'linear-gradient(135deg, #7EB8F7, #4A90D9)',
+			'brand-gradient-hover': 'linear-gradient(135deg, #94C8FF, #5AA0EB)'
 		},
   		borderRadius: {
 			xl: '12px',
@@ -124,8 +124,8 @@ export default {
 				'50%': { boxShadow: '0 0 0 4px hsl(var(--warning) / 0.3)' }
 			},
 			'glow-pulse': {
-				'0%, 100%': { boxShadow: '0 0 8px rgba(14,206,206,0.2)' },
-				'50%': { boxShadow: '0 0 20px rgba(14,206,206,0.4)' }
+				'0%, 100%': { boxShadow: '0 0 8px rgba(126,184,247,0.2)' },
+				'50%': { boxShadow: '0 0 20px rgba(126,184,247,0.4)' }
 			}
 		},
   		animation: {
@@ -150,9 +150,9 @@ export default {
   			'2xl': 'var(--shadow-2xl)',
 			'glass': '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)',
 			'glass-hover': '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-			'accent-glow': '0 0 16px rgba(14,206,206,0.15)',
-			'accent-glow-strong': '0 0 24px rgba(14,206,206,0.25)',
-			'focus-accent': '0 0 0 2px rgba(14,206,206,0.25)'
+			'accent-glow': '0 0 16px rgba(126,184,247,0.15)',
+			'accent-glow-strong': '0 0 24px rgba(126,184,247,0.25)',
+			'focus-accent': '0 0 0 2px rgba(126,184,247,0.4)'
   		},
   		fontFamily: {
   			sans: [
