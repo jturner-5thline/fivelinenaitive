@@ -17,6 +17,7 @@ import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { ChartsProvider } from "@/contexts/ChartsContext";
 import { AnalyticsWidgetsProvider } from "@/contexts/AnalyticsWidgetsContext";
 import { MetricsWidgetsProvider } from "@/contexts/MetricsWidgetsContext";
+import { DashboardFoldersProvider } from "@/contexts/DashboardFoldersContext";
 import { DashboardWidgetsProvider } from "@/contexts/DashboardWidgetsContext";
 import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import { DealsProvider } from "@/contexts/DealsContext";
@@ -87,6 +88,7 @@ const App = () => (
                     <ChartsProvider>
                     <AnalyticsWidgetsProvider>
                     <MetricsWidgetsProvider>
+                    <DashboardFoldersProvider>
                     <WidgetsProvider>
                     <DashboardWidgetsProvider>
                     <DashboardLayoutProvider>
@@ -210,6 +212,7 @@ const App = () => (
                     </DashboardLayoutProvider>
                     </DashboardWidgetsProvider>
                     </WidgetsProvider>
+                    </DashboardFoldersProvider>
                     </MetricsWidgetsProvider>
                     </AnalyticsWidgetsProvider>
                     </ChartsProvider>

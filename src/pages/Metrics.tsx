@@ -21,7 +21,8 @@ import {
 import { 
   TrendingUp, TrendingDown, DollarSign, Percent, Building2, Calendar, Loader2, 
   Plus, Pencil, RotateCcw, Save, FolderOpen, BarChart3, LineChart as LineChartIcon, 
-  PieChart as PieChartIcon, AreaChart, Star, ChevronDown, LayoutDashboard, Download
+  PieChart as PieChartIcon, AreaChart, Star, ChevronDown, ChevronRight, LayoutDashboard, Download,
+  Folder, FolderPlus, MoreHorizontal, Trash2 as TrashIcon
 } from "lucide-react";
 import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerformanceModelGrid";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -46,6 +47,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -63,6 +67,8 @@ import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/c
 import { MetricWidgetEditor } from "@/components/metrics/MetricWidgetEditor";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useDashboardFolders } from "@/contexts/DashboardFoldersContext";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   WaterfallChart,
   GaugeChart,
@@ -862,6 +868,25 @@ export default function Metrics() {
   const [widgetToDelete, setWidgetToDelete] = useState<string | null>(null);
   const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [presetName, setPresetName] = useState('');
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [renameFolderName, setRenameFolderName] = useState('');
+
+  const {
+    folders,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    toggleFolder,
+    moveDashboardToFolder,
+    getUnfolderedDashboardIds,
+  } = useDashboardFolders();
+
+  const unfolderedIds = useMemo(
+    () => getUnfolderedDashboardIds(DASHBOARD_OPTIONS.map(d => d.id)),
+    [folders, getUnfolderedDashboardIds]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -964,31 +989,150 @@ export default function Metrics() {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-72 max-h-[70vh] overflow-y-auto bg-popover border border-border shadow-lg z-50">
-                    {DASHBOARD_OPTIONS.map((dashboard) => (
-                      <DropdownMenuItem
-                        key={dashboard.id}
-                        onClick={() => setSelectedDashboard(dashboard.id)}
-                        className={cn(
-                          "flex items-center justify-between py-2",
-                          selectedDashboard === dashboard.id && "bg-accent"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                          <span>{dashboard.name}</span>
+                  <DropdownMenuContent align="start" className="w-80 max-h-[70vh] overflow-y-auto bg-popover border border-border shadow-lg z-50">
+                    {/* Folders */}
+                    {folders.map((folder) => {
+                      const folderDashboards = folder.dashboardIds
+                        .map(id => DASHBOARD_OPTIONS.find(d => d.id === id))
+                        .filter(Boolean);
+                      
+                      return (
+                        <div key={folder.id}>
+                          <div
+                            className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer group"
+                            onClick={() => toggleFolder(folder.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              {folder.isExpanded ? (
+                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                              <Folder className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">{folder.name}</span>
+                              <span className="text-xs text-muted-foreground">({folderDashboards.length})</span>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRenamingFolderId(folder.id);
+                                  setRenameFolderName(folder.name);
+                                }}>
+                                  <Pencil className="h-3.5 w-3.5 mr-2" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteFolder(folder.id);
+                                  }}
+                                >
+                                  <TrashIcon className="h-3.5 w-3.5 mr-2" />
+                                  Delete Folder
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          {folder.isExpanded && folderDashboards.map((dashboard) => dashboard && (
+                            <DropdownMenuSub key={dashboard.id}>
+                              <div className="flex items-center">
+                                <DropdownMenuItem
+                                  className={cn(
+                                    "flex-1 flex items-center justify-between py-1.5 pl-10",
+                                    selectedDashboard === dashboard.id && "bg-accent"
+                                  )}
+                                  onClick={() => setSelectedDashboard(dashboard.id)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-sm">{dashboard.name}</span>
+                                  </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center">
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </DropdownMenuSubTrigger>
+                              </div>
+                              <DropdownMenuSubContent>
+                                <DropdownMenuItem onClick={() => moveDashboardToFolder(dashboard.id, null)}>
+                                  Remove from folder
+                                </DropdownMenuItem>
+                                {folders.filter(f => f.id !== folder.id).map(f => (
+                                  <DropdownMenuItem key={f.id} onClick={() => moveDashboardToFolder(dashboard.id, f.id)}>
+                                    <Folder className="h-3.5 w-3.5 mr-2" />
+                                    Move to {f.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          ))}
                         </div>
-                        <Star 
-                          className={cn(
-                            "h-4 w-4",
-                            dashboard.isFavorite 
-                              ? "text-yellow-500 fill-yellow-500" 
-                              : "text-muted-foreground/40"
-                          )} 
-                        />
-                      </DropdownMenuItem>
-                    ))}
+                      );
+                    })}
+
+                    {folders.length > 0 && unfolderedIds.length > 0 && <DropdownMenuSeparator />}
+
+                    {/* Unfoldered dashboards */}
+                    {unfolderedIds.map((id) => {
+                      const dashboard = DASHBOARD_OPTIONS.find(d => d.id === id);
+                      if (!dashboard) return null;
+                      return (
+                        <DropdownMenuSub key={dashboard.id}>
+                          <div className="flex items-center">
+                            <DropdownMenuItem
+                              className={cn(
+                                "flex-1 flex items-center justify-between py-2",
+                                selectedDashboard === dashboard.id && "bg-accent"
+                              )}
+                              onClick={() => setSelectedDashboard(dashboard.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                                <span>{dashboard.name}</span>
+                              </div>
+                              <Star
+                                className={cn(
+                                  "h-4 w-4",
+                                  dashboard.isFavorite
+                                    ? "text-primary fill-primary"
+                                    : "text-muted-foreground/40"
+                                )}
+                              />
+                            </DropdownMenuItem>
+                            {folders.length > 0 && (
+                              <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center">
+                                <Folder className="h-3.5 w-3.5" />
+                              </DropdownMenuSubTrigger>
+                            )}
+                          </div>
+                          {folders.length > 0 && (
+                            <DropdownMenuSubContent>
+                              {folders.map(f => (
+                                <DropdownMenuItem key={f.id} onClick={() => moveDashboardToFolder(dashboard.id, f.id)}>
+                                  <Folder className="h-3.5 w-3.5 mr-2" />
+                                  Move to {f.name}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          )}
+                        </DropdownMenuSub>
+                      );
+                    })}
+
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="flex items-center gap-2 text-primary"
+                      onClick={() => setNewFolderOpen(true)}
+                    >
+                      <FolderPlus className="h-4 w-4" />
+                      <span>New Folder</span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem className="flex items-center gap-2 text-primary">
                       <Plus className="h-4 w-4" />
                       <span>Create New Dashboard</span>
@@ -1183,6 +1327,90 @@ export default function Metrics() {
             </Button>
             <Button onClick={handleSavePreset} disabled={!presetName.trim()}>
               Save Preset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Folder Dialog */}
+      <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogDescription>
+              Organize your dashboards into folders for easy access.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Folder name"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newFolderName.trim()) {
+                  createFolder(newFolderName.trim());
+                  setNewFolderName('');
+                  setNewFolderOpen(false);
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewFolderOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (newFolderName.trim()) {
+                  createFolder(newFolderName.trim());
+                  setNewFolderName('');
+                  setNewFolderOpen(false);
+                }
+              }}
+              disabled={!newFolderName.trim()}
+            >
+              Create Folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Folder Dialog */}
+      <Dialog open={!!renamingFolderId} onOpenChange={(open) => !open && setRenamingFolderId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Folder</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this folder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Folder name"
+              value={renameFolderName}
+              onChange={(e) => setRenameFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && renameFolderName.trim() && renamingFolderId) {
+                  renameFolder(renamingFolderId, renameFolderName.trim());
+                  setRenamingFolderId(null);
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenamingFolderId(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (renameFolderName.trim() && renamingFolderId) {
+                  renameFolder(renamingFolderId, renameFolderName.trim());
+                  setRenamingFolderId(null);
+                }
+              }}
+              disabled={!renameFolderName.trim()}
+            >
+              Rename
             </Button>
           </DialogFooter>
         </DialogContent>
