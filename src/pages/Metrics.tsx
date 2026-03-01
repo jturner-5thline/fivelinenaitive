@@ -964,7 +964,7 @@ export default function Metrics() {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-72 bg-popover border border-border shadow-lg z-50">
+                  <DropdownMenuContent align="start" className="w-72 max-h-[70vh] overflow-y-auto bg-popover border border-border shadow-lg z-50">
                     {DASHBOARD_OPTIONS.map((dashboard) => (
                       <DropdownMenuItem
                         key={dashboard.id}
