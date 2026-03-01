@@ -86,19 +86,19 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="lwFill1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="hsl(268,72%,16%)" stopOpacity="0.9" />
-              <stop offset="50%" stopColor="hsl(272,60%,10%)" stopOpacity="0.75" />
-              <stop offset="100%" stopColor="hsl(275,55%,6%)" stopOpacity="0.6" />
+              <stop offset="0%" stopColor="hsl(268,50%,5%)" stopOpacity="0.95" />
+              <stop offset="50%" stopColor="hsl(270,45%,4%)" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="hsl(272,40%,3%)" stopOpacity="0.85" />
             </linearGradient>
             <linearGradient id="lwFill2" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="hsl(275,68%,14%)" stopOpacity="0.8" />
-              <stop offset="50%" stopColor="hsl(270,58%,9%)" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="hsl(268,48%,5%)" stopOpacity="0.5" />
+              <stop offset="0%" stopColor="hsl(270,50%,5%)" stopOpacity="0.95" />
+              <stop offset="50%" stopColor="hsl(268,45%,4%)" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="hsl(272,40%,3%)" stopOpacity="0.85" />
             </linearGradient>
             <linearGradient id="lwFill3" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="hsl(272,68%,15%)" stopOpacity="0.8" />
-              <stop offset="50%" stopColor="hsl(270,55%,9%)" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="hsl(268,48%,5%)" stopOpacity="0.5" />
+              <stop offset="0%" stopColor="hsl(272,50%,5%)" stopOpacity="0.95" />
+              <stop offset="50%" stopColor="hsl(270,45%,4%)" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="hsl(268,40%,3%)" stopOpacity="0.85" />
             </linearGradient>
             <linearGradient id="lwEdge1" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="hsl(272,100%,80%)" stopOpacity="0.0" />
