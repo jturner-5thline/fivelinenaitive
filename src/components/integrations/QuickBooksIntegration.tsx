@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Plus,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -41,6 +44,7 @@ import {
   useQuickBooksInvoices,
   useQuickBooksPayments,
   useQuickBooksSyncHistory,
+  QuickBooksConnection,
 } from "@/hooks/useQuickBooks";
 
 export function QuickBooksIntegration() {
@@ -50,10 +54,22 @@ export function QuickBooksIntegration() {
   const disconnect = useQuickBooksDisconnect();
   const sync = useQuickBooksSync();
 
-  const { data: customers = [], isLoading: customersLoading } = useQuickBooksCustomers();
-  const { data: invoices = [], isLoading: invoicesLoading } = useQuickBooksInvoices();
-  const { data: payments = [], isLoading: paymentsLoading } = useQuickBooksPayments();
-  const { data: syncHistory = [] } = useQuickBooksSyncHistory();
+  const connections: QuickBooksConnection[] = status?.connections || [];
+  const [selectedRealmId, setSelectedRealmId] = useState<string | undefined>(undefined);
+
+  // Auto-select first company when connections load
+  useEffect(() => {
+    if (connections.length > 0 && !selectedRealmId) {
+      setSelectedRealmId(connections[0].realmId);
+    }
+  }, [connections, selectedRealmId]);
+
+  const selectedConnection = connections.find(c => c.realmId === selectedRealmId);
+
+  const { data: customers = [], isLoading: customersLoading } = useQuickBooksCustomers(selectedRealmId);
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuickBooksInvoices(selectedRealmId);
+  const { data: payments = [], isLoading: paymentsLoading } = useQuickBooksPayments(selectedRealmId);
+  const { data: syncHistory = [] } = useQuickBooksSyncHistory(selectedRealmId);
 
   // Handle OAuth callback redirect
   useEffect(() => {
@@ -62,7 +78,7 @@ export function QuickBooksIntegration() {
     const legacyStatus = searchParams.get("quickbooks");
     
     if (qbStatus === "success" || legacyStatus === "connected") {
-      toast.success("QuickBooks connected successfully!");
+      toast.success("QuickBooks company connected successfully!");
       setSearchParams({});
     } else if (qbError) {
       const errorMessages: Record<string, string> = {
@@ -124,20 +140,27 @@ export function QuickBooksIntegration() {
             <div>
               <CardTitle>QuickBooks Online</CardTitle>
               <CardDescription>
-                Sync customers, invoices, and payments from QuickBooks
+                Sync customers, invoices, and payments from multiple QuickBooks companies
               </CardDescription>
             </div>
           </div>
-          <Badge variant={status?.connected ? "default" : "secondary"}>
-            {status?.connected ? "Connected" : "Not Connected"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {connections.length > 0 && (
+              <Badge variant="default">
+                {connections.length} {connections.length === 1 ? "Company" : "Companies"}
+              </Badge>
+            )}
+            {!status?.connected && (
+              <Badge variant="secondary">Not Connected</Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {!status?.connected ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">
-              Connect your QuickBooks Online account to sync financial data.
+              Connect your QuickBooks Online account to sync financial data. You can connect multiple companies.
             </p>
             <Button onClick={() => connect.mutate()} disabled={connect.isPending}>
               <Link2 className="h-4 w-4 mr-2" />
@@ -146,48 +169,110 @@ export function QuickBooksIntegration() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                onClick={() => sync.mutate(undefined)}
-                disabled={sync.isPending}
+            {/* Company selector + actions bar */}
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                {connections.length > 1 ? (
+                  <Select value={selectedRealmId} onValueChange={setSelectedRealmId}>
+                    <SelectTrigger className="w-[280px]">
+                      <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {connections.map((conn) => (
+                        <SelectItem key={conn.realmId} value={conn.realmId}>
+                          <div className="flex items-center gap-2">
+                            <span>{conn.companyName || `Company ${conn.realmId}`}</span>
+                            {conn.isExpired && (
+                              <Badge variant="destructive" className="text-[10px] px-1 py-0">Expired</Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">
+                      {connections[0]?.companyName || `Company ${connections[0]?.realmId}`}
+                    </span>
+                  </div>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sync.mutate({ realmId: selectedRealmId })}
+                  disabled={sync.isPending}
                 >
                   <RefreshCw className={`h-4 w-4 mr-2 ${sync.isPending ? "animate-spin" : ""}`} />
-                  {sync.isPending ? "Syncing..." : "Sync Now"}
+                  {sync.isPending ? "Syncing..." : "Sync"}
                 </Button>
-                {status?.lastSync && (
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sync.mutate({})}
+                  disabled={sync.isPending}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${sync.isPending ? "animate-spin" : ""}`} />
+                  Sync All Companies
+                </Button>
+
+                {selectedConnection?.lastSync && (
                   <span className="text-sm text-muted-foreground">
-                    Last synced: {format(new Date(status.lastSync), "MMM d, yyyy HH:mm")}
+                    Last synced: {format(new Date(selectedConnection.lastSync), "MMM d, yyyy HH:mm")}
                   </span>
                 )}
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-destructive">
-                    <Link2Off className="h-4 w-4 mr-2" />
-                    Disconnect
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Disconnect QuickBooks?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will remove your QuickBooks connection and delete all synced data.
-                      You can reconnect at any time.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => disconnect.mutate()}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => connect.mutate()}
+                  disabled={connect.isPending}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Company
+                </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-destructive">
+                      <Link2Off className="h-4 w-4 mr-2" />
                       Disconnect
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Disconnect QuickBooks Company?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove the connection for "{selectedConnection?.companyName || selectedRealmId}" and delete its synced data.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          disconnect.mutate(selectedRealmId);
+                          // If disconnecting the selected one, reset selection
+                          if (connections.length > 1) {
+                            const remaining = connections.filter(c => c.realmId !== selectedRealmId);
+                            setSelectedRealmId(remaining[0]?.realmId);
+                          } else {
+                            setSelectedRealmId(undefined);
+                          }
+                        }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Disconnect
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
 
             <Tabs defaultValue="customers" className="w-full">
@@ -220,7 +305,7 @@ export function QuickBooksIntegration() {
                     </div>
                   ) : customers.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No customers synced yet. Click "Sync Now" to fetch data.
+                      No customers synced yet. Click "Sync" to fetch data.
                     </div>
                   ) : (
                     <Table>
@@ -269,7 +354,7 @@ export function QuickBooksIntegration() {
                     </div>
                   ) : invoices.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No invoices synced yet. Click "Sync Now" to fetch data.
+                      No invoices synced yet. Click "Sync" to fetch data.
                     </div>
                   ) : (
                     <Table>
@@ -292,14 +377,10 @@ export function QuickBooksIntegration() {
                             </TableCell>
                             <TableCell>{invoice.customer_name || "-"}</TableCell>
                             <TableCell>
-                              {invoice.txn_date
-                                ? format(new Date(invoice.txn_date), "MMM d, yyyy")
-                                : "-"}
+                              {invoice.txn_date ? format(new Date(invoice.txn_date), "MMM d, yyyy") : "-"}
                             </TableCell>
                             <TableCell>
-                              {invoice.due_date
-                                ? format(new Date(invoice.due_date), "MMM d, yyyy")
-                                : "-"}
+                              {invoice.due_date ? format(new Date(invoice.due_date), "MMM d, yyyy") : "-"}
                             </TableCell>
                             <TableCell className="text-right">
                               {formatCurrency(invoice.total_amt)}
@@ -310,10 +391,8 @@ export function QuickBooksIntegration() {
                             <TableCell>
                               <Badge
                                 variant={
-                                  invoice.status === "Paid"
-                                    ? "default"
-                                    : invoice.status === "Overdue"
-                                    ? "destructive"
+                                  invoice.status === "Paid" ? "default"
+                                    : invoice.status === "Overdue" ? "destructive"
                                     : "secondary"
                                 }
                               >
@@ -338,7 +417,7 @@ export function QuickBooksIntegration() {
                     </div>
                   ) : payments.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No payments synced yet. Click "Sync Now" to fetch data.
+                      No payments synced yet. Click "Sync" to fetch data.
                     </div>
                   ) : (
                     <Table>
@@ -357,9 +436,7 @@ export function QuickBooksIntegration() {
                               {payment.customer_name || "-"}
                             </TableCell>
                             <TableCell>
-                              {payment.txn_date
-                                ? format(new Date(payment.txn_date), "MMM d, yyyy")
-                                : "-"}
+                              {payment.txn_date ? format(new Date(payment.txn_date), "MMM d, yyyy") : "-"}
                             </TableCell>
                             <TableCell className="text-right">
                               {formatCurrency(payment.total_amt)}
@@ -391,24 +468,22 @@ export function QuickBooksIntegration() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {syncHistory.map((sync) => (
-                          <TableRow key={sync.id}>
+                        {syncHistory.map((s) => (
+                          <TableRow key={s.id}>
                             <TableCell className="font-medium capitalize">
-                              {sync.sync_type}
+                              {s.sync_type}
                             </TableCell>
                             <TableCell>
-                              {format(new Date(sync.started_at), "MMM d, HH:mm")}
+                              {format(new Date(s.started_at), "MMM d, HH:mm")}
                             </TableCell>
                             <TableCell>
-                              {sync.completed_at
-                                ? format(new Date(sync.completed_at), "MMM d, HH:mm")
-                                : "-"}
+                              {s.completed_at ? format(new Date(s.completed_at), "MMM d, HH:mm") : "-"}
                             </TableCell>
-                            <TableCell>{sync.records_synced || 0}</TableCell>
+                            <TableCell>{s.records_synced || 0}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {getSyncStatusIcon(sync.status)}
-                                <span className="capitalize">{sync.status}</span>
+                                {getSyncStatusIcon(s.status)}
+                                <span className="capitalize">{s.status}</span>
                               </div>
                             </TableCell>
                           </TableRow>
