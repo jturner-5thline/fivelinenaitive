@@ -35,7 +35,7 @@ function MainContent({
         className,
       )}
       style={{
-        background: 'rgba(8, 10, 18, 0.74)',
+        background: 'rgba(8, 10, 18, 0.55)',
         backdropFilter: 'blur(24px) saturate(1.3) brightness(1.05)',
         WebkitBackdropFilter: 'blur(24px) saturate(1.3) brightness(1.05)',
         borderTop: '1px solid rgba(255, 255, 255, 0.09)',
