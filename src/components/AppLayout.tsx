@@ -31,16 +31,30 @@ function MainContent({
   return (
     <main
       className={cn(
-        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border overflow-auto border-[rgba(255,255,255,0.08)] shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]",
+        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl overflow-auto",
         className,
       )}
       style={{
-        background: 'rgba(255,255,255,0.03)',
-        backdropFilter: 'blur(40px) saturate(1.2)',
-        WebkitBackdropFilter: 'blur(40px) saturate(1.2)',
+        background: 'rgba(8, 10, 18, 0.74)',
+        backdropFilter: 'blur(24px) saturate(1.3) brightness(1.05)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.3) brightness(1.05)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.09)',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.04)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(255,255,255,0.02), inset 1px 0 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.45)',
       }}
       onClick={handleMainClick}
     >
+      {/* Noise texture overlay for glass grain */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-[inherit] z-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '200px 200px',
+        }}
+      />
       <div className="relative z-10 flex-1 flex flex-col">
         {children}
       </div>
