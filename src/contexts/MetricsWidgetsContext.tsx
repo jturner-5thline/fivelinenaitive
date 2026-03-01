@@ -73,6 +73,19 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'qb-invoice-status', label: 'QB: Invoice Status', type: 'chart' },
   { id: 'qb-payment-methods', label: 'QB: Payment Methods', type: 'chart' },
   { id: 'qb-revenue-vs-payments', label: 'QB: Revenue vs Payments', type: 'chart' },
+  // HubSpot data sources
+  { id: 'hs-total-deals', label: 'HS: Total Deals', type: 'stat' },
+  { id: 'hs-total-deal-value', label: 'HS: Total Deal Value', type: 'stat' },
+  { id: 'hs-deals-won', label: 'HS: Deals Won', type: 'stat' },
+  { id: 'hs-deals-lost', label: 'HS: Deals Lost', type: 'stat' },
+  { id: 'hs-win-rate', label: 'HS: Win Rate', type: 'stat' },
+  { id: 'hs-avg-deal-size', label: 'HS: Avg Deal Size', type: 'stat' },
+  { id: 'hs-total-contacts', label: 'HS: Total Contacts', type: 'stat' },
+  { id: 'hs-total-companies', label: 'HS: Total Companies', type: 'stat' },
+  { id: 'hs-pipeline-by-stage', label: 'HS: Pipeline by Stage', type: 'chart' },
+  { id: 'hs-deals-by-owner', label: 'HS: Deals by Owner', type: 'chart' },
+  { id: 'hs-deal-value-trend', label: 'HS: Deal Value Trend', type: 'chart' },
+  { id: 'hs-contacts-by-source', label: 'HS: Contacts by Source', type: 'chart' },
 ] as const;
 
 export type MetricDataSource = typeof METRIC_WIDGET_DATA_SOURCES[number]['id'];
