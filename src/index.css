@@ -1,11 +1,11 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Figtree&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* DealFlow Pro - Professional Fintech Design System */
+/* naitive — Liquid Glass Design System */
 
 @layer base {
   :root {
@@ -20,42 +20,38 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 28% 17%;
 
-    /* Primary: Indigo #4A5899 */
+    /* Primary: Indigo */
     --primary: 229 35% 45%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Light slate */
+    /* Secondary */
     --secondary: 210 20% 96%;
     --secondary-foreground: 215 28% 17%;
 
-    /* Muted elements */
+    /* Muted */
     --muted: 210 20% 96%;
     --muted-foreground: 215 16% 47%;
 
-    /* Accent: Steel blue #6082B6 */
+    /* Accent */
     --accent: 216 37% 55%;
     --accent-foreground: 0 0% 100%;
 
-    /* Success: Emerald green */
-    --success: 160 84% 39%;
+    /* Status */
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-
-    /* Warning: Amber */
     --warning: 38 92% 50%;
     --warning-foreground: 215 28% 17%;
-
-    /* Destructive: Deep red */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & inputs */
+    /* Borders */
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 216 37% 55%;
 
     --radius: 0.5rem;
 
-    /* Sidebar - matches card background */
+    /* Sidebar */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 215 28% 17%;
     --sidebar-primary: 229 35% 45%;
@@ -65,17 +61,17 @@
     --sidebar-border: 214 32% 91%;
     --sidebar-ring: 216 37% 55%;
 
-    /* Brand color - #341539 */
+    /* Brand */
     --brand: 292 46% 15%;
 
     /* Chart colors */
     --chart-1: 229 35% 45%;
-    --chart-2: 160 84% 39%;
+    --chart-2: 142 71% 45%;
     --chart-3: 38 92% 50%;
     --chart-4: 216 37% 55%;
     --chart-5: 215 16% 47%;
 
-    /* Shadows - subtle for light mode */
+    /* Shadows */
     --shadow-2xs: 0 1px 2px 0 hsl(215 28% 17% / 0.03);
     --shadow-xs: 0 1px 3px 0 hsl(215 28% 17% / 0.05);
     --shadow-sm: 0 1px 2px 0 hsl(215 28% 17% / 0.05);
@@ -85,7 +81,7 @@
     --shadow-xl: 0 20px 25px -5px hsl(215 28% 17% / 0.08);
     --shadow-2xl: 0 25px 50px -12px hsl(215 28% 17% / 0.15);
 
-    /* Gradients - Indigo #4A5899 to Steel Blue #6082B6 */
+    /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(229 35% 45%), hsl(216 37% 55%));
     --gradient-accent: linear-gradient(135deg, hsl(229 35% 50%), hsl(216 37% 60%));
     --gradient-hero: linear-gradient(180deg, hsl(210 20% 99%) 0%, hsl(210 30% 96%) 100%);
@@ -93,83 +89,86 @@
     --spacing: 0.25rem;
 
     --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
-
     --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
-
     --font-mono: "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
   }
 
   .dark {
-    /* Brightened foundation for better readability */
-    --background: 235 20% 10%;
-    --foreground: 220 20% 93%;
+    /* ═══════════════════════════════════════════════
+       LIQUID GLASS — Teal Accent Dark Theme
+       ═══════════════════════════════════════════════ */
 
-    /* Cards: lighter charcoal */
-    --card: 235 18% 14%;
-    --card-foreground: 220 20% 93%;
+    /* Surface 1: page background — #0D0F1A */
+    --background: 230 33% 8%;
+    --foreground: 0 0% 100%;
 
-    --popover: 235 18% 14%;
-    --popover-foreground: 220 20% 93%;
+    /* Surface 2: card glass layer — rgba(255,255,255,0.04) mapped to HSL */
+    --card: 230 20% 10%;
+    --card-foreground: 0 0% 100%;
 
-    /* Primary: cyan-blue from logo dots */
-    --primary: 199 80% 58%;
-    --primary-foreground: 235 20% 6%;
+    /* Surface 3: elevated — rgba(255,255,255,0.07) */
+    --popover: 230 18% 12%;
+    --popover-foreground: 0 0% 100%;
 
-    /* Secondary: brighter layer */
-    --secondary: 235 16% 18%;
-    --secondary-foreground: 220 18% 88%;
+    /* Primary: Teal accent #0ECECE */
+    --primary: 180 83% 43%;
+    --primary-foreground: 230 33% 8%;
 
-    /* Muted - brighter for readability */
-    --muted: 235 16% 16%;
-    --muted-foreground: 220 15% 62%;
+    /* Secondary: glass-elevated surface */
+    --secondary: 230 16% 14%;
+    --secondary-foreground: 0 0% 85%;
 
-    /* Accent: medium purple from logo dots */
-    --accent: 263 60% 62%;
-    --accent-foreground: 0 0% 100%;
+    /* Muted */
+    --muted: 230 16% 12%;
+    --muted-foreground: 0 0% 50%;
 
-    /* Status */
-    --success: 160 70% 42%;
-    --success-foreground: 235 20% 6%;
-    --warning: 38 85% 52%;
-    --warning-foreground: 235 20% 6%;
-    --destructive: 0 65% 55%;
-    --destructive-foreground: 220 20% 95%;
+    /* Accent: Teal for interactive */
+    --accent: 180 83% 43%;
+    --accent-foreground: 230 33% 8%;
 
-    /* Borders - brighter for definition */
-    --border: 235 14% 22%;
-    --input: 235 14% 22%;
-    --ring: 199 80% 58%;
+    /* Status — financial colors, NOT teal */
+    --success: 142 71% 45%;
+    --success-foreground: 230 33% 8%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 230 33% 8%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 95%;
+
+    /* Borders — subtle glass edges */
+    --border: 0 0% 100% / 0.08;
+    --input: 0 0% 100% / 0.08;
+    --ring: 180 83% 43%;
 
     /* Sidebar */
-    --sidebar-background: 235 20% 11%;
-    --sidebar-foreground: 220 18% 85%;
-    --sidebar-primary: 263 60% 62%;
+    --sidebar-background: 260 30% 7%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 180 83% 43%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 260 18% 20%;
-    --sidebar-accent-foreground: 220 18% 90%;
-    --sidebar-border: 235 14% 18%;
-    --sidebar-ring: 263 60% 62%;
+    --sidebar-accent: 180 83% 43% / 0.1;
+    --sidebar-accent-foreground: 180 83% 55%;
+    --sidebar-border: 0 0% 100% / 0.08;
+    --sidebar-ring: 180 83% 43%;
 
     /* Brand */
-    --brand: 263 60% 62%;
+    --brand: 180 83% 43%;
 
-    /* Charts: cyan-purple palette */
-    --chart-1: 199 80% 58%;
-    --chart-2: 160 70% 42%;
-    --chart-3: 38 85% 52%;
-    --chart-4: 263 60% 62%;
+    /* Charts — avoid teal for data viz; use distinct hues */
+    --chart-1: 210 70% 55%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 270 60% 62%;
     --chart-5: 220 15% 60%;
 
-    /* Gradients: cyan → purple */
-    --gradient-primary: linear-gradient(135deg, hsl(199 80% 58%), hsl(263 60% 62%));
-    --gradient-accent: linear-gradient(135deg, hsl(199 80% 62%), hsl(263 60% 67%));
-    --gradient-hero: linear-gradient(180deg, hsl(235 20% 10%) 0%, hsl(235 22% 8%) 100%);
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(180 83% 43%), hsl(200 70% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(180 83% 50%), hsl(200 70% 52%));
+    --gradient-hero: linear-gradient(180deg, hsl(230 33% 8%) 0%, hsl(260 30% 6%) 100%);
 
     --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
     --font-mono: "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
 
-    /* Shadows - slightly softer */
+    /* Shadows — deep dark */
     --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.25);
     --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.3);
     --shadow-sm: 0 2px 6px -1px hsl(0 0% 0% / 0.35);
@@ -178,6 +177,18 @@
     --shadow-lg: 0 12px 28px -4px hsl(0 0% 0% / 0.45);
     --shadow-xl: 0 20px 40px -8px hsl(0 0% 0% / 0.5);
     --shadow-2xl: 0 30px 60px -12px hsl(0 0% 0% / 0.6);
+
+    /* ═══ Liquid Glass Tokens ═══ */
+    --glass-surface: rgba(255,255,255,0.04);
+    --glass-elevated: rgba(255,255,255,0.07);
+    --glass-border: rgba(255,255,255,0.08);
+    --glass-border-accent: rgba(14,206,206,0.3);
+    --glass-glow: rgba(14,206,206,0.15);
+    --glass-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+    --glass-blur: blur(12px) saturate(1.4);
+    --glass-row-hover: rgba(14,206,206,0.05);
+    --glass-row-alt: rgba(255,255,255,0.01);
+    --glass-header-bg: rgba(255,255,255,0.03);
   }
 }
 
@@ -190,16 +201,95 @@
     @apply bg-background text-foreground;
   }
 
-  /* Smooth theme transitions */
+  /* Smooth transitions — but exclude performance-heavy properties */
   *,
   *::before,
   *::after {
-    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease, box-shadow 0.3s ease;
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 0.2s;
+    transition-timing-function: ease;
   }
 
-  /* Dark mode: atmospheric plasma accent on the body */
+  /* Dark mode body */
   .dark body {
-    background: hsl(235 20% 10%);
+    background: hsl(230 33% 8%);
+  }
+}
+
+/* ═══ Liquid Glass Utility Classes ═══ */
+@layer components {
+  /* Glass card base */
+  .glass-card {
+    background: var(--glass-surface);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* Glass card with accent top border (KPI cards) */
+  .glass-card-accent {
+    background: var(--glass-surface);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-top: 2px solid hsl(180 83% 43%);
+    border-radius: 12px;
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-card-negative {
+    background: var(--glass-surface);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-top: 2px solid hsl(0 72% 51%);
+    border-radius: 12px;
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* Module header row */
+  .glass-header {
+    background: var(--glass-header-bg);
+    border-bottom: 1px solid var(--glass-border);
+    border-left: 3px solid hsl(180 83% 43%);
+  }
+
+  /* Table row hover */
+  .glass-row-hover:hover {
+    background: var(--glass-row-hover);
+  }
+
+  /* Financial value colors */
+  .value-positive {
+    color: hsl(142 71% 45%);
+  }
+  .value-negative {
+    color: hsl(0 72% 51%);
+  }
+  .value-warning {
+    color: hsl(38 92% 50%);
+  }
+  .value-neutral {
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Status dots */
+  .status-favorable { color: hsl(142 71% 45%); }
+  .status-on-track { color: hsl(180 83% 43%); }
+  .status-watch { color: hsl(38 92% 50%); }
+  .status-alert { color: hsl(0 72% 51%); }
+
+  /* Beta badge */
+  .badge-beta {
+    background: rgba(99,102,241,0.2);
+    border: 1px solid rgba(99,102,241,0.4);
+    color: #A5B4FC;
+    border-radius: 4px;
+    font-size: 10px;
+    padding: 1px 6px;
+    font-weight: 600;
   }
 }
 

@@ -252,9 +252,10 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col rounded-xl border overflow-hidden transition-all duration-200 border-[hsl(263,40%,25%,0.6)] shadow-[inset_0_1px_1px_hsl(263,40%,35%,0.08),0_4px_24px_hsl(0,0%,0%,0.4)]",
-            "bg-transparent backdrop-blur-sm",
-            "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,hsl(263,40%,30%,0.08)_0%,transparent_50%,hsl(263,30%,20%,0.04)_100%)] relative",
+            "flex h-full w-full flex-col rounded-xl border overflow-hidden transition-all duration-200",
+            "border-[rgba(255,255,255,0.08)] shadow-[0_4px_24px_rgba(0,0,0,0.4)]",
+            "bg-[linear-gradient(180deg,rgba(13,15,26,0.95)_0%,rgba(20,10,40,0.95)_100%)] backdrop-blur-[20px]",
+            "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,rgba(14,206,206,0.03)_0%,transparent_50%)] relative",
             isHovering && state === "collapsed" && "shadow-xl",
             className,
           )}
@@ -463,13 +464,13 @@ const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.ComponentProps<"li
 SidebarMenuItem.displayName = "SidebarMenuItem";
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button relative flex w-full items-center gap-2 overflow-hidden rounded-md p-2.5 px-4 text-left text-sm outline-none ring-sidebar-ring transition-all duration-[120ms] ease-out disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground [&>span:last-child]:truncate hover:bg-[hsl(270,50%,92%,0.12)] hover:text-foreground hover:[&>svg]:text-foreground focus-visible:ring-2 focus-visible:bg-[hsl(270,50%,92%,0.12)] focus-visible:text-foreground data-[active=true]:bg-[hsl(270,60%,85%,0.15)] data-[active=true]:text-foreground data-[active=true]:font-medium data-[active=true]:[&>svg]:text-foreground data-[state=open]:hover:bg-[hsl(270,50%,92%,0.12)] data-[state=open]:hover:text-foreground before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0 before:rounded-full before:bg-gradient-to-b before:from-[hsl(295,100%,73%)] before:to-[hsl(280,100%,60%)] before:shadow-[0_0_16px_rgba(197,87,255,0.8)] before:opacity-0 before:transition-all before:duration-[120ms] before:ease-out hover:before:w-[3px] hover:before:opacity-100 data-[active=true]:before:w-[3px] data-[active=true]:before:opacity-100",
+  "peer/menu-button relative flex w-full items-center gap-2 overflow-hidden rounded-md p-2.5 px-4 text-left text-sm outline-none ring-sidebar-ring transition-all duration-[150ms] ease-out disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground [&>span:last-child]:truncate hover:bg-[rgba(255,255,255,0.04)] hover:text-foreground hover:[&>svg]:text-foreground focus-visible:ring-2 focus-visible:bg-[rgba(255,255,255,0.04)] focus-visible:text-foreground data-[active=true]:bg-[rgba(14,206,206,0.1)] data-[active=true]:text-primary data-[active=true]:font-medium data-[active=true]:[&>svg]:text-primary data-[state=open]:hover:bg-[rgba(255,255,255,0.04)] data-[state=open]:hover:text-foreground before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0 before:rounded-full before:bg-primary before:shadow-[0_0_12px_rgba(14,206,206,0.6)] before:opacity-0 before:transition-all before:duration-[150ms] before:ease-out hover:before:w-[3px] hover:before:opacity-60 data-[active=true]:before:w-[3px] data-[active=true]:before:opacity-100",
   {
     variants: {
       variant: {
         default: "",
         outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-[hsl(270,40%,12%)] hover:text-[hsl(270,100%,96%)]",
+          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-[rgba(255,255,255,0.04)]",
       },
       size: {
         default: "h-9 text-sm",

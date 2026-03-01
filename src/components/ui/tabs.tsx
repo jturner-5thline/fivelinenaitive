@@ -43,18 +43,18 @@ const TabsList = React.forwardRef<
         else if (ref) ref.current = node;
       }}
       className={cn(
-        "relative inline-flex h-auto items-center justify-center gap-0 rounded-md bg-muted/50 p-0 text-muted-foreground overflow-hidden",
+        "relative inline-flex h-auto items-center justify-center gap-0 rounded-lg bg-muted/50 p-0.5 text-muted-foreground overflow-hidden",
         className,
       )}
       {...props}
     >
       {indicator && (
         <span
-          className="absolute top-0 bottom-0 rounded-[inherit] bg-[linear-gradient(145deg,hsl(199,60%,20%,0.7)_0%,hsl(210,50%,15%,0.8)_50%,hsl(220,40%,10%,0.9)_100%)] border border-[hsl(199,70%,45%,0.4)] shadow-[inset_0_1px_1px_hsl(199,80%,60%,0.2),0_4px_16px_hsl(199,70%,30%,0.25)] z-0 pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(199,80%,70%,0.12)_0%,transparent_50%)] before:pointer-events-none"
+          className="absolute top-0.5 bottom-0.5 rounded-md z-0 pointer-events-none dark:bg-[rgba(14,206,206,0.12)] dark:border dark:border-primary/30 dark:shadow-[inset_0_1px_1px_rgba(14,206,206,0.1)] bg-background shadow-sm"
           style={{
             left: indicator.left,
             width: indicator.width,
-            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
       )}
@@ -71,8 +71,8 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all hover:bg-muted hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-full",
-      "data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-medium data-[state=active]:shadow-none",
+      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all duration-200 hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-full",
+      "data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-none",
       className,
     )}
     {...props}
