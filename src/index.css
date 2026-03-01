@@ -295,6 +295,17 @@
   }
 }
 
+/* Recharts tooltip cursor — remove white hover box on all charts */
+.recharts-tooltip-cursor {
+  fill: transparent !important;
+}
+.recharts-default-tooltip {
+  background-color: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 8px !important;
+  color: hsl(var(--card-foreground)) !important;
+}
+
 @keyframes ripple-effect {
   to {
     transform: scale(2.5);
