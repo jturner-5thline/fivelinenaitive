@@ -203,6 +203,10 @@
     @apply bg-background text-foreground;
   }
 
+  .dark body {
+    background: transparent !important;
+  }
+
   /* Smooth transitions — but exclude performance-heavy properties */
   *,
   *::before,
@@ -212,10 +216,6 @@
     transition-timing-function: ease;
   }
 
-  /* Dark mode body */
-  .dark body {
-    background: #0A0C14;
-  }
 }
 
 /* ═══ Liquid Glass Utility Classes ═══ */
