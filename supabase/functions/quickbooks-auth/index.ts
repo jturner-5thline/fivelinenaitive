@@ -15,7 +15,8 @@ const QB_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
 const QB_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
 
 // Hardcoded redirect URI to exactly match Intuit Developer Console registration
-const REDIRECT_URI = "https://tgkksvazruzbghssnxde.supabase.co/functions/v1/quickbooks-auth?action=callback";
+// Clean URL with NO query params — Intuit Production rejects query strings in redirect URIs
+const REDIRECT_URI = "https://tgkksvazruzbghssnxde.supabase.co/functions/v1/quickbooks-auth";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -80,8 +81,8 @@ serve(async (req) => {
       return jsonResponse({ authUrl });
     }
 
-    // ── CALLBACK: Handle OAuth redirect from Intuit ──
-    if (action === "callback") {
+    // ── CALLBACK: Detect by presence of 'code' param (Intuit appends code, state, realmId) ──
+    if (url.searchParams.has("code")) {
       try {
         const code = url.searchParams.get("code");
         const realmId = url.searchParams.get("realmId");
