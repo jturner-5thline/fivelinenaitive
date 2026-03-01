@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,8 @@ import {
   ChevronDown, ChevronRight, Maximize2, AlertTriangle, Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PLCommentThread, type FPAComment } from '../collaboration/PLCommentThread';
+import { InlineAnnotation, type Annotation } from '../collaboration/InlineAnnotation';
 
 interface PLRow {
   account: string;
@@ -96,6 +98,72 @@ interface InteractivePLTableProps {
 export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(['Revenue', 'Operating Expenses']));
 
+  // Collaboration state (demo data — will be replaced with DB queries)
+  const [comments, setComments] = useState<Record<string, FPAComment[]>>({
+    'Hosting & Infrastructure': [
+      { id: '1', user_name: 'Jill Turner', user_initials: 'JT', content: 'This is running 14% over budget — @Paolo can you check the AWS bill?', mentions: ['Paolo'], is_resolved: false, created_at: '2h ago' },
+    ],
+    'Legal & Compliance': [
+      { id: '2', user_name: 'Franco F.', user_initials: 'FF', content: 'One-time litigation cost. Should normalize next quarter.', mentions: [], is_resolved: true, created_at: '3d ago' },
+    ],
+  });
+
+  const [annotations, setAnnotations] = useState<Record<string, Annotation[]>>({
+    'Revenue': [
+      { id: '1', content: 'Q1 includes $200K one-time license deal', color: 'warning', is_pinned: true, user_initials: 'PP', created_at: '1d ago' },
+    ],
+  });
+
+  const handleAddComment = useCallback((targetKey: string, content: string, mentions: string[]) => {
+    setComments(prev => ({
+      ...prev,
+      [targetKey]: [...(prev[targetKey] || []), {
+        id: Date.now().toString(), user_name: 'You', user_initials: 'ME',
+        content, mentions, is_resolved: false, created_at: 'Just now',
+      }],
+    }));
+  }, []);
+
+  const handleResolveComment = useCallback((commentId: string) => {
+    setComments(prev => {
+      const updated = { ...prev };
+      for (const key of Object.keys(updated)) {
+        updated[key] = updated[key].map(c => c.id === commentId ? { ...c, is_resolved: true } : c);
+      }
+      return updated;
+    });
+  }, []);
+
+  const handleAddAnnotation = useCallback((targetKey: string, content: string, color: string) => {
+    setAnnotations(prev => ({
+      ...prev,
+      [targetKey]: [...(prev[targetKey] || []), {
+        id: Date.now().toString(), content, color: color as Annotation['color'],
+        is_pinned: false, user_initials: 'ME', created_at: 'Just now',
+      }],
+    }));
+  }, []);
+
+  const handleDeleteAnnotation = useCallback((id: string) => {
+    setAnnotations(prev => {
+      const updated = { ...prev };
+      for (const key of Object.keys(updated)) {
+        updated[key] = updated[key].filter(a => a.id !== id);
+      }
+      return updated;
+    });
+  }, []);
+
+  const handleTogglePinAnnotation = useCallback((id: string) => {
+    setAnnotations(prev => {
+      const updated = { ...prev };
+      for (const key of Object.keys(updated)) {
+        updated[key] = updated[key].map(a => a.id === id ? { ...a, is_pinned: !a.is_pinned } : a);
+      }
+      return updated;
+    });
+  }, []);
+
   const toggleRow = (account: string) => {
     setExpandedRows(prev => {
       const next = new Set(prev);
@@ -157,6 +225,23 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
             {isSignificant && !row.isHeader && (
               <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
             )}
+            <div className="flex items-center gap-0.5 ml-auto shrink-0" onClick={e => e.stopPropagation()}>
+              <PLCommentThread
+                targetKey={row.account}
+                targetLabel={row.account}
+                comments={comments[row.account] || []}
+                onAddComment={handleAddComment}
+                onResolve={handleResolveComment}
+              />
+              <InlineAnnotation
+                targetKey={row.account}
+                targetLabel={row.account}
+                annotations={annotations[row.account] || []}
+                onAdd={handleAddAnnotation}
+                onDelete={handleDeleteAnnotation}
+                onTogglePin={handleTogglePinAnnotation}
+              />
+            </div>
           </div>
         </TableCell>
         <TableCell className={cn("text-xs text-right font-mono py-1.5", row.isHeader && "font-semibold")}>

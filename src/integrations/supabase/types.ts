@@ -3998,6 +3998,252 @@ export type Database = {
           },
         ]
       }
+      fpa_annotations: {
+        Row: {
+          color: string | null
+          company_id: string
+          content: string
+          created_at: string
+          id: string
+          is_pinned: boolean | null
+          target_key: string
+          target_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          company_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          target_key: string
+          target_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          company_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          target_key?: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fpa_annotations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fpa_budget_approvals: {
+        Row: {
+          admin_approved_at: string | null
+          admin_approved_by: string | null
+          affected_accounts: string[] | null
+          amount_impact: number | null
+          analyst_approved_at: string | null
+          analyst_approved_by: string | null
+          approval_type: string
+          company_id: string
+          created_at: string
+          current_approver: string | null
+          current_level: string
+          description: string | null
+          id: string
+          manager_approved_at: string | null
+          manager_approved_by: string | null
+          rejection_reason: string | null
+          status: string
+          submitted_by: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
+          affected_accounts?: string[] | null
+          amount_impact?: number | null
+          analyst_approved_at?: string | null
+          analyst_approved_by?: string | null
+          approval_type: string
+          company_id: string
+          created_at?: string
+          current_approver?: string | null
+          current_level?: string
+          description?: string | null
+          id?: string
+          manager_approved_at?: string | null
+          manager_approved_by?: string | null
+          rejection_reason?: string | null
+          status?: string
+          submitted_by: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          admin_approved_at?: string | null
+          admin_approved_by?: string | null
+          affected_accounts?: string[] | null
+          amount_impact?: number | null
+          analyst_approved_at?: string | null
+          analyst_approved_by?: string | null
+          approval_type?: string
+          company_id?: string
+          created_at?: string
+          current_approver?: string | null
+          current_level?: string
+          description?: string | null
+          id?: string
+          manager_approved_at?: string | null
+          manager_approved_by?: string | null
+          rejection_reason?: string | null
+          status?: string
+          submitted_by?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fpa_budget_approvals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fpa_comments: {
+        Row: {
+          company_id: string
+          content: string
+          created_at: string
+          id: string
+          is_resolved: boolean | null
+          mentioned_user_ids: string[] | null
+          parent_comment_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          target_key: string
+          target_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_resolved?: boolean | null
+          mentioned_user_ids?: string[] | null
+          parent_comment_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          target_key: string
+          target_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_resolved?: boolean | null
+          mentioned_user_ids?: string[] | null
+          parent_comment_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          target_key?: string
+          target_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fpa_comments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fpa_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "fpa_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fpa_variance_reviews: {
+        Row: {
+          account_name: string
+          assigned_to: string | null
+          company_id: string
+          comparison_mode: string
+          created_at: string
+          flagged_by: string
+          id: string
+          notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+          variance_amount: number
+          variance_pct: number
+        }
+        Insert: {
+          account_name: string
+          assigned_to?: string | null
+          company_id: string
+          comparison_mode: string
+          created_at?: string
+          flagged_by: string
+          id?: string
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          variance_amount: number
+          variance_pct: number
+        }
+        Update: {
+          account_name?: string
+          assigned_to?: string | null
+          company_id?: string
+          comparison_mode?: string
+          created_at?: string
+          flagged_by?: string
+          id?: string
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          variance_amount?: number
+          variance_pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fpa_variance_reviews_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gamma_analytics: {
         Row: {
           created_at: string
