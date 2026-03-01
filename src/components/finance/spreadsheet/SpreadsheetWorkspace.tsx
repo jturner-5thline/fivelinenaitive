@@ -1,9 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/components/ui/dropdown-menu';
 import { 
   FileSpreadsheet, Download, Plus, Sparkles,
-  FileDown, FileUp, ChevronDown, Save, Clock, Table2, Tag, Cloud, Keyboard,
+  FileDown, FileUp, ChevronDown, Save, Clock, Table2, Tag, Cloud, Keyboard, Upload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSpreadsheetWorkbook } from '@/hooks/useSpreadsheetWorkbook';
@@ -51,7 +51,7 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   const [miniToolbarPos, setMiniToolbarPos] = useState({ x: 0, y: 0 });
   const [showMiniToolbar, setShowMiniToolbar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [dragOver, setDragOver] = useState(false);
   useEffect(() => {
     if (!wb.workbook) wb.createNewWorkbook();
   }, []);
@@ -97,6 +97,33 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [wb]);
 
+  const handleFileDrop = useCallback(async (file: File) => {
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv',
+    ];
+    const isValid = validTypes.includes(file.type) || /\.(xlsx|xls|csv)$/i.test(file.name);
+    if (!isValid) {
+      toast.error('Invalid file type', { description: 'Please upload an .xlsx, .xls, or .csv file' });
+      return;
+    }
+    try {
+      await wb.importFromFile(file);
+      toast.success('Workbook uploaded', { description: `${file.name} loaded successfully` });
+    } catch (err) {
+      toast.error('Import failed', { description: err instanceof Error ? err.message : 'Could not parse file' });
+    }
+  }, [wb]);
+
+  const onDragOver = useCallback((e: DragEvent) => { e.preventDefault(); setDragOver(true); }, []);
+  const onDragLeave = useCallback((e: DragEvent) => { e.preventDefault(); setDragOver(false); }, []);
+  const onDrop = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileDrop(file);
+  }, [handleFileDrop]);
   const handleFormulaBarChange = useCallback(() => {}, []);
 
   const handleFormulaBarCommit = useCallback((value: string) => {
@@ -192,8 +219,53 @@ export function SpreadsheetWorkspace({ className }: SpreadsheetWorkspaceProps) {
   const currentFormat = wb.getCellFormat(wb.selectedCell.row, wb.selectedCell.col);
   const formulaBarValue = currentRawValue !== null && currentRawValue !== undefined ? String(currentRawValue) : '';
 
+  // Check if workbook is "empty" (new, untouched)
+  const isEmptyWorkbook = wb.workbook?.source === 'new' && !wb.workbook.isDirty;
+
   return (
-    <div className={cn("flex flex-col h-[calc(100vh-220px)] min-h-[600px] border rounded-lg bg-background overflow-hidden", className)}>
+    <div
+      className={cn("relative flex flex-col h-[calc(100vh-220px)] min-h-[600px] border rounded-lg bg-background overflow-hidden", dragOver && "ring-2 ring-primary ring-offset-2", className)}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {/* Drag overlay */}
+      {dragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/5 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg">
+          <div className="text-center space-y-2">
+            <Upload className="h-10 w-10 text-primary mx-auto" />
+            <p className="text-lg font-semibold text-primary">Drop your Excel file here</p>
+            <p className="text-sm text-muted-foreground">.xlsx, .xls, or .csv</p>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state upload CTA */}
+      {isEmptyWorkbook && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="text-center space-y-4 max-w-md">
+            <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <FileSpreadsheet className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Upload a Workbook</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Drag & drop an Excel file here, or click below to browse. Your workbook will be loaded into the spreadsheet engine for analysis and management.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={() => fileInputRef.current?.click()} className="gap-2">
+                <Upload className="h-4 w-4" /> Upload Excel File
+              </Button>
+              <Button variant="outline" onClick={() => wb.setCellValue(0, 0, wb.getCellValue(0, 0))}>
+                Start Blank
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Supports .xlsx, .xls, and .csv files</p>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
       <div className="flex items-center justify-between px-3 py-1 border-b bg-muted/30">
         <div className="flex items-center gap-2">
