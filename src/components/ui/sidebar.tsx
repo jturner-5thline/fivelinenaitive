@@ -260,7 +260,7 @@ const Sidebar = React.forwardRef<
             className,
           )}
           style={{
-            background: 'rgba(10, 12, 20, 0.55)',
+            background: 'rgba(10, 12, 20, 0.38)',
             backdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
             WebkitBackdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
           }}
