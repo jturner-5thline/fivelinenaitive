@@ -250,13 +250,13 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }
   const vis = visibilityConfig || { revenueChart: true, marginTrends: true, opexComparison: true, topVendors: true, waterfallBridge: true };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" role="region" aria-label="Financial Charts">
       {/* Row 1: Revenue + Margins */}
       {(vis.revenueChart || vis.marginTrends) && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Revenue Chart */}
         {vis.revenueChart && (
-        <Card className={vis.marginTrends ? "lg:col-span-2" : "lg:col-span-3"}>
+        <Card className={vis.marginTrends ? "lg:col-span-2" : "lg:col-span-3"} role="figure" aria-label="Revenue chart showing monthly revenue by segment">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -307,7 +307,7 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }
 
         {/* Margin Trends */}
         {vis.marginTrends && (
-        <Card className={vis.revenueChart ? undefined : "lg:col-span-3"}>
+        <Card className={vis.revenueChart ? undefined : "lg:col-span-3"} role="figure" aria-label="Margin trends showing Gross Margin, EBITDA Margin, and Net Margin over time">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Margin Trends</CardTitle>
           </CardHeader>
@@ -325,7 +325,7 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }
       {(vis.opexComparison || vis.topVendors) && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {vis.opexComparison && (
-        <Card>
+        <Card role="figure" aria-label="Operating expenses comparison showing actuals versus budget by department">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">OPEX — Actuals vs Budget ($K)</CardTitle>
           </CardHeader>
@@ -351,7 +351,7 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }
 
         {/* Top Vendors */}
         {vis.topVendors && (
-        <Card>
+        <Card role="figure" aria-label="Top vendors by spend for current period">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">Top Vendors by Spend</CardTitle>

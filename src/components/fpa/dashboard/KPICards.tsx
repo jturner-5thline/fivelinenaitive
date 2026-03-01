@@ -49,7 +49,7 @@ interface KPICardsProps {
 
 export function KPICards({ onKPIClick, selectedKPI }: KPICardsProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" role="list" aria-label="Key Performance Indicators">
       {KPIS.map((kpi) => {
         const sparkData = kpi.sparkline.map((v, i) => ({ v }));
         const sparkColor = kpi.isPositive ? 'hsl(var(--chart-2))' : 'hsl(var(--chart-5))';
@@ -63,6 +63,10 @@ export function KPICards({ onKPIClick, selectedKPI }: KPICardsProps) {
               isSelected && "ring-2 ring-primary shadow-md"
             )}
             onClick={() => onKPIClick?.(kpi)}
+            role="listitem"
+            tabIndex={0}
+            aria-label={`${kpi.label}: ${kpi.value}, ${kpi.change} ${kpi.period}`}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onKPIClick?.(kpi); } }}
           >
             <CardContent className="p-3">
               <div className="flex items-start justify-between mb-1">
