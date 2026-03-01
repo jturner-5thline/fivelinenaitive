@@ -60,6 +60,19 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'performance-radar', label: 'Performance Radar', type: 'chart' },
   { id: 'activity-heatmap', label: 'Activity Heatmap', type: 'chart' },
   { id: 'revenue-forecast', label: 'Revenue Forecast', type: 'chart' },
+  // QuickBooks data sources
+  { id: 'qb-total-revenue', label: 'QB: Total Revenue', type: 'stat' },
+  { id: 'qb-accounts-receivable', label: 'QB: Accounts Receivable', type: 'stat' },
+  { id: 'qb-total-payments', label: 'QB: Total Payments', type: 'stat' },
+  { id: 'qb-active-customers', label: 'QB: Active Customers', type: 'stat' },
+  { id: 'qb-collection-rate', label: 'QB: Collection Rate', type: 'stat' },
+  { id: 'qb-overdue-amount', label: 'QB: Overdue Amount', type: 'stat' },
+  { id: 'qb-revenue-trend', label: 'QB: Revenue Trend (12M)', type: 'chart' },
+  { id: 'qb-ar-aging', label: 'QB: AR Aging', type: 'chart' },
+  { id: 'qb-top-customers', label: 'QB: Top Customers', type: 'chart' },
+  { id: 'qb-invoice-status', label: 'QB: Invoice Status', type: 'chart' },
+  { id: 'qb-payment-methods', label: 'QB: Payment Methods', type: 'chart' },
+  { id: 'qb-revenue-vs-payments', label: 'QB: Revenue vs Payments', type: 'chart' },
 ] as const;
 
 export type MetricDataSource = typeof METRIC_WIDGET_DATA_SOURCES[number]['id'];

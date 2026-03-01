@@ -89,7 +89,9 @@ import {
   DealStageTimelineDashboard,
   ExecutiveDashboard,
   FinServFinancialMetricsDashboard,
+  QuickBooksFinancialDashboard,
 } from "@/components/metrics/dashboards";
+import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 
 // Dashboard options
 const DASHBOARD_OPTIONS = [
@@ -113,6 +115,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'niki-sales-commission', name: 'Niki Sales Commission Board', isFavorite: false },
   { id: 'paz-sales-commission', name: 'Paz Sales Commission Board', isFavorite: false },
   { id: 'chandler-sales-commission', name: 'Chandler Sales Commission Board', isFavorite: false },
+  { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false },
 ];
 
 // Generate rolling 12 months labels
@@ -154,9 +157,19 @@ const formatPercent = (value: number) => `${value}%`;
 // Chart rendering based on data source
 function renderChartContent(
   widget: MetricWidgetConfig,
-  metrics: ReturnType<typeof useMetricsData>['data']
+  metrics: ReturnType<typeof useMetricsData>['data'],
+  qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data']
 ) {
-  if (!metrics) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-')) return null;
+  if (widget.dataSource.startsWith('qb-') && !qbMetrics) {
+    return (
+      <ChartWidgetContent title={widget.title}>
+        <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
+          Connect QuickBooks to see this data
+        </div>
+      </ChartWidgetContent>
+    );
+  }
 
   const chartHeight = widget.size === 'small' ? 180 : widget.size === 'medium' ? 240 : 280;
 
@@ -577,6 +590,147 @@ function renderChartContent(
       );
     }
 
+    // QuickBooks chart widgets
+    case 'qb-revenue-trend': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Rolling 12 months from QuickBooks">
+          <div style={{ height: chartHeight }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={qbMetrics.monthlyRevenue}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v: number, name: string) => [formatCurrency(v), name]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <Legend />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Revenue" radius={[4, 4, 0, 0]} />
+                <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'qb-ar-aging': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Outstanding balances by aging bucket">
+          <div style={{ height: chartHeight }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={qbMetrics.arAgingData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
+                <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(v: number) => [formatCurrency(v), "Outstanding"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <Bar dataKey="value" fill={widget.color} radius={[4, 4, 0, 0]}>
+                  {qbMetrics.arAgingData.map((_, index) => (
+                    <Cell key={index} fill={index <= 1 ? "hsl(var(--primary))" : index <= 2 ? "hsl(var(--chart-4))" : "hsl(var(--destructive))"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'qb-top-customers': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Based on invoice totals">
+          <div style={{ height: chartHeight }}>
+            {qbMetrics.topCustomers.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={qbMetrics.topCustomers} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 9 }} />
+                  <Tooltip formatter={(v: number) => [formatCurrency(v), "Revenue"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                  <Bar dataKey="revenue" fill={widget.color} radius={[0, 4, 4, 0]}>
+                    {qbMetrics.topCustomers.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No customer data</div>
+            )}
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'qb-invoice-status': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Distribution by status">
+          <div style={{ height: chartHeight }}>
+            {qbMetrics.invoiceStatusBreakdown.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={qbMetrics.invoiceStatusBreakdown} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" nameKey="status" label={({ status, count }) => `${status} (${count})`} labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}>
+                    {qbMetrics.invoiceStatusBreakdown.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [formatCurrency(v), "Value"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No invoice data</div>
+            )}
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'qb-payment-methods': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Payments by method">
+          <div style={{ height: chartHeight }}>
+            {qbMetrics.paymentMethodsBreakdown.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={qbMetrics.paymentMethodsBreakdown} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" nameKey="method" label={({ method, count }) => `${method} (${count})`} labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}>
+                    {qbMetrics.paymentMethodsBreakdown.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [formatCurrency(v), "Value"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">No payment data</div>
+            )}
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
+    case 'qb-revenue-vs-payments': {
+      if (!qbMetrics) return null;
+      return (
+        <ChartWidgetContent title={widget.title} description="Monthly revenue vs payments collected">
+          <div style={{ height: chartHeight }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={qbMetrics.monthlyRevenue}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v: number, name: string) => [formatCurrency(v), name]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <Legend />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Invoiced" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="payments" fill="hsl(var(--chart-2))" name="Collected" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartWidgetContent>
+      );
+    }
+
     default:
       return (
         <ChartWidgetContent title={widget.title}>
@@ -591,9 +745,10 @@ function renderChartContent(
 // Stat widget rendering
 function renderStatContent(
   widget: MetricWidgetConfig,
-  metrics: ReturnType<typeof useMetricsData>['data']
+  metrics: ReturnType<typeof useMetricsData>['data'],
+  qbMetrics?: ReturnType<typeof useQuickBooksMetrics>['data']
 ) {
-  if (!metrics) return null;
+  if (!metrics && !widget.dataSource.startsWith('qb-')) return null;
 
   switch (widget.dataSource) {
     case 'active-pipeline':
@@ -636,6 +791,43 @@ function renderStatContent(
           color={widget.color}
         />
       );
+    // QuickBooks stat widgets
+    case 'qb-total-revenue':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalRevenue)} subtitle={`${qbMetrics.totalInvoices} invoices`} icon="dollar" color={widget.color} />
+      ) : (
+        <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
+      );
+    case 'qb-accounts-receivable':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalAR)} subtitle={`${qbMetrics.overdueCount} overdue`} icon="trending-up" color={widget.color} />
+      ) : (
+        <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
+      );
+    case 'qb-total-payments':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.totalPayments)} subtitle="Payments received" icon="dollar" color={widget.color} />
+      ) : (
+        <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
+      );
+    case 'qb-active-customers':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${qbMetrics.activeCustomers}`} subtitle={`of ${qbMetrics.totalCustomers} total`} icon="pipeline" color={widget.color} />
+      ) : (
+        <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
+      );
+    case 'qb-collection-rate':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={`${qbMetrics.collectionRate.toFixed(1)}%`} subtitle="Of invoiced amount" icon="percent" color={widget.color} />
+      ) : (
+        <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
+      );
+    case 'qb-overdue-amount':
+      return qbMetrics ? (
+        <StatWidgetContent title={widget.title} value={formatCurrency(qbMetrics.overdueAmount)} subtitle={`${qbMetrics.overdueCount} invoices overdue`} icon="trending-up" color={widget.color} />
+      ) : (
+        <CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>
+      );
     default:
       return (
         <CardContent className="pt-6">
@@ -648,7 +840,8 @@ function renderStatContent(
 export default function Metrics() {
   const [reportingMonth, setReportingMonth] = useState(format(new Date(), "MMM-yy"));
   const { data: metrics, isLoading, error } = useMetricsData();
-  const { 
+  const { data: qbMetrics } = useQuickBooksMetrics();
+  const {
     widgets, 
     addWidget, 
     updateWidget, 
@@ -890,9 +1083,10 @@ export default function Metrics() {
           {selectedDashboard === 'deal-stage-timeline' && <DealStageTimelineDashboard />}
           {selectedDashboard === 'executive-dashboard' && <ExecutiveDashboard />}
           {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
+          {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
 
           {/* Default Widgets Grid for other dashboards */}
-          {!['management-snapshot', 'income-board', 'sales-bd-roi', 'sales-team-board', 'weekly-cashflow', 'harvest-monthly-tracking', 'flor-sales-commission', 'james-sales-commission', 'niki-sales-commission', 'paz-sales-commission', 'chandler-sales-commission', 'consolidated-debt-pipeline', 'controller-dashboard', 'deal-stage-timeline', 'executive-dashboard', 'finserv-financial-metrics'].includes(selectedDashboard) && (
+          {!['management-snapshot', 'income-board', 'sales-bd-roi', 'sales-team-board', 'weekly-cashflow', 'harvest-monthly-tracking', 'flor-sales-commission', 'james-sales-commission', 'niki-sales-commission', 'paz-sales-commission', 'chandler-sales-commission', 'consolidated-debt-pipeline', 'controller-dashboard', 'deal-stage-timeline', 'executive-dashboard', 'finserv-financial-metrics', 'quickbooks-financial'].includes(selectedDashboard) && (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
                 {/* Stat Widgets Row */}
@@ -909,7 +1103,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderStatContent(widget, metrics)}
+                        {renderStatContent(widget, metrics, qbMetrics)}
                       </SortableMetricWidget>
                     ))}
                   </div>
@@ -929,7 +1123,7 @@ export default function Metrics() {
                           setDeleteConfirmOpen(true);
                         }}
                       >
-                        {renderChartContent(widget, metrics)}
+                        {renderChartContent(widget, metrics, qbMetrics)}
                       </SortableMetricWidget>
                     ))}
                   </div>
