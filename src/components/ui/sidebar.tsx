@@ -252,13 +252,18 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col rounded-xl border overflow-hidden transition-all duration-200",
-            "border-[rgba(255,255,255,0.08)] shadow-[0_4px_24px_rgba(0,0,0,0.4)]",
-            "bg-[linear-gradient(180deg,rgba(13,15,26,0.95)_0%,rgba(20,10,40,0.95)_100%)] backdrop-blur-[20px]",
-            "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,rgba(126,184,247,0.03)_0%,transparent_50%)] relative",
+            "flex h-full w-full flex-col rounded-xl overflow-hidden transition-all duration-200 relative",
+            "border-r-[1px] border-[rgba(255,255,255,0.07)]",
+            "shadow-[inset_-1px_0_0_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.04)]",
+            "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,rgba(126,184,247,0.03)_0%,transparent_50%)]",
             isHovering && state === "collapsed" && "shadow-xl",
             className,
           )}
+          style={{
+            background: 'rgba(10, 12, 20, 0.55)',
+            backdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
+            WebkitBackdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
+          }}
         >
           {children}
         </div>
