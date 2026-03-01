@@ -956,6 +956,45 @@ export type Database = {
           },
         ]
       }
+      custom_metrics: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          description: string | null
+          format_options: Json | null
+          formula: Json
+          id: string
+          name: string
+          result_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          format_options?: Json | null
+          formula?: Json
+          id?: string
+          name: string
+          result_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          format_options?: Json | null
+          formula?: Json
+          id?: string
+          name?: string
+          result_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dashboard_layouts: {
         Row: {
           created_at: string
