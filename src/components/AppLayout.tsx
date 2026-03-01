@@ -31,13 +31,13 @@ function MainContent({
   return (
     <main
       className={cn(
-        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border overflow-auto border-[rgba(255,255,255,0.06)] shadow-[0_4px_24px_rgba(0,0,0,0.4)]",
+        "relative min-h-0 min-w-0 flex-1 flex flex-col rounded-xl border overflow-auto border-[rgba(255,255,255,0.08)] shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]",
         className,
       )}
       style={{
-        background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,255,255,0.015) 0%, transparent 70%), #0A0C14',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"), radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255,255,255,0.015) 0%, transparent 70%)`,
-        backgroundColor: '#0A0C14',
+        background: 'rgba(255,255,255,0.03)',
+        backdropFilter: 'blur(40px) saturate(1.2)',
+        WebkitBackdropFilter: 'blur(40px) saturate(1.2)',
       }}
       onClick={handleMainClick}
     >
