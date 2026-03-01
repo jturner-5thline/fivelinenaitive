@@ -807,7 +807,7 @@ function SortableTaskCard({ task, priorityColors, selectedTaskId, onSelectTask }
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-md border bg-card p-3 cursor-pointer hover:shadow-sm transition-all border-l-[3px] ${priorityColors[task.priority] || ''} ${
+      className={`rounded-xl p-3 cursor-pointer transition-all duration-200 backdrop-blur-xl border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(222,30%,18%)_0%,hsl(230,25%,14%)_50%,hsl(238,22%,11%)_100%)] shadow-[inset_0_1px_2px_hsl(272,100%,80%,0.15),inset_0_-1px_1px_hsl(0,0%,0%,0.2),0_0_12px_hsl(272,100%,70%,0.1),0_6px_28px_hsl(0,0%,0%,0.5)] hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(222,30%,21%)_0%,hsl(230,25%,17%)_50%,hsl(238,22%,14%)_100%)] hover:shadow-[inset_0_1px_2px_hsl(272,100%,85%,0.2),inset_0_-1px_1px_hsl(0,0%,0%,0.25),0_0_20px_hsl(272,100%,70%,0.18),0_10px_40px_hsl(0,0%,0%,0.6)] hover:-translate-y-0.5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,75%,0.08)_0%,transparent_40%,hsl(268,60%,50%,0.04)_100%)] relative overflow-hidden border-l-[3px] ${priorityColors[task.priority] || ''} ${
         selectedTaskId === task.id ? 'ring-1 ring-primary' : ''
       }`}
       onClick={() => onSelectTask(task.id)}
