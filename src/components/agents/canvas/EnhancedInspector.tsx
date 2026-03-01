@@ -8,10 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { X, Trash2, Settings, AlertCircle, Plug, RotateCcw, Ban } from 'lucide-react';
+import { X, Trash2, Settings, AlertCircle, Plug, RotateCcw, Ban, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Node } from '@xyflow/react';
-import type { AgentCanvasNodeData, AgentNodeConfigField, PortDataType, PORT_TYPE_COLORS } from './types';
+import type { AgentCanvasNodeData, AgentNodeConfigField } from './types';
 import { AGENT_PRESETS } from './agentNodeRegistry';
 
 interface EnhancedInspectorProps {
@@ -20,9 +20,10 @@ interface EnhancedInspectorProps {
   onLabelChange: (nodeId: string, label: string) => void;
   onClose: () => void;
   onDelete: (nodeId: string) => void;
+  onOpenPromptLibrary?: () => void;
 }
 
-export function EnhancedInspector({ node, onConfigChange, onLabelChange, onClose, onDelete }: EnhancedInspectorProps) {
+export function EnhancedInspector({ node, onConfigChange, onLabelChange, onClose, onDelete, onOpenPromptLibrary }: EnhancedInspectorProps) {
   const { data } = node;
   const config = data.config || {};
   const [errorConfig, setErrorConfig] = useState({
@@ -65,12 +66,19 @@ export function EnhancedInspector({ node, onConfigChange, onLabelChange, onClose
         );
       case 'textarea':
         return (
-          <Textarea
-            value={value}
-            onChange={e => updateField(key, e.target.value)}
-            placeholder={field.placeholder}
-            className="text-xs min-h-[80px] resize-y"
-          />
+          <div className="space-y-1">
+            <Textarea
+              value={value}
+              onChange={e => updateField(key, e.target.value)}
+              placeholder={field.placeholder}
+              className="text-xs min-h-[80px] resize-y"
+            />
+            {onOpenPromptLibrary && (key === 'system_prompt' || key === 'planning_prompt' || key === 'review_prompt') && (
+              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={onOpenPromptLibrary}>
+                <BookOpen className="h-3 w-3 mr-1" /> Browse Library
+              </Button>
+            )}
+          </div>
         );
       case 'number':
         return (
@@ -111,7 +119,6 @@ export function EnhancedInspector({ node, onConfigChange, onLabelChange, onClose
       vector: 'bg-primary/20 text-primary',
       any: 'bg-muted text-muted-foreground',
     };
-    // Map old types
     const normalized = type.replace('string', 'text').replace('object', 'json').replace('object[]', 'json').replace('any[]', 'json');
     return typeMap[normalized] || typeMap.any;
   };

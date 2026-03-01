@@ -15,6 +15,7 @@ interface EnhancedTestRunnerProps {
   edges: Edge[];
   onClose: () => void;
   onHighlightNode?: (nodeId: string | null) => void;
+  onRunComplete?: (result: TestRunResult) => void;
 }
 
 function StepRow({ step, onSelect }: { step: TestRunStep; onSelect: () => void }) {
@@ -75,7 +76,7 @@ function StepRow({ step, onSelect }: { step: TestRunStep; onSelect: () => void }
   );
 }
 
-export function EnhancedTestRunner({ agentId, nodes, edges, onClose, onHighlightNode }: EnhancedTestRunnerProps) {
+export function EnhancedTestRunner({ agentId, nodes, edges, onClose, onHighlightNode, onRunComplete }: EnhancedTestRunnerProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<TestRunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +107,6 @@ export function EnhancedTestRunner({ agentId, nodes, edges, onClose, onHighlight
 
       if (fnError) throw fnError;
 
-      // Simulate step-by-step results from the flat response
       const runResult: TestRunResult = {
         runId: data?.runId || `run_${Date.now()}`,
         status: data?.status === 'completed' ? 'completed' : 'failed',
@@ -131,12 +131,13 @@ export function EnhancedTestRunner({ agentId, nodes, edges, onClose, onHighlight
 
       setResult(runResult);
       setRunHistory(prev => [runResult, ...prev].slice(0, 10));
+      onRunComplete?.(runResult);
     } catch (err: any) {
       setError(err.message || 'Execution failed');
     } finally {
       setIsRunning(false);
     }
-  }, [agentId, sampleInput]);
+  }, [agentId, sampleInput, onRunComplete]);
 
   return (
     <div className="w-80 border-l border-border bg-card flex flex-col">
@@ -197,7 +198,6 @@ export function EnhancedTestRunner({ agentId, nodes, edges, onClose, onHighlight
 
               {result && (
                 <>
-                  {/* Summary */}
                   <div className={cn(
                     'p-2 rounded-md border text-xs',
                     result.status === 'completed' ? 'bg-primary/5 border-primary/20' : 'bg-destructive/5 border-destructive/20'
@@ -225,7 +225,6 @@ export function EnhancedTestRunner({ agentId, nodes, edges, onClose, onHighlight
                     </div>
                   </div>
 
-                  {/* Steps */}
                   <div className="space-y-1">
                     <h4 className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
                       <Zap className="h-3 w-3" /> Execution Steps
