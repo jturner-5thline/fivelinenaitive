@@ -6301,6 +6301,30 @@ export type Database = {
         }
         Relationships: []
       }
+      quickbooks_oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       quickbooks_payments: {
         Row: {
           customer_id: string | null

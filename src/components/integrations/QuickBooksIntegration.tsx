@@ -55,10 +55,24 @@ export function QuickBooksIntegration() {
   const { data: payments = [], isLoading: paymentsLoading } = useQuickBooksPayments();
   const { data: syncHistory = [] } = useQuickBooksSyncHistory();
 
-  // Handle callback redirect
+  // Handle OAuth callback redirect
   useEffect(() => {
-    if (searchParams.get("quickbooks") === "connected") {
+    const qbStatus = searchParams.get("qb");
+    const qbError = searchParams.get("error");
+    const legacyStatus = searchParams.get("quickbooks");
+    
+    if (qbStatus === "success" || legacyStatus === "connected") {
       toast.success("QuickBooks connected successfully!");
+      setSearchParams({});
+    } else if (qbError) {
+      const errorMessages: Record<string, string> = {
+        missing_params: "OAuth callback was missing required parameters.",
+        invalid_state: "OAuth state validation failed. Please try again.",
+        state_expired: "OAuth session expired. Please try connecting again.",
+        token_exchange_failed: "Failed to exchange authorization code. Please try again.",
+        storage_failed: "Failed to save connection. Please try again.",
+      };
+      toast.error(errorMessages[qbError] || "QuickBooks connection failed.");
       setSearchParams({});
     }
   }, [searchParams, setSearchParams]);
