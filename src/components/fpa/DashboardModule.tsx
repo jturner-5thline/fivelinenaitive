@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,10 +20,24 @@ import { FPADashboardConfigPanel } from './dashboard/FPADashboardConfigPanel';
 import { useFPADashboardConfig } from '@/hooks/useFPADashboardConfig';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+// Smart default: pick date range based on current month
+function getSmartDateRange(): string {
+  const month = new Date().getMonth(); // 0-indexed
+  if (month <= 2) return '3m'; // Q1: short window
+  if (month <= 5) return '6m'; // Q2: half year
+  return 'ytd'; // H2: year-to-date
+}
+
+function getSmartComparison(): 'budget' | 'forecast' | 'prior_year' {
+  const month = new Date().getMonth();
+  if (month >= 9) return 'budget'; // Q4: compare to next-year budget
+  return 'budget';
+}
+
 export function DashboardModule() {
   const [dashboardTab, setDashboardTab] = useState('overview');
-  const [comparisonMode, setComparisonMode] = useState<'budget' | 'forecast' | 'prior_year'>('budget');
-  const [dateRange, setDateRange] = useState('6m');
+  const [comparisonMode, setComparisonMode] = useState<'budget' | 'forecast' | 'prior_year'>(getSmartComparison);
+  const [dateRange, setDateRange] = useState(getSmartDateRange);
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
   const [chartConfigOpen, setChartConfigOpen] = useState(false);
   const [chartConfig, setChartConfig] = useState<ChartConfig>(DEFAULT_CHART_CONFIG);
