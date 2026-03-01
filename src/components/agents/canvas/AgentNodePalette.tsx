@@ -2,22 +2,24 @@ import { useState } from 'react';
 import { AGENT_NODE_REGISTRY, AGENT_NODE_CATEGORIES } from './agentNodeRegistry';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Search, Plus } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModuleLibraryPanel } from './ModuleManager';
 import type { ModuleDefinition } from './types';
+import type { AdminBuilderConfig } from './AdminConfigModal';
 
 interface AgentNodePaletteProps {
   onDragStart: (event: React.DragEvent, nodeType: string) => void;
   modules?: ModuleDefinition[];
   onDeleteModule?: (id: string) => void;
   onInsertModule?: (module: ModuleDefinition) => void;
+  adminConfig?: AdminBuilderConfig;
+  isAdmin?: boolean;
 }
 
 function fuzzyMatch(text: string, query: string): boolean {
   const lower = text.toLowerCase();
   const q = query.toLowerCase();
-  // Simple fuzzy: check if all chars of query appear in order
   let qi = 0;
   for (let i = 0; i < lower.length && qi < q.length; i++) {
     if (lower[i] === q[qi]) qi++;
@@ -25,17 +27,30 @@ function fuzzyMatch(text: string, query: string): boolean {
   return qi === q.length;
 }
 
-export function AgentNodePalette({ onDragStart, modules = [], onDeleteModule, onInsertModule }: AgentNodePaletteProps) {
+export function AgentNodePalette({ onDragStart, modules = [], onDeleteModule, onInsertModule, adminConfig, isAdmin }: AgentNodePaletteProps) {
   const [search, setSearch] = useState('');
 
+  // Filter by admin config (enabled categories)
+  const visibleRegistry = AGENT_NODE_REGISTRY.filter(n => {
+    if (isAdmin) return true;
+    if (!adminConfig) return true;
+    return adminConfig.enabledCategories[n.category] !== false;
+  });
+
   const filteredRegistry = search.trim()
-    ? AGENT_NODE_REGISTRY.filter(n =>
+    ? visibleRegistry.filter(n =>
         fuzzyMatch(n.label, search) ||
         fuzzyMatch(n.description, search) ||
         fuzzyMatch(n.category, search) ||
         (n.tags || []).some(tag => fuzzyMatch(tag, search))
       )
-    : AGENT_NODE_REGISTRY;
+    : visibleRegistry;
+
+  const visibleCategories = AGENT_NODE_CATEGORIES.filter(cat => {
+    if (isAdmin) return true;
+    if (!adminConfig) return true;
+    return adminConfig.enabledCategories[cat.key] !== false;
+  });
 
   return (
     <div className="w-64 min-w-[256px] border-r border-border bg-card flex flex-col">
@@ -53,7 +68,7 @@ export function AgentNodePalette({ onDragStart, modules = [], onDeleteModule, on
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-4">
-          {AGENT_NODE_CATEGORIES.map(cat => {
+          {visibleCategories.map(cat => {
             const items = filteredRegistry.filter(n => n.category === cat.key);
             if (items.length === 0) return null;
 

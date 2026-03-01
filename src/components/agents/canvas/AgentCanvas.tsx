@@ -24,7 +24,7 @@ import '@xyflow/react/dist/style.css';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, Loader2, X, Undo2, Redo2, LayoutGrid, FileText, Play, Copy, Keyboard, Download, Upload, Settings2, Package } from 'lucide-react';
+import { Save, Loader2, X, Undo2, Redo2, LayoutGrid, FileText, Play, Copy, Keyboard, Download, Upload, Settings2, Package, Shield, BookOpen, History } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { toast } from 'sonner';
 
@@ -38,10 +38,15 @@ import { EnhancedTestRunner } from './EnhancedTestRunner';
 import { GlobalContextPanel } from './GlobalContextPanel';
 import { ConvertToModuleDialog, useModuleManager } from './ModuleManager';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
+import { PromptLibrary } from './PromptLibrary';
+import { AdminConfigModal, loadAdminConfig, type AdminBuilderConfig } from './AdminConfigModal';
+import { RunHistoryPanel } from './RunHistoryPanel';
+import { InlineAddButton } from './InlineAddButton';
 import { AGENT_NODE_REGISTRY } from './agentNodeRegistry';
 import { useGraphValidation } from './useGraphValidation';
 import { useAutoLayout } from './useAutoLayout';
-import type { AgentCanvasNodeData, GlobalContext, ModuleDefinition } from './types';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import type { AgentCanvasNodeData, AgentNodePaletteItem, GlobalContext, ModuleDefinition, TestRunResult } from './types';
 import type { CanvasTemplate } from './canvasTemplates';
 
 interface AgentCanvasProps {
@@ -92,7 +97,7 @@ const edgeTypes: EdgeTypes = {
   labeled: LabeledEdge as any,
 };
 
-type RightPanel = 'none' | 'inspector' | 'test' | 'globals';
+type RightPanel = 'none' | 'inspector' | 'test' | 'globals' | 'history';
 
 export function AgentCanvas({
   initialNodes = [],
@@ -113,13 +118,20 @@ export function AgentCanvas({
   const [showWizard, setShowWizard] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showModuleDialog, setShowModuleDialog] = useState(false);
+  const [showPromptLibrary, setShowPromptLibrary] = useState(false);
+  const [showAdminConfig, setShowAdminConfig] = useState(false);
   const [copiedNode, setCopiedNode] = useState<Node | null>(null);
   const [rightPanel, setRightPanel] = useState<RightPanel>('none');
+  const [runHistory, setRunHistory] = useState<TestRunResult[]>([]);
+  const [adminConfig, setAdminConfig] = useState<AdminBuilderConfig>(loadAdminConfig);
+  const [inlineAdd, setInlineAdd] = useState<{ position: { x: number; y: number }; sourceNodeId: string; sourceHandleId: string } | null>(null);
   const [globalContext, setGlobalContext] = useState<GlobalContext>({
     envVars: [],
     sharedContext: { company_id: '', user_id: '', environment: 'development', default_llm: 'google/gemini-2.5-flash', default_temperature: 0.7 },
     authBindings: [],
   });
+
+  const { isAdmin } = useAdminRole();
 
   // Module management
   const { modules, updateModules } = useModuleManager();
@@ -189,7 +201,6 @@ export function AgentCanvas({
     );
     if (exists) return false;
 
-    // Type compatibility check
     const sourceNode = nodes.find(n => n.id === connection.source);
     const targetNode = nodes.find(n => n.id === connection.target);
     if (sourceNode && targetNode) {
@@ -198,9 +209,7 @@ export function AgentCanvas({
       const sourcePort = sourceData.outputs?.find(o => o.key === connection.sourceHandle);
       const targetPort = targetData.inputs?.find(i => i.key === connection.targetHandle);
       if (sourcePort && targetPort) {
-        // 'any' is always compatible
         if (sourcePort.type !== 'any' && targetPort.type !== 'any' && sourcePort.type !== targetPort.type) {
-          // Allow but warn - don't block
           toast.warning(`Type mismatch: ${sourcePort.type} → ${targetPort.type}`, { duration: 2000 });
         }
       }
@@ -229,12 +238,34 @@ export function AgentCanvas({
 
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
+    setInlineAdd(null);
     if (rightPanel === 'inspector') setRightPanel('none');
   }, [rightPanel]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const createNodeFromItem = useCallback((item: AgentNodePaletteItem, position: { x: number; y: number }) => {
+    const newNode: Node = {
+      id: `anode_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      type: 'agentNode',
+      position,
+      data: {
+        label: item.label,
+        nodeType: item.type,
+        icon: item.icon,
+        category: item.category,
+        inputs: item.inputs,
+        outputs: item.outputs,
+        configSchema: item.configSchema,
+        config: {},
+        description: item.description,
+        tags: item.tags,
+      } satisfies AgentCanvasNodeData as unknown as Record<string, unknown>,
+    };
+    return newNode;
   }, []);
 
   const onDrop = useCallback(
@@ -255,28 +286,10 @@ export function AgentCanvas({
       };
 
       pushHistory();
-
-      const newNode: Node = {
-        id: `anode_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        type: 'agentNode',
-        position,
-        data: {
-          label: registryItem.label,
-          nodeType: registryItem.type,
-          icon: registryItem.icon,
-          category: registryItem.category,
-          inputs: registryItem.inputs,
-          outputs: registryItem.outputs,
-          configSchema: registryItem.configSchema,
-          config: {},
-          description: registryItem.description,
-          tags: registryItem.tags,
-        } satisfies AgentCanvasNodeData as unknown as Record<string, unknown>,
-      };
-
+      const newNode = createNodeFromItem(registryItem, position);
       setNodes(nds => [...nds, newNode]);
     },
-    [setNodes, pushHistory]
+    [setNodes, pushHistory, createNodeFromItem]
   );
 
   const onDragStart = useCallback((event: React.DragEvent, nodeType: string) => {
@@ -329,6 +342,35 @@ export function AgentCanvas({
     toast.success('Node duplicated');
   }, [setNodes, pushHistory]);
 
+  // Inline add node from "+" button
+  const handleInlineAddNode = useCallback((item: AgentNodePaletteItem, sourceNodeId: string, sourceHandleId: string) => {
+    const sourceNode = nodes.find(n => n.id === sourceNodeId);
+    if (!sourceNode) return;
+
+    pushHistory();
+    const position = { x: sourceNode.position.x + 320, y: sourceNode.position.y };
+    const newNode = createNodeFromItem(item, position);
+    setNodes(nds => [...nds, newNode]);
+
+    // Auto-connect
+    const targetInput = item.inputs[0];
+    if (targetInput) {
+      setEdges(eds => addEdge({
+        source: sourceNodeId,
+        sourceHandle: sourceHandleId,
+        target: newNode.id,
+        targetHandle: targetInput.key,
+        type: 'labeled',
+        animated: true,
+        style: { stroke: 'hsl(var(--primary))' },
+      }, eds));
+    }
+
+    setSelectedNodeId(newNode.id);
+    setRightPanel('inspector');
+    toast.success(`Added "${item.label}"`);
+  }, [nodes, setNodes, setEdges, pushHistory, createNodeFromItem]);
+
   // Module creation
   const handleConvertToModule = useCallback((module: ModuleDefinition) => {
     updateModules([...modules, module]);
@@ -341,6 +383,11 @@ export function AgentCanvas({
 
   const handleInsertModule = useCallback((module: ModuleDefinition) => {
     toast.info(`Module "${module.name}" — use as reference template`);
+  }, []);
+
+  // Run history callback
+  const handleRunComplete = useCallback((result: TestRunResult) => {
+    setRunHistory(prev => [result, ...prev].slice(0, 20));
   }, []);
 
   // Export graph JSON
@@ -406,15 +453,28 @@ export function AgentCanvas({
         const node = nodes.find(n => n.id === selectedNodeId);
         if (node) duplicateNode(node);
       }
-      // Run test with Ctrl+Enter
       if (isMeta && e.key === 'Enter') {
         e.preventDefault();
         setRightPanel('test');
       }
+      // Select all with Ctrl+A
+      if (isMeta && e.key === 'a') {
+        e.preventDefault();
+        setNodes(nds => nds.map(n => ({ ...n, selected: true })));
+      }
+      // Zoom shortcuts
+      if (isMeta && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        // handled by ReactFlow controls
+      }
+      if (isMeta && e.key === '-') {
+        e.preventDefault();
+        // handled by ReactFlow controls
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [undo, redo, selectedNodeId, nodes, copiedNode, duplicateNode]);
+  }, [undo, redo, selectedNodeId, nodes, copiedNode, duplicateNode, setNodes]);
 
   const handleSave = () => {
     onSave({ name, nodes, edges, globalContext });
@@ -436,6 +496,17 @@ export function AgentCanvas({
     setName(data.name);
     toast.success('Solution created');
   };
+
+  // Handle selecting a run from history
+  const handleSelectRun = useCallback((run: TestRunResult) => {
+    setRightPanel('test');
+  }, []);
+
+  // Filter palette based on admin config
+  const filteredModules = useMemo(() => {
+    if (isAdmin) return modules;
+    return modules.filter(m => !adminConfig.lockedModules.includes(m.id) || adminConfig.cloneableModules.includes(m.id));
+  }, [modules, adminConfig, isAdmin]);
 
   return (
     <div className="flex flex-col h-full bg-background relative">
@@ -460,11 +531,18 @@ export function AgentCanvas({
         <GraphValidationPanel validation={validation} />
 
         <div className="ml-auto flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowWizard(true)} title="Wizard / AI Generate">
-            <Sparkles className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowTemplates(true)} title="Templates">
-            <FileText className="h-4 w-4" />
+          {(isAdmin || adminConfig.wizardVisible) && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowWizard(true)} title="Wizard / AI Generate">
+              <Sparkles className="h-4 w-4" />
+            </Button>
+          )}
+          {(isAdmin || adminConfig.templatesVisible) && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowTemplates(true)} title="Templates">
+              <FileText className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowPromptLibrary(true)} title="Prompt & Schema Library">
+            <BookOpen className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => autoLayout(nodes, edges)} title="Auto Layout">
             <LayoutGrid className="h-4 w-4" />
@@ -515,6 +593,20 @@ export function AgentCanvas({
           >
             <Play className="h-4 w-4" />
           </Button>
+          <Button
+            variant={rightPanel === 'history' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => togglePanel('history')}
+            title="Run History"
+          >
+            <History className="h-4 w-4" />
+          </Button>
+          {isAdmin && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowAdminConfig(true)} title="Admin Config">
+              <Shield className="h-4 w-4" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowShortcuts(true)} title="Keyboard Shortcuts">
             <Keyboard className="h-4 w-4" />
           </Button>
@@ -533,12 +625,14 @@ export function AgentCanvas({
       <div className="flex flex-1 overflow-hidden">
         <AgentNodePalette
           onDragStart={onDragStart}
-          modules={modules}
+          modules={filteredModules}
           onDeleteModule={handleDeleteModule}
           onInsertModule={handleInsertModule}
+          adminConfig={adminConfig}
+          isAdmin={isAdmin}
         />
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col relative">
           <div className="flex-1" ref={reactFlowWrapper}>
             <ReactFlow
               nodes={nodesWithValidation}
@@ -594,6 +688,17 @@ export function AgentCanvas({
               )}
             </ReactFlow>
           </div>
+
+          {/* Inline add popover */}
+          {inlineAdd && (
+            <InlineAddButton
+              position={inlineAdd.position}
+              sourceNodeId={inlineAdd.sourceNodeId}
+              sourceHandleId={inlineAdd.sourceHandleId}
+              onAddNode={handleInlineAddNode}
+              onClose={() => setInlineAdd(null)}
+            />
+          )}
         </div>
 
         {/* Right panels */}
@@ -604,6 +709,7 @@ export function AgentCanvas({
             onLabelChange={handleLabelChange}
             onClose={() => { setSelectedNodeId(null); setRightPanel('none'); }}
             onDelete={handleDeleteNode}
+            onOpenPromptLibrary={() => setShowPromptLibrary(true)}
           />
         )}
 
@@ -616,6 +722,7 @@ export function AgentCanvas({
             onHighlightNode={(nodeId) => {
               setSelectedNodeId(nodeId);
             }}
+            onRunComplete={handleRunComplete}
           />
         )}
 
@@ -623,6 +730,14 @@ export function AgentCanvas({
           <GlobalContextPanel
             context={globalContext}
             onChange={setGlobalContext}
+            onClose={() => setRightPanel('none')}
+          />
+        )}
+
+        {rightPanel === 'history' && (
+          <RunHistoryPanel
+            runs={runHistory}
+            onSelectRun={handleSelectRun}
             onClose={() => setRightPanel('none')}
           />
         )}
@@ -647,6 +762,22 @@ export function AgentCanvas({
         open={showShortcuts}
         onOpenChange={setShowShortcuts}
       />
+
+      {/* Prompt & Schema Library */}
+      <PromptLibrary
+        open={showPromptLibrary}
+        onOpenChange={setShowPromptLibrary}
+      />
+
+      {/* Admin Config Modal */}
+      {isAdmin && (
+        <AdminConfigModal
+          open={showAdminConfig}
+          onOpenChange={setShowAdminConfig}
+          modules={modules}
+          onConfigChange={setAdminConfig}
+        />
+      )}
 
       {/* Convert to module dialog */}
       <ConvertToModuleDialog
