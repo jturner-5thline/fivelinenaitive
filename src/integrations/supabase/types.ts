@@ -910,6 +910,7 @@ export type Database = {
           deals_special_widgets: Json | null
           deals_widgets_config: Json | null
           default_deal_stage_id: string | null
+          fpa_dashboard_config: Json | null
           id: string
           lender_matching_config: Json | null
           permission_settings: Json | null
@@ -924,6 +925,7 @@ export type Database = {
           deals_special_widgets?: Json | null
           deals_widgets_config?: Json | null
           default_deal_stage_id?: string | null
+          fpa_dashboard_config?: Json | null
           id?: string
           lender_matching_config?: Json | null
           permission_settings?: Json | null
@@ -938,6 +940,7 @@ export type Database = {
           deals_special_widgets?: Json | null
           deals_widgets_config?: Json | null
           default_deal_stage_id?: string | null
+          fpa_dashboard_config?: Json | null
           id?: string
           lender_matching_config?: Json | null
           permission_settings?: Json | null

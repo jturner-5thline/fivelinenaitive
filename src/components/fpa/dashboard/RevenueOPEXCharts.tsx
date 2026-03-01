@@ -71,9 +71,18 @@ const TOP_VENDORS = [
 
 const tooltipStyle = { fontSize: 11, background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6 };
 
+export interface ChartVisibilityConfig {
+  revenueChart: boolean;
+  marginTrends: boolean;
+  opexComparison: boolean;
+  topVendors: boolean;
+  waterfallBridge: boolean;
+}
+
 interface RevenueOPEXChartsProps {
   onDrillDown?: (metric: string, segment: string) => void;
   chartConfig?: ChartConfig;
+  visibilityConfig?: ChartVisibilityConfig;
 }
 
 function getColors(config?: ChartConfig): string[] {
@@ -234,21 +243,25 @@ function renderOpexChart(chartType: ChartType, colors: string[], config: ChartCo
   );
 }
 
-export function RevenueOPEXCharts({ onDrillDown, chartConfig }: RevenueOPEXChartsProps) {
+export function RevenueOPEXCharts({ onDrillDown, chartConfig, visibilityConfig }: RevenueOPEXChartsProps) {
   const [revenueView, setRevenueView] = useState<'trend' | 'waterfall'>('trend');
   const cfg = chartConfig || DEFAULT_CHART_CONFIG;
   const colors = getColors(cfg);
+  const vis = visibilityConfig || { revenueChart: true, marginTrends: true, opexComparison: true, topVendors: true, waterfallBridge: true };
 
   return (
     <div className="space-y-4">
       {/* Row 1: Revenue + Margins */}
+      {(vis.revenueChart || vis.marginTrends) && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Revenue Chart */}
-        <Card className="lg:col-span-2">
+        {vis.revenueChart && (
+        <Card className={vis.marginTrends ? "lg:col-span-2" : "lg:col-span-3"}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CardTitle className="text-sm">Revenue</CardTitle>
+                {vis.waterfallBridge && (
                 <div className="flex gap-1">
                   <Button
                     variant={revenueView === 'trend' ? 'default' : 'ghost'}
@@ -261,6 +274,7 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig }: RevenueOPEXChart
                     onClick={() => setRevenueView('waterfall')}
                   >Bridge</Button>
                 </div>
+                )}
               </div>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                 <Maximize2 className="h-3.5 w-3.5" />
@@ -268,7 +282,7 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig }: RevenueOPEXChart
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {revenueView === 'trend' ? (
+            {revenueView === 'trend' || !vis.waterfallBridge ? (
               <ResponsiveContainer width="100%" height={240}>
                 {renderRevenueChart(cfg.revenueChartType, colors, cfg)}
               </ResponsiveContainer>
@@ -289,9 +303,11 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig }: RevenueOPEXChart
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Margin Trends */}
-        <Card>
+        {vis.marginTrends && (
+        <Card className={vis.revenueChart ? undefined : "lg:col-span-3"}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Margin Trends</CardTitle>
           </CardHeader>
@@ -301,10 +317,14 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig }: RevenueOPEXChart
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        )}
       </div>
+      )}
 
       {/* Row 2: OPEX Comparison + Top Vendors */}
+      {(vis.opexComparison || vis.topVendors) && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {vis.opexComparison && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">OPEX — Actuals vs Budget ($K)</CardTitle>
@@ -327,8 +347,10 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig }: RevenueOPEXChart
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Top Vendors */}
+        {vis.topVendors && (
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -361,7 +383,9 @@ export function RevenueOPEXCharts({ onDrillDown, chartConfig }: RevenueOPEXChart
             </Table>
           </CardContent>
         </Card>
+        )}
       </div>
+      )}
     </div>
   );
 }
