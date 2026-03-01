@@ -9,6 +9,8 @@ import {
 import { cn } from '@/lib/utils';
 import { PLCommentThread, type FPAComment } from '../collaboration/PLCommentThread';
 import { InlineAnnotation, type Annotation } from '../collaboration/InlineAnnotation';
+import { PLRowQuickActions } from '../PLRowQuickActions';
+import { VarianceLegend } from '../VarianceLegend';
 
 interface PLRow {
   account: string;
@@ -97,6 +99,7 @@ interface InteractivePLTableProps {
 
 export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(['Revenue', 'Operating Expenses']));
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   // Collaboration state (demo data — will be replaced with DB queries)
   const [comments, setComments] = useState<Record<string, FPAComment[]>>({
@@ -206,11 +209,13 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
       <TableRow
         key={row.account}
         className={cn(
-          "cursor-pointer hover:bg-muted/50 transition-colors",
+          "cursor-pointer hover:bg-muted/50 transition-colors group",
           row.isHeader && "bg-muted/30 font-semibold",
           isSignificant && !row.isHeader && "bg-amber-500/5"
         )}
         onClick={() => hasChildren && toggleRow(row.account)}
+        onMouseEnter={() => setHoveredRow(row.account)}
+        onMouseLeave={() => setHoveredRow(null)}
       >
         <TableCell className="py-1.5">
           <div className="flex items-center gap-1" style={{ paddingLeft: `${depth * 16}px` }}>
@@ -226,6 +231,16 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
               <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
             )}
             <div className="flex items-center gap-0.5 ml-auto shrink-0" onClick={e => e.stopPropagation()}>
+              {!row.isHeader && (
+                <PLRowQuickActions
+                  rowAccount={row.account}
+                  visible={hoveredRow === row.account}
+                  onComment={() => {}}
+                  onFlag={() => {}}
+                  onDrillDown={() => {}}
+                  onBookmark={() => {}}
+                />
+              )}
               <PLCommentThread
                 targetKey={row.account}
                 targetLabel={row.account}
@@ -311,6 +326,7 @@ export function InteractivePLTable({ comparisonMode }: InteractivePLTableProps) 
             {PL_TREE.map(row => renderRow(row)).flat()}
           </TableBody>
         </Table>
+        <VarianceLegend compact className="mt-3" />
       </CardContent>
     </Card>
   );

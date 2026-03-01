@@ -9,6 +9,7 @@ import { AIModule } from './AIModule';
 import { AutomationsModule } from './AutomationsModule';
 import { FPATour } from './FPATour';
 import { FPACommandPalette } from './FPACommandPalette';
+import { SmartUploadWizard } from './SmartUploadWizard';
 import {
   Database, FileSpreadsheet, BarChart3, Sparkles, Zap
 } from 'lucide-react';
@@ -16,13 +17,16 @@ import { Badge } from '@/components/ui/badge';
 
 export function FPAWorkspace() {
   const [activeModule, setActiveModule] = useState('dashboards');
+  const [uploadWizardOpen, setUploadWizardOpen] = useState(false);
 
   const handleNavigateToTab = useCallback((tab: string) => {
     setActiveModule(tab);
   }, []);
 
   const handleCommandAction = useCallback((actionId: string) => {
-    // Future: can trigger specific sub-actions like opening upload dialog
+    if (actionId === 'upload-workbook') {
+      setUploadWizardOpen(true);
+    }
     console.log('Command action:', actionId);
   }, []);
 
@@ -31,6 +35,7 @@ export function FPAWorkspace() {
       <div className="space-y-4">
         {/* Command Palette (⌘K) */}
         <FPACommandPalette onNavigateToTab={handleNavigateToTab} onAction={handleCommandAction} />
+        <SmartUploadWizard open={uploadWizardOpen} onOpenChange={setUploadWizardOpen} />
 
         {/* Status Bar */}
         <FPAStatusBar />
