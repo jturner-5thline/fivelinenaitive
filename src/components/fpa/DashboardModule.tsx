@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Share2, MessageSquare, FileText } from 'lucide-react';
+import { Download, Share2, MessageSquare, FileText, Settings2 } from 'lucide-react';
 import { KPICards } from './dashboard/KPICards';
 import { InteractivePLTable } from './dashboard/InteractivePLTable';
 import { RevenueOPEXCharts } from './dashboard/RevenueOPEXCharts';
@@ -15,6 +15,7 @@ import { VarianceReviewPanel } from './collaboration/VarianceReviewPanel';
 import { BudgetApprovalWorkflow } from './collaboration/BudgetApprovalWorkflow';
 import { VarianceLegend } from './VarianceLegend';
 import { BoardReportExport } from './BoardReportExport';
+import { ChartConfigPanel, DEFAULT_CHART_CONFIG, type ChartConfig } from './dashboard/ChartConfigPanel';
 import { cn } from '@/lib/utils';
 
 export function DashboardModule() {
@@ -22,9 +23,19 @@ export function DashboardModule() {
   const [comparisonMode, setComparisonMode] = useState<'budget' | 'forecast' | 'prior_year'>('budget');
   const [dateRange, setDateRange] = useState('6m');
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
+  const [chartConfigOpen, setChartConfigOpen] = useState(false);
+  const [chartConfig, setChartConfig] = useState<ChartConfig>(DEFAULT_CHART_CONFIG);
 
   return (
     <div className="space-y-4">
+      {/* Chart Config Dialog */}
+      <ChartConfigPanel
+        open={chartConfigOpen}
+        onOpenChange={setChartConfigOpen}
+        config={chartConfig}
+        onConfigChange={setChartConfig}
+      />
+
       {/* Global Filters */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Tabs value={dashboardTab} onValueChange={setDashboardTab}>
@@ -66,6 +77,14 @@ export function DashboardModule() {
               <SelectItem value="ytd">YTD</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1 text-xs"
+            onClick={() => setChartConfigOpen(true)}
+          >
+            <Settings2 className="h-3.5 w-3.5" /> Charts
+          </Button>
           <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
             <Download className="h-3.5 w-3.5" /> Export
           </Button>
@@ -86,7 +105,7 @@ export function DashboardModule() {
               <InteractivePLTable comparisonMode={comparisonMode} />
             </div>
             <div className="xl:col-span-2 space-y-4">
-              <RevenueOPEXCharts />
+              <RevenueOPEXCharts chartConfig={chartConfig} />
             </div>
           </div>
         </div>
@@ -95,7 +114,7 @@ export function DashboardModule() {
       {dashboardTab === 'pnl' && (
         <div className="space-y-4">
           <InteractivePLTable comparisonMode={comparisonMode} />
-          <RevenueOPEXCharts />
+          <RevenueOPEXCharts chartConfig={chartConfig} />
         </div>
       )}
 
