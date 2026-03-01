@@ -75,8 +75,63 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true} className="h-svh overflow-hidden">
       <BodyScrollLock />
-      {/* Neutral dark background — no color hues */}
-      <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true" style={{ background: '#0A0C14' }} />
+      {/* Neutral dark decorative background with orbs and waves */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true" style={{ background: '#0A0C14' }}>
+        {/* Ambient glow orbs — neutral/cool grey */}
+        <div className="absolute -top-20 -left-20 w-[600px] h-[600px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 45%, transparent 70%)' }} />
+        <div className="absolute top-[40%] right-[10%] w-[400px] h-[400px] rounded-full opacity-[0.08]" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 50%, transparent 70%)' }} />
+        <div className="absolute -bottom-20 left-[30%] w-[500px] h-[400px] rounded-full opacity-[0.10]" style={{ background: 'radial-gradient(ellipse, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 50%, transparent 70%)' }} />
+
+        {/* Flowing wave shapes — neutral tones */}
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="lwFill1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.03)" />
+              <stop offset="50%" stopColor="rgba(255,255,255,0.015)" />
+              <stop offset="100%" stopColor="transparent" />
+            </linearGradient>
+            <linearGradient id="lwFill2" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.025)" />
+              <stop offset="50%" stopColor="rgba(255,255,255,0.01)" />
+              <stop offset="100%" stopColor="transparent" />
+            </linearGradient>
+            <linearGradient id="lwFill3" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.025)" />
+              <stop offset="50%" stopColor="rgba(255,255,255,0.01)" />
+              <stop offset="100%" stopColor="transparent" />
+            </linearGradient>
+            <linearGradient id="lwEdge1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+              <stop offset="30%" stopColor="rgba(255,255,255,0.12)" />
+              <stop offset="70%" stopColor="rgba(255,255,255,0.08)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+            </linearGradient>
+            <linearGradient id="lwEdge2" x1="100%" y1="0%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+              <stop offset="25%" stopColor="rgba(255,255,255,0.10)" />
+              <stop offset="75%" stopColor="rgba(255,255,255,0.07)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+            </linearGradient>
+            <linearGradient id="lwEdge3" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+              <stop offset="20%" stopColor="rgba(255,255,255,0.07)" />
+              <stop offset="80%" stopColor="rgba(255,255,255,0.10)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+            </linearGradient>
+            <filter id="lwBlur"><feGaussianBlur stdDeviation="0.5" /></filter>
+          </defs>
+          <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200 L1540,0 L-100,0 Z" fill="url(#lwFill1)" />
+          <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200" fill="none" stroke="url(#lwEdge1)" strokeWidth="2.5" filter="url(#lwBlur)" />
+          <path d="M-100,120 C200,80 400,220 720,180 C1040,140 1200,280 1540,200" fill="none" stroke="url(#lwEdge1)" strokeWidth="1.5" opacity="1" />
+          <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440 L-100,900 L1540,900 Z" fill="url(#lwFill2)" />
+          <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440" fill="none" stroke="url(#lwEdge2)" strokeWidth="2.5" filter="url(#lwBlur)" />
+          <path d="M1540,380 C1200,320 1000,480 680,420 C360,360 200,500 -100,440" fill="none" stroke="url(#lwEdge2)" strokeWidth="1.5" opacity="1" />
+          <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740 L1540,900 L-100,900 Z" fill="url(#lwFill3)" />
+          <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740" fill="none" stroke="url(#lwEdge3)" strokeWidth="2.5" filter="url(#lwBlur)" />
+          <path d="M-100,700 C180,640 420,780 740,720 C1060,660 1280,800 1540,740" fill="none" stroke="url(#lwEdge3)" strokeWidth="1.5" opacity="1" />
+          <path d="M800,50 C1000,100 1150,30 1440,80" fill="none" stroke="url(#lwEdge1)" strokeWidth="2" opacity="0.7" />
+        </svg>
+      </div>
 
       <div className="relative z-10 flex w-full h-full min-h-0 bg-transparent p-2 gap-1">
         <AppSidebar />
